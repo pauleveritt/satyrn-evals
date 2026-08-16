@@ -13,23 +13,23 @@ network.
 satyrn-evals grade TASK PATCH [--receipt PATH]
 ```
 
-- `TASK` — a bundled task name. `format_number` is the first bundled task:
+- `TASK` — a bundled {term}`task` name. `format_number` is the first bundled task:
   a small pure-Python function task with known-good and known-broken
   fixture patches.
-- `PATCH` — path to a unified-diff file.
-- `--receipt PATH` — where the receipt is written; default `receipt.json`
+- `PATCH` — path to a unified-diff {term}`patch` file.
+- `--receipt PATH` — where the {term}`receipt` is written; default `receipt.json`
   in the current directory.
 
 ### Exit codes
 
 | Code | Meaning |
 |------|---------|
-| 0 | Grading completed; the receipt says `pass` or `fail` |
-| 2 | Usage error — unknown task, unreadable patch, bad arguments |
-| 3 | Operational failure — the receipt says `unavailable` and names the cause |
+| 0 | Grading completed; the {term}`receipt` says `pass` or `fail` |
+| 2 | Usage error — unknown task, unreadable {term}`patch`, bad arguments |
+| 3 | Operational failure — the {term}`receipt` says `unavailable` and names the cause |
 
 The {term}`verdict` never comes from stdout or the exit code. Read the
-receipt.
+{term}`receipt`.
 
 ### The receipt
 
@@ -47,8 +47,8 @@ receipt.
 }
 ```
 
-`patch_digest` is the sha256 of the patch file, so a receipt names the
-exact input it graded — re-scoreable without re-running anything.
+`patch_digest` is the sha256 of the {term}`patch` file, so a {term}`receipt`
+names the exact input it graded — re-scoreable without re-running anything.
 `evidence` is the {term}`hook result` verbatim.
 
 ### Example
@@ -61,6 +61,6 @@ $ python -c "import json; print(json.load(open('r.json'))['verdict'])"
 pass
 ```
 
-A patch that does not apply, or an oracle that produces no trustworthy
-{term}`hook result`, records `unavailable` and exits 3 — never a clean
-zero that proved nothing.
+A {term}`patch` that does not apply, or an {term}`oracle` that produces no
+trustworthy {term}`hook result`, records `unavailable` and exits 3 — never
+a clean zero that proved nothing.

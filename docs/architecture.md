@@ -14,28 +14,29 @@ PATCH ──► parse ──► allowlist ──► copy base ──► git appl
 
 `grade()` in `src/satyrn_evals/grade.py`:
 
-1. **Load the manifest** — `manifest.py` validates the task's
-   `manifest.json`: contract, {term}`oracle` command, expected test IDs,
-   source {term}`allowlist`, fixture patch paths.
+1. **Load the manifest** — `manifest.py` validates the {term}`task`'s
+   {term}`manifest` (`manifest.json`): contract, {term}`oracle` command,
+   expected test IDs, source {term}`allowlist`, fixture {term}`patch`
+   paths.
 2. **Read and vet the patch** — `patch.py` parses the unified diff,
-   extracts the touched paths, and checks the {term}`allowlist`; a patch
-   touching anything else is rejected before anything runs.
-3. **Materialize and apply** — the task's base state is copied to a temp
-   directory, `git init` + `git apply` apply the patch.
-4. **Run the oracle** — the manifest's command (for `format_number`,
-   `python -m pytest -p satyrn_evals.oracle_hook`) runs in the workspace
-   with a *unique, reserved-but-unlinked* hook-result path in its
-   environment. The hook's `pytest_sessionfinish` writes the
+   extracts the touched paths, and checks the {term}`allowlist`; a
+   {term}`patch` touching anything else is rejected before anything runs.
+3. **Materialize and apply** — the {term}`task`'s base state is copied to a
+   temp directory, `git init` + `git apply` apply the {term}`patch`.
+4. **Run the oracle** — the {term}`manifest`'s {term}`oracle` command (for
+   `format_number`, `python -m pytest -p satyrn_evals.oracle_hook`) runs
+   in the workspace with a *unique, reserved-but-unlinked* hook-result
+   path in its environment. The hook's `pytest_sessionfinish` writes the
    {term}`hook result` JSON.
 5. **Load and validate the hook result** — `verdict.py` rejects a missing,
    stale, unparseable, or internally inconsistent file as `unavailable`.
-6. **Compute the verdict** — executed test IDs must equal the manifest's
-   expected IDs; any skip means `unavailable`; any failure or error means
-   `fail`; all pass means `pass`.
+6. **Compute the verdict** — executed test IDs must equal the
+   {term}`manifest`'s expected IDs; any skip means `unavailable`; any
+   failure or error means `fail`; all pass means `pass`.
 7. **Write the receipt** — `receipt.py`; the CLI maps the {term}`verdict`
    to an exit code (0 / 2 / 3).
 
-The oracle's stdout and exit code are discarded. The
+The {term}`oracle`'s stdout and exit code are discarded. The
 {term}`receipt` — not the process result — is what a caller reads.
 
 ## Why the verdict comes from a hook file
@@ -47,11 +48,12 @@ anything ran. Both produce exit code 0.
 
 The defense is structural, not behavioral:
 
-- the {term}`oracle` command is fixed in the manifest, and the
-  {term}`allowlist` stops a patch from adding `addopts` or replacing the
-  hook;
-- the hook writes to a path the patch cannot predict — and the path is
-  unlinked before the oracle runs, so a silent oracle leaves *no* file;
+- the {term}`oracle` command is fixed in the {term}`manifest`, and the
+  {term}`allowlist` stops a {term}`patch` from adding `addopts` or
+  replacing the hook;
+- the hook writes to a path the {term}`patch` cannot predict — and the
+  path is unlinked before the oracle runs, so a silent oracle leaves *no*
+  file;
 - a missing, stale, empty, or inconsistent file is `unavailable`, never
   `pass`;
 - the executed-vs-expected-ID guard means "tests ran" is checked, not
@@ -63,8 +65,8 @@ The defense is structural, not behavioral:
 |--------|----------------|
 | `cli.py` | argparse, `grade` command, exit-code mapping |
 | `grade.py` | orchestration: materialize, apply, run oracle, write receipt |
-| `manifest.py` | load/validate the task manifest; resolve tasks by name |
-| `patch.py` | parse unified diffs; enforce the source allowlist |
+| `manifest.py` | load/validate the {term}`task` {term}`manifest`; resolve tasks by name |
+| `patch.py` | parse unified diffs; enforce the source {term}`allowlist` |
 | `verdict.py` | load/validate the hook result; compute the verdict |
 | `receipt.py` | the durable grading artifact (JSON) |
 | `oracle_hook.py` | pytest plugin writing the trusted hook result |
@@ -77,9 +79,9 @@ The defense is structural, not behavioral:
   raises on any spawn. Weakening it fails the build.
 - **Integration tier** — marked `integration` and excluded from the
   default run: real `git apply`, real oracle subprocesses, and the
-  {term}`evidence floor`: the bundled task's known-good patch is accepted
-  and its known-broken patch rejected, each asserted by naming the
-  fixture.
+  {term}`evidence floor`: the bundled {term}`task`'s known-good
+  {term}`patch` is accepted and its known-broken {term}`patch` rejected,
+  each asserted by naming the fixture.
 
 Every refusal test has a sibling success test, so rejection cannot pass
 vacuously.
