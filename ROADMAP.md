@@ -10,14 +10,15 @@ Backlog, not into the current phase.*
 
 ## Now
 
-**Repository scaffolding — complete.** The repository is initialized with
-the toolchain (`uv`, `ruff`, `pyrefly`, `pytest`), the docs stack (Sphinx,
-MyST, Furo, sphinx-autobuild behind a Justfile recipe), CI for Pages, and
-the superpowers structure. The roadmap itself — phases of feature cycles
-derived from the two-repo rewrite brief — is **not yet written**; the
-brief names the diagnostic slices (offline grade, capture by revert,
-attempt persistence, real engine attempt, batch diagnostics) and this
-section will record them in named phases once the roadmap is authored.
+**Repository scaffolding — complete.** The toolchain, docs stack, CI, and
+superpowers structure are initialized. `BRIEF.md` is landed.
+
+**Phase V1 — It installs and grades. Not started; the current phase.**
+`satyrn-evals grade TASK PATCH`. See the Phases table below and
+`BRIEF.md` for the binding rules, especially the two selection rules for
+V1's bundled task and the baseline probe. Brainstorm V1's details; do not
+reopen the phase list or the diagnosis-before-claims split — both are
+settled, cited in `docs/superpowers/research/2026-08-16-harvest-index.md`.
 
 ## Concept budget
 
@@ -26,18 +27,34 @@ the design in mind. Checked and updated at the end of each cycle; a term
 earns its place by naming something the design actually needs, not by being
 convenient shorthand.*
 
-No terms yet. The concept budget starts empty and is earned.
+Seed terms, not yet defined in this repository's own words — define each
+when the phase that needs it lands: **task**, **oracle**, **preservation**,
+**baseline probe**, **attempt command**, **verdict**.
 
 ## Phases
 
 | # | Phase | Direction (one sentence) | Status |
 |---|-------|--------------------------|--------|
-| — | *(pending — roadmap not yet authored)* | The evals brief's slices: offline grade, capture by revert, attempt persistence, real engine attempt, batch diagnostics | not started |
+| V1 | It installs and grades | `grade` accepts a bundled task's known-good patch and rejects its known-broken one, offline and deterministic | **current** |
+| V2 | Capture by revert | `capture --revert SHA` makes a task winnable by construction, in minutes | not started |
+| V3 | Attempt persistence | `attempt TASK -- COMMAND...` runs a fake command, persists patch and transcript, regrades offline | not started |
+| V4 | A real engine attempt | The same artifact set, produced by `satyrn-engine attempt` (engine phase E5) | not started |
+| V5 | The diagnostic loop | `run --n 8` plus a summary: verdict reasons, repeated calls, churn, tool calls, context, timeouts | not started |
+
+Full done-when criteria are in `BRIEF.md`'s referenced roadmap research, not
+restated here to avoid drift between two copies.
+
+**Design work owed, not a phase:** a suite with headroom. See `BRIEF.md`'s
+"The unsolved problem." V5's summary is only informative on tasks whose
+baseline can move, and nothing here reliably produces those yet.
 
 ## Backlog
 
-Deferred ideas land here, never into the current phase. Nothing is
-scheduled yet.
+Deferred, each with the condition that reopens it — see `BRIEF.md`:
+automated commit mining (after three manual captures show which steps
+repeat); paired A/B of two engine versions (when a contributor needs "did
+my fix help" across versions); resumable large batches (only if the prior
+checkpoint transplants verbatim); the whole claims layer.
 
 ## Prior work
 
