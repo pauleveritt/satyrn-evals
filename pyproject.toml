@@ -29,6 +29,8 @@ docs = [
 [tool.pytest.ini_options]
 # docs/_build is the docs build output, never project tests.
 norecursedirs = ["docs/_build"]
+addopts = ["-m", "not integration", "--strict-markers"]
+strict_xfail = true
 markers = [
     "integration: needs the real clone cache or network; excluded from the offline unit run",
 ]
