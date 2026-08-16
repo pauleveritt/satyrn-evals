@@ -1,0 +1,16 @@
+{
+  "name": "format_number",
+  "contract": "Implement format_number(n) to return n with thousands separators.",
+  "oracle": ["python", "-m", "pytest", "-p", "satyrn_evals.oracle_hook"],
+  "expected_test_ids": [
+    "test_solution.py::test_small",
+    "test_solution.py::test_large",
+    "test_solution.py::test_negative",
+    "test_solution.py::test_zero"
+  ],
+  "source_paths": ["solution.py"],
+  "fixtures": {
+    "known_good": "fixtures/known-good.patch",
+    "known_broken": "fixtures/known-broken.patch"
+  }
+}
