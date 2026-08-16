@@ -117,6 +117,19 @@ def test_oracle_without_hook_records_unavailable(tmp_task: Path, tmp_path: Path)
     assert "missing" in data["reason"]
 
 
+def test_oracle_command_not_found_records_unavailable(tmp_task: Path, tmp_path: Path) -> None:
+    manifest_path = tmp_task / "manifest.json"
+    data = json.loads(manifest_path.read_text())
+    data["oracle"] = ["definitely-not-a-real-command-xyz-123"]
+    manifest_path.write_text(json.dumps(data))
+    receipt_path = tmp_path / "r.json"
+    receipt = grade(tmp_task, tmp_task / "fixtures" / "known-good.patch", receipt_path)
+    assert receipt.verdict is Verdict.UNAVAILABLE
+    data = json.loads(receipt_path.read_text())
+    assert data["verdict"] == "unavailable"
+    assert "oracle failed to start" in data["reason"]
+
+
 def test_patch_touching_tests_records_unavailable(tmp_task: Path, tmp_path: Path) -> None:
     bad = tmp_path / "touches-tests.patch"
     bad.write_text(

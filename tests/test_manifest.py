@@ -64,6 +64,24 @@ def test_load_missing_fixture_rejected(tmp_path) -> None:
         load_manifest(task_dir)
 
 
+def test_load_string_oracle_rejected(tmp_path) -> None:
+    task_dir = _valid_task(tmp_path)
+    data = json.loads((task_dir / "manifest.json").read_text())
+    data["oracle"] = "python"
+    (task_dir / "manifest.json").write_text(json.dumps(data))
+    with pytest.raises(ManifestError, match="oracle must be a list"):
+        load_manifest(task_dir)
+
+
+def test_load_string_fixtures_rejected(tmp_path) -> None:
+    task_dir = _valid_task(tmp_path)
+    data = json.loads((task_dir / "manifest.json").read_text())
+    data["fixtures"] = "notadict"
+    (task_dir / "manifest.json").write_text(json.dumps(data))
+    with pytest.raises(ManifestError, match="fixtures must be an object"):
+        load_manifest(task_dir)
+
+
 def test_resolve_task_found(tmp_path) -> None:
     task_dir = _valid_task(tmp_path)
     assert resolve_task("t", tasks_root=tmp_path) == task_dir

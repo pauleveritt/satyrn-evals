@@ -29,17 +29,23 @@ def load_manifest(task_dir: Path) -> TaskManifest:
         raise ManifestError(f"malformed manifest JSON: {e}") from e
     if not isinstance(data, dict):
         raise ManifestError("manifest is not a JSON object")
-    try:
-        name = data["name"]
-        contract = data["contract"]
-        oracle = tuple(data["oracle"])
-        expected = tuple(data["expected_test_ids"])
-        sources = tuple(data["source_paths"])
-        fixtures = dict(data["fixtures"])
-    except KeyError as e:
-        raise ManifestError(f"manifest missing key: {e.args[0]}") from e
-    except TypeError as e:
-        raise ManifestError(f"manifest field has the wrong type: {e}") from e
+    for key in ("name", "contract", "oracle", "expected_test_ids", "source_paths", "fixtures"):
+        if key not in data:
+            raise ManifestError(f"manifest missing key: {key}")
+    name = data["name"]
+    contract = data["contract"]
+    if not isinstance(data["oracle"], list):
+        raise ManifestError("oracle must be a list of command strings")
+    if not isinstance(data["expected_test_ids"], list):
+        raise ManifestError("expected_test_ids must be a list of strings")
+    if not isinstance(data["source_paths"], list):
+        raise ManifestError("source_paths must be a list of strings")
+    if not isinstance(data["fixtures"], dict):
+        raise ManifestError("fixtures must be an object")
+    oracle = tuple(data["oracle"])
+    expected = tuple(data["expected_test_ids"])
+    sources = tuple(data["source_paths"])
+    fixtures = dict(data["fixtures"])
     if not isinstance(name, str) or not name or not isinstance(contract, str) or not contract:
         raise ManifestError("name and contract must be non-empty strings")
     if not oracle or not all(isinstance(x, str) and x for x in oracle):
