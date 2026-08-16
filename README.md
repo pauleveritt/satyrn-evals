@@ -19,9 +19,11 @@ waits for the real engine.
 
 ## Status
 
-Repository scaffolding. The roadmap — phases of feature cycles derived from
-the two-repo rewrite brief — is not yet written; see
-[`ROADMAP.md`](ROADMAP.md).
+V1 — It installs and grades — is implemented: `satyrn-evals grade TASK
+PATCH [--receipt PATH]` applies a patch to a bundled task
+(`format_number`) and records an offline verdict receipt — no model, no
+network. The roadmap of feature cycles is in [`ROADMAP.md`](ROADMAP.md);
+the design and implementation record is under `docs/superpowers/`.
 
 ## Toolchain
 

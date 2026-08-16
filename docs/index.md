@@ -14,9 +14,21 @@ argument. Evals does not import engine internals, and a fake command
 satisfies the same seam so eval development never waits for the real
 engine.
 
-This repository is scaffolding: the roadmap of feature cycles derived from
-the two-repo rewrite brief is not yet written. See `ROADMAP.md` in this
-checkout for the current state.
+V1 — *It installs and grades* — is implemented: `satyrn-evals grade`
+applies a patch to a bundled task and records an offline verdict receipt.
+See [usage](usage.md), [architecture](architecture.md), and the
+[glossary](glossary.md). The roadmap of feature cycles lives in
+`ROADMAP.md`; the design and implementation record is under
+[`superpowers/`](superpowers/index.md).
+
+```{toctree}
+:maxdepth: 1
+:caption: User guide
+
+usage
+architecture
+glossary
+```
 
 ```{toctree}
 :maxdepth: 1
