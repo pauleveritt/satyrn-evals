@@ -1,4 +1,5 @@
 import json
+from collections.abc import Iterator
 
 import pytest
 
@@ -17,7 +18,7 @@ class FakeReport:
 
 
 @pytest.fixture(autouse=True)
-def _clear_reports() -> None:
+def _clear_reports() -> Iterator[None]:
     oracle_hook._reports.clear()
     yield
     oracle_hook._reports.clear()

@@ -7,6 +7,7 @@ import pytest
 from satyrn_evals.errors import HookError
 from satyrn_evals.verdict import (
     HookResult,
+    Outcome,
     Verdict,
     compute_verdict,
     describe_unavailable,
@@ -21,7 +22,7 @@ def _hook_data(executed: list[str], outcomes: dict[str, str]) -> dict:
     return {"executed_test_ids": sorted(executed), "outcomes": outcomes, "counts": counts}
 
 
-def _mk_hook(executed: list[str], outcomes: dict[str, str]) -> HookResult:
+def _mk_hook(executed: list[str], outcomes: dict[str, Outcome]) -> HookResult:
     counts = {"passed": 0, "failed": 0, "error": 0, "skipped": 0}
     for outcome in outcomes.values():
         counts[outcome] += 1
@@ -44,7 +45,7 @@ def _mk_hook(executed: list[str], outcomes: dict[str, str]) -> HookResult:
     ids=["all-pass", "failure", "setup-error", "mismatch", "skip"],
 )
 def test_compute_verdict(
-    outcomes: dict[str, str], expected: tuple[str, ...], verdict: Verdict
+    outcomes: dict[str, Outcome], expected: tuple[str, ...], verdict: Verdict
 ) -> None:
     hook = _mk_hook(sorted(outcomes), outcomes)
     assert compute_verdict(hook, expected) is verdict
