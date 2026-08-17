@@ -18,6 +18,17 @@ real engine.
 V1 — *It installs and grades* — is implemented: `satyrn-evals grade`
 applies a {term}`patch` to a bundled {term}`task` and records an offline
 {term}`verdict` {term}`receipt`.
+
+## Status
+
+Each episode below is a git tag — learners can check out a tag and follow
+along step by step.
+
+- [_E1_](https://github.com/pauleveritt/satyrn-evals/tree/e1) — project
+  scaffolded and grounded: toolchain, docs stack, CI, the brief, the
+  roadmap, and the harvest index, with V1 as the current phase.
+  ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-08-16-v1-grade-design.md),
+  [_plan_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/plans/2026-08-16-v1-grade.md))
 See [usage](usage.md), [architecture](architecture.md), and the
 [glossary](glossary.md). The roadmap of feature cycles lives in
 `ROADMAP.md`; the design and implementation record is under

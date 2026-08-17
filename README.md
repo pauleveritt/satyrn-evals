@@ -19,11 +19,19 @@ waits for the real engine.
 
 ## Status
 
-V1 — It installs and grades — is implemented: `satyrn-evals grade TASK
-PATCH [--receipt PATH]` applies a patch to a bundled task
-(`format_number`) and records an offline verdict receipt — no model, no
-network. The roadmap of feature cycles is in [`ROADMAP.md`](ROADMAP.md);
-the design and implementation record is under `docs/superpowers/`.
+Each episode below is a git tag — learners can check out a tag and follow
+along step by step.
+
+- [_E1_](https://github.com/pauleveritt/satyrn-evals/tree/e1) — project
+  scaffolded and grounded: toolchain, docs stack, CI, the brief, the
+  roadmap, and the harvest index, with V1 as the current phase.
+  ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-08-16-v1-grade-design.md),
+  [_plan_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/plans/2026-08-16-v1-grade.md))
+
+V1 is implemented: `satyrn-evals grade TASK PATCH [--receipt PATH]` applies
+a patch to a bundled task and records an offline verdict receipt — no
+model, no network. The roadmap of feature cycles is in
+[`ROADMAP.md`](ROADMAP.md).
 
 ## Toolchain
 
