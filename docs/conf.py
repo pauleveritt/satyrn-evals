@@ -34,3 +34,12 @@ pygments_dark_style = "monokai"
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 html_theme = "furo"
+
+# Header GitHub buttons: view (eye) and edit (pencil) links per page, plus
+# the theme and TOC toggles. source_* drives the per-page GitHub URLs.
+html_theme_options = {
+    "top_of_page_buttons": ["view", "edit"],
+    "source_repository": "https://github.com/pauleveritt/satyrn-evals",
+    "source_branch": "main",
+    "source_directory": "docs",
+}
