@@ -21,7 +21,8 @@ attempt command
 
 attempt record
   The durable artifact `attempt` (the command) writes: version, outcome
-  (`attempted`/`refused`), a precise `code`, task, the command argv, the
+  (`attempted`/`refused`), a precise `code`, a short `message`, task,
+  the command argv, the
   command's exit code (recorded, never trusted), the preserved
   patch/transcript paths and digests, the verdict, and the {term}`receipt`
   path. E3-shaped; the exit code is coarse by design. Parallel to the

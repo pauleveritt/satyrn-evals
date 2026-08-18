@@ -93,6 +93,32 @@ def test_invalid_patch_is_refused(tmp_path: Path) -> None:
     assert record.code == "PATCH_INVALID"
 
 
+def test_invalid_utf8_patch_is_refused(tmp_path: Path) -> None:
+    """A patch with invalid UTF-8 bytes is refused as PATCH_INVALID, never
+    reaching grading (which reads the patch strictly): refusal is the default
+    outcome of a failure, not a traceback from grade()."""
+    bad = tmp_path / "invalid-utf8.patch"
+    bad.write_bytes(
+        b"diff --git a/solution.py b/solution.py\n"
+        b"--- a/solution.py\n"
+        b"+++ b/solution.py\n"
+        b"@@ -1,2 +1,2 @@\n"
+        b" def format_number(n):\n"
+        b"-    return n\n"
+        b"+    return n + \xff\n"
+    )
+    output = tmp_path / "attempts"
+    record = attempt(
+        task="format_number",
+        tasks_root=DEFAULT_TASKS_ROOT,
+        output=output,
+        command=_cmd("--patch", str(bad)),
+    )
+    assert record.outcome is AttemptOutcome.REFUSED
+    assert record.code == "PATCH_INVALID"
+    assert not (output / "receipt.json").exists()
+
+
 def test_no_transcript_is_refused(tmp_path: Path) -> None:
     output = tmp_path / "attempts"
     record = attempt(

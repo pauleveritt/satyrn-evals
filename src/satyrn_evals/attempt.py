@@ -121,6 +121,14 @@ def attempt(
     )
 
     code = decide_refusal(patch_text, transcript_text)
+    if code is None:
+        # grading reads the patch strictly (grade.py read_text); a patch that
+        # is not valid UTF-8 must be refused here, not crash grading
+        assert patch_bytes is not None  # decide_refusal passed => a present, parseable patch
+        try:
+            patch_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            code = "PATCH_INVALID"
     if code is not None:
         record = AttemptRecord(
             version=1,
