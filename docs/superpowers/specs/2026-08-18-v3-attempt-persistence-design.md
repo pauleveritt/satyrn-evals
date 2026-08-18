@@ -54,9 +54,10 @@ artifacts.
    freshly-created attempt directory (guaranteed absent, so a silent
    command leaves *no* file), passes `SATYRN_TASK_NAME` and
    `SATYRN_TASK_CONTRACT` as inputs, and the command writes its patch and
-   transcript to those paths. This reuses the oracle hook's structural
-   silence detection and matches the real engine's delivery shape (E3's
-   delivery is a patch the user reviews).
+   transcript to those paths. This applies the same structural silence detection as the oracle hook
+   (a missing file is a refusal, never a pass) and matches the glossary's
+   "attempt command ... produces a patch" — the delivery is a patch, not a
+   working-tree diff (decision 6).
 2. **Auto-grade in the same invocation** — `attempt` runs the command,
    persists patch + transcript, then immediately grades the persisted
    patch through `grade()` (apply → oracle → hook result → verdict →
@@ -120,9 +121,8 @@ authoritative; the exit code is coarse, matching `grade` and `capture`.
 ## Data shapes
 
 **Attempt directory** — `<output>/<task>-<timestamp>/`, the timestamp UTC
-with microsecond resolution. A same-microsecond collision would clobber;
-this is accepted for V3 (attempts are human-invoked, one at a time; V5's
-loop revisits layout):
+with microsecond resolution. A same-microsecond collision is practically impossible given single-user,
+human-invoked attempts; V5's loop revisits layout:
 
 ```
 patch.diff        # the delivered patch, when the command wrote one
@@ -187,7 +187,8 @@ copytree base → disposable workspace
 run COMMAND (cwd=workspace, env = os.environ + SATYRN_TASK_NAME + SATYRN_TASK_CONTRACT
               + SATYRN_ATTEMPT_PATCH + SATYRN_ATTEMPT_TRANSCRIPT;
               PATH prepended with the interpreter's dir, as grade/capture do)
-  → OSError (not found, not executable, wrong format, …): usage error (exit 2)
+  → OSError (not found, not executable, wrong format, …): usage error (exit 2);
+    remove the now-empty attempt dir so a usage error writes nothing
 record the command's exit code as `command_exit` (never trusted)
 read patch + transcript from the reserved paths (patch as text for the parse
   check and as bytes for the digest; transcript as UTF-8 text, errors=replace,
@@ -200,10 +201,11 @@ write the attempt record (after the receipt; references it)
 ```
 
 The refusal decision is a pure function
-(`decide_refusal(patch_text, transcript_text) -> str | None`, where `None`
-means the file was absent), default-tier testable without subprocess. The
-command's runtime exit code is recorded as `command_exit`, but no code path
-branches on it.
+(`decide_refusal(patch_text, transcript_text) -> str | None`; an input of
+`None` means the file was absent, a return of `None` means no refusal —
+proceed to grade), default-tier testable without subprocess. The command's
+runtime exit code is recorded as `command_exit`, but no code path branches
+on it.
 
 Environment boundaries: V3 inherits the caller's environment plus the seam
 variables. Repo-local routing-variable stripping (capture's `_clean_env`)
@@ -246,7 +248,9 @@ src/satyrn_evals/
   attempt.py        NEW: orchestrate run/preserve/grade/record; decide_refusal
   attempt_record.py NEW: attempt record shape, write/read
   (unchanged)       grade.py, receipt.py, manifest.py, patch.py, verdict.py,
-                    capture.py, capture_record.py, oracle_hook.py, …
+                    capture.py, capture_record.py, oracle_hook.py,
+                    errors.py (attempt reuses UsageError/ManifestError;
+                    refusals return records, not exceptions)
 tests/
   test_attempt.py                default tier
   integration/fake_attempt.py    the fixture command
@@ -258,8 +262,8 @@ tests/
 Defined now: **attempt record** (the durable artifact `attempt` writes —
 parallel to the capture record). "Attempt command" and "preservation" were
 already in the glossary marked "lands in V3" and land now. No other new
-terms; the glossary's "disposable worktree" reads as "workspace" here (a
-temp copy of base, not a git worktree) — noted, not renamed.
+terms; the README's "disposable worktree" prose reads as "workspace" here
+(a temp copy of base, not a git worktree) — noted, not renamed.
 
 ## Out of scope (deferred, with the phase that reopens each)
 
