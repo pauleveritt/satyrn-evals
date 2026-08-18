@@ -219,3 +219,39 @@ def test_hook_sentinel_does_not_fire(fixture_repo, tmp_path) -> None:
     record = capture(repo=repo, fix_sha=fix_sha, name="t", contract=None, output=tmp_path / "tasks")
     assert record.outcome is CaptureOutcome.CAPTURED
     assert not sentinel.exists()
+
+
+def test_capture_cli_success_and_refusal(fixture_repo, tmp_path) -> None:
+    from satyrn_evals.cli import main
+
+    repo, fix_sha = fixture_repo
+    output = tmp_path / "tasks"
+    code = main(
+        [
+            "capture", "--revert", fix_sha, "--repo", str(repo),
+            "--name", "cli_task", "--output", str(output),
+        ]
+    )
+    assert code == 0
+    record = load_capture_record(output / "cli_task.capture.json")
+    assert record.outcome is CaptureOutcome.CAPTURED
+    # refusal path: dirty source with a DISTINCT name (TASK_EXISTS is
+    # checked before the dirty check, per the spec's refusal ordering)
+    (repo / "solution.py").write_text(BASE_SOLUTION + "# dirty\n")
+    code = main(
+        [
+            "capture", "--revert", fix_sha, "--repo", str(repo),
+            "--name", "cli_task_dirty", "--output", str(output),
+        ]
+    )
+    assert code == 3
+    record = load_capture_record(output / "cli_task_dirty.capture.json")
+    assert record.outcome is CaptureOutcome.REFUSED
+    assert record.code == "REPO_DIRTY"
+    # usage path: SHA names nothing — exit 2, nothing written
+    before = sorted(p.name for p in output.iterdir())
+    code = main(
+        ["capture", "--revert", "deadbeef", "--repo", str(repo), "--name", "cli_task", "--output", str(output)]
+    )
+    assert code == 2
+    assert sorted(p.name for p in output.iterdir()) == before

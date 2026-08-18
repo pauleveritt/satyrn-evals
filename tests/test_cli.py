@@ -16,3 +16,12 @@ def test_help_exits_zero() -> None:
     with pytest.raises(SystemExit) as exc:
         main(["--help"])
     assert exc.value.code == 0
+
+
+def test_capture_requires_revert() -> None:
+    with pytest.raises(SystemExit):
+        main(["capture"])
+
+
+def test_grade_tasks_root_unknown_task_is_usage(tmp_path) -> None:
+    assert main(["grade", "--tasks-root", str(tmp_path), "no_such_task", "x.patch"]) == 2
