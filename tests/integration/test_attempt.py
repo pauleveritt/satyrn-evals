@@ -194,6 +194,26 @@ def test_command_not_found_is_usage_error(tmp_path: Path) -> None:
     assert not any(output.iterdir())
 
 
+def test_relative_output_resolves_in_caller_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A relative --output must not leak relative seam paths to the command:
+    the command's cwd is the disposable workspace, so the env paths it
+    receives must be absolute (regression: default `--output attempts`)."""
+    monkeypatch.chdir(tmp_path)
+    record = attempt(
+        task="format_number",
+        tasks_root=DEFAULT_TASKS_ROOT,
+        output=Path("attempts"),
+        command=_cmd("--patch", str(KNOWN_GOOD)),
+    )
+    assert record.outcome is AttemptOutcome.ATTEMPTED
+    assert record.verdict is Verdict.PASS
+    dirs = [p for p in (tmp_path / "attempts").iterdir() if p.is_dir()]
+    assert len(dirs) == 1
+    assert (dirs[0] / "patch.diff").exists()
+    assert (dirs[0] / "attempt.json").exists()
+    assert (dirs[0] / "receipt.json").exists()
+
+
 def test_attempt_cli_success_refusal_and_usage(tmp_path: Path) -> None:
     ok_output = tmp_path / "ok"
     code = main(

@@ -159,9 +159,12 @@ inside the attempt directory and are never created up front — a silent
 command leaves no file, which is refused, never a clean pass. The command
 writes its patch to `SATYRN_ATTEMPT_PATCH` and its transcript to
 `SATYRN_ATTEMPT_TRANSCRIPT`. **The command's cwd is a temporary work copy,
-so relative paths inside the command resolve there — use absolute paths.**
-The example below passes `--output` absolutely too: the delivery paths
-handed to the command derive from it, and the command's cwd is elsewhere.
+so the command's own paths — its script, its `--patch` argument — must be
+absolute; relative paths inside the command resolve there.**
+`--output` is different: evals resolves it itself, so a relative
+`--output` is fine. The delivery paths handed to the command derive from
+it and are always absolute — the command's cwd being elsewhere does not
+matter for them.
 
 ### Exit codes
 

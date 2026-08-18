@@ -77,6 +77,7 @@ def attempt(
     manifest = load_manifest(task_dir)
     if not command:
         raise UsageError("attempt command is empty")
+    output = Path(os.path.abspath(output))
     output.mkdir(parents=True, exist_ok=True)
     attempt_dir = output / attempt_dir_name(manifest.name, datetime.now(UTC))
     attempt_dir.mkdir()
