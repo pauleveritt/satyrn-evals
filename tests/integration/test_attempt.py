@@ -116,7 +116,7 @@ def test_invalid_utf8_patch_is_refused(tmp_path: Path) -> None:
     )
     assert record.outcome is AttemptOutcome.REFUSED
     assert record.code == "PATCH_INVALID"
-    assert not (output / "receipt.json").exists()
+    assert not (_attempt_dir(output) / "receipt.json").exists()  # refused => no receipt
 
 
 def test_no_transcript_is_refused(tmp_path: Path) -> None:
