@@ -1002,7 +1002,9 @@ def test_slugify_subject_empty_is_none() -> None:
 
 
 def test_slugify_subject_result_is_valid_task_name() -> None:
-    assert is_valid_task_name(slugify_subject("Fix the broken thing: part 2!"))
+    slug = slugify_subject("Fix the broken thing: part 2!")
+    assert slug is not None
+    assert is_valid_task_name(slug)
 ```
 
 - [ ] **Step 2: Run it to verify it fails**
@@ -2003,3 +2005,11 @@ git commit -m "docs: V2 capture usage, architecture, glossary, roadmap"
   the evidence-floor grade passed 1 of 2. Fixed by renaming to
   `test_double_five` (`double(5) == 10`), which fails at base and passes
   with the fix. Recorded rather than edited away.
+
+- **2026-08-18 — Task 6 test typing defect (recorded).** The plan's
+  `test_slugify_subject_result_is_valid_task_name` passed
+  `slugify_subject(...)` (typed `str | None`) directly to
+  `is_valid_task_name(name: str)` — pyrefly rejected it on the merged
+  tree (the worktree's gitignore shadow had masked `tests/`). Fixed by
+  asserting the slug is not `None` first. Recorded rather than edited
+  away; merge verification on main is what surfaced it.
