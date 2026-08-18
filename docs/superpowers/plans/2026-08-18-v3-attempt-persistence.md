@@ -1071,16 +1071,17 @@ git commit -m "feat: attempt subcommand with -- command splitting"
 
 ## After the last task
 
-Verify the evidence floor from the CLI exactly as a contributor would:
+Verify the evidence floor from the CLI exactly as a contributor would. The attempt command runs with its cwd inside a disposable temp work copy, so **script and patch paths in the command must be absolute** (relative paths resolve against the temp dir and fail):
 
 ```bash
+ROOT="$(pwd)"
 uv run satyrn-evals attempt format_number --output /tmp/attempts \
-  -- python tests/integration/fake_attempt.py \
-  --patch src/satyrn_evals/tasks/format_number/fixtures/known-good.patch
+  -- python "$ROOT/tests/integration/fake_attempt.py" \
+  --patch "$ROOT/src/satyrn_evals/tasks/format_number/fixtures/known-good.patch"
 echo $?   # 0
 ls /tmp/attempts/*/   # patch.diff transcript.txt receipt.json attempt.json
 ```
 
-(`python` resolves to the venv interpreter because the orchestration prepends `sys.executable`'s directory to `PATH` — the same as `grade` and `capture` do.)
+(`python` resolves to the venv interpreter because the orchestration prepends `sys.executable`'s directory to `PATH` — the same as `grade` and `capture` do. `docs/usage.md` must state that attempt commands run with cwd inside a temporary work copy, so relative paths in the command resolve there.)
 
 Then update the docs: `docs/usage.md` (the attempt command, its exit table, the attempt record JSON), `docs/architecture.md` (the data flow gains the attempt step; "What is not here yet" drops the attempt line), and `docs/glossary.md` (define **attempt record**; the "attempt command" and "preservation" glossary entries land). Commit as `docs: V3 attempt usage, architecture, glossary`.
