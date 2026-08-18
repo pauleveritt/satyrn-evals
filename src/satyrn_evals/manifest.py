@@ -9,6 +9,9 @@ from satyrn_evals.errors import ManifestError
 DEFAULT_TASKS_ROOT = Path(__file__).resolve().parent / "tasks"
 
 
+type Provenance = dict[str, str]
+
+
 @dataclass(frozen=True)
 class TaskManifest:
     name: str
@@ -17,6 +20,7 @@ class TaskManifest:
     expected_test_ids: tuple[str, ...]
     source_paths: tuple[str, ...]
     fixtures: dict[str, str]
+    provenance: Provenance | None = None
 
 
 def load_manifest(task_dir: Path) -> TaskManifest:
@@ -54,12 +58,29 @@ def load_manifest(task_dir: Path) -> TaskManifest:
         raise ManifestError("expected_test_ids must be a non-empty list of strings")
     if not sources or not all(isinstance(x, str) for x in sources):
         raise ManifestError("source_paths must be a non-empty list of strings")
-    for key in ("known_good", "known_broken"):
+    for key in ("known_good",):
         if not isinstance(fixtures.get(key), str) or not fixtures[key]:
             raise ManifestError(f"fixtures.{key} must be a non-empty path string")
+    if "known_broken" in fixtures:
+        broken = fixtures["known_broken"]
+        if not isinstance(broken, str) or not broken:
+            raise ManifestError("fixtures.known_broken must be a non-empty path string")
+    provenance = data.get("provenance")
+    if provenance is not None:
+        if not isinstance(provenance, dict):
+            raise ManifestError("provenance must be an object")
+        if set(provenance) != {"repo", "base_sha", "fix_sha"}:
+            raise ManifestError("provenance must have exactly repo, base_sha, fix_sha")
+        if not all(
+            isinstance(provenance[k], str) and provenance[k]
+            for k in ("repo", "base_sha", "fix_sha")
+        ):
+            raise ManifestError("provenance fields must be non-empty strings")
     if not (task_dir / "base").is_dir():
         raise ManifestError(f"task base directory missing: {task_dir / 'base'}")
     for key in ("known_good", "known_broken"):
+        if key not in fixtures:
+            continue
         if not (task_dir / fixtures[key]).is_file():
             raise ManifestError(f"fixture file missing: {fixtures[key]}")
     return TaskManifest(
@@ -69,11 +90,16 @@ def load_manifest(task_dir: Path) -> TaskManifest:
         expected_test_ids=expected,
         source_paths=sources,
         fixtures=fixtures,
+        provenance=provenance,
     )
 
 
+def is_valid_task_name(name: str) -> bool:
+    return Path(name).name == name and "/" not in name and "\\" not in name and name not in ("", ".", "..")
+
+
 def resolve_task(name: str, tasks_root: Path = DEFAULT_TASKS_ROOT) -> Path:
-    if Path(name).name != name or "/" in name or "\\" in name:
+    if not is_valid_task_name(name):
         raise ManifestError(f"invalid task name: {name}")
     task_dir = tasks_root / name
     if not task_dir.is_dir():
