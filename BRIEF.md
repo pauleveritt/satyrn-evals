@@ -42,9 +42,11 @@ prior repository were retracted for exactly that. Summaries use counts.
 ## Provenance
 
 Seeded from research at `github.com/pauleveritt/local-ai-pi`, commit
-`c74c31f`. **That repository is evidence, not source.** Do not transplant
-`harness/`. Re-earn each behavior from the named fixture and incident recorded
-in the harvest index.
+`8588ba4`, specifically
+`docs/superpowers/research/2026-08-16-two-repo-rewrite-and-python-engine.md`
+and `docs/superpowers/handoff/HARVEST-INDEX.md`. **That repository is
+evidence, not source.** Do not transplant `harness/`. Re-earn each behavior
+from the named fixture and incident recorded in the harvest index.
 
 ## The trap we are avoiding
 
