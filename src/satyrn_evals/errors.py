@@ -35,3 +35,49 @@ class OracleError(SatyrnError):
 
 class HookError(SatyrnError):
     pass
+
+
+class CaptureUsageError(UsageError):
+    """Exit 2: the source repo or SHA admits no operation; no record is written."""
+
+
+class CaptureRefused(SatyrnError):
+    """Exit 3: a check or git/cleanup operation failed; a capture record names the code."""
+
+    code: str = "GIT_FAILED"
+
+
+class RepoDirty(CaptureRefused):
+    code = "REPO_DIRTY"
+
+
+class NoParent(CaptureRefused):
+    code = "NO_PARENT"
+
+
+class NoSourceChange(CaptureRefused):
+    code = "NO_SOURCE_CHANGE"
+
+
+class TaskExists(CaptureRefused):
+    code = "TASK_EXISTS"
+
+
+class OracleEnv(CaptureRefused):
+    code = "ORACLE_ENV"
+
+
+class NoDiscriminatingTests(CaptureRefused):
+    code = "NO_DISCRIMINATING_TESTS"
+
+
+class NotWinnable(CaptureRefused):
+    code = "NOT_WINNABLE"
+
+
+class GitFailed(CaptureRefused):
+    code = "GIT_FAILED"
+
+
+class CleanupFailed(CaptureRefused):
+    code = "CLEANUP_FAILED"
