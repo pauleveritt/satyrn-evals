@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import Literal, TypedDict
+from typing import Literal, NotRequired, TypedDict
 
 from satyrn_evals.errors import HookError
 
@@ -23,6 +23,7 @@ class HookResultData(TypedDict):
     executed_test_ids: list[str]
     outcomes: dict[str, Outcome]
     counts: dict[str, int]
+    collect_errors: NotRequired[list[str]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,6 +31,7 @@ class HookResult:
     executed_test_ids: tuple[str, ...]
     outcomes: dict[str, Outcome]
     counts: dict[str, int]
+    collect_errors: tuple[str, ...] = ()
 
 
 def load_hook_result(path: Path, run_started: float) -> HookResult:
@@ -66,10 +68,14 @@ def load_hook_result(path: Path, run_started: float) -> HookResult:
         tallies[outcome] += 1
     if counts != tallies:
         raise HookError("counts inconsistent with outcomes")
+    raw_errors = data.get("collect_errors", [])
+    if not isinstance(raw_errors, list) or not all(isinstance(e, str) for e in raw_errors):
+        raise HookError("collect_errors must be a list of strings")
     return HookResult(
         executed_test_ids=tuple(sorted(executed)),
         outcomes=dict(outcomes),
         counts=dict(counts),
+        collect_errors=tuple(raw_errors),
     )
 
 

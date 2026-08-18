@@ -96,3 +96,28 @@ def test_describe_mismatch() -> None:
 def test_describe_skip() -> None:
     hook = HookResult(("a",), {"a": "skipped"}, {"passed": 0, "failed": 0, "error": 0, "skipped": 1})
     assert "skip" in describe_unavailable(hook, ("a",))
+
+
+def test_load_hook_result_with_collect_errors(tmp_path) -> None:
+    path = tmp_path / "hook.json"
+    data = _hook_data([], {})
+    data["collect_errors"] = ["ModuleNotFoundError: nope"]
+    path.write_text(json.dumps(data))
+    hook = load_hook_result(path, time.time() - 100)
+    assert hook.collect_errors == ("ModuleNotFoundError: nope",)
+
+
+def test_load_hook_result_absent_collect_errors_defaults_empty(tmp_path) -> None:
+    path = tmp_path / "hook.json"
+    path.write_text(json.dumps(_hook_data(["a"], {"a": "passed"})))
+    hook = load_hook_result(path, time.time() - 100)
+    assert hook.collect_errors == ()
+
+
+def test_load_hook_result_non_list_collect_errors_rejected(tmp_path) -> None:
+    path = tmp_path / "hook.json"
+    data = _hook_data(["a"], {"a": "passed"})
+    data["collect_errors"] = "nope"
+    path.write_text(json.dumps(data))
+    with pytest.raises(HookError, match="collect_errors"):
+        load_hook_result(path, time.time() - 100)

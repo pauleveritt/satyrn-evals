@@ -13,6 +13,12 @@ from satyrn_evals.verdict import HookResultData, Outcome
 RESULT_ENV = "SATYRN_ORACLE_RESULT"
 
 _reports: dict[str, Outcome] = {}
+_collect_errors: list[str] = []
+
+
+def pytest_collectreport(report) -> None:
+    if report.failed:
+        _collect_errors.append(str(report.longrepr))
 
 
 def pytest_runtest_logreport(report) -> None:
@@ -39,5 +45,6 @@ def pytest_sessionfinish(session, exitstatus) -> None:
         "executed_test_ids": sorted(_reports),
         "outcomes": dict(_reports),
         "counts": counts,
+        "collect_errors": list(_collect_errors),
     }
     Path(path).write_text(json.dumps(data))
