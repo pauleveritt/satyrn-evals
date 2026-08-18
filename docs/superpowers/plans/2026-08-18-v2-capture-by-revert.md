@@ -1127,8 +1127,8 @@ BASE_TESTS = (
     "from solution import double\n\n\n"
     "def test_double_positive():\n"
     "    assert double(3) == 6\n\n\n"
-    "def test_double_zero():\n"
-    "    assert double(0) == 0\n"
+    "def test_double_five():\n"
+    "    assert double(5) == 10\n"
 )
 FIXED_SOLUTION = "def double(n):\n    return n * 2\n"
 # The fix also touches a test file: those hunks must be stripped from known-good.
@@ -1175,8 +1175,8 @@ def test_capture_succeeds_and_source_is_untouched(fixture_repo, tmp_path) -> Non
     assert record.outcome is CaptureOutcome.CAPTURED
     assert record.code == "OK"
     assert record.expected_test_ids == (
+        "test_solution.py::test_double_five",
         "test_solution.py::test_double_positive",
-        "test_solution.py::test_double_zero",
     )
     # source untouched: HEAD, reflog, clean status
     assert _git(repo, "rev-parse", "HEAD").stdout.strip() == head_before
@@ -1993,3 +1993,13 @@ git commit -m "docs: V2 capture usage, architecture, glossary, roadmap"
   — clean.
 - `uv run --group docs sphinx-build -W -b html docs docs/_build/html` — clean.
 - `uv run satyrn-evals capture --revert <sha> --repo <fixture-repo> --output /tmp/tasks; echo $?` — exit 0; `/tmp/tasks/<name>.capture.json` reads `outcome: captured`.
+
+## Revisions
+
+- **2026-08-18 — Task 7 fixture defect (recorded).** The plan's fixture
+  `test_double_zero` asserted `double(0) == 0`, which the buggy `return n`
+  satisfies at base — a degenerate test that passes before the fix. The
+  discriminating set therefore contained only `test_double_positive`, and
+  the evidence-floor grade passed 1 of 2. Fixed by renaming to
+  `test_double_five` (`double(5) == 10`), which fails at base and passes
+  with the fix. Recorded rather than edited away.
