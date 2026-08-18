@@ -63,10 +63,12 @@ The defense is structural, not behavioral:
 
 | Module | Responsibility |
 |--------|----------------|
-| `cli.py` | argparse, `grade` and `capture` commands, exit-code mapping |
+| `cli.py` | argparse, `grade`, `capture`, and `attempt` commands, exit-code mapping |
 | `grade.py` | orchestration: materialize, apply, run oracle, write receipt |
 | `capture.py` | orchestration: pin, preflight, derive, worktree, materialize, verify, cleanup, record |
 | `capture_record.py` | the durable capture artifact (E3-shaped JSON) |
+| `attempt.py` | orchestration: materialize workspace, run the seam, preserve, refuse, grade, record |
+| `attempt_record.py` | the durable attempt artifact (E3-shaped JSON) |
 | `diff_filter.py` | split unified diffs into file sections; the test-path rule |
 | `discriminating.py` | the {term}`discriminating set` and the recorded oracle |
 | `manifest.py` | load/validate the {term}`task` {term}`manifest`; resolve tasks by name |
@@ -106,6 +108,31 @@ refusal). The three oracle runs reuse V1's hook-result machinery: a unique
 reserved-but-unlinked hook path, the run-start timestamp, and the
 stale-file rejection.
 
+## Attempt: the seam
+
+`attempt()` exercises the seam the roadmap is built around: an executable
+command produces a patch for a {term}`task`, and evals preserves and grades
+what the command delivered.
+
+```
+BASE ──► copy to disposable workspace ──► run COMMAND (env seam) ──► read patch + transcript
+         from reserved paths ──► refuse on incomplete artifacts ──► grade() ──► attempt record
+```
+
+`attempt()` in `src/satyrn_evals/attempt.py` materializes the task's base
+into a disposable workspace, runs the command there with the env seam
+(`SATYRN_TASK_NAME` and `SATYRN_TASK_CONTRACT` as inputs;
+`SATYRN_ATTEMPT_PATCH` and `SATYRN_ATTEMPT_TRANSCRIPT` as reserved delivery
+paths inside the attempt directory), reads the delivered patch and
+transcript from those paths, refuses on incomplete artifacts with one of
+four codes (`NO_PATCH`, `PATCH_INVALID`, `TRANSCRIPT_MISSING`,
+`TRANSCRIPT_EMPTY`), grades the delivered patch with the same `grade()` V1
+uses, and writes the {term}`attempt record`. The outcome is artifact-driven:
+the command's exit code is recorded as `command_exit` but never trusted.
+Preservation precedes cleanup — the delivered artifacts live in the attempt
+directory, outside the workspace, so a grading defect can be fixed and
+re-scored without re-running the attempt.
+
 ## Testing: two tiers and the tripwire
 
 - **Default tier** — no model, no network, no subprocess, enforced by the
@@ -122,7 +149,6 @@ vacuously.
 
 ## What is not here yet
 
-- the {term}`attempt command` and {term}`preservation` — V3
 - the real engine seam — V4
 - the diagnostic loop — V5
 - the {term}`baseline probe` — with the attempt loop

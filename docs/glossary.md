@@ -16,8 +16,16 @@ allowlist
 attempt command
   The executable that produces a patch for a {term}`task`; the engine seam.
   Evals never imports engine internals, and a fake command satisfies the
-  same seam, so eval development never waits for the real engine. Lands in
+  same seam, so eval development never waits for the real engine. Landed in
   V3.
+
+attempt record
+  The durable artifact `attempt` (the command) writes: version, outcome
+  (`attempted`/`refused`), a precise `code`, task, the command argv, the
+  command's exit code (recorded, never trusted), the preserved
+  patch/transcript paths and digests, the verdict, and the {term}`receipt`
+  path. E3-shaped; the exit code is coarse by design. Parallel to the
+  {term}`capture record`.
 
 capture record
   The durable artifact `capture` (the command) writes: version, outcome
@@ -88,7 +96,7 @@ patch
 preservation
   Persisting a patch and its transcript *before* cleanup, so grading reads
   only artifacts and a grading defect can be fixed and re-scored without
-  re-running the attempt. Lands in V3; it matters more than any capture
+  re-running the attempt. Landed in V3; it matters more than any capture
   shape.
 
 receipt
