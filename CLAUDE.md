@@ -47,6 +47,19 @@ recorded condition that would reopen it, in `BRIEF.md`'s Backlog section.
 - **No framework before three concrete implementations need the same
   shape.**
 - **A correction is recorded, not edited away.**
+- **Modern Python 3.14 idioms.** This project targets Python `>=3.14`. Use
+  them, don't fight them: real return type annotations on every function
+  (no bare `-> None` where a richer type applies, and never an untyped
+  signature); **semantic type aliases via `type` statements**
+  (`type Outcome = Literal[...]`, `type CheckState = Literal[...]`) rather
+  than complicated inline generics repeated at each call site; **structural
+  pattern matching** (`match`/`case`) for dispatch over unions and for the
+  kind of truth tables the oracle hook already uses, in preference to
+  ladders of `if`/`elif`/`isinstance` chains; and the **walrus operator
+  `:=`** for bind-and-test (capturing a computed value into a name while
+  branching on it), as `patch.py` and the hook result write already do.
+  These are the house style, not a preference — a review that rewrites
+  them into older forms is wrong.
 
 ## When something looks like a known failure mode
 
