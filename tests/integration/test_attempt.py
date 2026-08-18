@@ -8,6 +8,7 @@ import pytest
 
 from satyrn_evals.attempt import attempt
 from satyrn_evals.attempt_record import AttemptOutcome, load_attempt_record
+from satyrn_evals.cli import main
 from satyrn_evals.errors import UsageError
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
 from satyrn_evals.receipt import patch_digest
@@ -191,3 +192,48 @@ def test_command_not_found_is_usage_error(tmp_path: Path) -> None:
         )
     # usage writes nothing: the attempt directory was removed again
     assert not any(output.iterdir())
+
+
+def test_attempt_cli_success_refusal_and_usage(tmp_path: Path) -> None:
+    ok_output = tmp_path / "ok"
+    code = main(
+        [
+            "attempt",
+            "--tasks-root", str(DEFAULT_TASKS_ROOT),
+            "--output", str(ok_output),
+            "format_number",
+            "--", sys.executable, str(FAKE), "--patch", str(KNOWN_GOOD),
+        ]
+    )
+    assert code == 0
+    record = load_attempt_record(_attempt_dir(ok_output) / "attempt.json")
+    assert record.outcome is AttemptOutcome.ATTEMPTED
+    assert record.verdict is Verdict.PASS
+
+    refused_output = tmp_path / "refused"
+    code = main(
+        [
+            "attempt",
+            "--tasks-root", str(DEFAULT_TASKS_ROOT),
+            "--output", str(refused_output),
+            "format_number",
+            "--", sys.executable, str(FAKE), "--no-patch",
+        ]
+    )
+    assert code == 3
+    record = load_attempt_record(_attempt_dir(refused_output) / "attempt.json")
+    assert record.outcome is AttemptOutcome.REFUSED
+    assert record.code == "NO_PATCH"
+
+    usage_output = tmp_path / "usage"
+    code = main(
+        [
+            "attempt",
+            "--tasks-root", str(DEFAULT_TASKS_ROOT),
+            "--output", str(usage_output),
+            "format_number",
+            "--", "definitely-not-a-real-command-xyz-123",
+        ]
+    )
+    assert code == 2
+    assert not any(usage_output.iterdir())
