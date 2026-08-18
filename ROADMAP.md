@@ -10,18 +10,10 @@ Backlog, not into the current phase.*
 
 ## Now
 
-**Phase V1 — It installs and grades. Complete.** `satyrn-evals grade TASK
-PATCH [--receipt PATH]` accepts a bundled task's known-good patch and
-rejects its known-broken one, offline and deterministic. The design spec,
-implementation plan, and corrections record are under
-`docs/superpowers/`; usage and architecture are in `docs/`.
-
-**Phase V2 — Capture by revert. Not started; the current phase.**
-`capture --revert SHA` makes a task winnable by construction, in minutes.
-See the Phases table below and `BRIEF.md` for the binding rules. Brainstorm
-V2's details; do not reopen the phase list or the diagnosis-before-claims
-split — both are settled, cited in
-`docs/superpowers/research/2026-08-16-harvest-index.md`.
+**Phase V3 — Attempt persistence. Not started; the current phase.**
+`attempt TASK -- COMMAND...` runs a fake command, persists patch and
+ transcript, regrades offline. See the Phases table below and `BRIEF.md`
+for the binding rules.
 
 ## Concept budget
 
@@ -30,9 +22,10 @@ the design in mind. Checked and updated at the end of each cycle; a term
 earns its place by naming something the design actually needs, not by being
 convenient shorthand.*
 
-The seed terms are now defined in this repository's own words in
-[`docs/glossary.md`](docs/glossary.md) — checked and updated at the end
-of V1. Terms for later phases earn their place when the phase that needs
+The seed terms plus V2's additions — **capture record**, **discriminating
+set**, **provenance** — are defined in this repository's own words in
+[`docs/glossary.md`](docs/glossary.md), checked and updated at the end of
+V2. Terms for later phases earn their place when the phase that needs
 them lands.
 
 ## Phases
@@ -40,8 +33,8 @@ them lands.
 | # | Phase | Direction (one sentence) | Status |
 |---|-------|--------------------------|--------|
 | V1 | It installs and grades | `grade` accepts a bundled task's known-good patch and rejects its known-broken one, offline and deterministic | **complete** |
-| V2 | Capture by revert | `capture --revert SHA` makes a task winnable by construction, in minutes | **current** |
-| V3 | Attempt persistence | `attempt TASK -- COMMAND...` runs a fake command, persists patch and transcript, regrades offline | not started |
+| V2 | Capture by revert | `capture --revert SHA` makes a task winnable by construction, in minutes | **complete** |
+| V3 | Attempt persistence | `attempt TASK -- COMMAND...` runs a fake command, persists patch and transcript, regrades offline | **current** |
 | V4 | A real engine attempt | The same artifact set, produced by `satyrn-engine attempt` (engine phase E5) | not started |
 | V5 | The diagnostic loop | `run --n 8` plus a summary: verdict reasons, repeated calls, churn, tool calls, context, timeouts | not started |
 
@@ -65,6 +58,13 @@ checkpoint transplants verbatim); the whole claims layer.
 Completed phases move here (or to `docs/superpowers/phase-history.md`)
 when the roadmap outgrows the front page.
 
+- **V2 — Capture by revert (2026-08-18).** `satyrn-evals capture --revert
+  SHA [--repo PATH] [--name NAME] [--contract TEXT] [--output DIR]`:
+  four deterministic checks, a detached-worktree lifecycle re-earned from
+  the engine's E3 spec, optional `known_broken`/`provenance` in the
+  manifest, the E3-shaped capture record, `grade --tasks-root`, and the
+  oracle hook recording collection errors. Spec, plan, and revisions are
+  recorded under `docs/superpowers/`.
 - **V1 — It installs and grades (2026-08-16).** `satyrn-evals grade TASK
   PATCH [--receipt PATH]`: manifest-validated tasks, allowlisted unified
   diffs, hook-result verdicts, receipts, the audit-hook tripwire, and two

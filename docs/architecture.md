@@ -63,14 +63,48 @@ The defense is structural, not behavioral:
 
 | Module | Responsibility |
 |--------|----------------|
-| `cli.py` | argparse, `grade` command, exit-code mapping |
+| `cli.py` | argparse, `grade` and `capture` commands, exit-code mapping |
 | `grade.py` | orchestration: materialize, apply, run oracle, write receipt |
+| `capture.py` | orchestration: pin, preflight, derive, worktree, materialize, verify, cleanup, record |
+| `capture_record.py` | the durable capture artifact (E3-shaped JSON) |
+| `diff_filter.py` | split unified diffs into file sections; the test-path rule |
+| `discriminating.py` | the {term}`discriminating set` and the recorded oracle |
 | `manifest.py` | load/validate the {term}`task` {term}`manifest`; resolve tasks by name |
 | `patch.py` | parse unified diffs; enforce the source {term}`allowlist` |
 | `verdict.py` | load/validate the hook result; compute the verdict |
 | `receipt.py` | the durable grading artifact (JSON) |
-| `oracle_hook.py` | pytest plugin writing the trusted hook result |
+| `oracle_hook.py` | pytest plugin writing the trusted hook result (including collection errors) |
 | `errors.py` | error hierarchy carrying exit codes (usage 2, operational 3) |
+
+## Capture: the four deterministic checks
+
+`capture()` turns a fixing commit into a {term}`task` without touching the
+source repository's working tree, index, branch, or `HEAD` — the pattern
+re-earned from the satyrn-engine E3 delivery spec. Its lifecycle:
+
+```
+FIX commit ──► pin PARENT ──► preflight clean ──► derive fix diff ──► worktree add --detach ──► materialize base ──► verify ──► cleanup ──► record
+                  (usage errors write nothing)        (strip test hunks)        (source untouched)                     (3 oracle runs)
+```
+
+Four deterministic checks prove the captured task is valid (un-done at
+base, and winnable):
+
+1. **Source preflight** — the tree is clean; `PARENT` exists; the fix diff
+   has a non-test source path.
+2. **Base oracle runs** — a full-suite run in the worktree at `PARENT`
+   produces a hook result with no collection errors (missing dependencies
+   refuse honestly as `ORACLE_ENV`).
+3. **Un-done at base** — the {term}`discriminating set` (fail at base ∩
+   pass with the fix) is non-empty.
+4. **Winnable** — the recorded {term}`oracle` (the discriminating IDs
+   baked in) passes every one of them.
+
+A failed check writes a {term}`capture record` with `outcome: refused` and
+a precise `code`; the exit code stays coarse (`0` captured, `2` usage, `3`
+refusal). The three oracle runs reuse V1's hook-result machinery: a unique
+reserved-but-unlinked hook path, the run-start timestamp, and the
+stale-file rejection.
 
 ## Testing: two tiers and the tripwire
 
@@ -88,7 +122,6 @@ vacuously.
 
 ## What is not here yet
 
-- capture by revert — V2
 - the {term}`attempt command` and {term}`preservation` — V3
 - the real engine seam — V4
 - the diagnostic loop — V5

@@ -74,26 +74,35 @@ Evals builds the engine one loop at a time:
 
 ## Usage
 
-From a checkout, `uv sync` installs evals into the project environment. The
-CLI ships one command today:
+From a checkout, `uv sync` installs evals into the project environment.
+The CLI ships two commands:
 
 ```console
 $ uv run satyrn-evals grade format_number src/satyrn_evals/tasks/format_number/fixtures/known-good.patch
+$ uv run satyrn-evals capture --revert <sha> --repo /src/app --output tasks
 ```
 
 Grading is silent over the CLI; the verdict — `pass`, `fail`, or
 `unavailable` — is written to a receipt, never read from stdout or an exit
-code. Exit code `0` means grading completed, `2` a usage error, `3` an
-operational failure that names its cause. No model calls, no network, on
-every path.
+code. Exit code `0` means the operation completed, `2` a usage error, `3`
+an operational failure that names its cause. No model calls, no network,
+on every path. `capture` writes a task directory plus a capture record;
+the source repository's working tree, index, branch, and `HEAD` are never
+touched.
 
 > More: [usage](docs/usage.md) — the receipt format, the exit-code table,
-> and the bundled task.
+> the capture record, and the bundled task.
 
 ## Status
 
 Phases completed, each with its design spec and implementation plan:
 
+- [_V2_](https://github.com/pauleveritt/satyrn-evals/tree/v2) — capture by
+  revert. `satyrn-evals capture --revert SHA` turns a fixing commit into a
+  task winnable by construction, in minutes, without touching the source
+  repository's working tree.
+  ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-08-18-v2-capture-by-revert-design.md),
+  [_plan_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/plans/2026-08-18-v2-capture-by-revert.md))
 - [_V1_](https://github.com/pauleveritt/satyrn-evals/tree/v1) — it
   installs and grades. `satyrn-evals grade TASK PATCH [--receipt PATH]`
   accepts a bundled task's known-good patch and rejects its known-broken
@@ -101,7 +110,7 @@ Phases completed, each with its design spec and implementation plan:
   ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-08-16-v1-grade-design.md),
   [_plan_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/plans/2026-08-16-v1-grade.md))
 
-The current phase is **V2 — Capture by revert**; the roadmap of feature
+The current phase is **V3 — Attempt persistence**; the roadmap of feature
 cycles lives in [`ROADMAP.md`](ROADMAP.md). The `e1` git tag holds the
 scaffolded starting state — toolchain, docs stack, CI, the brief, the
 roadmap, and the harvest index — for learners following along step by

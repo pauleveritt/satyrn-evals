@@ -19,6 +19,24 @@ attempt command
   same seam, so eval development never waits for the real engine. Lands in
   V3.
 
+capture record
+  The durable artifact `capture` (the command) writes: version, outcome
+  (`captured`/`refused`), a precise `code`, message, repo and SHAs, task
+  directory, the recorded {term}`oracle`, the {term}`discriminating set`,
+  and the four checks' outcomes. E3-shaped; the exit code is coarse by
+  design.
+
+discriminating set
+  The test IDs that fail at base and pass with the fix — the captured
+  task's {term}`oracle` runs exactly these, and they are its expected test
+  IDs. Non-empty proves the task is un-done at base; the four checks prove
+  it is winnable.
+
+provenance
+  The manifest's `repo`, `base_sha`, and `fix_sha` — where a captured
+  {term}`task` came from. Names what re-derivation of the environment and
+  future diagnosis need.
+
 baseline probe
   The baseline attempt command at n=4–6, recorded once as a property of
   the task, so the diagnostic loop has something to move. A task at or
