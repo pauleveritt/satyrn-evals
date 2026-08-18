@@ -19,8 +19,8 @@
 - The source repository's working tree, index, branch, and `HEAD` are never touched; the only mutation is the transient worktree registration, removed on cleanup.
 - No subprocess spawn may happen during a default-tier test; weakening the tripwire fails the build.
 - `ruff` and `pyrefly` run over `src/` and `tests/`; pyrefly must be verified from the main checkout at merge time (the `.worktrees/` gitignore pattern shadows `tests/` inside a worktree).
-- **Interpretation recorded (spec exit-table vs. check-1 wording):** `REPO_NOT_GIT` and `REPO_UNBORN` are **usage errors** (exit 2, no record) — the `--repo` argument names no usable source, so no task name exists to name a record, matching the exit-table's "bad arguments" and the record-path rule ("refusals happen only after the name exists"). All other refusals (`REPO_DIRTY`, `NO_PARENT`, `NO_SOURCE_CHANGE`, `TASK_EXISTS`, `ORACLE_ENV`, `NO_DISCRIMINATING_TESTS`, `NOT_WINNABLE`, `GIT_FAILED`, `CLEANUP_FAILED`) are exit 3 with a named record.
-- **Code `NOT_WINNABLE` added** for check-4 failure (the spec names the check but not its failure code); `ORACLE_ENV` names check-2 failure (the spec's "missing oracle environment").
+- **Repo-not-git, unborn, and bad-SHA are usage errors** (exit 2, no record): the `--repo` argument names no usable source, so no task name exists to name a record, matching the exit-table's "no operation was accepted" and the spec's Pin step. All other refusals (`REPO_DIRTY`, `NO_PARENT`, `NO_SOURCE_CHANGE`, `TASK_EXISTS`, `ORACLE_ENV`, `NO_DISCRIMINATING_TESTS`, `NOT_WINNABLE`, `GIT_FAILED`, `CLEANUP_FAILED`) are exit 3 with a named record.
+- **Codes `NOT_WINNABLE` (check 4) and `ORACLE_ENV` (check 2)** are named in the spec's checks; the plan implements them verbatim.
 
 ---
 
@@ -819,6 +819,16 @@ def test_load_rejects_bad_check_outcomes(tmp_path) -> None:
         load_capture_record(path)
 
 
+def test_load_rejects_missing_required_field(tmp_path) -> None:
+    path = tmp_path / "r.json"
+    write_capture_record(path, _refused())
+    data = json.loads(path.read_text())
+    del data["code"]
+    path.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match="missing a field"):
+        load_capture_record(path)
+
+
 def test_merge_cleanup_failure_precedence() -> None:
     pending = _refused()
     merged = merge_cleanup_failure(pending, "cannot remove locked worktree /tmp/wt")
@@ -905,21 +915,24 @@ def load_capture_record(path: Path) -> CaptureRecord:
         v in _VALID_CHECK_STATES for v in check_outcomes.values()
     ):
         raise ValueError("check_outcomes must name all four checks as passed/failed/not-run")
-    return CaptureRecord(
-        version=data["version"],
-        outcome=outcome,
-        code=data["code"],
-        message=data["message"],
-        repo=data["repo"],
-        base_sha=data.get("base_sha"),
-        fix_sha=data.get("fix_sha"),
-        task_dir=data.get("task_dir"),
-        oracle=tuple(data["oracle"]) if data.get("oracle") is not None else None,
-        expected_test_ids=tuple(data["expected_test_ids"])
-        if data.get("expected_test_ids") is not None
-        else None,
-        check_outcomes=dict(check_outcomes),
-    )
+    try:
+        return CaptureRecord(
+            version=data["version"],
+            outcome=outcome,
+            code=data["code"],
+            message=data["message"],
+            repo=data["repo"],
+            base_sha=data.get("base_sha"),
+            fix_sha=data.get("fix_sha"),
+            task_dir=data.get("task_dir"),
+            oracle=tuple(data["oracle"]) if data.get("oracle") is not None else None,
+            expected_test_ids=tuple(data["expected_test_ids"])
+            if data.get("expected_test_ids") is not None
+            else None,
+            check_outcomes=dict(check_outcomes),
+        )
+    except (KeyError, TypeError) as e:
+        raise ValueError(f"capture record missing a field: {e}") from e
 
 
 def merge_cleanup_failure(pending: CaptureRecord, cleanup_message: str) -> CaptureRecord:
@@ -1335,6 +1348,7 @@ clean up with E3's precedence, and write the capture record. The source
 repository's working tree, index, branch, and HEAD are never touched.
 """
 
+import json
 import os
 import re
 import shutil
@@ -1355,6 +1369,7 @@ from satyrn_evals.capture_record import (
 from satyrn_evals.diff_filter import strip_test_hunks
 from satyrn_evals.discriminating import FULL_SUITE_ORACLE, discriminating_set, recorded_oracle
 from satyrn_evals.errors import (
+    CaptureRefused,
     CaptureUsageError,
     CleanupFailed,
     GitFailed,
@@ -1510,7 +1525,7 @@ def capture(
         raise CaptureUsageError(f"repository has no commits: {repo_abs}")
     try:
         resolved_fix = _git(
-            root, ["rev-parse", "--verify", "--quiet", f"{fix_sha}^{commit}"]
+            root, ["rev-parse", "--verify", "--quiet", f"{fix_sha}^{{commit}}"]
         ).strip()
     except GitFailed:
         raise CaptureUsageError(f"not a commit in the repository: {fix_sha}")

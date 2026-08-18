@@ -117,7 +117,7 @@ Capture is silent over the CLI: artifacts, not stdout. No `--verify` flag
 | Code | Meaning | Artifact |
 |------|---------|----------|
 | 0 | Task captured; all four checks passed | task directory + capture record (`outcome: captured`) |
-| 2 | Usage error — bad arguments, invalid task name, `--revert SHA` does not name a commit in the repository, missing `--revert` | none |
+| 2 | Usage error — bad arguments, invalid task name, `--repo` not a git repository or has no commits, `--revert SHA` does not name a commit in the repository, missing `--revert` | none |
 | 3 | Refusal — a check failed, a precondition is unmet (dirty source, name collision), or a git/cleanup operation failed | capture record (`outcome: refused`) with a precise `code` |
 
 The capture record's `code` is authoritative; the exit code is coarse by
@@ -191,26 +191,29 @@ refuses. The existing machinery is the safety net.
 `BRIEF.md`'s phrase, now enumerated. They run in order; the first failure
 refuses, and later checks record `not-run`:
 
-1. **Source preflight** — `--repo` resolves to a git repository root with at
-   least one commit; the tracked, deleted, and untracked state is clean
-   (E3's exact command: `git --no-optional-locks status --porcelain=v1 -z
+1. **Source preflight** — the tracked, deleted, and untracked state is
+   clean (E3's exact command: `git --no-optional-locks status --porcelain=v1 -z
    --untracked-files=all --ignore-submodules=none`); `PARENT^{commit}`
    exists (a root-commit fix has no base to revert to and is refused as
    `NO_PARENT`); and the fix diff has at least one non-test source path (an
-   all-test-path fix is refused as `NO_SOURCE_CHANGE`).
+   all-test-path fix is refused as `NO_SOURCE_CHANGE`). (`--repo` resolving
+   to a git repository with at least one commit, and `FIX^{commit}`
+   resolving, are usage-boundary checks — see Pin — because they happen
+   before a task name exists, so no record can be named.)
 2. **Base oracle runs** — a full-suite oracle run (`python -m pytest -p
    satyrn_evals.oracle_hook`, no test-ID restriction — the discriminating
-   set is not known yet) produces a hook result in the pristine worktree at
-   `PARENT`. Missing dependencies fail here, honestly, with a reason naming
-   the failure; this is where Q3's environment decision is enforced.
+   set is not known yet) produces a hook result with no collection errors
+   in the pristine worktree at `PARENT`. Missing dependencies fail here,
+   honestly (`ORACLE_ENV`, naming the import failure); this is where Q3's
+   environment decision is enforced.
 3. **Un-done at base** — the discriminating set (test IDs that fail at base
    and pass with the fix) is non-empty. An empty set is a task at or near
    ceiling — smoke, per `BRIEF.md`'s two selection rules — and is refused
    (`NO_DISCRIMINATING_TESTS`).
 4. **Winnable** — with the source-only known-good applied, the recorded
    oracle (the discriminating IDs baked in) passes every discriminating
-   test ID. This verifies the exact command grading will run, including
-   that its node IDs are runnable.
+   test ID; failure is refused as `NOT_WINNABLE`. This verifies the exact
+   command grading will run, including that its node IDs are runnable.
 
 ## Capture mechanics
 
@@ -222,15 +225,17 @@ worktree:
 1. **Pin** — resolve `--repo` with `git rev-parse --show-toplevel`; pin
    `FIX^{commit}` and `PARENT^{commit}`. Derive the task name from the fix
    commit's subject (or accept `--name`). Every later action is based on the
-   immutable commits.
-2. **Preflight** — check 1: git repository, at least one commit, clean
-   tree, `PARENT` exists, fix diff has a non-test source path. Check 1
-   refuses `REPO_NOT_GIT`, `REPO_UNBORN`, `REPO_DIRTY`, `NO_PARENT`, and
+   immutable commits. `--repo` not a git repository (`REPO_NOT_GIT`), a
+   repository with no commits (`REPO_UNBORN`), and a `--revert SHA` that
+   does not name a commit are **usage errors** (exit 2, no record): they
+   happen before a task name exists, so no record can be named, matching
+   the exit-table's "no operation was accepted".
+2. **Preflight** — check 1: clean tree, `PARENT` exists, fix diff has a
+   non-test source path. Check 1 refuses `REPO_DIRTY`, `NO_PARENT`, and
    `NO_SOURCE_CHANGE`; the name-collision `TASK_EXISTS` is a separate
    refusal before checks begin. All of these happen before any worktree
-   exists; later git failures are `GIT_FAILED`. (`FIX^{commit}` resolution
-   happens at the usage boundary: a SHA naming nothing is exit 2 and writes
-   no record.)
+   exists; later git failures are `GIT_FAILED`. (Repo-not-git, unborn, and
+   bad-SHA are at the usage boundary — see Pin — not check 1.)
 3. **Derive** — `git diff PARENT FIX` read-only from the source root; strip
    test-path hunks; the remainder is `known-good.patch` and `source_paths`
    (the diff computed in check 1, now formatted as artifacts).
