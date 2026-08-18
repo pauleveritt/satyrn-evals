@@ -21,4 +21,6 @@ def test_slugify_subject_empty_is_none() -> None:
 
 
 def test_slugify_subject_result_is_valid_task_name() -> None:
-    assert is_valid_task_name(slugify_subject("Fix the broken thing: part 2!"))
+    slug = slugify_subject("Fix the broken thing: part 2!")
+    assert slug is not None
+    assert is_valid_task_name(slug)
