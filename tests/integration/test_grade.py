@@ -1,11 +1,15 @@
 """End-to-end grading with a temporary task. Real git, real oracle subprocess."""
 
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
 
+import satyrn_evals.grade as grade_module
+from satyrn_evals.errors import ApplyError, PatchReadError
 from satyrn_evals.grade import grade
+from satyrn_evals.manifest import load_manifest
 from satyrn_evals.verdict import Verdict
 
 pytestmark = pytest.mark.integration
@@ -146,3 +150,49 @@ def test_patch_touching_tests_records_unavailable(tmp_task: Path, tmp_path: Path
     data = json.loads(receipt_path.read_text())
     assert data["verdict"] == "unavailable"
     assert "non-source" in data["reason"]
+
+
+def test_unreadable_patch_is_a_usage_error(tmp_task: Path, tmp_path: Path) -> None:
+    with pytest.raises(PatchReadError, match="cannot read patch"):
+        grade(tmp_task, tmp_path / "missing.patch", tmp_path / "r.json")
+
+
+def test_executed_id_mismatch_records_reason(tmp_task: Path, tmp_path: Path) -> None:
+    manifest_path = tmp_task / "manifest.json"
+    data = json.loads(manifest_path.read_text())
+    data["expected_test_ids"].append("test_solution.py::test_missing")
+    manifest_path.write_text(json.dumps(data))
+
+    receipt = grade(
+        tmp_task,
+        tmp_task / "fixtures" / "known-good.patch",
+        tmp_path / "r.json",
+    )
+
+    assert receipt.verdict is Verdict.UNAVAILABLE
+    assert "test_missing" in receipt.reason
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [OSError("git missing"), subprocess.CalledProcessError(1, ["git", "init"])],
+    ids=["spawn", "nonzero"],
+)
+def test_git_init_failure_is_an_apply_error(
+    tmp_task: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    failure: OSError | subprocess.CalledProcessError,
+) -> None:
+    def fail_init(
+        *_args: object, **_kwargs: object
+    ) -> subprocess.CompletedProcess[bytes]:
+        raise failure
+
+    monkeypatch.setattr(grade_module.subprocess, "run", fail_init)
+
+    with pytest.raises(ApplyError, match="cannot run git"):
+        grade_module._run_oracle(
+            load_manifest(tmp_task),
+            tmp_task,
+            GOOD_PATCH,
+        )

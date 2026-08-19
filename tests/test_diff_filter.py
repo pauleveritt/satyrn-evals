@@ -1,71 +1,111 @@
 import pytest
 
 from satyrn_evals.diff_filter import (
+    ChangeKind,
+    FileChange,
     is_test_path,
-    split_file_sections,
-    strip_test_hunks,
+    parse_name_status_z,
+    without_test_changes,
 )
 from satyrn_evals.errors import PatchParseError
 
 
-def _patch(*sections: str) -> str:
-    return "\n".join(sections) + "\n"
+def test_parse_empty_metadata_is_an_empty_change_set() -> None:
+    assert parse_name_status_z("") == ()
 
 
-SOLUTION = (
-    "diff --git a/solution.py b/solution.py\n"
-    "--- a/solution.py\n"
-    "+++ b/solution.py\n"
-    "@@ -1,2 +1,2 @@\n"
-    " def double(n):\n"
-    "-    return n\n"
-    "+    return n * 2\n"
+def test_parse_ordinary_changes_repeat_the_path_on_both_sides() -> None:
+    metadata = "M\0src/na\tme.py\0A\0src/日本語.py\0D\0src/old.py\0"
+
+    assert parse_name_status_z(metadata) == (
+        FileChange(ChangeKind.MODIFIED, "src/na\tme.py", "src/na\tme.py", None),
+        FileChange(ChangeKind.ADDED, "src/日本語.py", "src/日本語.py", None),
+        FileChange(ChangeKind.DELETED, "src/old.py", "src/old.py", None),
+    )
+
+
+def test_parse_rename_and_copy_retain_both_paths_and_scores() -> None:
+    metadata = (
+        "R100\0src/old name.py\0src/new name.py\0C075\0src/original.py\0src/copied.py\0"
+    )
+
+    assert parse_name_status_z(metadata) == (
+        FileChange(ChangeKind.RENAMED, "src/old name.py", "src/new name.py", 100),
+        FileChange(ChangeKind.COPIED, "src/original.py", "src/copied.py", 75),
+    )
+
+
+@pytest.mark.parametrize(
+    ("metadata", "message"),
+    [
+        ("M\0src/app.py", "not NUL-terminated"),
+        ("\0path.py\0", "empty status"),
+        ("Q\0path.py\0", "unknown name-status code"),
+        ("M100\0path.py\0", "unexpected suffix"),
+        ("R\0old.py\0new.py\0", "lacks a decimal similarity score"),
+        ("Rabc\0old.py\0new.py\0", "lacks a decimal similarity score"),
+        ("R１２\0old.py\0new.py\0", "lacks a decimal similarity score"),
+        ("R101\0old.py\0new.py\0", "outside 0..100"),
+        ("M\0", "incomplete name-status record"),
+        ("R100\0old.py\0", "incomplete rename/copy record"),
+        ("M\0\0", "empty path"),
+        ("R100\0\0new.py\0", "empty path"),
+        ("C100\0old.py\0\0", "empty path"),
+    ],
+    ids=[
+        "unterminated",
+        "empty-status",
+        "unknown-status",
+        "ordinary-score",
+        "missing-rename-score",
+        "nondigit-rename-score",
+        "non-ascii-rename-score",
+        "oversized-score",
+        "missing-path",
+        "missing-new-path",
+        "empty-ordinary-path",
+        "empty-old-path",
+        "empty-new-path",
+    ],
 )
-TEST_FILE = (
-    "diff --git a/test_solution.py b/test_solution.py\n"
-    "--- a/test_solution.py\n"
-    "+++ b/test_solution.py\n"
-    "@@ -1,2 +1,3 @@\n"
-    " from solution import double\n"
-    "+# regression test comment\n"
+def test_parse_rejects_malformed_metadata(metadata: str, message: str) -> None:
+    with pytest.raises(PatchParseError, match=message):
+        parse_name_status_z(metadata)
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        ChangeKind.TYPE_CHANGED,
+        ChangeKind.UNMERGED,
+        ChangeKind.UNKNOWN,
+        ChangeKind.BROKEN_PAIRING,
+    ],
 )
-TESTS_DIR = (
-    "diff --git a/tests/test_util.py b/tests/test_util.py\n"
-    "--- a/tests/test_util.py\n"
-    "+++ b/tests/test_util.py\n"
-    "@@ -1 +1 @@\n"
-    "-x\n"
-    "+y\n"
-)
-
-
-def test_split_sections_single_file() -> None:
-    sections = split_file_sections(SOLUTION)
-    assert len(sections) == 1
-    assert sections[0].path == "solution.py"
-    assert sections[0].text.startswith("diff --git a/solution.py")
-
-
-def test_split_sections_multiple_files() -> None:
-    sections = split_file_sections(_patch(SOLUTION, TEST_FILE))
-    assert [s.path for s in sections] == ["solution.py", "test_solution.py"]
-
-
-def test_split_rejects_no_sections() -> None:
-    with pytest.raises(PatchParseError, match="no file sections"):
-        split_file_sections("@@ -1 +1 @@\n nothing\n")
-
-
-def test_split_rejects_malformed_header() -> None:
-    with pytest.raises(PatchParseError, match="malformed diff header"):
-        split_file_sections("diff --git a/x\n--- a/x\n+++ b/x\n@@ -1 +1 @@\n-x\n+y\n")
+def test_parse_accepts_other_git_ordinary_statuses(status: ChangeKind) -> None:
+    assert parse_name_status_z(f"{status.value}\0path.py\0") == (
+        FileChange(status, "path.py", "path.py", None),
+    )
 
 
 @pytest.mark.parametrize(
     "path",
-    ["test_solution.py", "tests/test_util.py", "a/tests/test_util.py", "conftest.py",
-     "my_test.py", "test_thing.py"],
-    ids=["test-prefix", "tests-dir", "nested-tests-dir", "conftest", "suffix", "prefix"],
+    [
+        "test_solution.py",
+        "tests/test_util.py",
+        "a/tests/test_util.py",
+        "conftest.py",
+        "my_test.py",
+        "test_thing.py",
+    ],
+    ids=[
+        "test-prefix",
+        "tests-dir",
+        "nested-tests-dir",
+        "conftest",
+        "suffix",
+        "prefix",
+    ],
 )
 def test_is_test_path_true(path: str) -> None:
     assert is_test_path(path)
@@ -80,34 +120,30 @@ def test_is_test_path_false(path: str) -> None:
     assert not is_test_path(path)
 
 
-def test_strip_keeps_only_source_sections() -> None:
-    text, paths = strip_test_hunks(_patch(SOLUTION, TEST_FILE, TESTS_DIR))
-    assert paths == ("solution.py",)
-    assert "test_solution.py" not in text
-    assert "tests/test_util.py" not in text
-    assert "solution.py" in text
-
-
-def test_strip_all_test_paths_returns_empty() -> None:
-    text, paths = strip_test_hunks(_patch(TEST_FILE, TESTS_DIR))
-    assert text == ""
-    assert paths == ()
-
-
-def test_strip_preserves_source_ordering() -> None:
-    text, paths = strip_test_hunks(_patch(TEST_FILE, SOLUTION, TESTS_DIR))
-    assert paths == ("solution.py",)
-
-
-def test_strip_handles_deleted_source_file() -> None:
-    deleted = (
-        "diff --git a/old.py b/old.py\n"
-        "deleted file mode 100644\n"
-        "--- a/old.py\n"
-        "+++ /dev/null\n"
-        "@@ -1 +0,0 @@\n"
-        "-gone\n"
+def test_filter_keeps_ordinary_source_changes_as_sibling_success() -> None:
+    source = FileChange(ChangeKind.MODIFIED, "src/app.py", "src/app.py", None)
+    test = FileChange(
+        ChangeKind.MODIFIED, "tests/test_app.py", "tests/test_app.py", None
     )
-    text, paths = strip_test_hunks(deleted)
-    assert paths == ("old.py",)
-    assert "old.py" in text
+
+    assert without_test_changes((source, test)) == (source,)
+
+
+def test_filter_keeps_rename_and_copy_between_source_paths() -> None:
+    rename = FileChange(ChangeKind.RENAMED, "src/old.py", "src/new.py", 100)
+    copy = FileChange(ChangeKind.COPIED, "src/original.py", "src/copied.py", 90)
+
+    assert without_test_changes((rename, copy)) == (rename, copy)
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        FileChange(ChangeKind.RENAMED, "src/app.py", "tests/test_app.py", 100),
+        FileChange(ChangeKind.RENAMED, "tests/test_app.py", "src/app.py", 100),
+        FileChange(ChangeKind.COPIED, "src/app.py", "test_app.py", 80),
+    ],
+    ids=["rename-into-tests", "rename-out-of-tests", "copy-into-test-file"],
+)
+def test_filter_excludes_change_when_either_path_is_a_test(change: FileChange) -> None:
+    assert without_test_changes((change,)) == ()
