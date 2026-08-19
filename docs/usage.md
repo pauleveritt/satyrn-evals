@@ -84,11 +84,15 @@ satyrn-evals capture --revert SHA [--repo PATH] [--name NAME] [--contract TEXT] 
 
 - `--revert SHA` — the fixing commit. Required.
 - `--repo PATH` — the source repository; default: the current directory. Its
-  working tree, index, branch, and `HEAD` are never touched.
+  pre-existing files, index, branch, and `HEAD` are never changed.
 - `--name NAME` — the task directory name; default: a slug of the fix
   commit's subject line.
 - `--contract TEXT` — the task statement; default: the fix subject line.
-- `--output DIR` — where the task directory is written; default `./tasks/`.
+- `--output DIR` — where the task directory and capture record are written;
+  default `./tasks/`. These declared artifacts are the sole permitted writes
+  when the output directory is inside the source repository. A source-local
+  output must contain no tracked path; the repository root and Git metadata
+  directories are rejected.
 
 Four deterministic checks run during capture (source preflight, base
 oracle runs, un-done at base, winnable); a failed check refuses with a
@@ -120,7 +124,9 @@ precise `code` in the {term}`capture record`. Exit codes: `0` captured,
 
 The record is the authoritative result; the exit code is coarse by design.
 A refusal writes the same shape with `outcome: refused` and a precise
-`code` (e.g. `REPO_DIRTY`, `NO_DISCRIMINATING_TESTS`, `CLEANUP_FAILED`).
+`code` (e.g. `REPO_DIRTY`, `NO_DISCRIMINATING_TESTS`, `ARTIFACT_FAILED`,
+`CLEANUP_FAILED`). An existing task/record is a usage error and is never
+overwritten.
 
 Grade a captured task with `--tasks-root`:
 

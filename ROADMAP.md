@@ -10,10 +10,9 @@ Backlog, not into the current phase.*
 
 ## Now
 
-**Phase V3 — Attempt persistence. Not started; the current phase.**
-`attempt TASK -- COMMAND...` runs a fake command, persists patch and
- transcript, regrades offline. See the Phases table below and `BRIEF.md`
-for the binding rules.
+**Phase V4 — A real engine attempt. Waiting for engine E5.** V3's executable
+seam is complete; V4 uses the same artifact set with `satyrn-engine attempt`.
+See the Phases table below and `BRIEF.md` for the binding rules.
 
 ## Concept budget
 
@@ -34,8 +33,8 @@ them lands.
 |---|-------|--------------------------|--------|
 | V1 | It installs and grades | `grade` accepts a bundled task's known-good patch and rejects its known-broken one, offline and deterministic | **complete** |
 | V2 | Capture by revert | `capture --revert SHA` makes a task winnable by construction, in minutes | **complete** |
-| V3 | Attempt persistence | `attempt TASK -- COMMAND...` runs a fake command, persists patch and transcript, regrades offline | **current** |
-| V4 | A real engine attempt | The same artifact set, produced by `satyrn-engine attempt` (engine phase E5) | not started |
+| V3 | Attempt persistence | `attempt TASK -- COMMAND...` runs a fake command, persists patch and transcript, regrades offline | **complete** |
+| V4 | A real engine attempt | The same artifact set, produced by `satyrn-engine attempt` (engine phase E5) | **current; waiting for E5** |
 | V5 | The diagnostic loop | `run --n 8` plus a summary: verdict reasons, repeated calls, churn, tool calls, context, timeouts | not started |
 
 Full done-when criteria are in `BRIEF.md`'s referenced roadmap research, not
@@ -58,6 +57,10 @@ checkpoint transplants verbatim); the whole claims layer.
 Completed phases move here (or to `docs/superpowers/phase-history.md`)
 when the roadmap outgrows the front page.
 
+- **V3 — Attempt persistence (2026-08-18).** `attempt TASK -- COMMAND...`
+  runs an executable through the environment seam in a disposable workspace,
+  preserves patch and transcript before cleanup, grades the preserved patch,
+  and writes an attempt record.
 - **V2 — Capture by revert (2026-08-18).** `satyrn-evals capture --revert
   SHA [--repo PATH] [--name NAME] [--contract TEXT] [--output DIR]`:
   four deterministic checks, a detached-worktree lifecycle re-earned from
