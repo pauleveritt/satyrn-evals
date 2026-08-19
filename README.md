@@ -97,6 +97,13 @@ touched.
 
 Phases completed, each with its design spec and implementation plan:
 
+- [_V3_](https://github.com/pauleveritt/satyrn-evals/tree/v3) — attempt
+  persistence. `satyrn-evals attempt TASK -- COMMAND...` runs an attempt
+  command through the engine seam, preserves its patch and transcript
+  before cleanup, and grades the delivered patch offline — one command,
+  one set of artifacts, one verdict.
+  ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-08-18-v3-attempt-persistence-design.md),
+  [_plan_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/plans/2026-08-18-v3-attempt-persistence.md))
 - [_V2_](https://github.com/pauleveritt/satyrn-evals/tree/v2) — capture by
   revert. `satyrn-evals capture --revert SHA` turns a fixing commit into a
   task winnable by construction, in minutes, without touching the source
@@ -110,7 +117,7 @@ Phases completed, each with its design spec and implementation plan:
   ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-08-16-v1-grade-design.md),
   [_plan_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/plans/2026-08-16-v1-grade.md))
 
-The current phase is **V3 — Attempt persistence**; the roadmap of feature
+The current phase is **V4 — A real engine attempt**; the roadmap of feature
 cycles lives in [`ROADMAP.md`](ROADMAP.md). The `e1` git tag holds the
 scaffolded starting state — toolchain, docs stack, CI, the brief, the
 roadmap, and the harvest index — for learners following along step by
