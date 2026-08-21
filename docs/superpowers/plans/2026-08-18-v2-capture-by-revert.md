@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship `satyrn-evals capture --revert SHA [--repo PATH] [--name NAME] [--contract TEXT] [--output DIR]`: turn a real fixing commit into a task directory (manifest, base tree, known-good patch) whose four deterministic capture checks all pass — without changing pre-existing source files or the source repository's index, branch, or `HEAD`; declared writes below `--output` are the sole exception.
+**Goal:** Ship `satyrn-evals capture --revert SHA [--repo PATH] [--name NAME] [--contract TEXT] [--output DIR]`: turn a real fixing commit into a task directory (manifest, base tree, known-good patch) whose four deterministic capture checks all pass — without changing pre-existing source files or the source repository's index, branch, or `HEAD`; declared writes below `--output` are the sole exception. Git may temporarily update the linked-worktree metadata it manages under `.git`; successful cleanup removes that registration, and failed cleanup reports the retained path as `CLEANUP_FAILED`.
 
-**Architecture:** Pure logic (NUL-safe Git metadata classification, discriminating-set computation, capture record, name derivation, manifest changes) lives in small single-purpose modules tested in the default tier; orchestration (`capture.py`) pins the commits, preflights a clean source, asks Git to render the selected fix patch, adds a detached worktree beneath a validated safe temporary parent, preserves the base tree, runs the oracle three times (base full-suite, fixed full-suite, recorded restricted) with hook evidence under that parent, cleans up with E3's precedence, and writes the capture record. Every owned Git command disables hooks and fsmonitor; cleanup state is conservative before add and determines the persisted, returned, and CLI result. The oracle hook gains collection-error recording so "the suite never ran" is distinguishable from "the suite is empty". The CLI gains the `capture` subcommand and `--tasks-root` on `grade`.
+**Architecture:** Pure logic (NUL-safe parsing of Git name-status metadata, test-path filtering over the parsed old and new paths, discriminating-set computation, capture record, name derivation, manifest changes) lives in small single-purpose modules tested in the default tier; orchestration (`capture.py`) pins the commits, preflights a clean source, asks Git to render the selected fix patch, adds a detached worktree beneath a validated safe temporary parent, preserves the base tree, runs the oracle three times (base full-suite, fixed full-suite, recorded restricted) with hook evidence under that parent, cleans up with E3's precedence, and writes the capture record. Every owned Git command disables hooks and fsmonitor; cleanup state is conservative before add and determines the persisted, returned, and CLI result. The oracle hook gains collection-error recording so "the suite never ran" is distinguishable from "the suite is empty". The CLI gains the `capture` subcommand and `--tasks-root` on `grade`.
 
 **Tech Stack:** Python 3.14, stdlib only in `src/` (argparse, dataclasses, json, subprocess, tempfile, re), pytest for tests, git for worktree/diff operations. No third-party dependencies.
 
@@ -94,7 +94,9 @@ record fields are unchanged.
 - Every refusal test has a sibling success test.
 - Pre-existing source files and the source repository's index, branch, and
   `HEAD` are never changed. Declared artifacts below `--output` are the sole
-  write exception; transient worktree registration is removed on cleanup.
+  write exception. Git may temporarily update the linked-worktree metadata it
+  manages under `.git`; successful cleanup removes that registration, and
+  failed cleanup reports the retained path as `CLEANUP_FAILED`.
 - Before the mutating worktree add, registration is `MAY_EXIST`; the safe
   temporary parent is retained until registration absence is confirmed.
 - Every owned Git command disables hooks and filesystem monitors with `-c
