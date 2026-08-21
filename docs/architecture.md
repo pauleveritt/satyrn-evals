@@ -69,7 +69,7 @@ The defense is structural, not behavioral:
 | `capture_record.py` | the durable capture artifact (E3-shaped JSON) |
 | `attempt.py` | orchestration: materialize workspace, run the seam, preserve, refuse, grade, record |
 | `attempt_record.py` | the durable attempt artifact (E3-shaped JSON) |
-| `diff_filter.py` | split unified diffs into file sections; the test-path rule |
+| `diff_filter.py` | parse NUL-safe Git change metadata; classify both rename paths with the test-path rule |
 | `discriminating.py` | the {term}`discriminating set` and the recorded oracle |
 | `manifest.py` | load/validate the {term}`task` {term}`manifest`; resolve tasks by name |
 | `patch.py` | parse unified diffs; enforce the source {term}`allowlist` |
@@ -80,13 +80,15 @@ The defense is structural, not behavioral:
 
 ## Capture: the four deterministic checks
 
-`capture()` turns a fixing commit into a {term}`task` without touching the
-source repository's working tree, index, branch, or `HEAD` — the pattern
-re-earned from the satyrn-engine E3 delivery spec. Its lifecycle:
+`capture()` turns a fixing commit into a {term}`task` without changing
+pre-existing source files or the source repository's index, branch, or
+`HEAD` — the pattern re-earned from the satyrn-engine E3 delivery spec.
+Declared artifacts below `--output` are the sole write exception. Its
+lifecycle:
 
 ```
-FIX commit ──► pin PARENT ──► preflight clean ──► derive fix diff ──► worktree add --detach ──► materialize base ──► verify ──► cleanup ──► record
-                  (usage errors write nothing)        (strip test hunks)        (source untouched)                     (3 oracle runs)
+FIX commit ──► pin PARENT ──► preflight clean ──► select source changes ──► worktree add --detach ──► materialize complete base ──► verify ──► cleanup ──► record
+                  (usage errors write nothing)       (NUL-safe Git metadata)       (safe temp parent)                      (3 oracle runs)
 ```
 
 Four deterministic checks prove the captured task is valid (un-done at

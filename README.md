@@ -56,7 +56,7 @@ contract.
 Evals builds the engine one loop at a time:
 
 1. **Capture** — a real Python-development workflow becomes a task:
-   manifest, base state, known-good and known-broken fixture patches. V2's
+   manifest, base state, and a known-good fixture patch. V2's
    `capture --revert SHA` makes a task winnable by construction, in minutes.
 2. **Attempt** — the task's attempt command runs in an eval-owned
    disposable worktree; its patch and transcript are preserved before
@@ -75,11 +75,12 @@ Evals builds the engine one loop at a time:
 ## Usage
 
 From a checkout, `uv sync` installs evals into the project environment.
-The CLI ships two commands:
+The CLI ships three commands:
 
 ```console
 $ uv run satyrn-evals grade format_number src/satyrn_evals/tasks/format_number/fixtures/known-good.patch
 $ uv run satyrn-evals capture --revert <sha> --repo /src/app --output tasks
+$ uv run satyrn-evals attempt format_number -- command-that-writes-a-patch
 ```
 
 Grading is silent over the CLI; the verdict — `pass`, `fail`, or
@@ -87,8 +88,9 @@ Grading is silent over the CLI; the verdict — `pass`, `fail`, or
 code. Exit code `0` means the operation completed, `2` a usage error, `3`
 an operational failure that names its cause. No model calls, no network,
 on every path. `capture` writes a task directory plus a capture record;
-the source repository's working tree, index, branch, and `HEAD` are never
-touched.
+pre-existing source files and the source repository's index, branch, and
+`HEAD` are never changed. Declared artifacts below `--output` are the sole
+write exception.
 
 > More: [usage](docs/usage.md) — the receipt format, the exit-code table,
 > the capture record, and the bundled task.
@@ -99,8 +101,8 @@ Phases completed, each with its design spec and implementation plan:
 
 - [_V2_](https://github.com/pauleveritt/satyrn-evals/tree/v2) — capture by
   revert. `satyrn-evals capture --revert SHA` turns a fixing commit into a
-  task winnable by construction, in minutes, without touching the source
-  repository's working tree.
+  task winnable by construction, in minutes, without changing pre-existing
+  source state outside its declared `--output` artifacts.
   ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-08-18-v2-capture-by-revert-design.md),
   [_plan_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/plans/2026-08-18-v2-capture-by-revert.md))
 - [_V1_](https://github.com/pauleveritt/satyrn-evals/tree/v1) — it
@@ -110,8 +112,8 @@ Phases completed, each with its design spec and implementation plan:
   ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-08-16-v1-grade-design.md),
   [_plan_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/plans/2026-08-16-v1-grade.md))
 
-The current phase is **V3 — Attempt persistence**; the roadmap of feature
-cycles lives in [`ROADMAP.md`](ROADMAP.md). The `e1` git tag holds the
+The next eval phase is **V4 — A real engine attempt**, after engine E5; the
+roadmap of feature cycles lives in [`ROADMAP.md`](ROADMAP.md). The `e1` git tag holds the
 scaffolded starting state — toolchain, docs stack, CI, the brief, the
 roadmap, and the harvest index — for learners following along step by
 step.
