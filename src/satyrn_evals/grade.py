@@ -37,9 +37,10 @@ def grade(task_dir: Path, patch_path: Path, receipt_path: Path) -> Receipt:
     """
     manifest = load_manifest(task_dir)
     try:
-        patch_text = patch_path.read_text()
+        patch_bytes = patch_path.read_bytes()
     except OSError as e:
         raise PatchReadError(f"cannot read patch: {e}") from e
+    patch_text = os.fsdecode(patch_bytes)
 
     evidence: HookResultData | None = None
     reason = ""
@@ -61,7 +62,7 @@ def grade(task_dir: Path, patch_path: Path, receipt_path: Path) -> Receipt:
 
     receipt = Receipt(
         task=manifest.name,
-        patch_digest=patch_digest(patch_text.encode()),
+        patch_digest=patch_digest(patch_bytes),
         verdict=verdict,
         reason=reason,
         evidence=evidence,
@@ -73,13 +74,18 @@ def grade(task_dir: Path, patch_path: Path, receipt_path: Path) -> Receipt:
 def _run_oracle(manifest: TaskManifest, task_dir: Path, patch_text: str) -> HookResult:
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp) / "work"
-        shutil.copytree(task_dir / "base", work)
+        shutil.copytree(task_dir / "base", work, symlinks=True)
         try:
-            subprocess.run(["git", "init", "-q"], cwd=work, check=True, capture_output=True)
+            subprocess.run(
+                ["git", "init", "-q"], cwd=work, check=True, capture_output=True
+            )
         except (OSError, subprocess.CalledProcessError) as e:
             raise ApplyError(f"cannot run git: {e}") from e
         applied = subprocess.run(
-            ["git", "apply", "-"], input=patch_text.encode(), cwd=work, capture_output=True
+            ["git", "apply", "-"],
+            input=os.fsencode(patch_text),
+            cwd=work,
+            capture_output=True,
         )
         if applied.returncode != 0:
             raise ApplyError("patch did not apply: " + applied.stderr.decode().strip())
@@ -88,7 +94,9 @@ def _run_oracle(manifest: TaskManifest, task_dir: Path, patch_text: str) -> Hook
         os.unlink(hook_path)  # reserve a unique name; a silent oracle leaves NO file
         env = dict(os.environ)
         env[oracle_hook.RESULT_ENV] = hook_path
-        env["PATH"] = str(Path(sys.executable).parent) + os.pathsep + env.get("PATH", "")
+        env["PATH"] = (
+            str(Path(sys.executable).parent) + os.pathsep + env.get("PATH", "")
+        )
         run_started = time.time()
         try:
             subprocess.run(manifest.oracle, cwd=work, env=env, capture_output=True)

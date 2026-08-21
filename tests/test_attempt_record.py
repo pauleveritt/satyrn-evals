@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -99,4 +100,18 @@ def test_load_rejects_missing_required_field(tmp_path) -> None:
     del data["code"]
     path.write_text(json.dumps(data))
     with pytest.raises(ValueError, match="missing a field"):
+        load_attempt_record(path)
+
+
+def test_load_rejects_unreadable_json(tmp_path: Path) -> None:
+    path = tmp_path / "attempt.json"
+    path.write_text("not json")
+    with pytest.raises(ValueError, match="cannot read attempt record"):
+        load_attempt_record(path)
+
+
+def test_load_rejects_non_object(tmp_path: Path) -> None:
+    path = tmp_path / "attempt.json"
+    path.write_text("[]")
+    with pytest.raises(ValueError, match="not an object"):
         load_attempt_record(path)

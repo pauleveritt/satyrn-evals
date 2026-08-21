@@ -156,3 +156,47 @@ def test_is_valid_task_name_rejects(name: str) -> None:
 def test_resolve_task_uses_same_rule(tmp_path) -> None:
     with pytest.raises(ManifestError, match="invalid task name"):
         resolve_task("../etc", tasks_root=tmp_path)
+
+
+def test_load_missing_manifest_rejected(tmp_path: Path) -> None:
+    with pytest.raises(ManifestError, match="cannot read manifest"):
+        load_manifest(tmp_path / "missing")
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        (None, [], "not a JSON object"),
+        ("expected_test_ids", "test", "expected_test_ids must be a list"),
+        ("source_paths", "solution.py", "source_paths must be a list"),
+        ("name", "", "name and contract"),
+        ("oracle", [], "oracle must be a non-empty list"),
+        ("expected_test_ids", [], "expected_test_ids must be a non-empty list"),
+        ("source_paths", [], "source_paths must be a non-empty list"),
+        ("fixtures", {"known_good": ""}, "fixtures.known_good"),
+        (
+            "provenance",
+            {"repo": "", "base_sha": "b" * 40, "fix_sha": "f" * 40},
+            "provenance fields",
+        ),
+    ],
+)
+def test_load_rejects_invalid_manifest_values(
+    tmp_path: Path, field: str | None, value: object, message: str
+) -> None:
+    task_dir = _valid_task(tmp_path)
+    if field is None:
+        data = value
+    else:
+        data = json.loads((task_dir / "manifest.json").read_text())
+        data[field] = value
+    (task_dir / "manifest.json").write_text(json.dumps(data))
+    with pytest.raises(ManifestError, match=message):
+        load_manifest(task_dir)
+
+
+def test_load_missing_base_rejected(tmp_path: Path) -> None:
+    task_dir = _valid_task(tmp_path)
+    (task_dir / "base").rmdir()
+    with pytest.raises(ManifestError, match="base directory missing"):
+        load_manifest(task_dir)
