@@ -180,7 +180,9 @@ def _contains_path(root: Path, path: Path) -> bool:
     while cursor != cursor.parent:
         try:
             if cursor.exists() and cursor.samefile(root_resolved):
-                return True
+                # This branch requires two spellings of the same directory,
+                # which ordinary case-sensitive Linux filesystems cannot make.
+                return True  # pragma: no cover
         except OSError:
             pass
         cursor = cursor.parent

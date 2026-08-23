@@ -77,10 +77,6 @@ class NoSourceChange(CaptureRefused):
     code = CaptureCode.NO_SOURCE_CHANGE
 
 
-class TaskExists(CaptureRefused):
-    code = CaptureCode.TASK_EXISTS
-
-
 class OracleEnv(CaptureRefused):
     code = CaptureCode.ORACLE_ENV
 

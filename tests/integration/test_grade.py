@@ -1,6 +1,7 @@
 """End-to-end grading with a temporary task. Real git, real oracle subprocess."""
 
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -196,3 +197,20 @@ def test_git_init_failure_is_an_apply_error(
             tmp_task,
             GOOD_PATCH,
         )
+
+
+def test_git_apply_error_preserves_filesystem_bytes(
+    tmp_task: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls = iter(
+        (
+            subprocess.CompletedProcess(["git", "init", "-q"], 0, b"", b""),
+            subprocess.CompletedProcess(["git", "apply", "-"], 1, b"", b"bad \xff"),
+        )
+    )
+    monkeypatch.setattr(grade_module.subprocess, "run", lambda *_a, **_kw: next(calls))
+
+    with pytest.raises(ApplyError) as raised:
+        grade_module._run_oracle(load_manifest(tmp_task), tmp_task, GOOD_PATCH)
+
+    assert b"bad \xff" in os.fsencode(str(raised.value))

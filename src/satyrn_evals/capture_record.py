@@ -110,6 +110,8 @@ def write_capture_record(path: Path, record: CaptureRecord) -> None:
             os.link(temporary_path, path, follow_symlinks=False)
         except BaseException:
             with contextlib.suppress(OSError):
+                # An asynchronous exception can arrive after link() publishes.
+                # Remove the destination only when it is our temporary inode.
                 if os.path.samestat(path.stat(), temporary_path.stat()):
                     path.unlink()
             raise

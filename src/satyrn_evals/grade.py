@@ -88,7 +88,9 @@ def _run_oracle(manifest: TaskManifest, task_dir: Path, patch_text: str) -> Hook
             capture_output=True,
         )
         if applied.returncode != 0:
-            raise ApplyError("patch did not apply: " + applied.stderr.decode().strip())
+            raise ApplyError(
+                "patch did not apply: " + os.fsdecode(applied.stderr).strip()
+            )
         fd, hook_path = tempfile.mkstemp(prefix="satyrn-hook-", suffix=".json")
         os.close(fd)
         os.unlink(hook_path)  # reserve a unique name; a silent oracle leaves NO file
