@@ -1,6 +1,7 @@
 import pytest
 
-from satyrn_evals.cli import main, split_attempt_argv
+from satyrn_evals.cli import main, parser, positive_finite_timeout, split_attempt_argv
+from satyrn_evals.workspace import DEFAULT_TIMEOUT
 
 
 def test_unknown_task_is_usage_error() -> None:
@@ -58,3 +59,18 @@ def test_attempt_unknown_task_is_usage(tmp_path) -> None:
         )
         == 2
     )
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "nan", "inf", "not-a-number"])
+def test_attempt_timeout_rejects_nonpositive_nonfinite_and_malformed(value: str) -> None:
+    with pytest.raises(Exception, match="finite number greater than zero"):
+        positive_finite_timeout(value)
+
+
+def test_attempt_timeout_accepts_positive_finite() -> None:
+    assert positive_finite_timeout("0.25") == 0.25
+
+
+def test_attempt_timeout_default_tracks_workspace_default() -> None:
+    args = parser.parse_args(["attempt", "task"])
+    assert args.timeout == DEFAULT_TIMEOUT
