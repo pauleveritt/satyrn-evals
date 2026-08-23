@@ -2,13 +2,89 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship `satyrn-evals capture --revert SHA [--repo PATH] [--name NAME] [--contract TEXT] [--output DIR]`: turn a real fixing commit into a task directory (manifest, base tree, known-good patch) whose four deterministic capture checks all pass — without touching the source repository's working tree, index, branch, or `HEAD`.
+**Goal:** Ship `satyrn-evals capture --revert SHA [--repo PATH] [--name NAME] [--contract TEXT] [--output DIR]`: turn a real fixing commit into a task directory (manifest, base tree, known-good patch) whose four deterministic capture checks all pass — without changing pre-existing source files or the source repository's index, branch, or `HEAD`; declared writes below `--output` are the sole exception. Git may temporarily update the linked-worktree metadata it manages under `.git`; successful cleanup removes that registration, and failed cleanup reports the retained path as `CLEANUP_FAILED`.
 
-**Architecture:** Pure logic (test-path filtering, discriminating-set computation, capture record, name derivation, manifest changes) lives in small single-purpose modules tested in the default tier; orchestration (`capture.py`) pins the commits, preflights a clean source, derives the fix diff, adds a detached worktree at the parent commit, materializes the base, runs the oracle three times (base full-suite, fixed full-suite, recorded restricted) reusing V1's hook-result machinery, cleans up with E3's precedence, and writes the capture record. The oracle hook gains collection-error recording so "the suite never ran" is distinguishable from "the suite is empty". The CLI gains the `capture` subcommand and `--tasks-root` on `grade`.
+**Architecture:** Pure logic (NUL-safe parsing of Git name-status metadata, test-path filtering over the parsed old and new paths, discriminating-set computation, capture record, name derivation, manifest changes) lives in small single-purpose modules tested in the default tier; orchestration (`capture.py`) pins the commits, preflights a clean source, asks Git to render the selected fix patch, adds a detached worktree beneath a validated safe temporary parent, preserves the base tree, runs the oracle three times (base full-suite, fixed full-suite, recorded restricted) with hook evidence under that parent, cleans up with E3's precedence, and writes the capture record. Every owned Git command disables hooks and fsmonitor; cleanup state is conservative before add and determines the persisted, returned, and CLI result. The oracle hook gains collection-error recording so "the suite never ran" is distinguishable from "the suite is empty". The CLI gains the `capture` subcommand and `--tasks-root` on `grade`.
 
 **Tech Stack:** Python 3.14, stdlib only in `src/` (argparse, dataclasses, json, subprocess, tempfile, re), pytest for tests, git for worktree/diff operations. No third-party dependencies.
 
 **Spec:** `docs/superpowers/specs/2026-08-18-v2-capture-by-revert-design.md` — the plan argues from the spec; executors read both.
+
+## Correction — 2026-08-19 (normative)
+
+Review after implementation found twelve places where the original plan's
+lifecycle and artifact examples were weaker than the approved guarantee. The
+historical task steps and code excerpts remain below as the record of what was
+planned; they must not be re-applied where they conflict with this correction.
+An implementation or review of V2 uses these corrected rules:
+
+1. `--output` is the declared artifact-write surface and the only exception
+   to source immutability. Capture does not change any pre-existing source
+   file or the source repository's index, branch, or `HEAD`.
+2. The worktree-registration guard becomes `MAY_EXIST` immediately before
+   the mutating `git worktree add`, not after a successful return. Cleanup
+   resolves actual registration state, and the temporary parent is not
+   deleted until absence is confirmed. This covers an add that registers the
+   worktree and then reports failure.
+3. Every Git invocation owned by capture uses both `-c
+   core.hooksPath=/dev/null` and `-c core.fsmonitor=false`, ignores replace
+   refs and legacy grafts, and strips repository-local routing variables.
+   This includes discovery, pin, preflight, metadata, patch generation,
+   apply, add/remove, and cleanup probes; the original `_git`/`_git_worktree`
+   split is superseded.
+4. The temporary parent is validated to be outside every registered worktree
+   reported by Git. Worktree materialization and each unique,
+   reserved-but-unlinked hook-result path live under that safe parent.
+5. Cleanup failure replaces a pending success, refusal, or post-acceptance
+   collision in all observable channels: the record on disk, the
+   `CaptureRecord` returned by `capture()`, and the CLI outcome (exit 3)
+   report `CLEANUP_FAILED`, with the displaced result and retained path in the
+   message. Unexpected catchable exceptions retain their identity and receive
+   cleanup notes. Merely rewriting the file from `finally` while returning the
+   previously evaluated object is incorrect.
+6. The pristine tree copy used for `base/` preserves tracked symbolic links
+   (`copytree(..., symlinks=True)` or an equivalent Git-faithful copy), and
+   the isolated POSIX checkout overrides `core.symlinks=false`.
+7. Derivation first reads Git's NUL-delimited name-status metadata, including
+   both old and new paths for renames/copies, and applies the test-path rule to
+   both. Git itself then generates the patch for the selected paths with
+   copy detection; the human-readable unified diff is not parsed and
+   reassembled by capture. External diff drivers, textconv, and color are
+   disabled. The grader recognizes Git's ordinary and extended patch forms
+   and decodes quoted control/UTF-8 byte escapes before enforcing the source
+   allowlist. Git output and patch artifacts preserve carriage returns, CRLF
+   content, and filesystem path bytes without universal-newline conversion.
+8. Source-local output is valid only in a subtree with no tracked paths; that
+   declared artifact subtree is excluded from status, while the repository
+   root, Git administrative directories, and tracked subtrees are rejected.
+   This permits repeated captures without hiding dirty source. Containment is
+   filesystem-aware, including symlink and case-insensitive aliases.
+9. A task-directory or record collision is a usage error with no write. It
+   cannot safely be a named refusal because writing that refusal would replace
+   the evidence of the collision. Task rollback is ownership-gated and record
+   publication is atomic, exclusive, and no-follow, including races and
+   dangling symlinks. Historical `TASK_EXISTS` records still load.
+10. After pin/name/output acceptance, Git spawn, oracle-result setup, and
+    task-artifact write failures are mapped to `GIT_FAILED`, `ORACLE_ENV`, and
+    `ARTIFACT_FAILED`. Pin failure and failure to create the record's output
+    directory remain usage errors because no safe record channel exists.
+    Resolving the first parent and reading the fixing commit subject are part
+    of pinning and happen before name/output acceptance, so a Git invocation
+    failure at either step is usage/no record. A successfully resolved root
+    commit remains a recorded `NO_PARENT` refusal after acceptance.
+11. Worktree creation overrides `core.sparseCheckout=true`; `base/` is the
+    complete tracked tree at the pinned parent even when the caller uses a
+    sparse checkout.
+12. Cleanup precedence tracks only exceptions raised by capture itself. It
+    does not inherit an exception already being handled by the caller or add
+    cleanup notes to that unrelated exception.
+
+Why this is a correction rather than a feature expansion: these rules close
+gaps in guarantees the original plan already claimed—source-state isolation,
+safe cleanup, hook suppression, faithful base materialization, and a durable,
+authoritative result. The collision classification and `ARTIFACT_FAILED` code
+make previously unsafe or unnamed failures explicit; the command syntax and
+record fields are unchanged.
 
 ## Global Constraints
 
@@ -16,10 +92,33 @@
 - Default tests use **no model, no network, no subprocess** — enforced by the audit-hook tripwire (V1 Task 1). Integration tests are marked `integration` and excluded by default; run them with `uv run pytest -m integration tests/integration/`.
 - The verdict never comes from stdout or an exit code. Exit codes: `0` captured, `2` usage error, `3` refusal. The capture record's `code` is authoritative.
 - Every refusal test has a sibling success test.
-- The source repository's working tree, index, branch, and `HEAD` are never touched; the only mutation is the transient worktree registration, removed on cleanup.
+- Pre-existing source files and the source repository's index, branch, and
+  `HEAD` are never changed. Declared artifacts below `--output` are the sole
+  write exception. Git may temporarily update the linked-worktree metadata it
+  manages under `.git`; successful cleanup removes that registration, and
+  failed cleanup reports the retained path as `CLEANUP_FAILED`.
+- Before the mutating worktree add, registration is `MAY_EXIST`; the safe
+  temporary parent is retained until registration absence is confirmed.
+- Every owned Git command disables hooks and filesystem monitors with `-c
+  core.hooksPath=/dev/null -c core.fsmonitor=false`.
+- The temporary parent and hook-result paths are outside all registered
+  worktrees; `base/` preserves symlinks; selected patches are rendered by Git
+  from NUL-delimited old/new path metadata.
+- `CLEANUP_FAILED` replaces the pending persisted record, returned record,
+  and CLI result. It never leaves callers holding the displaced success or
+  refusal.
 - No subprocess spawn may happen during a default-tier test; weakening the tripwire fails the build.
 - `ruff` and `pyrefly` run over `src/` and `tests/`; pyrefly must be verified from the main checkout at merge time (the `.worktrees/` gitignore pattern shadows `tests/` inside a worktree).
-- **Repo-not-git, unborn, and bad-SHA are usage errors** (exit 2, no record): the `--repo` argument names no usable source, so no task name exists to name a record, matching the exit-table's "no operation was accepted" and the spec's Pin step. All other refusals (`REPO_DIRTY`, `NO_PARENT`, `NO_SOURCE_CHANGE`, `TASK_EXISTS`, `ORACLE_ENV`, `NO_DISCRIMINATING_TESTS`, `NOT_WINNABLE`, `GIT_FAILED`, `CLEANUP_FAILED`) are exit 3 with a named record.
+- Combined default and integration coverage over `satyrn_evals` must remain
+  at 100% statements and branches; subprocess coverage is enabled for the
+  real CLI and oracle evidence.
+- **Repo-not-git, unborn, bad-SHA, invalid output, and artifact collisions are
+  usage errors** (exit 2, no record). The last case cannot write a refusal
+  without overwriting the artifact that caused it. Accepted-operation
+  refusals (`REPO_DIRTY`, `NO_PARENT`, `NO_SOURCE_CHANGE`, `ORACLE_ENV`,
+  `NO_DISCRIMINATING_TESTS`, `NOT_WINNABLE`, `GIT_FAILED`,
+  `ARTIFACT_FAILED`, `CLEANUP_FAILED`) are exit 3 with a named record;
+  historical `TASK_EXISTS` records remain readable.
 - **Codes `NOT_WINNABLE` (check 4) and `ORACLE_ENV` (check 2)** are named in the spec's checks; the plan implements them verbatim.
 
 ---
@@ -1049,6 +1148,14 @@ git commit -m "feat: task-name slug derivation from commit subject"
 
 ### Task 7: Capture orchestration, proven end-to-end
 
+> **2026-08-19 correction:** The interfaces, tests, and implementation excerpt
+> in this historical task predate the normative correction above. In
+> particular, do not copy its post-success boolean registration guard,
+> system-global hook-result temporary file, partial Git configuration,
+> symlink-dereferencing `copytree`, Python-reassembled diff, or `finally`
+> return behavior. The twelve corrected rules govern the implementation while
+> preserving this excerpt as evidence of what was corrected.
+
 **Files:**
 - Modify: `src/satyrn_evals/capture.py` (add the lifecycle; keep `slugify_subject`)
 - Create: `tests/integration/test_capture.py`
@@ -1697,6 +1804,13 @@ cleanup failure replaces any pending result — even a captured one — via
 `merge_cleanup_failure` (E3's precedence), because a retained worktree
 means the operation did not fully complete.
 
+**Correction (2026-08-19):** the excerpt above does not fully implement that
+precedence: Python evaluates its pending `return` before `finally`, so rewriting
+the file alone can still return the displaced object and produce the wrong CLI
+exit. The corrected control flow defers return until cleanup has produced the
+final record. Its registration state is `MAY_EXIST` before `worktree add`, and
+the temporary parent survives until Git confirms registration is absent.
+
 **Note on `_run_oracle`:** `load_hook_result` raises `HookError` (missing,
 stale, unparseable) — the oracle-runner above surfaces it as `OracleEnv`
 so check 2 (and the fixed/restricted runs) refuse with a named code
@@ -1991,12 +2105,37 @@ git commit -m "docs: V2 capture usage, architecture, glossary, roadmap"
   fixture repo's fix succeeds (four checks pass, source untouched) and the
   captured task's `known-good.patch` grades `pass` through the real `grade`
   command, each asserted by naming the fixture.
+- `uv run coverage erase`; run default and integration tests separately under
+  `coverage run`; then `uv run coverage combine` and `uv run coverage report`
+  — 100% statement and branch coverage. Do not use `--append`: subprocess
+  coverage writes parallel data files for `coverage combine`.
 - `uv run ruff check .` and `uv run pyrefly check` (from the main checkout)
   — clean.
 - `uv run --group docs sphinx-build -W -b html docs docs/_build/html` — clean.
 - `uv run satyrn-evals capture --revert <sha> --repo <fixture-repo> --output /tmp/tasks; echo $?` — exit 0; `/tmp/tasks/<name>.capture.json` reads `outcome: captured`.
 
 ## Revisions
+
+- **2026-08-19 — Capture isolation and evidence correction (normative).** The
+  original plan overstated source read-only behavior without naming
+  `--output` as the sole declared write, armed cleanup only after worktree-add
+  success, disabled hooks only for add/remove and did not disable fsmonitor,
+  placed hook results outside an independently validated safe parent,
+  rewrote only the on-disk record on cleanup failure, dereferenced symlinks in
+  `base/`, and parsed/reassembled human-readable diffs using only one path per
+  change. The Correction section above records the replacements: output-only
+  writes; a pre-add `MAY_EXIST` guard and confirmed-absence deletion gate;
+  `/dev/null` hooks, disabled fsmonitor, and raw-object ancestry for every
+  owned Git command; a temporary parent outside every registered worktree
+  holding worktree and hook evidence; cleanup precedence for
+  persisted/API/CLI results; Git-faithful symlink materialization; NUL old/new
+  metadata plus byte-preserving Git-generated patches; filesystem-aware,
+  repeatable source-local output; ownership-gated task rollback and atomic
+  exclusive record publication; and named operational write failures.
+  Worktree creation also disables sparse checkout so `base/` is complete,
+  and exception precedence uses capture-local state rather than the caller's
+  active exception context.
+  Recorded rather than editing the historical task excerpt away.
 
 - **2026-08-18 — Task 7 fixture defect (recorded).** The plan's fixture
   `test_double_zero` asserted `double(0) == 0`, which the buggy `return n`
