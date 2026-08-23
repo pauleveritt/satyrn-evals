@@ -1,7 +1,7 @@
 # Architecture
 
-V1 is the grading seam the rest of the roadmap builds on. One command,
-seven small modules, two test tiers.
+V1's grading seam remains the foundation. Capture and attempt add repository
+and process lifecycles around it without changing how a verdict is computed.
 
 ## Data flow
 
@@ -67,8 +67,9 @@ The defense is structural, not behavioral:
 | `grade.py` | orchestration: materialize, apply, run oracle, write receipt |
 | `capture.py` | orchestration: pin, preflight, derive, worktree, materialize, verify, cleanup, record |
 | `capture_record.py` | the durable capture artifact (E3-shaped JSON) |
-| `attempt.py` | orchestration: materialize workspace, run the seam, preserve, refuse, grade, record |
+| `attempt.py` | orchestration: invoke the workspace, preserve, refuse, grade, record |
 | `attempt_record.py` | the durable attempt artifact (E3-shaped JSON) |
+| `workspace.py` | reconstruct a private Git repository; own detached-worktree, process, and cleanup lifecycles |
 | `diff_filter.py` | parse NUL-safe Git change metadata; classify both rename paths with the test-path rule |
 | `discriminating.py` | the {term}`discriminating set` and the recorded oracle |
 | `manifest.py` | load/validate the {term}`task` {term}`manifest`; resolve tasks by name |
@@ -117,12 +118,16 @@ command produces a patch for a {term}`task`, and evals preserves and grades
 what the command delivered.
 
 ```
-BASE ──► copy to disposable workspace ──► run COMMAND (env seam) ──► read patch + transcript
-         from reserved paths ──► refuse on incomplete artifacts ──► grade() ──► attempt record
+BASE ──► private Git repo ──► detached worktree at exact synthetic BASE
+      ──► run COMMAND once ──► preserve patch + transcript ──► cleanup
+      ──► refuse on incomplete artifacts ──► grade() ──► attempt record
 ```
 
-`attempt()` in `src/satyrn_evals/attempt.py` materializes the task's base
-into a disposable workspace, runs the command there with the env seam
+`attempt()` in `src/satyrn_evals/attempt.py` asks `workspace.py` to turn the
+task base into one deterministic commit and run the command in a clean,
+detached linked worktree. Repository-local Git routing variables are removed,
+hooks and fsmonitor are disabled for eval-owned Git commands, and normal Git
+filters remain active. The command receives the env seam
 (`SATYRN_TASK_NAME` and `SATYRN_TASK_CONTRACT` as inputs;
 `SATYRN_ATTEMPT_PATCH` and `SATYRN_ATTEMPT_TRANSCRIPT` as reserved delivery
 paths inside the attempt directory), reads the delivered patch and
@@ -135,13 +140,23 @@ Preservation precedes cleanup — the delivered artifacts live in the attempt
 directory, outside the workspace, so a grading defect can be fixed and
 re-scored without re-running the attempt.
 
+An Engine-capable manifest may name a task-relative `engine_contract`.
+Evals validates that it is a regular file reached without symlinks, then
+appends its absolute path to the executable argv. The file contents remain
+opaque: Engine owns their schema. When the command times out, evals terminates
+and reaps its POSIX process group before Git cleanup. If cleanup cannot prove
+the worktree registration absent, the attempt is refused as `CLEANUP_FAILED`
+and the record names the retained recovery path. This is process and workspace
+hygiene, not a security sandbox; Windows is outside the V4 proof.
+
 ## Testing: two tiers and the tripwire
 
 - **Default tier** — no model, no network, no subprocess, enforced by the
   {term}`tripwire`: a CPython audit hook in `tests/conftest.py` that
   raises on any spawn. Weakening it fails the build.
 - **Integration tier** — marked `integration` and excluded from the
-  default run: real `git apply`, real oracle subprocesses, and the
+  default run: real Git/worktree operations, oracle subprocesses, process
+  groups, and the real Engine E5 seam, plus the
   {term}`evidence floor`: the bundled {term}`task`'s known-good
   {term}`patch` is accepted and its known-broken {term}`patch` rejected,
   each asserted by naming the fixture.
@@ -151,8 +166,7 @@ vacuously.
 
 ## What is not here yet
 
-- the real engine seam — V4
 - the diagnostic loop — V5
-- the {term}`baseline probe` — with the attempt loop
+- {term}`baseline probe` admission — V5
 
 One phase at a time; no machinery ahead of the contract it serves.

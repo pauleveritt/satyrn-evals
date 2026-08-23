@@ -13,15 +13,17 @@ fixes are built on. The features built into the engine are the ones that
 evidence surfaces.
 
 Its only seam into the engine is an executable {term}`attempt command`, run
-inside an eval-owned disposable workspace with task, contract, patch, and
-transcript paths supplied through environment variables. Evals never imports engine internals; a fake command
-satisfies the same seam, and V4 runs `satyrn-engine attempt` in that same
-slot — so eval development never waits for the real engine.
+inside an eval-owned detached worktree with task, contract, patch, and
+transcript paths supplied through environment variables. Evals never imports
+engine internals; a fake command satisfies the same seam, and V4 runs
+`satyrn-engine attempt` in that same slot.
 
 ## Status
 
 Phases completed, each with its design spec and implementation plan:
 
+- **V4 — A real engine attempt.** Evals reconstructs an isolated Git
+  workspace and runs `satyrn-engine attempt` through the executable seam.
 - **V3 — Attempt persistence.** `attempt TASK -- COMMAND...` runs the seam,
   preserves patch and transcript, and grades the preserved patch offline.
 - **V2 — Capture by revert.** `capture --revert SHA` creates a verified task
@@ -31,8 +33,9 @@ Phases completed, each with its design spec and implementation plan:
   accepts a bundled task's known-good patch and rejects its known-broken
   one, offline and deterministic. ({doc}`spec <superpowers/specs/2026-08-16-v1-grade-design>`, {doc}`plan <superpowers/plans/2026-08-16-v1-grade>`)
 
-The next eval phase is **V4 — A real engine attempt**, after engine E5; the roadmap of feature
-cycles lives in [`ROADMAP.md`](https://github.com/pauleveritt/satyrn-evals/blob/main/ROADMAP.md). The `e1` git tag holds the
+Before V5, the project needs eval tasks whose baseline results show useful
+headroom. The roadmap of feature cycles lives in
+[`ROADMAP.md`](https://github.com/pauleveritt/satyrn-evals/blob/main/ROADMAP.md). The `e1` git tag holds the
 scaffolded starting state — toolchain, docs stack, CI, the brief, the
 roadmap, and the harvest index — for learners following along step by
 step.
@@ -72,11 +75,10 @@ the task's base state, runs the task's
 {term}`oracle`, and writes a {term}`receipt` whose {term}`verdict` —
 `pass`, `fail`, or `unavailable` — never comes from stdout or an exit code.
 
-The road ahead: `capture --revert SHA` makes a task winnable by
-construction in minutes; `attempt TASK -- COMMAND...` runs the seam and
-preserves patch and transcript; `run --n 8` produces the diagnostic
-summary. The engine enters as a command — `satyrn-engine attempt` — in the
-same slot a fake command occupies today.
+`capture --revert SHA` makes a task winnable by construction in minutes;
+`attempt TASK -- COMMAND...` runs the seam and preserves patch and transcript.
+For Engine-capable tasks, evals creates a clean detached worktree and invokes
+`satyrn-engine attempt`. A future `run --n 8` produces the diagnostic summary.
 
 ### What is planned
 
@@ -89,7 +91,7 @@ One phase at a time, each shipping one user-visible behavior:
 - **V3 — Attempt persistence.** `attempt TASK -- COMMAND...` runs a fake
   command, persists patch and transcript, regrades offline. *Complete.*
 - **V4 — A real engine attempt.** The same artifact set, produced by
-  `satyrn-engine attempt` (engine phase E5). *Waiting for E5.*
+  `satyrn-engine attempt` (engine phase E5). *Complete.*
 - **V5 — The diagnostic loop.** `run --n 8` plus a summary: verdict
   reasons, repeated calls, churn, tool calls, context, timeouts.
   *Not started.*

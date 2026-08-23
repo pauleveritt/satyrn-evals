@@ -1,6 +1,6 @@
 # Usage
 
-V3 ships three commands: `grade`, `capture`, and `attempt`. See the
+V4 ships three commands: `grade`, `capture`, and `attempt`. See the
 [glossary](glossary.md) for the vocabulary.
 
 ## grade
@@ -137,13 +137,12 @@ $ satyrn-evals grade --tasks-root tasks fix-off-by-one tasks/fix-off-by-one/fixt
 
 ## attempt
 
-Run an {term}`attempt command` against a {term}`task` in a disposable work
-copy of the task's base, preserve the patch and transcript the command
-delivers, and grade the preserved patch offline — the engine seam exercised
-end to end, with no model and no network.
+Run an {term}`attempt command` against a {term}`task` in a clean detached
+worktree reconstructed from the task base, preserve the patch and transcript
+the command delivers, and grade the preserved patch offline.
 
 ```console
-satyrn-evals attempt TASK [--tasks-root DIR] [--output DIR] -- COMMAND...
+satyrn-evals attempt TASK [--tasks-root DIR] [--output DIR] [--timeout SECONDS] -- COMMAND...
 ```
 
 - `TASK` — a {term}`task` name (bundled, or under `--tasks-root`), resolved
@@ -152,19 +151,22 @@ exactly as `grade`'s.
 ship in the wheel.
 - `--output DIR` — the directory under which the attempt directory is
 created; default `./attempts/`.
+- `--timeout SECONDS` — a positive finite command deadline; default `30`.
 - `-- COMMAND...` — the {term}`attempt command`: an executable plus its
 arguments. The `--` is required and separates evals' own flags from the
 command; everything after the first `--` is the command verbatim. A missing
 `--` or an empty command is a usage error.
 
-The command runs in a disposable temporary work copy of the task's base,
-with the inputs `SATYRN_TASK_NAME` and `SATYRN_TASK_CONTRACT` and the
+The command runs once in a clean detached Git worktree at the exact synthetic
+base commit. Evals owns and removes the private repository and linked worktree.
+The command receives the inputs `SATYRN_TASK_NAME` and
+`SATYRN_TASK_CONTRACT` and the
 reserved delivery paths `SATYRN_ATTEMPT_PATCH` and
 `SATYRN_ATTEMPT_TRANSCRIPT` in its environment. The delivery paths sit
 inside the attempt directory and are never created up front — a silent
 command leaves no file, which is refused, never a clean pass. The command
 writes its patch to `SATYRN_ATTEMPT_PATCH` and its transcript to
-`SATYRN_ATTEMPT_TRANSCRIPT`. **The command's cwd is a temporary work copy,
+`SATYRN_ATTEMPT_TRANSCRIPT`. **The command's cwd is a temporary detached worktree,
 so the command's own paths — its script, its `--patch` argument — must be
 absolute; relative paths inside the command resolve there.**
 `--output` is different: evals resolves it itself, so a relative
@@ -172,13 +174,25 @@ absolute; relative paths inside the command resolve there.**
 it and are always absolute — the command's cwd being elsewhere does not
 matter for them.
 
+If the task manifest declares `engine_contract`, evals validates its safe
+task-relative path without parsing the file, then appends its absolute path to
+the command. This is why an Engine command prefix ends with its own literal
+`--`; evals supplies the final contract argument. A V3/custom task without the
+field receives no extra argument.
+
+On POSIX, timeout handling terminates and reaps the command process group
+before removing the worktree. Cleanup that cannot be confirmed becomes
+`CLEANUP_FAILED`, and `attempt.json` names the retained path. The command is
+trusted and runs with the user's permissions; the worktree is not a security
+sandbox. Windows is outside the V4 proof.
+
 ### Exit codes
 
 | Code | Meaning |
 |------|---------|
 | 0 | Attempted and graded; the {term}`attempt record` says `verdict: pass` or `fail` |
 | 2 | Usage error — unknown {term}`task`, missing/empty command, command cannot start |
-| 3 | Refusal (`NO_PATCH`, `PATCH_INVALID`, `TRANSCRIPT_MISSING`, `TRANSCRIPT_EMPTY`) or verdict `unavailable` |
+| 3 | Artifact, workspace, timeout, or cleanup refusal; or verdict `unavailable` |
 
 The {term}`attempt record` and the {term}`receipt` — not the exit code — are
 the result. The exit code is coarse by design.
@@ -211,13 +225,16 @@ attempt.json      # always
   "patch_digest": "251a3d81e289f932d69bb1d93116fda757f47b9dcbdb11e9bc68aab7dd687ebc",
   "transcript_digest": "68b680be59b044860a88a04d273ef8df0a3482539ba133c8154d2c4880a56c17",
   "verdict": "pass",
-  "receipt_path": "receipt.json"
+  "receipt_path": "receipt.json",
+  "workspace_base_sha": "…",
+  "retained_path": null
 }
 ```
 
 The record is authoritative; the exit code is coarse. `command_exit` is
 recorded as diagnostic context and never trusted — a command that exits
-nonzero with complete artifacts is still attempted and graded. `patch_digest`
+nonzero with complete artifacts is still attempted and graded. It is null if
+no normal child exit was observed. `patch_digest`
 is the sha256 of the persisted `patch.diff`, the same value the
 {term}`receipt` records — one source, no drift. A refusal keeps the same
 shape with `outcome: refused`, a precise `code`, `verdict` and
@@ -245,4 +262,15 @@ $ echo $?
 
 Verdict `pass` — read the {term}`attempt record` or the {term}`receipt` in
 the attempt directory. Every path the command touches is absolute: its cwd
-is a disposable work copy.
+is a disposable worktree.
+
+For the bundled Engine-capable task:
+
+```console
+$ satyrn-evals attempt format_number --timeout 30 -- \
+    uv run --project /src/satyrn-engine satyrn-engine attempt \
+    --model=MODEL --
+```
+
+Evals appends `engine-contract.yaml`; Engine writes the patch and transcript
+through the same reserved artifact paths used by the fake command.
