@@ -1,7 +1,7 @@
 # V2 — Capture by revert: design spec
 
-**Phase:** V2 (`ROADMAP.md:20`). **Date:** 2026-08-18. **Status:** accepted;
-corrected design 2026-08-19.
+**Phase:** V2 (`ROADMAP.md:20`). **Date:** 2026-08-18. **Status:** implemented;
+corrected 2026-08-19.
 
 ## Correction — 2026-08-19 (normative)
 
@@ -420,6 +420,22 @@ repository with a known fixing commit:
 - source-local output proves repeated capture works while tracked output
   subtrees and collision targets cannot hide or overwrite source/artifacts;
 - the source repository's reflog is unchanged after a successful capture.
+
+## Correction verification — 2026-08-19
+
+Verified from the corrected tree, not inferred from the plan:
+
+- default tier: 269 passed, 84 integration tests deselected;
+- integration tier: 83 passed, 1 capability skip because this APFS host
+  rejects a raw non-UTF-8 filename before the test can create it;
+- combined source coverage: 1,203 statements and 380 branches, 100% for
+  both, after combining default, integration, and covered child processes;
+- Ruff, Pyrefly, strict Sphinx, and `git diff --check`: clean.
+
+The reproducible coverage sequence is `coverage erase`, `coverage run -m
+pytest`, `coverage run -m pytest -m integration`, `coverage combine`, then
+`coverage report`. The two runs intentionally do not use `--append` because
+subprocess coverage writes parallel data files that `coverage combine` owns.
 
 ## File layout
 

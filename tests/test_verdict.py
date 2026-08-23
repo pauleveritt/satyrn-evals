@@ -1,6 +1,7 @@
 import json
 import time
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -121,3 +122,47 @@ def test_load_hook_result_non_list_collect_errors_rejected(tmp_path) -> None:
     path.write_text(json.dumps(data))
     with pytest.raises(HookError, match="collect_errors"):
         load_hook_result(path, time.time() - 100)
+
+
+@pytest.mark.parametrize(
+    ("data", "message"),
+    [
+        ([], "not an object"),
+        ({}, "missing fields"),
+        (
+            _hook_data(cast(Any, [1]), cast(Any, {1: "passed"})),
+            "executed_test_ids must be strings",
+        ),
+        (
+            {"executed_test_ids": ["a"], "outcomes": [], "counts": {}},
+            "outcomes and counts must be objects",
+        ),
+        (_hook_data(["a"], {"b": "passed"}), "outcomes do not match"),
+        (
+            {
+                "executed_test_ids": ["a"],
+                "outcomes": {"a": "unknown"},
+                "counts": {"passed": 0, "failed": 0, "error": 0, "skipped": 0},
+            },
+            "unknown outcome",
+        ),
+        (
+            {"executed_test_ids": [], "outcomes": {}, "counts": {}},
+            "counts must hold one integer",
+        ),
+    ],
+)
+def test_load_hook_result_rejects_invalid_shapes(
+    tmp_path: Path, data: object, message: str
+) -> None:
+    path = tmp_path / "hook.json"
+    path.write_text(json.dumps(data))
+    with pytest.raises(HookError, match=message):
+        load_hook_result(path, time.time() - 100)
+
+
+def test_describe_generic_unavailable() -> None:
+    hook = HookResult(
+        ("a",), {"a": "passed"}, {"passed": 1, "failed": 0, "error": 0, "skipped": 0}
+    )
+    assert describe_unavailable(hook, ("a",)) == "verdict unavailable"
