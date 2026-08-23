@@ -14,7 +14,7 @@ uv run pyrefly check     # type-check
 ```
 
 `just docs` runs the same strict Sphinx build CI runs; `just watch-docs`
-serves a live-rebuilding copy at http://127.0.0.1:8000.
+serves a live-rebuilding copy at http://127.0.0.1:8003.
 
 ## Repository conventions
 

@@ -425,10 +425,10 @@ repository with a known fixing commit:
 
 Verified from the corrected tree, not inferred from the plan:
 
-- default tier: 269 passed, 84 integration tests deselected;
-- integration tier: 83 passed, 1 capability skip because this APFS host
+- default tier: 269 passed, 85 integration tests deselected;
+- integration tier: 84 passed, 1 capability skip because this APFS host
   rejects a raw non-UTF-8 filename before the test can create it;
-- combined source coverage: 1,203 statements and 380 branches, 100% for
+- combined source coverage: 1,200 statements and 378 branches, 100% for
   both, after combining default, integration, and covered child processes;
 - Ruff, Pyrefly, strict Sphinx, and `git diff --check`: clean.
 
