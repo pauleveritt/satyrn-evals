@@ -35,14 +35,15 @@ them lands.
 | V2 | Capture by revert | `capture --revert SHA` makes a task winnable by construction, in minutes | **complete** |
 | V3 | Attempt persistence | `attempt TASK -- COMMAND...` runs a fake command, persists patch and transcript, regrades offline | **complete** |
 | V4 | A real engine attempt | The same artifact set, produced by `satyrn-engine attempt` (engine phase E5) | **current; waiting for E5** |
-| V5 | The diagnostic loop | `run --n 8` plus a summary: verdict reasons, repeated calls, churn, tool calls, context, timeouts | not started |
+| V5 | The diagnostic loop | admit tasks with a recorded n=4–6 baseline probe, then `run --n 8` and summarize verdict reasons, repeated calls, churn, tool calls, context, and timeouts | not started |
 
 Full done-when criteria are in `BRIEF.md`'s referenced roadmap research, not
 restated here to avoid drift between two copies.
 
 **Design work owed, not a phase:** a suite with headroom. See `BRIEF.md`'s
-"The unsolved problem." V5's summary is only informative on tasks whose
-baseline can move, and nothing here reliably produces those yet.
+"The unsolved problem." V3 deliberately persisted single attempts without
+claiming a baseline. V4 supplies the real engine attempt; before V5 admits a
+task, an n=4–6 baseline probe must show that the task has room to move.
 
 ## Backlog
 

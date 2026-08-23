@@ -99,8 +99,11 @@ write exception.
 
 Phases completed, each with its design spec and implementation plan:
 
-- [_V2_](https://github.com/pauleveritt/satyrn-evals/tree/v2) — capture by
-  revert. `satyrn-evals capture --revert SHA` turns a fixing commit into a
+- **V3 — Attempt persistence.** `attempt TASK -- COMMAND...` runs the seam,
+  preserves patch and transcript, and grades the preserved patch offline.
+  ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-08-18-v3-attempt-persistence-design.md),
+  [_plan_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/plans/2026-08-18-v3-attempt-persistence.md))
+- **V2 — Capture by revert.** `satyrn-evals capture --revert SHA` turns a fixing commit into a
   task winnable by construction, in minutes, without changing pre-existing
   source state outside its declared `--output` artifacts.
   ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-08-18-v2-capture-by-revert-design.md),

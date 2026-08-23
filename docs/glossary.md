@@ -82,8 +82,8 @@ integration tier
 
 manifest
   A task's `manifest.json`: name, contract, {term}`oracle` command,
-  expected test IDs, source {term}`allowlist`, and the two fixture
-  {term}`patch` paths.
+  expected test IDs, source {term}`allowlist`, a known-good fixture
+  {term}`patch` path, and an optional known-broken fixture patch path.
 
 oracle
   The {term}`manifest`'s command that decides whether a {term}`patch` is

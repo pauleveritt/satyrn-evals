@@ -24,8 +24,8 @@ Phases completed, each with its design spec and implementation plan:
 
 - **V3 — Attempt persistence.** `attempt TASK -- COMMAND...` runs the seam,
   preserves patch and transcript, and grades the preserved patch offline.
-- [_V2_](https://github.com/pauleveritt/satyrn-evals/tree/v2) — capture by
-  revert. `capture --revert SHA` creates a verified task from a fixing commit.
+- **V2 — Capture by revert.** `capture --revert SHA` creates a verified task
+  from a fixing commit.
 - [_V1_](https://github.com/pauleveritt/satyrn-evals/tree/v1) — it
   installs and grades. `satyrn-evals grade TASK PATCH [--receipt PATH]`
   accepts a bundled task's known-good patch and rejects its known-broken
