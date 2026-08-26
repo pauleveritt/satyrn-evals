@@ -110,10 +110,16 @@ def attempt(
     env[TRANSCRIPT_ENV] = str(transcript_path)
     env["PATH"] = str(Path(sys.executable).parent) + os.pathsep + env.get("PATH", "")
 
+    effective_command = list(command)
+    if manifest.engine_contract is not None:
+        effective_command.append(
+            os.fspath(Path(os.path.abspath(task_dir / manifest.engine_contract)))
+        )
+
     workspace = run_workspace(
         base=task_dir / "base",
         protected_paths=(task_dir, output, Path.cwd()),
-        command=command,
+        command=effective_command,
         environment=env,
         timeout=timeout,
     )
@@ -128,7 +134,7 @@ def attempt(
             patch_path=patch_path,
             transcript_path=transcript_path,
             manifest=manifest,
-            command=command,
+            effective_command=effective_command,
         )
     except BaseException as exc:
         if workspace.code is WorkspaceCode.CLEANUP_FAILED:
@@ -147,7 +153,7 @@ def _finish_attempt(
     patch_path: Path,
     transcript_path: Path,
     manifest: TaskManifest,
-    command: list[str],
+    effective_command: list[str],
 ) -> AttemptRecord:
     """Preserve, grade, and record artifacts after the workspace is settled."""
     command_exit = workspace.command_exit
@@ -199,7 +205,7 @@ def _finish_attempt(
             code=code,
             message=message,
             task=manifest.name,
-            command=tuple(command),
+            command=tuple(effective_command),
             command_exit=command_exit,
             patch_path="patch.diff" if patch_bytes is not None else None,
             transcript_path="transcript.txt" if transcript_bytes is not None else None,
@@ -220,7 +226,7 @@ def _finish_attempt(
         code=AttemptCode.OK,
         message="attempt recorded and graded",
         task=manifest.name,
-        command=tuple(command),
+        command=tuple(effective_command),
         command_exit=command_exit,
         patch_path="patch.diff",
         transcript_path="transcript.txt",

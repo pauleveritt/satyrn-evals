@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -484,3 +485,31 @@ def test_artifact_read_oserror_is_contained(
     value, error = attempt_module._read_artifact(artifact, "patch")
     assert value is None
     assert error is not None and "cannot read" in error
+
+
+def test_attempt_appends_opaque_engine_contract_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tasks_root = tmp_path / "tasks"
+    task_dir = _task(tasks_root)
+    contract = task_dir / "engine-contract.yaml"
+    contract.write_bytes(b"opaque\n")
+    data = json.loads((task_dir / "manifest.json").read_text())
+    data["engine_contract"] = "engine-contract.yaml"
+    (task_dir / "manifest.json").write_text(json.dumps(data))
+    observed: list[str] = []
+
+    def fake_workspace(**kwargs: Any) -> WorkspaceResult:
+        observed.extend(kwargs["command"])
+        return WorkspaceResult(WorkspaceCode.OK, "ok", 0, "b" * 40)
+
+    monkeypatch.setattr(attempt_module, "run_workspace", fake_workspace)
+    record = attempt_module.attempt(
+        task="t",
+        tasks_root=tasks_root,
+        output=tmp_path / "attempts",
+        command=["engine", "attempt", "--"],
+    )
+    expected = os.fspath(contract.resolve())
+    assert observed == ["engine", "attempt", "--", expected]
+    assert record.command == ("engine", "attempt", "--", expected)

@@ -1,6 +1,7 @@
 """Bundled task manifests: load, validate, resolve by name."""
 
 import json
+import stat
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -21,6 +22,37 @@ class TaskManifest:
     source_paths: tuple[str, ...]
     fixtures: dict[str, str]
     provenance: Provenance | None = None
+    engine_contract: str | None = None
+
+
+def _validate_engine_contract(task_dir: Path, value: object) -> str | None:
+    """Validate an opaque Engine contract's path without reading its bytes."""
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value:
+        raise ManifestError("engine_contract must be a non-empty relative path string")
+    parts = value.split("/")
+    if value.startswith("/") or "\\" in value or "\0" in value or any(
+        part in ("", ".", "..") for part in parts
+    ):
+        raise ManifestError("engine_contract must be a safe relative POSIX path")
+    cursor = task_dir
+    for index, part in enumerate(parts):
+        cursor /= part
+        try:
+            mode = cursor.lstat().st_mode
+        except FileNotFoundError as exc:
+            raise ManifestError(f"engine contract file missing: {value}") from exc
+        except OSError as exc:
+            raise ManifestError(f"cannot inspect engine contract {value}: {exc}") from exc
+        if stat.S_ISLNK(mode):
+            raise ManifestError("engine_contract must not contain symbolic links")
+        final = index == len(parts) - 1
+        if final and not stat.S_ISREG(mode):
+            raise ManifestError("engine_contract must name a regular file")
+        if not final and not stat.S_ISDIR(mode):
+            raise ManifestError("engine_contract parent must be a directory")
+    return value
 
 
 def load_manifest(task_dir: Path) -> TaskManifest:
@@ -83,6 +115,7 @@ def load_manifest(task_dir: Path) -> TaskManifest:
             continue
         if not (task_dir / fixtures[key]).is_file():
             raise ManifestError(f"fixture file missing: {fixtures[key]}")
+    engine_contract = _validate_engine_contract(task_dir, data.get("engine_contract"))
     return TaskManifest(
         name=name,
         contract=contract,
@@ -91,6 +124,7 @@ def load_manifest(task_dir: Path) -> TaskManifest:
         source_paths=sources,
         fixtures=fixtures,
         provenance=provenance,
+        engine_contract=engine_contract,
     )
 
 
