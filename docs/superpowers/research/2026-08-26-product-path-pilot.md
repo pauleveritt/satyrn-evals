@@ -1,9 +1,9 @@
 # Product-path pilot: Baseline, Envelope, and Engine
 
 **Date:** 2026-08-26–27
-**Status:** pilot; completed locally; not a V5 baseline admission  
-**Model:** `omlx/gemma-4-12B-it-MLX-8bit`  
-**Pi:** 0.84.1  
+**Status:** pilot; completed locally; not a V5 baseline admission
+**Model:** `omlx/gemma-4-12B-it-MLX-8bit`
+**Pi:** 0.84.1
 **oMLX:** 0.6.0rc1
 
 ## Question and scope
