@@ -10,9 +10,10 @@ Backlog, not into the current phase.*
 
 ## Now
 
-**Phase V4 — A real engine attempt. Waiting for engine E5.** V3's executable
-seam is complete; V4 uses the same artifact set with `satyrn-engine attempt`.
-See the Phases table below and `BRIEF.md` for the binding rules.
+**V4 is complete. Suite headroom is next.** Before V5 starts, baseline probes
+must identify tasks between the floor and ceiling so the diagnostic loop has
+something useful to measure. See the Phases table below and `BRIEF.md` for the
+binding rules.
 
 ## Concept budget
 
@@ -21,11 +22,10 @@ the design in mind. Checked and updated at the end of each cycle; a term
 earns its place by naming something the design actually needs, not by being
 convenient shorthand.*
 
-The seed terms plus V2's additions — **capture record**, **discriminating
-set**, **provenance** — are defined in this repository's own words in
+The terms used through V4 are defined in this repository's own words in
 [`docs/glossary.md`](docs/glossary.md), checked and updated at the end of
-V2. Terms for later phases earn their place when the phase that needs
-them lands.
+V4. Terms for later phases earn their place when the phase that needs them
+lands.
 
 ## Phases
 
@@ -34,7 +34,7 @@ them lands.
 | V1 | It installs and grades | `grade` accepts a bundled task's known-good patch and rejects its known-broken one, offline and deterministic | **complete** |
 | V2 | Capture by revert | `capture --revert SHA` makes a task winnable by construction, in minutes | **complete** |
 | V3 | Attempt persistence | `attempt TASK -- COMMAND...` runs a fake command, persists patch and transcript, regrades offline | **complete** |
-| V4 | A real engine attempt | The same artifact set, produced by `satyrn-engine attempt` (engine phase E5) | **current; waiting for E5** |
+| V4 | A real engine attempt | Reconstruct an isolated Git workspace and produce the V3 artifact set with `satyrn-engine attempt` | **complete** |
 | V5 | The diagnostic loop | admit tasks with a recorded n=4–6 baseline probe, then `run --n 8` and summarize verdict reasons, repeated calls, churn, tool calls, context, and timeouts | not started |
 
 Full done-when criteria are in `BRIEF.md`'s referenced roadmap research, not
@@ -58,6 +58,10 @@ checkpoint transplants verbatim); the whole claims layer.
 Completed phases move here (or to `docs/superpowers/phase-history.md`)
 when the roadmap outgrows the front page.
 
+- **V4 — A real engine attempt (2026-08-23).** Evals reconstructs a private
+  Git repository from the persisted task base, runs the executable once in a
+  detached worktree, preserves its artifacts before cleanup, and proves the
+  seam with a real Engine E5 attempt.
 - **V3 — Attempt persistence (2026-08-18).** `attempt TASK -- COMMAND...`
   runs an executable through the environment seam in a disposable workspace,
   preserves patch and transcript before cleanup, grades the preserved patch,
