@@ -147,6 +147,13 @@ record "unavailable" with a distinct exit code.
 - Of four tasks in a 64-attempt pre-registered batch, **one** discriminated;
   two were ceiling-tied and one floor-tied. Validity is not discriminating
   power — hence the baseline probe.
+- A corrected baseline probe recorded **0/4 successful attempts**, but two
+  timed-out attempts retained patches that each passed five fresh 89-test
+  preservation runs. Attempt completion, retained-patch production, and the
+  conditional quality of retained patches are different measurements; record
+  them before running if they matter, and never switch the admission metric
+  after seeing the result. See the
+  [`local-pings` corrected probe](2026-08-27-local-pings-corrected-probe.md).
 - Two prompt variants of one suite differ by 27 words and by 0/16 versus
   15/16. **Facts work; rules of conduct do not** — across five interventions,
   the three supplying a missing fact worked and the two supplying a rule of
