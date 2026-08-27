@@ -49,10 +49,14 @@ the corrected probe then recorded 0/4 successful attempts, while two timed-out
 attempts retained patches that passed the corrected oracle and preservation
 suite. Before V5, admission must keep successful attempt outcomes, retained
 patch production, and the conditional quality of retained patches separate
-rather than choosing a metric after seeing the result. The two records are the
-[`oracle audit`](docs/superpowers/research/2026-08-27-local-pings-baseline-probe.md)
+rather than choosing a metric after seeing the result. A follow-up recorded a
+budget-only Envelope variant at 0/4 and the handoff-contract Engine composite
+at 2/4, which is useful product-path evidence but does not move the Baseline
+off its floor. The three records are the
+[`oracle audit`](docs/superpowers/research/2026-08-27-local-pings-baseline-probe.md),
+the [`corrected probe`](docs/superpowers/research/2026-08-27-local-pings-corrected-probe.md),
 and the
-[`corrected probe`](docs/superpowers/research/2026-08-27-local-pings-corrected-probe.md).
+[`Envelope/Engine follow-up`](docs/superpowers/research/2026-08-27-local-pings-envelope-engine-followup.md).
 
 ## Backlog
 
