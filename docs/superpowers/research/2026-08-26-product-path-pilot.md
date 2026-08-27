@@ -57,7 +57,8 @@ synthetic source fix: 22df960696a2b76a37165067a000e0d163398915
 | Repetitions | one smoke per arm, excluded; then n=6 per arm |
 | Schedule | Baseline, Envelope, then Engine, interleaved for six blocks |
 | Model | `omlx/gemma-4-12B-it-MLX-8bit` |
-| Context / max output | 80,000 / 8,192 tokens |
+| Pi-declared context / max output | 80,000 / 8,192 tokens |
+| oMLX configured context ceiling | 32,768 tokens |
 | Tools exposed | `read`, `edit` |
 | Outer deadline | 900 seconds |
 | Isolation | Evals-owned detached worktree |
