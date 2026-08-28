@@ -172,10 +172,12 @@ record "unavailable" with a distinct exit code.
 - A fresh `stringified-annotations` capture also recorded **0/4** under bare
   Pi plus Gemma. Two invocations retained partial patches, passing 120/125 and
   124/125 full-suite tests, but neither passed the final five-case oracle. The
-  exact upstream fix passes all 125 tests, and three deliberately naive
-  alternatives fail every selected case. A prior two-case probe was
-  superseded after review found a parameter-name loophole. The task is
-  winnable but remains a floor for this arm; see the
+  exact upstream fix passes all 125 test IDs in the strengthened suite, and
+  three deliberately naive alternatives fail every selected case. A prior
+  two-case probe was superseded after review found a parameter-name loophole.
+  The earlier three-arm pilot's Engine patch passes 125/125 when regraded on
+  the strengthened suite, but its arm rates use a different protocol. The task
+  is winnable but remains a floor for this arm; see the
   [`stringified-annotations` probe](2026-08-29-stringified-annotations-baseline-probe.md).
 - Two prompt variants of one suite differ by 27 words and by 0/16 versus
   15/16. **Facts work; rules of conduct do not** — across five interventions,

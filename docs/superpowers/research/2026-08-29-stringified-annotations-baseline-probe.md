@@ -14,9 +14,10 @@ attempts retained patches, but neither passed the oracle when regraded
 offline.
 
 The task is winnable: the exact upstream source fix passes the final oracle and
-all 125 upstream tests. The result only establishes a floor for bare Pi plus
-this Gemma checkpoint under the frozen conditions. It does not measure an
-Envelope or Engine effect.
+all 125 test IDs in the strengthened suite. Five IDs carry curator-authored
+assertions in addition to their upstream behavior. The result only establishes
+a floor for bare Pi plus this Gemma checkpoint under the frozen conditions. It
+does not measure an Envelope or Engine effect.
 
 ## Capture and oracle construction
 
@@ -25,11 +26,11 @@ against upstream base `4b05ab8` and target `f81e493` therefore correctly
 refused with `NO_DISCRIMINATING_TESTS`: reverting the target also removes the
 tests that expose the bug.
 
-The synthetic history places the exact upstream test diff on the parent, then
-applies the exact upstream source diff. The final oracle selects all five
-upstream string-annotation forms. Preservation checks live inside every
-selected parameterized case, so capture cannot narrow them away. A candidate
-must also:
+The synthetic history has three commits: the exact upstream test diff at
+`0434a42`, five curator-authored assertions added at `eab660a`, and the exact
+upstream source diff at `a5d3ecd`. The final oracle selects all five upstream
+string-annotation parameterizations, including the curator assertions inside
+each case so capture cannot narrow them away. A candidate must also:
 
 - reject an unrelated string annotation for `Registry`;
 - recognize unqualified and qualified `Container` annotations when the
@@ -60,14 +61,17 @@ upstream base:        4b05ab8465f3d9a5ce7d1e40eaf808b0cb92a26c
 upstream target:      f81e493487d872198981fa6cefb3a0d93ab03c08
 synthetic base:       eab660aae2ded93e0bf18010d88df6df445adf74
 synthetic fix:        a5d3ecd61cef43a89b410ead069d2082011506f5
+exact test split:     0434a42e2eb5b4b1c676fea5c6cc565bc6c4482d
 known-good patch:     b4dc310c2266280be05f034b2f24bb11cee427f1528a7d710d4ddeb402af48aa
 final test file:      0339537c76f99fb81d9fa8b2d790c9db521573176e1e209f4de00d85dea6f3aa
 ```
 
 V2 capture passed source-preflight, base-oracle, un-done-at-base, and
-winnable checks. All five selected cases fail at the synthetic base. The exact
-upstream source fix passes them, their preservation checks, and all 125
-upstream tests.
+winnable checks. At the synthetic base, the two unqualified upstream target
+forms fail their original assertion. The three qualified forms already pass
+their original assertion but fail the curator-authored `dependency` checks, so
+all five selected cases discriminate. The exact upstream source fix passes all
+selected behavior and all 125 test IDs in the strengthened suite.
 
 The Evals phase commit recorded by the frozen protocol was `9f2aec1`. Its tree
 `921f23f` was identical to origin/main's merge commit `b0029b6` at run time.
@@ -105,12 +109,27 @@ violations.
 The two retained patches show partial progress, but both fail selected target
 behavior rather than unrelated preservation tests.
 
+## Relationship to the product-path pilot
+
+The earlier [three-arm product-path pilot](2026-08-26-product-path-pilot.md)
+recorded Baseline 0/6, Envelope 0/6, and Engine 6/6 on this task. It used the
+same two upstream parameterizations as the superseded probe, but predated that
+probe's curator assertions. It therefore did not test the parameter-name
+loophole or the three qualified forms.
+
+All six Engine runs in that pilot produced one byte-identical patch
+(`dc29f84a...`). That patch has now been regraded against the strengthened
+five-case suite and passes all 125/125 test IDs, including the curator
+assertions. This confirms that the pilot's Engine solution remains valid under
+the final oracle. The pilot still has a different three-arm protocol, so its
+arm rates are not combined with this fresh one-arm baseline result.
+
 ## What this establishes
 
 - A mixed test-and-source upstream commit can require a synthetic test/source
   split even when its behavior is suitable for an eval.
 - The final oracle protects target generality and existing behavior while
-  accepting the exact upstream fix and the complete upstream suite.
+  accepting the exact upstream fix and the strengthened 125-test suite.
 - Under this bare arm the task remains a floor. Its old Cycle 7 discrimination
   does not by itself qualify the rebooted task under the current protocol.
 - The timeouts, edit mismatch, missing repository discovery, and unresolved
@@ -121,12 +140,12 @@ behavior rather than unrelated preservation tests.
 
 The evidence bundle contains the direct-capture refusal, captured task,
 protocol, final and superseded probes, receipts, full-suite and oracle-audit
-JUnit records, and a script that recomputes both decisions from primary
-artifacts:
+JUnit records, the prior pilot Engine-patch regrade, and a script that
+recomputes both decisions from primary artifacts:
 
 ```text
 /Users/koudai/work/satyrn/evidence/2026-08-29-stringified-annotations-final-baseline-probe.tar.gz
-sha256: 2020f2cfed8083b19b42bb2ac525e14561653a1e17198a03c52490f8255f49f7
+sha256: e477e93c98240d67132c0f6e2308e27e9ab93046cd22b617a090ba61c9145413
 ```
 
 Verify an extracted bundle with:
