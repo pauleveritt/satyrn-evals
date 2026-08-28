@@ -147,6 +147,11 @@ the existing non-network tests are outside that directory.
 It does not establish an Engine improvement, admit a V5 diagnostic workload,
 or justify counting a timed-out patch as a successful product outcome.
 
+**Follow-up:** a fixed Envelope/Engine experiment kept this Baseline at 0/4,
+recorded a budget-only Envelope variant at 0/4, and recorded the
+handoff-contract Engine composite at 2/4. The task remains unadmitted; see the
+[`local-pings` Envelope and Engine follow-up](2026-08-27-local-pings-envelope-engine-followup.md).
+
 ## Evidence and recomputation
 
 The local evidence bundle contains the immutable protocol, corrected synthetic

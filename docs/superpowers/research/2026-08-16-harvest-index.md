@@ -154,6 +154,13 @@ record "unavailable" with a distinct exit code.
   them before running if they matter, and never switch the admission metric
   after seeing the result. See the
   [`local-pings` corrected probe](2026-08-27-local-pings-corrected-probe.md).
+- On that corrected task, a fixed follow-up recorded Baseline 0/4, a
+  budget-only Envelope variant at 0/4, and the handoff-contract Engine
+  composite at 2/4. The variant retained the Baseline's broader tool surface;
+  it was not a reproduction of the canonical `read,write` Envelope. Neither
+  its limits nor Engine's loop breaker fired. The result supports the current
+  product path but does not turn a floor Baseline into V5 headroom. See the
+  [`Envelope/Engine follow-up`](2026-08-27-local-pings-envelope-engine-followup.md).
 - Two prompt variants of one suite differ by 27 words and by 0/16 versus
   15/16. **Facts work; rules of conduct do not** — across five interventions,
   the three supplying a missing fact worked and the two supplying a rule of
