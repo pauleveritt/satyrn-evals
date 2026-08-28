@@ -44,10 +44,15 @@ restated here to avoid drift between two copies.
 "The unsolved problem." V3 deliberately persisted single attempts without
 claiming a baseline. V4 supplies the real engine attempt; before V5 admits a
 task, an n=4–6 baseline probe must show that the task has room to move.
-`local-pings` remains unadmitted because its current oracle accepted a
-non-preserving patch; its headroom is undetermined until a corrected probe.
-The evidence is recorded in
-[`docs/superpowers/research/2026-08-27-local-pings-baseline-probe.md`](docs/superpowers/research/2026-08-27-local-pings-baseline-probe.md).
+`local-pings` remains unadmitted. Its first probe exposed an unsound oracle;
+the corrected probe then recorded 0/4 successful attempts, while two timed-out
+attempts retained patches that passed the corrected oracle and preservation
+suite. Before V5, admission must keep successful attempt outcomes, retained
+patch production, and the conditional quality of retained patches separate
+rather than choosing a metric after seeing the result. The two records are the
+[`oracle audit`](docs/superpowers/research/2026-08-27-local-pings-baseline-probe.md)
+and the
+[`corrected probe`](docs/superpowers/research/2026-08-27-local-pings-corrected-probe.md).
 
 ## Backlog
 

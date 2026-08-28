@@ -6,6 +6,10 @@
 **Pi:** 0.84.1
 **oMLX:** 0.6.0rc1
 
+**Follow-up:** a preservation-safe oracle was built and used for a fresh
+probe. The task remains unadmitted; see the
+[`local-pings` corrected probe](2026-08-27-local-pings-corrected-probe.md).
+
 ## Decision
 
 Do not admit `local-pings` to V5 yet. The clean run's three-test oracle
