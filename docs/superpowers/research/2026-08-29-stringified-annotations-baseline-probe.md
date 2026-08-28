@@ -26,11 +26,14 @@ against upstream base `4b05ab8` and target `f81e493` therefore correctly
 refused with `NO_DISCRIMINATING_TESTS`: reverting the target also removes the
 tests that expose the bug.
 
-The synthetic history has three commits: the exact upstream test diff at
-`0434a42`, five curator-authored assertions added at `eab660a`, and the exact
-upstream source diff at `a5d3ecd`. The final oracle selects all five upstream
-string-annotation parameterizations, including the curator assertions inside
-each case so capture cannot narrow them away. A candidate must also:
+The synthetic capture history has three relevant commits. Commit `0434a42`
+combines the upstream test diff with three curator assertions for unrelated
+`Registry`, the `svcs_container` convention, and arity. Commit `eab660a` adds
+the two `dependency` assertions. Commit `a5d3ecd` applies the exact upstream
+source diff. There is no synthetic commit containing only the upstream test
+diff. The final oracle selects all five upstream string-annotation
+parameterizations, including the curator assertions inside each case so
+capture cannot narrow them away. A candidate must also:
 
 - reject an unrelated string annotation for `Registry`;
 - recognize unqualified and qualified `Container` annotations when the
@@ -61,7 +64,7 @@ upstream base:        4b05ab8465f3d9a5ce7d1e40eaf808b0cb92a26c
 upstream target:      f81e493487d872198981fa6cefb3a0d93ab03c08
 synthetic base:       eab660aae2ded93e0bf18010d88df6df445adf74
 synthetic fix:        a5d3ecd61cef43a89b410ead069d2082011506f5
-exact test split:     0434a42e2eb5b4b1c676fea5c6cc565bc6c4482d
+initial curated base: 0434a42e2eb5b4b1c676fea5c6cc565bc6c4482d
 known-good patch:     b4dc310c2266280be05f034b2f24bb11cee427f1528a7d710d4ddeb402af48aa
 final test file:      0339537c76f99fb81d9fa8b2d790c9db521573176e1e209f4de00d85dea6f3aa
 ```
@@ -145,7 +148,7 @@ recomputes both decisions from primary artifacts:
 
 ```text
 /Users/koudai/work/satyrn/evidence/2026-08-29-stringified-annotations-final-baseline-probe.tar.gz
-sha256: e477e93c98240d67132c0f6e2308e27e9ab93046cd22b617a090ba61c9145413
+sha256: f92704c705fa0d111d9b410b76415c877889f326d116cfe9222b206d842d2401
 ```
 
 Verify an extracted bundle with:
