@@ -1,0 +1,4 @@
+id: format_number
+task: Implement format_number(n) to return n with thousands separators.
+writable_paths:
+  - solution.py

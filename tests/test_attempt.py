@@ -1,15 +1,16 @@
 import json
-import subprocess
+import os
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Never
+from typing import Any
 
 import pytest
 
 import satyrn_evals.attempt as attempt_module
 from satyrn_evals.attempt import attempt_dir_name, decide_refusal
-from satyrn_evals.attempt_record import AttemptOutcome, AttemptRecord
+from satyrn_evals.attempt_record import AttemptCode, AttemptOutcome, AttemptRecord
 from satyrn_evals.errors import UsageError
+from satyrn_evals.workspace import WorkspaceCode, WorkspaceResult
 
 GOOD_PATCH = (
     "diff --git a/solution.py b/solution.py\n"
@@ -53,21 +54,25 @@ def _run_attempt(
     tasks_root = tmp_path / "tasks"
     _task(tasks_root)
 
-    def fake_run(
-        command: list[str], *, cwd: Path, env: dict[str, str], capture_output: bool
-    ) -> subprocess.CompletedProcess[bytes]:
+    def fake_run_workspace(**kwargs: Any) -> WorkspaceResult:
+        command = kwargs["command"]
+        env = kwargs["environment"]
         assert command == ["fake-agent"]
-        assert (Path(cwd) / "solution.py").is_file()
+        assert kwargs["base"] == tasks_root / "t" / "base"
         assert env[attempt_module.TASK_NAME_ENV] == "t"
         assert env[attempt_module.TASK_CONTRACT_ENV] == "Fix it."
-        assert capture_output is True
         if patch is not None:
             Path(env[attempt_module.PATCH_ENV]).write_bytes(patch)
         if transcript is not None:
             Path(env[attempt_module.TRANSCRIPT_ENV]).write_bytes(transcript)
-        return subprocess.CompletedProcess(command, 7)
+        return WorkspaceResult(
+            WorkspaceCode.OK,
+            "attempt command completed",
+            7,
+            "b" * 40,
+        )
 
-    monkeypatch.setattr(attempt_module.subprocess, "run", fake_run)
+    monkeypatch.setattr(attempt_module, "run_workspace", fake_run_workspace)
     output = tmp_path / "attempts"
     record = attempt_module.attempt(
         task="t", tasks_root=tasks_root, output=output, command=["fake-agent"]
@@ -139,10 +144,15 @@ def test_attempt_start_failure_removes_fresh_attempt_dir(
     tasks_root = tmp_path / "tasks"
     _task(tasks_root)
 
-    def cannot_start(*_args: object, **_kwargs: object) -> Never:
-        raise OSError("not executable")
+    def cannot_start(**_kwargs: object) -> WorkspaceResult:
+        return WorkspaceResult(
+            WorkspaceCode.COMMAND_UNAVAILABLE,
+            "attempt command cannot start: not executable",
+            None,
+            "b" * 40,
+        )
 
-    monkeypatch.setattr(attempt_module.subprocess, "run", cannot_start)
+    monkeypatch.setattr(attempt_module, "run_workspace", cannot_start)
     output = tmp_path / "attempts"
     with pytest.raises(UsageError, match="cannot start"):
         attempt_module.attempt(
@@ -154,9 +164,13 @@ def test_attempt_start_failure_removes_fresh_attempt_dir(
 @pytest.mark.parametrize(
     ("patch", "transcript", "code"),
     [
-        (None, TRANSCRIPT.encode(), "NO_PATCH"),
-        (GOOD_PATCH.encode(), None, "TRANSCRIPT_MISSING"),
-        (GOOD_PATCH.encode() + b"\xff\n", TRANSCRIPT.encode(), "PATCH_INVALID"),
+        (None, TRANSCRIPT.encode(), AttemptCode.NO_PATCH),
+        (GOOD_PATCH.encode(), None, AttemptCode.TRANSCRIPT_MISSING),
+        (
+            GOOD_PATCH.encode() + b"\xff\n",
+            TRANSCRIPT.encode(),
+            AttemptCode.PATCH_INVALID,
+        ),
     ],
 )
 def test_attempt_records_refusal(
@@ -164,7 +178,7 @@ def test_attempt_records_refusal(
     monkeypatch: pytest.MonkeyPatch,
     patch: bytes | None,
     transcript: bytes | None,
-    code: str,
+    code: AttemptCode,
 ) -> None:
     record, attempt_dir = _run_attempt(tmp_path, monkeypatch, patch, transcript)
     assert record.outcome is AttemptOutcome.REFUSED
@@ -175,3 +189,327 @@ def test_attempt_records_refusal(
         "transcript.txt" if transcript is not None else None
     )
     assert json.loads((attempt_dir / "attempt.json").read_text())["code"] == code
+
+
+@pytest.mark.parametrize(
+    ("workspace_code", "attempt_code", "retained"),
+    [
+        (WorkspaceCode.WORKSPACE_FAILED, AttemptCode.WORKSPACE_FAILED, None),
+        (WorkspaceCode.COMMAND_TIMEOUT, AttemptCode.COMMAND_TIMEOUT, None),
+        (
+            WorkspaceCode.CLEANUP_FAILED,
+            AttemptCode.CLEANUP_FAILED,
+            "/tmp/retained-worktree",
+        ),
+    ],
+)
+def test_attempt_records_workspace_refusal(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    workspace_code: WorkspaceCode,
+    attempt_code: AttemptCode,
+    retained: str | None,
+) -> None:
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+
+    def refused(**_kwargs: object) -> WorkspaceResult:
+        return WorkspaceResult(
+            workspace_code,
+            f"workspace result: {workspace_code}",
+            None,
+            "b" * 40,
+            retained,
+        )
+
+    monkeypatch.setattr(attempt_module, "run_workspace", refused)
+    output = tmp_path / "attempts"
+    record = attempt_module.attempt(
+        task="t", tasks_root=tasks_root, output=output, command=["fake-agent"]
+    )
+    assert record.outcome is AttemptOutcome.REFUSED
+    assert record.code is attempt_code
+    assert record.message == f"workspace result: {workspace_code}"
+    assert record.command_exit is None
+    assert record.workspace_base_sha == "b" * 40
+    assert record.retained_path == retained
+
+
+def test_workspace_refusal_rejects_unhandled_code() -> None:
+    unavailable = WorkspaceResult(
+        WorkspaceCode.COMMAND_UNAVAILABLE,
+        "unavailable",
+        None,
+        "a" * 40,
+    )
+    with pytest.raises(AssertionError, match="unexpected workspace outcome"):
+        attempt_module._workspace_refusal(unavailable)
+
+
+@pytest.mark.parametrize(
+    ("workspace_code", "expected_code", "retained"),
+    [
+        (
+            WorkspaceCode.CLEANUP_FAILED,
+            AttemptCode.CLEANUP_FAILED,
+            "/tmp/retained-worktree",
+        ),
+        (WorkspaceCode.OK, AttemptCode.PATCH_INVALID, None),
+    ],
+)
+def test_artifact_read_failure_cannot_hide_workspace_result(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    workspace_code: WorkspaceCode,
+    expected_code: AttemptCode,
+    retained: str | None,
+) -> None:
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+
+    def run(**kwargs: Any) -> WorkspaceResult:
+        Path(kwargs["environment"][attempt_module.PATCH_ENV]).mkdir()
+        return WorkspaceResult(
+            workspace_code,
+            "workspace cleanup failed" if retained else "attempt command completed",
+            0 if workspace_code is WorkspaceCode.OK else None,
+            "b" * 40,
+            retained,
+        )
+
+    monkeypatch.setattr(attempt_module, "run_workspace", run)
+    output = tmp_path / "attempts"
+    record = attempt_module.attempt(
+        task="t", tasks_root=tasks_root, output=output, command=["fake-agent"]
+    )
+
+    assert record.code is expected_code
+    assert record.retained_path == retained
+    assert "not a regular file" in record.message
+    attempt_dir = next(output.iterdir())
+    assert json.loads((attempt_dir / "attempt.json").read_text())["code"] == expected_code
+
+
+@pytest.mark.parametrize("primary", [KeyboardInterrupt(), MemoryError("read")])
+def test_artifact_baseexception_preserves_cleanup_recovery_evidence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    primary: BaseException,
+) -> None:
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+    retained = "/tmp/retained-worktree"
+
+    monkeypatch.setattr(
+        attempt_module,
+        "run_workspace",
+        lambda **_kwargs: WorkspaceResult(
+            WorkspaceCode.CLEANUP_FAILED,
+            "workspace cleanup failed",
+            None,
+            "b" * 40,
+            retained,
+        ),
+    )
+    monkeypatch.setattr(
+        attempt_module,
+        "_read_artifact",
+        lambda *_args: (_ for _ in ()).throw(primary),
+    )
+
+    with pytest.raises(type(primary)) as raised:
+        attempt_module.attempt(
+            task="t",
+            tasks_root=tasks_root,
+            output=tmp_path / "attempts",
+            command=["fake-agent"],
+        )
+
+    assert raised.value is primary
+    assert primary.__notes__ == [
+        f"workspace cleanup failed; retained at {retained}"
+    ]
+
+
+def test_artifact_baseexception_without_cleanup_evidence_is_unchanged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+    primary = KeyboardInterrupt()
+    monkeypatch.setattr(
+        attempt_module,
+        "run_workspace",
+        lambda **_kwargs: WorkspaceResult(
+            WorkspaceCode.OK, "attempt command completed", 0, "b" * 40
+        ),
+    )
+    monkeypatch.setattr(
+        attempt_module,
+        "_read_artifact",
+        lambda *_args: (_ for _ in ()).throw(primary),
+    )
+
+    with pytest.raises(KeyboardInterrupt) as raised:
+        attempt_module.attempt(
+            task="t",
+            tasks_root=tasks_root,
+            output=tmp_path / "attempts",
+            command=["fake-agent"],
+        )
+
+    assert raised.value is primary
+    assert not hasattr(primary, "__notes__")
+
+
+@pytest.mark.parametrize("failure", ["digest", "record"])
+def test_post_workspace_baseexception_preserves_cleanup_recovery_evidence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    failure: str,
+) -> None:
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+    retained = "/tmp/retained-worktree"
+    primary = MemoryError(failure)
+
+    def run(**kwargs: Any) -> WorkspaceResult:
+        Path(kwargs["environment"][attempt_module.PATCH_ENV]).write_text(GOOD_PATCH)
+        Path(kwargs["environment"][attempt_module.TRANSCRIPT_ENV]).write_text(
+            TRANSCRIPT
+        )
+        return WorkspaceResult(
+            WorkspaceCode.CLEANUP_FAILED,
+            "workspace cleanup failed",
+            0,
+            "b" * 40,
+            retained,
+        )
+
+    monkeypatch.setattr(attempt_module, "run_workspace", run)
+    if failure == "digest":
+        monkeypatch.setattr(
+            attempt_module,
+            "patch_digest",
+            lambda _value: (_ for _ in ()).throw(primary),
+        )
+    else:
+        monkeypatch.setattr(
+            attempt_module,
+            "write_attempt_record",
+            lambda *_args: (_ for _ in ()).throw(primary),
+        )
+
+    with pytest.raises(MemoryError) as raised:
+        attempt_module.attempt(
+            task="t",
+            tasks_root=tasks_root,
+            output=tmp_path / "attempts",
+            command=["fake-agent"],
+        )
+
+    assert raised.value is primary
+    assert primary.__notes__ == [
+        f"workspace cleanup failed; retained at {retained}"
+    ]
+
+
+def test_transcript_read_failure_is_typed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+
+    def run(**kwargs: Any) -> WorkspaceResult:
+        Path(kwargs["environment"][attempt_module.PATCH_ENV]).write_text(GOOD_PATCH)
+        Path(kwargs["environment"][attempt_module.TRANSCRIPT_ENV]).mkdir()
+        return WorkspaceResult(
+            WorkspaceCode.OK,
+            "attempt command completed",
+            0,
+            "b" * 40,
+        )
+
+    monkeypatch.setattr(attempt_module, "run_workspace", run)
+    record = attempt_module.attempt(
+        task="t",
+        tasks_root=tasks_root,
+        output=tmp_path / "attempts",
+        command=["fake-agent"],
+    )
+    assert record.code is AttemptCode.TRANSCRIPT_MISSING
+    assert "not a regular file" in record.message
+
+
+@pytest.mark.parametrize("patch", [None, b"  \n"])
+def test_patch_absence_precedes_transcript_read_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    patch: bytes | None,
+) -> None:
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+
+    def run(**kwargs: Any) -> WorkspaceResult:
+        if patch is not None:
+            Path(kwargs["environment"][attempt_module.PATCH_ENV]).write_bytes(patch)
+        Path(kwargs["environment"][attempt_module.TRANSCRIPT_ENV]).mkdir()
+        return WorkspaceResult(
+            WorkspaceCode.OK,
+            "attempt command completed",
+            0,
+            "b" * 40,
+        )
+
+    monkeypatch.setattr(attempt_module, "run_workspace", run)
+    output = tmp_path / "attempts"
+    record = attempt_module.attempt(
+        task="t", tasks_root=tasks_root, output=output, command=["fake-agent"]
+    )
+
+    assert record.code is AttemptCode.NO_PATCH
+    attempt_dir = next(output.iterdir())
+    assert json.loads((attempt_dir / "attempt.json").read_text())["code"] == "NO_PATCH"
+
+
+def test_artifact_read_oserror_is_contained(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    artifact = tmp_path / "artifact"
+    artifact.write_text("value")
+    monkeypatch.setattr(
+        Path,
+        "read_bytes",
+        lambda _path: (_ for _ in ()).throw(OSError("read")),
+    )
+    value, error = attempt_module._read_artifact(artifact, "patch")
+    assert value is None
+    assert error is not None and "cannot read" in error
+
+
+def test_attempt_appends_opaque_engine_contract_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tasks_root = tmp_path / "tasks"
+    task_dir = _task(tasks_root)
+    contract = task_dir / "engine-contract.yaml"
+    contract.write_bytes(b"opaque\n")
+    data = json.loads((task_dir / "manifest.json").read_text())
+    data["engine_contract"] = "engine-contract.yaml"
+    (task_dir / "manifest.json").write_text(json.dumps(data))
+    observed: list[str] = []
+
+    def fake_workspace(**kwargs: Any) -> WorkspaceResult:
+        observed.extend(kwargs["command"])
+        return WorkspaceResult(WorkspaceCode.OK, "ok", 0, "b" * 40)
+
+    monkeypatch.setattr(attempt_module, "run_workspace", fake_workspace)
+    record = attempt_module.attempt(
+        task="t",
+        tasks_root=tasks_root,
+        output=tmp_path / "attempts",
+        command=["engine", "attempt", "--"],
+    )
+    expected = os.fspath(contract.resolve())
+    assert observed == ["engine", "attempt", "--", expected]
+    assert record.command == ("engine", "attempt", "--", expected)

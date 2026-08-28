@@ -23,7 +23,8 @@ attempt record
   The durable artifact `attempt` (the command) writes: version, outcome
   (`attempted`/`refused`), a precise `code`, a short `message`, task,
   the command argv, the
-  command's exit code (recorded, never trusted), the preserved
+  command's nullable exit code (recorded, never trusted), the synthetic
+  workspace base, any retained cleanup path, the preserved
   patch/transcript paths and digests, the verdict, and the {term}`receipt`
   path. E3-shaped; the exit code is coarse by design. Parallel to the
   {term}`capture record`.
@@ -50,8 +51,7 @@ baseline probe
   The baseline attempt command at n=4–6, recorded once as a property of
   the task, so the diagnostic loop has something to move. A task at or
   near ceiling is smoke only; a task at the floor is a capability wall.
-  V1 picks its bundled task so a baseline *could* move later; the probe
-  itself lands with the attempt loop (V3/V4).
+  V4 provides the real attempt; baseline-probe admission belongs to V5.
 
 diagnostic workload
   A {term}`task` used to see whether an engine change helped; it must be
@@ -77,13 +77,14 @@ hook result
 
 integration tier
   The marked tests that may legitimately spawn: real git, real oracle
-  subprocesses. Run with `uv run pytest -m integration`; excluded from the
-  default run and from CI.
+  subprocesses, process groups, and the real Engine seam. Run with
+  `uv run pytest -m integration`; excluded from the default run and from CI.
 
 manifest
   A task's `manifest.json`: name, contract, {term}`oracle` command,
   expected test IDs, source {term}`allowlist`, a known-good fixture
-  {term}`patch` path, and an optional known-broken fixture patch path.
+  {term}`patch` path, an optional known-broken fixture patch path, and an
+  optional opaque Engine contract path.
 
 oracle
   The {term}`manifest`'s command that decides whether a {term}`patch` is

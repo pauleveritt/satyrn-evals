@@ -29,7 +29,11 @@ def main() -> None:
     p.add_argument("--bad-patch", action="store_true")
     p.add_argument("--no-transcript", action="store_true")
     p.add_argument("--empty-transcript", action="store_true")
+    p.add_argument("contract", nargs="?")
     args = p.parse_args()
+
+    if args.contract is not None and not Path(args.contract).is_file():
+        p.error("contract is not a file")
 
     patch_path = os.environ.get("SATYRN_ATTEMPT_PATCH")
     if patch_path and not args.no_patch:
