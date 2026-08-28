@@ -44,6 +44,10 @@ restated here to avoid drift between two copies.
 "The unsolved problem." V3 deliberately persisted single attempts without
 claiming a baseline. V4 supplies the real engine attempt; before V5 admits a
 task, an n=4–6 baseline probe must show that the task has room to move.
+`local-pings` remains unadmitted because its current oracle accepted a
+non-preserving patch; its headroom is undetermined until a corrected probe.
+The evidence is recorded in
+[`docs/superpowers/research/2026-08-27-local-pings-baseline-probe.md`](docs/superpowers/research/2026-08-27-local-pings-baseline-probe.md).
 
 ## Backlog
 

@@ -126,6 +126,12 @@ record "unavailable" with a distinct exit code.
   workspace** and deleted the traces. Detect leftover workspaces; keep a
   cheap transcript tripwire; record patch-versus-reference overlap without
   ever rejecting on it.
+- A baseline probe's regression-only oracle accepted a patch that iterated
+  service types through a `set`, losing an existing ordering guarantee; the
+  oracle omitted the preservation test that, once added, passed or failed
+  nondeterministically. Audit candidate passes against preservation behavior
+  before treating a middle-band score as headroom; see the
+  [`local-pings` probe](2026-08-27-local-pings-baseline-probe.md).
 
 ### "The grader rejected a correct solution"
 
