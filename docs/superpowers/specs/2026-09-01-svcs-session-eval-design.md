@@ -87,9 +87,9 @@ This is a non-adversarial local evaluation boundary, not a security sandbox.
 The command runs with the user's permissions and a malicious executor could
 search other paths on the machine. "Hidden" means that Evals does not place
 the oracle in the worktree or conversation and does not disclose its location.
-An audit records attempted path escape and transcript leakage. Defending
-against a hostile command would require a container, sandbox, or separate OS
-identity and remains outside version 0.1.
+Evals cannot observe arbitrary file reads or prove that an executor did not
+search the machine. Defending against a hostile command would require a
+container, sandbox, or separate OS identity and remains outside version 0.1.
 
 ## CLI
 
@@ -243,11 +243,13 @@ READY
 ```
 
 Evals, not the adapter, obtains the patch with Git from the detached worktree.
-After the adapter is quiescent or reaped, an eval-owned `git add -N --all`
-makes untracked paths visible without staging their contents; Evals then reads
-the full status and binary diff. The patch is cumulative from its exact
-synthetic base and includes binary, rename, delete, mode, symlink, and
-untracked-file intent. The associated full
+After the adapter is quiescent or reaped, Evals creates an alternate Git index
+outside the attempt worktree, seeds it from the exact base, and runs
+`git add -N --all` against that index. This makes untracked paths visible
+without changing the real index that the next prompt will observe. Evals reads
+the full status and binary diff through the alternate index, then removes it.
+The patch is cumulative from its exact synthetic base and includes binary,
+rename, delete, mode, symlink, and untracked-file intent. The associated full
 tree snapshot and status are recorded. Evals writes the patch to a new file,
 fsyncs it, computes the digest from those bytes, then atomically replaces the
 step record. An unchanged tree still receives an empty or repeated patch and
