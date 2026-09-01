@@ -81,3 +81,18 @@ def test_hook_collect_errors_empty_by_default(tmp_path, monkeypatch) -> None:
     oracle_hook.pytest_sessionfinish(None, 0)
     data = json.loads(result_path.read_text())
     assert data["collect_errors"] == []
+
+
+def test_hook_ignores_successful_collection_report() -> None:
+    oracle_hook.pytest_collectreport(FakeReport("a.py", passed=True))
+    assert oracle_hook._collect_errors == []
+
+
+def test_hook_records_call_and_teardown_skips() -> None:
+    oracle_hook.pytest_runtest_logreport(_report("a::call_skip", skipped=True))
+    oracle_hook.pytest_runtest_logreport(_report("a::teardown_skip", "teardown", skipped=True))
+    oracle_hook.pytest_runtest_logreport(_report("a::setup_pass", "setup", passed=True))
+    assert oracle_hook._reports == {
+        "a::call_skip": "skipped",
+        "a::teardown_skip": "skipped",
+    }

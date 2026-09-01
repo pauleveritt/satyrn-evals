@@ -1,6 +1,7 @@
 """Console entry point: satyrn-evals grade, capture, and attempt."""
 
 import argparse
+import math
 import sys
 from pathlib import Path
 
@@ -12,8 +13,23 @@ from satyrn_evals.errors import SatyrnError, UsageError
 from satyrn_evals.grade import grade
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, resolve_task
 from satyrn_evals.verdict import Verdict
+from satyrn_evals.workspace import DEFAULT_TIMEOUT
 
 _EXIT_CODES: dict[Verdict, int] = {Verdict.PASS: 0, Verdict.FAIL: 0, Verdict.UNAVAILABLE: 3}
+
+
+def positive_finite_timeout(value: str) -> float:
+    try:
+        timeout = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            "timeout must be a finite number greater than zero"
+        ) from exc
+    if not math.isfinite(timeout) or timeout <= 0:
+        raise argparse.ArgumentTypeError(
+            "timeout must be a finite number greater than zero"
+        )
+    return timeout
 
 
 def split_attempt_argv(argv: list[str]) -> tuple[list[str], list[str]]:
@@ -44,6 +60,7 @@ def main(argv: list[str] | None = None) -> int:
                 tasks_root=Path(args.tasks_root),
                 output=Path(args.output),
                 command=command,
+                timeout=args.timeout,
             )
             if record.outcome is AttemptOutcome.REFUSED:
                 return 3
@@ -100,4 +117,10 @@ attempt_p.add_argument(
 )
 attempt_p.add_argument(
     "--output", default="attempts", help="attempt output directory (default: ./attempts)"
+)
+attempt_p.add_argument(
+    "--timeout",
+    type=positive_finite_timeout,
+    default=DEFAULT_TIMEOUT,
+    help=f"command timeout in seconds (default: {DEFAULT_TIMEOUT:g})",
 )

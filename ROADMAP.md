@@ -10,12 +10,10 @@ Backlog, not into the current phase.*
 
 ## Now
 
-**Phase V4 — A real engine attempt. Not started.** The same artifact set
-as V3, produced by `satyrn-engine attempt` (engine phase E5). Engine phase
-E5 is **not started** in the sibling repository (`satyrn-engine` ROADMAP:
-E3, E3.5, E4, E5 all not started; only E1/E2 done), so this phase's scope
-is being brainstormed in light of that dependency. See the Phases table
-below and `BRIEF.md` for the binding rules.
+**V4 is complete. Suite headroom is next.** Before V5 starts, baseline probes
+must identify tasks between the floor and ceiling so the diagnostic loop has
+something useful to measure. See the Phases table below and `BRIEF.md` for the
+binding rules.
 
 ## Concept budget
 
@@ -24,11 +22,10 @@ the design in mind. Checked and updated at the end of each cycle; a term
 earns its place by naming something the design actually needs, not by being
 convenient shorthand.*
 
-The seed terms plus V2's additions — **capture record**, **discriminating
-set**, **provenance** — are defined in this repository's own words in
+The terms used through V4 are defined in this repository's own words in
 [`docs/glossary.md`](docs/glossary.md), checked and updated at the end of
-V2. Terms for later phases earn their place when the phase that needs
-them lands.
+V4. Terms for later phases earn their place when the phase that needs them
+lands.
 
 ## Phases
 
@@ -37,15 +34,29 @@ them lands.
 | V1 | It installs and grades | `grade` accepts a bundled task's known-good patch and rejects its known-broken one, offline and deterministic | **complete** |
 | V2 | Capture by revert | `capture --revert SHA` makes a task winnable by construction, in minutes | **complete** |
 | V3 | Attempt persistence | `attempt TASK -- COMMAND...` runs a fake command, persists patch and transcript, regrades offline | **complete** |
-| V4 | A real engine attempt | The same artifact set, produced by `satyrn-engine attempt` (engine phase E5) | not started (E5 not started in satyrn-engine) |
-| V5 | The diagnostic loop | `run --n 8` plus a summary: verdict reasons, repeated calls, churn, tool calls, context, timeouts | not started |
+| V4 | A real engine attempt | Reconstruct an isolated Git workspace and produce the V3 artifact set with `satyrn-engine attempt` | **complete** |
+| V5 | The diagnostic loop | admit tasks with a recorded n=4–6 baseline probe, then `run --n 8` and summarize verdict reasons, repeated calls, churn, tool calls, context, and timeouts | not started |
 
 Full done-when criteria are in `BRIEF.md`'s referenced roadmap research, not
 restated here to avoid drift between two copies.
 
 **Design work owed, not a phase:** a suite with headroom. See `BRIEF.md`'s
-"The unsolved problem." V5's summary is only informative on tasks whose
-baseline can move, and nothing here reliably produces those yet.
+"The unsolved problem." V3 deliberately persisted single attempts without
+claiming a baseline. V4 supplies the real engine attempt; before V5 admits a
+task, an n=4–6 baseline probe must show that the task has room to move.
+`local-pings` remains unadmitted. Its first probe exposed an unsound oracle;
+the corrected probe then recorded 0/4 successful attempts, while two timed-out
+attempts retained patches that passed the corrected oracle and preservation
+suite. Before V5, admission must keep successful attempt outcomes, retained
+patch production, and the conditional quality of retained patches separate
+rather than choosing a metric after seeing the result. A follow-up recorded a
+budget-only Envelope variant at 0/4 and the handoff-contract Engine composite
+at 2/4, which is useful product-path evidence but does not move the Baseline
+off its floor. The three records are the
+[`oracle audit`](docs/superpowers/research/2026-08-27-local-pings-baseline-probe.md),
+the [`corrected probe`](docs/superpowers/research/2026-08-27-local-pings-corrected-probe.md),
+and the
+[`Envelope/Engine follow-up`](docs/superpowers/research/2026-08-27-local-pings-envelope-engine-followup.md).
 
 ## Backlog
 
@@ -60,13 +71,14 @@ checkpoint transplants verbatim); the whole claims layer.
 Completed phases move here (or to `docs/superpowers/phase-history.md`)
 when the roadmap outgrows the front page.
 
-- **V3 — Attempt persistence (2026-08-18).** `satyrn-evals attempt TASK
-  [--tasks-root DIR] [--output DIR] -- COMMAND...`: runs an attempt
-  command through the engine seam (reserved env-var delivery paths,
-  artifact-driven outcome), preserves the patch and transcript before
-  cleanup, grades the delivered patch offline, and writes both a receipt
-  and an attempt record — four refusal codes, exit codes 0/2/3. Spec,
-  plan, and execution rulings are recorded under `docs/superpowers/`.
+- **V4 — A real engine attempt (2026-08-23).** Evals reconstructs a private
+  Git repository from the persisted task base, runs the executable once in a
+  detached worktree, preserves its artifacts before cleanup, and proves the
+  seam with a real Engine E5 attempt.
+- **V3 — Attempt persistence (2026-08-18).** `attempt TASK -- COMMAND...`
+  runs an executable through the environment seam in a disposable workspace,
+  preserves patch and transcript before cleanup, grades the preserved patch,
+  and writes an attempt record.
 - **V2 — Capture by revert (2026-08-18).** `satyrn-evals capture --revert
   SHA [--repo PATH] [--name NAME] [--contract TEXT] [--output DIR]`:
   four deterministic checks, a detached-worktree lifecycle re-earned from

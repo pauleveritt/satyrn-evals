@@ -9,6 +9,7 @@
     "test_solution.py::test_zero"
   ],
   "source_paths": ["solution.py"],
+  "engine_contract": "engine-contract.yaml",
   "fixtures": {
     "known_good": "fixtures/known-good.patch",
     "known_broken": "fixtures/known-broken.patch"

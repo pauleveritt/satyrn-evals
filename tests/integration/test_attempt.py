@@ -1,6 +1,8 @@
 """End-to-end attempt: a fake command through the seam. Real subprocess, real oracle."""
 
 import json
+import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -17,6 +19,7 @@ from satyrn_evals.verdict import Verdict
 pytestmark = pytest.mark.integration
 
 FAKE = Path(__file__).parent / "fake_attempt.py"
+FAKE_PI = Path(__file__).parent / "fake_pi_v4.py"
 KNOWN_GOOD = DEFAULT_TASKS_ROOT / "format_number" / "fixtures" / "known-good.patch"
 KNOWN_BROKEN = DEFAULT_TASKS_ROOT / "format_number" / "fixtures" / "known-broken.patch"
 
@@ -283,3 +286,127 @@ def test_attempt_cli_success_refusal_and_usage(tmp_path: Path) -> None:
     )
     assert code == 2
     assert not any(usage_output.iterdir())
+
+
+def _engine_repo() -> Path:
+    configured = os.environ.get("SATYRN_V4_ENGINE_REPO")
+    root = (
+        Path(configured)
+        if configured is not None
+        else Path(__file__).parents[3] / "satyrn-engine"
+    )
+    required = (
+        root / "src" / "satyrn_engine" / "attempt.py",
+        root / "packages" / "engine" / "mutator.ts",
+        root / "tools" / "exercise_mutator.mjs",
+    )
+    if not all(path.is_file() for path in required):
+        pytest.skip("an E5 satyrn-engine source checkout is required")
+    if shutil.which("node") is None:
+        pytest.skip("Node is required for the real E5 integration")
+    if shutil.which("uv") is None:
+        pytest.skip("uv is required for the real E5 integration")
+    if not (root / ".venv" / "bin" / "satyrn-engine").is_file():
+        pytest.skip("the E5 checkout needs an installed satyrn-engine environment")
+    return root.resolve()
+
+
+def _engine_command(engine_repo: Path, uv: Path) -> list[str]:
+    return [
+        os.fspath(uv),
+        "run",
+        "--project",
+        os.fspath(engine_repo),
+        "satyrn-engine",
+        "attempt",
+        "--model=fixture/model",
+        "--",
+    ]
+
+
+def _configure_engine(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    engine_repo: Path,
+) -> Path:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    pi = bin_dir / "pi"
+    shutil.copyfile(FAKE_PI, pi)
+    pi.chmod(0o755)
+    monkeypatch.setenv(
+        "PATH", os.fspath(bin_dir) + os.pathsep + os.environ.get("PATH", "")
+    )
+    monkeypatch.setenv("SATYRN_ENGINE_REPO", os.fspath(engine_repo))
+    monkeypatch.setenv("UV_NO_SYNC", "1")
+    monkeypatch.setenv("UV_PYTHON_DOWNLOADS", "never")
+    monkeypatch.setenv("UV_CACHE_DIR", os.fspath(tmp_path / "uv-cache"))
+    uv = shutil.which("uv")
+    assert uv is not None
+    return Path(uv).resolve()
+
+
+def test_real_e5_attempt_produces_persisted_patch_and_transcript(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    engine_repo = _engine_repo()
+    uv = _configure_engine(tmp_path, monkeypatch, engine_repo)
+    output = tmp_path / "attempts"
+
+    record = attempt(
+        task="format_number",
+        tasks_root=DEFAULT_TASKS_ROOT,
+        output=output,
+        command=_engine_command(engine_repo, uv),
+        timeout=30,
+    )
+
+    assert record.outcome is AttemptOutcome.ATTEMPTED
+    assert record.verdict is Verdict.PASS
+    assert record.command_exit == 0
+    assert record.workspace_base_sha is not None
+    attempt_dir = _attempt_dir(output)
+    patch = (attempt_dir / "patch.diff").read_text()
+    assert "solution.py" in patch
+    assert 'sign = "-" if n < 0 else ""' in patch
+    transcript = (attempt_dir / "transcript.txt").read_text()
+    assert '"type": "agent_start"' in transcript
+    agent_start = json.loads(transcript.splitlines()[0])
+    assert not Path(agent_start["cwd"]).exists()
+    assert record.command[-1] == os.fspath(
+        DEFAULT_TASKS_ROOT / "format_number" / "engine-contract.yaml"
+    )
+    assert (DEFAULT_TASKS_ROOT / "format_number" / "base" / "solution.py").read_text() == (
+        "def format_number(n: int) -> str:\n    return str(n)\n"
+    )
+
+
+def test_real_e5_failure_preserves_transcript_and_refuses_without_patch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    engine_repo = _engine_repo()
+    uv = _configure_engine(tmp_path, monkeypatch, engine_repo)
+    monkeypatch.setenv("SATYRN_FAKE_PI_MODE", "fail")
+    output = tmp_path / "attempts"
+
+    record = attempt(
+        task="format_number",
+        tasks_root=DEFAULT_TASKS_ROOT,
+        output=output,
+        command=_engine_command(engine_repo, uv),
+        timeout=30,
+    )
+
+    assert record.outcome is AttemptOutcome.REFUSED
+    assert record.code == "NO_PATCH"
+    assert record.command_exit is not None and record.command_exit != 0
+    assert record.patch_path is None
+    assert record.transcript_path == "transcript.txt"
+    attempt_dir = _attempt_dir(output)
+    transcript_path = attempt_dir / "transcript.txt"
+    transcript = transcript_path.read_text()
+    assert '"reason": "fixture failure"' in transcript
+    assert record.transcript_digest == patch_digest(transcript_path.read_bytes())
+    agent_start = json.loads(transcript.splitlines()[0])
+    assert not Path(agent_start["cwd"]).exists()
+    assert not (attempt_dir / "receipt.json").exists()

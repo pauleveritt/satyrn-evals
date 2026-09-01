@@ -22,8 +22,7 @@ network, and the summary is diagnostic, not statistical — the claims layer
 (pre-registration, confidence intervals, A/B publication) is deferred until
 a consumer needs it. And evals is not an engine: it never imports engine
 internals. Its seam is an executable attempt command — a fake command in
-V3, `satyrn-engine attempt` itself in V4, the same slot — so eval
-development never waits for the real engine.
+V3 and `satyrn-engine attempt` itself in V4, through the same slot.
 
 > More: [architecture](docs/architecture.md) ·
 > [glossary](docs/glossary.md)
@@ -56,7 +55,7 @@ contract.
 Evals builds the engine one loop at a time:
 
 1. **Capture** — a real Python-development workflow becomes a task:
-   manifest, base state, known-good and known-broken fixture patches. V2's
+   manifest, base state, and a known-good fixture patch. V2's
    `capture --revert SHA` makes a task winnable by construction, in minutes.
 2. **Attempt** — the task's attempt command runs in an eval-owned
    disposable worktree; its patch and transcript are preserved before
@@ -75,20 +74,32 @@ Evals builds the engine one loop at a time:
 ## Usage
 
 From a checkout, `uv sync` installs evals into the project environment.
-The CLI ships two commands:
+The CLI ships three commands:
 
 ```console
 $ uv run satyrn-evals grade format_number src/satyrn_evals/tasks/format_number/fixtures/known-good.patch
 $ uv run satyrn-evals capture --revert <sha> --repo /src/app --output tasks
+$ uv run satyrn-evals attempt format_number -- command-that-writes-a-patch
+```
+
+An Engine-capable task declares an opaque Engine contract. Evals appends that
+contract to the command and runs it from a clean detached worktree:
+
+```console
+$ uv run satyrn-evals attempt format_number --timeout 30 -- \
+    uv run --project /src/satyrn-engine satyrn-engine attempt \
+    --model=MODEL --
 ```
 
 Grading is silent over the CLI; the verdict — `pass`, `fail`, or
 `unavailable` — is written to a receipt, never read from stdout or an exit
 code. Exit code `0` means the operation completed, `2` a usage error, `3`
-an operational failure that names its cause. No model calls, no network,
-on every path. `capture` writes a task directory plus a capture record;
-the source repository's working tree, index, branch, and `HEAD` are never
-touched.
+an operational failure that names its cause. Grading and capture remain
+offline; the attempt command may invoke a local model. `capture` writes a
+task directory plus a capture record;
+pre-existing source files and the source repository's index, branch, and
+`HEAD` are never changed. Declared artifacts below `--output` are the sole
+write exception.
 
 > More: [usage](docs/usage.md) — the receipt format, the exit-code table,
 > the capture record, and the bundled task.
@@ -97,17 +108,18 @@ touched.
 
 Phases completed, each with its design spec and implementation plan:
 
-- [_V3_](https://github.com/pauleveritt/satyrn-evals/tree/v3) — attempt
-  persistence. `satyrn-evals attempt TASK -- COMMAND...` runs an attempt
-  command through the engine seam, preserves its patch and transcript
-  before cleanup, and grades the delivered patch offline — one command,
-  one set of artifacts, one verdict.
+- **V4 — A real engine attempt.** Evals reconstructs an isolated Git
+  workspace from the task base and runs `satyrn-engine attempt` through the
+  V3 executable seam. The Engine contract remains opaque to evals.
+  ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-08-23-v4-real-engine-attempt-design.md),
+  [_plan_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/plans/2026-08-23-v4-real-engine-attempt.md))
+- **V3 — Attempt persistence.** `attempt TASK -- COMMAND...` runs the seam,
+  preserves patch and transcript, and grades the preserved patch offline.
   ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-08-18-v3-attempt-persistence-design.md),
   [_plan_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/plans/2026-08-18-v3-attempt-persistence.md))
-- [_V2_](https://github.com/pauleveritt/satyrn-evals/tree/v2) — capture by
-  revert. `satyrn-evals capture --revert SHA` turns a fixing commit into a
-  task winnable by construction, in minutes, without touching the source
-  repository's working tree.
+- **V2 — Capture by revert.** `satyrn-evals capture --revert SHA` turns a fixing commit into a
+  task winnable by construction, in minutes, without changing pre-existing
+  source state outside its declared `--output` artifacts.
   ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-08-18-v2-capture-by-revert-design.md),
   [_plan_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/plans/2026-08-18-v2-capture-by-revert.md))
 - [_V1_](https://github.com/pauleveritt/satyrn-evals/tree/v1) — it
@@ -117,8 +129,9 @@ Phases completed, each with its design spec and implementation plan:
   ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-08-16-v1-grade-design.md),
   [_plan_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/plans/2026-08-16-v1-grade.md))
 
-The current phase is **V4 — A real engine attempt**; the roadmap of feature
-cycles lives in [`ROADMAP.md`](ROADMAP.md). The `e1` git tag holds the
+Before V5, the project needs eval tasks whose baseline results show useful
+room between floor and ceiling. The roadmap of feature cycles lives in
+[`ROADMAP.md`](ROADMAP.md). The `e1` git tag holds the
 scaffolded starting state — toolchain, docs stack, CI, the brief, the
 roadmap, and the harvest index — for learners following along step by
 step.
@@ -128,7 +141,8 @@ step.
 
 ## Development
 
-This repository presumes `uv`, `ruff`, `pyrefly`, and `pytest`:
+This repository presumes Git 2.36 or newer, plus `uv`, `ruff`, `pyrefly`, and
+`pytest`:
 
 ```bash
 uv sync                # install the project and the dev group
