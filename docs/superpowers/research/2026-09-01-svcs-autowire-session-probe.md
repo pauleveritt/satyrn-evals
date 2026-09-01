@@ -1,0 +1,112 @@
+# `svcs` autowire long-session probe
+
+**Date:** 2026-09-01
+**Status:** completed locally; proposed as a high-end research suite; not
+admitted to V5
+**Model:** `omlx/gemma-4-12B-it-MLX-8bit`
+**Pi:** 0.84.1
+
+## Decision
+
+Use the real `svcs` autowire development change as the first high-end,
+multi-prompt suite proposal. It is a useful capability wall, not a V5
+middle-band workload: the four-run baseline's deepest cumulative checkpoint
+distribution was `1, 0, 0, 0` out of six.
+
+The suite should be rebuilt on the current Evals workspace, artifact, and
+offline-grading boundaries. The spike code is evidence only. None of the old
+`local-ai-pi` harness or the local spike runner should be copied into this
+repository.
+
+## Workload
+
+The suite replays one substantial change from `hynek/svcs` as six ordered
+behavior requests in one conversation:
+
+1. synchronous and asynchronous autowire functions;
+2. classes and special annotation types;
+3. synchronous lifecycle and error behavior;
+4. asynchronous feature parity;
+5. asynchronous lifecycle behavior;
+6. review and full regression repair.
+
+The executor starts at immutable upstream commit
+`816403b5c1d3b9fff22bd9141fe836221dfe9d9c`. The reference end state is
+`6bb3f2800a57f4f74641d6e7415c9865293a4016`, whose change contains 251
+production lines in `src/svcs/_autowire.py`, 838 lines of direct tests, and
+1,486 added lines in total.
+
+Each prompt describes behavior rather than code. The target revision, target
+files, reference patch, hidden test IDs, and grader output are withheld from
+the executor. Here, "hidden" means absent from the attempt workspace and
+conversation; it is an evaluation boundary, not a claim that public upstream
+history is secret.
+
+## Qualification
+
+Before the model runs, the candidate was checked three times in fresh detached
+worktrees:
+
+- the base failed every cumulative milestone for the registered missing
+  `aautowire` reason;
+- the target passed every cumulative milestone; and
+- the target passed the complete 197-test suite.
+
+The primary measurement was fixed before the repeat runs: the deepest ordered
+checkpoint whose cumulative hidden oracle passes, from zero through six.
+Session completion, retained-patch production, preservation, turns, tool
+calls, and terminal reason remain separate measurements.
+
+## Baseline result
+
+All four runs used one persistent Pi process, the same six prompts,
+`read,bash,edit,write`, an 80,000-token declared context, a 16,384-token output
+limit, and 30 minutes per prompt.
+
+| Run | Terminal condition | Prompts recorded | Turns / tool calls | Deepest pass |
+| ---: | --- | ---: | ---: | ---: |
+| 1 | timeout during prompt 2 | 2 | 17 / 15 | 1 |
+| 2 | completed all prompts | 6 | 40 / 34 | 0 |
+| 3 | output limit during prompt 1 | 1 | 18 / 17 | 0 |
+| 4 | completed all prompts | 6 | 38 / 32 | 0 |
+
+Every run retained a patch. One passed the first 8-test milestone. None passed
+the whole workload. The trace exposed several distinct failure families:
+
+- two runs deleted most of a central 1,199-line module;
+- two conversations kept reporting progress after the patch stopped changing;
+- rejected exact-text edits were described as completed work;
+- one run reached 75,196 input tokens, compacted, and timed out;
+- one run exhausted its output allowance; and
+- one run modified a test outside the declared source surface.
+
+One pilot runner defect was corrected before this aggregate was frozen: Pi's
+`stopReason=length` must terminate the session. The invalid run that received
+another prompt after that event is excluded; its replacement is the recorded
+one-prompt output-limit result above. No other run was silently retried or
+reclassified.
+
+## Remediation screening
+
+Four later n=4 screens kept the task, model, prompts, and primary measurement
+fixed. Read-only enumeration produced `0, 0, 0, 0`; bounded anchor feedback
+produced `1, 0, 0, 0`; an optional public-check tool produced `0, 0, 0, 0`;
+and a runner-owned public-preservation check produced `0, 0, 0, 0`.
+
+The runner-owned check did catch a candidate with 104 public regressions.
+Another run passed all 130 public tests at two checkpoints but still failed
+the first hidden milestone. This establishes a useful reliability boundary,
+not a capability improvement. Remediation work remains separate from the
+suite and is not part of the proposed Evals implementation.
+
+## What the suite needs from Evals
+
+V4 can run one command and preserve one final patch and transcript. This
+workload needs one conversation to receive several prompts, with a cumulative
+patch captured after each prompt and graded only after the executor has
+stopped. The proposed boundary is documented in the
+[`svcs` session design](../specs/2026-09-01-svcs-session-eval-design.md).
+
+The suite is intentionally not admitted to V5 yet. A stronger local model may
+move it off the floor; until that is measured, it remains the high end of the
+suite search rather than evidence that a remediation works.
