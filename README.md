@@ -107,8 +107,15 @@ write exception.
 
 ## Status
 
-Phases completed, each with its design spec and implementation plan:
+Phases completed, each with its design spec:
 
+- **V5a — The admission rule.** A documentation phase: it decided that the
+  middle-band bar applies to the arms under comparison, and indexed every
+  probed task with its band per arm — `local-pings` and
+  `stringified-annotations` admitted, `magicmock-factory` unadmitted on an
+  evidence gap, the multi-prompt `svcs` session deferred to V6. No command
+  or test changed.
+  ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-09-02-v5a-admission-rule-design.md))
 - **V4 — A real engine attempt.** Evals reconstructs an isolated Git
   workspace from the task base and runs `satyrn-engine attempt` through the
   V3 executable seam. The Engine contract remains opaque to evals.
@@ -130,8 +137,10 @@ Phases completed, each with its design spec and implementation plan:
   ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-08-16-v1-grade-design.md),
   [_plan_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/plans/2026-08-16-v1-grade.md))
 
-Before V5b, the project needs eval tasks whose baseline results show useful
-room between floor and ceiling. The roadmap of feature cycles lives in
+V5b — `run --n 8` over the tasks V5a admitted (`local-pings`,
+`stringified-annotations`) — is next; a suite with headroom remains design
+work owed (`BRIEF.md`'s "The unsolved problem"). The roadmap of feature cycles
+lives in
 [`ROADMAP.md`](ROADMAP.md). The `e1` git tag holds the
 scaffolded starting state — toolchain, docs stack, CI, the brief, the
 roadmap, and the harvest index — for learners following along step by

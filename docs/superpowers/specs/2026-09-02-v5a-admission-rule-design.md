@@ -1,9 +1,9 @@
 # V5a — The admission rule: design spec
 
-**Phase:** V5a (`ROADMAP.md:60`). **Date:** 2026-09-02.
-**Status:** decision recorded; proposal posted for confirmation per
-`CLAUDE.md`. No code follows until the proposal is confirmed; no model has
-run.
+**Phase:** V5a (`ROADMAP.md:57`). **Date:** 2026-09-02.
+**Status:** complete — decision recorded and the proposal confirmed
+by the maintainer 2026-09-02 per `CLAUDE.md`; documentation phase, so no
+code followed; no model has run.
 
 ## What V5a ships (and the proposal template)
 
@@ -24,14 +24,14 @@ No model runs at all in this phase.
 
 ## Question
 
-`ROADMAP.md:15-21` names four probed tasks — `local-pings`,
+`ROADMAP.md:102-105` names four probed tasks — `local-pings`,
 `stringified-annotations`, `magicmock-factory`, and a multi-prompt `svcs`
 session — and states "**No probed task has a bare-Pi baseline in the middle
 band.**" Two do discriminate between arms: `local-pings` records Engine 2/4
 against Baseline 0/4, and `stringified-annotations` records Engine 6/6
 against Baseline 0/6.
 
-`ROADMAP.md:24-29` then poses the decision this phase must record:
+`ROADMAP.md:107-111` then posed the decision this phase must record:
 
 > is the admission bar "middle-band for bare Pi", or "discriminates between
 > the arms under comparison"? Under the first, four rigorously qualified tasks
@@ -49,7 +49,7 @@ preserved in the recorded amendment note at `BRIEF.md:123-131`, read:
 > lives in between.
 
 The roadmap's own design-work note adds the operative requirement
-(`ROADMAP.md:75-84`): a baseline probe "must show that the task has room to
+(`ROADMAP.md:74-77`): a baseline probe "must show that the task has room to
 move," and admission "must keep successful attempt outcomes, retained patch
 production, and the conditional quality of retained patches separate rather
 than choosing a metric after seeing the result."
@@ -94,7 +94,7 @@ bare-Pi arm alone.** Operationally:
 1. A task is admissible when its qualifying probe records the arms under
    comparison at **different successful-attempt bands** — the recorded
    difference is what the diagnostic loop has to move
-   (`BRIEF.md:110`; `ROADMAP.md:78`).
+   (`BRIEF.md:110`; `ROADMAP.md:74`).
 2. The **reference arm (bare Pi) stays the recorded baseline property**, per
    `BRIEF.md:111-112` and the glossary. It is the arm the loop moves *from*;
    its band never admits or refuses on its own — a floor reference can be a
@@ -112,7 +112,7 @@ bare-Pi arm alone.** Operationally:
    has nothing for an engine change to move and admits nothing. None of the
    four probed tasks is in that band.
 5. **Never choose the admission metric after the result**
-   (`ROADMAP.md:84`; `2026-08-16-harvest-index.md:161-162`). The probe's
+   (`ROADMAP.md:77`; `2026-08-16-harvest-index.md:161-162`). The probe's
    pre-registered primary metric is the band metric; retained-patch and
    conditional-quality results are recorded per arm, never substituted.
 
@@ -127,7 +127,7 @@ between floor and ceiling. Every probed task fails that — all four baselines
 are at or near the floor. The reading therefore discards the two tasks whose
 recorded arms separate, on the superseded sentence (`BRIEF.md:124-125`) this
 repo's own corrected probes falsified (above), and leaves V5b with an empty
-suite: the diagnostic loop cannot start (`ROADMAP.md:28-29`). Its "floor is a
+suite: the diagnostic loop cannot start (`ROADMAP.md:111`). Its "floor is a
 wall" premise also collapses the three measurements the corrected probe was
 built to separate (`2026-08-27-local-pings-corrected-probe.md:18-23`).
 
@@ -231,13 +231,13 @@ capability wall, not a V5 middle-band workload" (`:12-14`) and says the suite
 is "intentionally not admitted to V5 yet" (`:146-149`).
 
 **Verdict: not admissible to V5b.** Session-shaped workload requiring V6
-`session` machinery (`ROADMAP.md:61`), wall on every recorded variant, and no
+`session` machinery (`ROADMAP.md:58`), wall on every recorded variant, and no
 arm under comparison on the evals path. Its admission question reopens with
 V6.
 
 ## What this means for V5b
 
-V5b (`ROADMAP.md:64`) runs `--n 8` over admitted tasks and summarizes verdict
+V5b (`ROADMAP.md:61`) runs `--n 8` over admitted tasks and summarizes verdict
 reasons, repeated calls, churn, tool calls, context, and timeouts. Admission
 is the gate that keeps that summary informative. The index records each
 admitted task's band per arm so V5b can sequence runs: `local-pings` offers
@@ -280,7 +280,7 @@ kept in a note.
   (`2026-09-02-phase-proposals-and-session-eval-convergence.md:197-199`).
   *V5b-era probing / the phase-proposals E2 generalization test (`:188-195`).*
 - The svcs session suite, its V6 `session` machinery, and its admission rule.
-  *V6 (`ROADMAP.md:61`).*
+  *V6 (`ROADMAP.md:58`).*
 - Near-ceiling boundary calibration. No probed task sits there; the follow-up
   left "the agreed near-ceiling boundary" undefined
   (`2026-08-27-local-pings-envelope-engine-followup.md:101-103`). *Reopens
@@ -289,7 +289,7 @@ kept in a note.
   (`BRIEF.md:140-144`). *Reopens with V5b suite search and later workload
   phases (V6, V8).*
 
-The phase-table Excludes cell for V5a (`ROADMAP.md:60`) condenses this
+The phase-table Excludes cell for V5a (`ROADMAP.md:57`) condenses this
 section and is reconciled against it.
 
 ## Done-when for V5a

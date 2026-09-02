@@ -10,32 +10,29 @@ Backlog, not into the current phase.*
 
 ## Now
 
-**V4 is complete. V5a — the admission rule — is next.**
+**V5a is complete (2026-09-02). V5b — the diagnostic loop — is next.**
 
-Four tasks have now been probed and none admitted: `local-pings`,
-`stringified-annotations`, `magicmock-factory`, and a multi-prompt `svcs`
-session. **No probed task has a bare-Pi baseline in the middle band.** But two
-of them do discriminate between arms — `local-pings` records Engine 2/4 against
-Baseline 0/4 (see the Phases note below), and `stringified-annotations` records
-Engine 6/6 against Baseline 0/6 in the
-[product-path pilot](docs/superpowers/research/2026-08-26-product-path-pilot.md).
+V5a decided the admission question this page posed at kickoff and indexed
+every probed task with its band per arm; the superseded kickoff framing,
+the decision, and the per-arm index are recorded in [`Prior work`](#prior-work)
+below and in its
+[design spec](docs/superpowers/specs/2026-09-02-v5a-admission-rule-design.md)
+(`BRIEF.md:110-121` carries the amended rule, superseded wording preserved
+at `:123-131`). The middle-band bar applies to the arms under comparison,
+not to the bare-Pi reference alone.
 
-That gap is the thing to settle before more probing, and it is a decision, not
-a measurement: **is the admission bar "middle-band for bare Pi", or
-"discriminates between the arms under comparison"?** Under the first, four
-rigorously qualified tasks are discarded. Under the second, at least two are
-admissible today. `BRIEF.md`'s middle-band rule assumes the first without
-saying which arm is the baseline, and that ambiguity now blocks the diagnostic
-loop.
+Two tasks are admitted to V5b: `local-pings` (Baseline floor vs Engine
+middle) and `stringified-annotations` (Baseline floor vs Engine ceiling).
+`magicmock-factory` is not admitted — its probe recorded no arm under
+comparison, an evidence gap rather than a wall — and the multi-prompt
+`svcs` session is deferred to V6 (Phases table below).
 
-V5 is therefore split: **V5a** decides the rule and indexes the suite with no
-model runs at all; **V5b** is the run-and-summarize loop, sequenced by what
-V5a admits. See the Phases table below and `BRIEF.md` for the binding rules.
-
-**V5a decision recorded 2026-09-02** in
-[`docs/superpowers/specs/2026-09-02-v5a-admission-rule-design.md`](docs/superpowers/specs/2026-09-02-v5a-admission-rule-design.md),
-pending maintainer confirmation per `CLAUDE.md`; V5b stays blocked until the
-proposal is confirmed.
+**V5b — the diagnostic loop — is next.** It runs `--n 8` over the two
+admitted tasks and summarizes verdict reasons, repeated calls, churn, tool
+calls, context, and timeouts, sequenced by the index's per-arm bands. The
+claims layer stays excluded (`BRIEF.md:33-36`); a suite with headroom is
+still design work owed (below). V5b needs its own design spec before
+implementation (`docs/sdd.md`).
 
 ## Concept budget
 
@@ -57,47 +54,38 @@ lands.
 | V2 | Capture by revert | `capture --revert SHA` makes a task winnable by construction, in minutes | Environment materialization, baseline probes, commit mining, a sandbox, Windows | **complete** |
 | V3 | Attempt persistence | `attempt TASK -- COMMAND...` runs a fake command, persists patch and transcript, regrades offline | The real engine seam (V4), the diagnostic loop, transcript format, retry, repair | **complete** |
 | V4 | A real engine attempt | Reconstruct an isolated Git workspace and produce the V3 artifact set with `satyrn-engine attempt` | Model-quality claims, admission, repeated attempts, A/B (V5); containment; Windows | **complete** |
-| V5a | The admission rule | decide and record which arm the middle-band bar applies to, then index every probed task with its band per arm; no model runs | Model runs, the diagnostic loop (V5b), the claims layer, an Envelope/Engine-arm probe of `magicmock-factory`, the svcs session suite (V6), near-ceiling boundary calibration, suite-headroom capture — see the spec's Out of scope | **next** |
+| V5a | The admission rule | decide and record which arm the middle-band bar applies to, then index every probed task with its band per arm; no model runs | Model runs, the diagnostic loop (V5b), the claims layer, an Envelope/Engine-arm probe of `magicmock-factory`, the svcs session suite (V6), near-ceiling boundary calibration, suite-headroom capture — see the spec's Out of scope | **complete** |
 | V6 | Session eval | `session TASK -- ADAPTER...` sends ordered prompts to one conversation against one evolving checkout, snapshots a cumulative patch per checkpoint, and grades offline through a grader overlay the executor is never shown | `run --n 8` and admission, model-client integration, retries, a hostile-command sandbox, a persistent Engine daemon | proposed |
 | V7 | Task visibility and leak detection | a manifest field declares each task visible- or hidden-oracle; contamination is detected by content and reported per arm, never absorbed into a denominator | OS-level containment — deferred in `BACKLOG.md`; V7 detects rather than prevents | proposed |
 | V8 | AgentClinic through Evals | reproduce the repair fixtures on this repository's own `capture`/`attempt`/`grade` path, replacing the spike's scratchpad harness | Engine changes, including a `facts` field (satyrn-engine `BACKLOG.md`); an orchestrator | proposed |
-| V5b | The diagnostic loop | `run --n 8` over admitted tasks, summarizing verdict reasons, repeated calls, churn, tool calls, context, and timeouts | The claims layer — pre-registration, intervals, void accounting (`BRIEF.md:33-36`) | blocked on V5a |
+| V5b | The diagnostic loop | `run --n 8` over admitted tasks, summarizing verdict reasons, repeated calls, churn, tool calls, context, and timeouts | The claims layer — pre-registration, intervals, void accounting (`BRIEF.md:33-36`) | **next** |
 
 Full done-when criteria for V1–V5 are in `BRIEF.md`'s referenced roadmap
-research, not restated here to avoid drift between two copies. **V5a and
-V6–V8 are new and their done-when lives with each phase's design spec** —
-V6's is `docs/superpowers/specs/2026-09-01-svcs-session-eval-design.md`
-(superseded banner; the design of record for the session mechanics). V5a's
-is `docs/superpowers/specs/2026-09-02-v5a-admission-rule-design.md`. V7
+research, not restated here to avoid drift between two copies. **V6–V8 are
+new and their done-when lives with each phase's design spec** — V6's is
+`docs/superpowers/specs/2026-09-01-svcs-session-eval-design.md`
+(superseded banner; the design of record for the session mechanics). V7
 and V8 have no spec yet and must gain one before implementation, per
-`docs/sdd.md`.
+`docs/sdd.md`; V5a's done-when was its design spec, now complete (Prior
+work below).
 
 **Design work owed, not a phase:** a suite with headroom. See `BRIEF.md`'s
-"The unsolved problem." V3 deliberately persisted single attempts without
-claiming a baseline. V4 supplies the real engine attempt; before V5 admits a
-task, an n=4–6 baseline probe must show that the task has room to move.
-`local-pings` remains unadmitted. Its first probe exposed an unsound oracle;
-the corrected probe then recorded 0/4 successful attempts, while two timed-out
-attempts retained patches that passed the corrected oracle and preservation
-suite. Before V5, admission must keep successful attempt outcomes, retained
-patch production, and the conditional quality of retained patches separate
-rather than choosing a metric after seeing the result. A follow-up recorded a
-budget-only Envelope variant at 0/4 and the handoff-contract Engine composite
-at 2/4, which is useful product-path evidence but does not move the Baseline
-off its floor. The three records are the
+"The unsolved problem." The admission rule keeps the operative measurement
+discipline: a qualifying baseline probe must show that the task has room to
+move, and admission must keep successful attempt outcomes, retained patch
+production, and the conditional quality of retained patches separate
+rather than choosing a metric after seeing the result (the V5a design
+spec's index applies this per arm). The pre-admission probe records — the
 [`oracle audit`](docs/superpowers/research/2026-08-27-local-pings-baseline-probe.md),
 the [`corrected probe`](docs/superpowers/research/2026-08-27-local-pings-corrected-probe.md),
+the
+[`Envelope/Engine follow-up`](docs/superpowers/research/2026-08-27-local-pings-envelope-engine-followup.md),
+the
+[`magicmock-factory` oracle audit and final probe](docs/superpowers/research/2026-08-29-magicmock-factory-baseline-probe.md),
 and the
-[`Envelope/Engine follow-up`](docs/superpowers/research/2026-08-27-local-pings-envelope-engine-followup.md).
-
-`magicmock-factory` is also unadmitted. Successive task versions recorded 3/6,
-1/6, and then 0/4, but their increasingly explicit contracts and fresh
-stochastic samples make those rates unsuitable as a direct comparison. The
-candidate audit is decisive: all five first-stage patches fail correction 1,
-and the sole second-stage passing patch fails correction 2. The final task is
-valid and its exact upstream fix passes all 142 upstream tests, but bare Pi
-retained no patch that passed the final oracle. See the
-[`magicmock-factory` oracle audit and final probe](docs/superpowers/research/2026-08-29-magicmock-factory-baseline-probe.md).
+[product-path pilot](docs/superpowers/research/2026-08-26-product-path-pilot.md)
+— are the evidence the index was built from; their pre-decision "do not
+admit" verdicts are superseded by the V5a decision (Prior work below).
 
 ## Backlog
 
@@ -109,6 +97,30 @@ entry there states what reopens it.
 Completed phases move here (or to `docs/superpowers/phase-history.md`)
 when the roadmap outgrows the front page.
 
+- **V5a — The admission rule (2026-09-02).** Decided the admission bar:
+  the middle-band rule applies to the arms under comparison, not to the
+  bare-Pi reference alone. The superseded kickoff framing named four probed
+  tasks — `local-pings`, `stringified-annotations`, `magicmock-factory`, and
+  a multi-prompt `svcs` session — and stated "**No probed task has a bare-Pi
+  baseline in the middle band.**", then posed the decision:
+
+  > is the admission bar "middle-band for bare Pi", or "discriminates between
+  > the arms under comparison"? Under the first, four rigorously qualified tasks
+  > are discarded. Under the second, at least two are admissible today.
+  > `BRIEF.md`'s middle-band rule assumes the first without saying which arm is
+  > the baseline, and that ambiguity now blocks the diagnostic loop.
+
+  The corrected probes falsified the floor-is-a-wall reading (0/4 successful
+  attempts with 2/2 constructible retained quality on `local-pings`; Engine
+  2/4 in the follow-up; Engine 6/6 vs Baseline 0/6 in the pilot), so the
+  decision admits the two tasks whose recorded arms separate: `local-pings`
+  (Baseline floor / Envelope floor / Engine middle) and
+  `stringified-annotations` (Baseline floor / Envelope floor / Engine
+  ceiling). `magicmock-factory` (Baseline floor, no other arm recorded) is
+  unadmitted on an evidence gap; the multi-prompt `svcs` session is deferred
+  to V6. `BRIEF.md` and `docs/glossary.md` were amended with the old wording
+  kept in notes. Design spec and GLM 5.3 review recorded under
+  `docs/superpowers/`.
 - **V4 — A real engine attempt (2026-08-23).** Evals reconstructs a private
   Git repository from the persisted task base, runs the executable once in a
   detached worktree, preserves its artifacts before cleanup, and proves the
