@@ -107,11 +107,28 @@ Conflating these picks the wrong artifact for both.
 runs, so headroom is irrelevant. It must grade **offline and
 deterministically, with no network and no third-party dependencies.**
 
-**A diagnostic workload** must be able to show a difference. It requires a
-**baseline probe** — the baseline attempt command at n=4–6, recorded once as a
-property of the task. A task at or near ceiling is smoke only. A task at the
-floor is a capability wall, not something an engine change moves. Diagnosis
-lives in between.
+**A diagnostic workload** must be able to show a difference between the arms
+under comparison. It requires a **baseline probe** — the baseline attempt
+command at n=4–6, recorded once as a property of the task. The middle-band
+bar applies to the arms under comparison, not to the reference arm alone: a
+task is admissible when its probe records those arms in different
+successful-attempt bands, with the metric and stopping rule fixed before the
+run and successful-attempt outcome, retained-patch production, and
+conditional retained-patch quality kept separate. A task is smoke only when
+its reference arm sits at or near ceiling. A task at the floor is a
+capability wall only when no arm under comparison is recorded above it and no
+retained patch passes a preservation-safe oracle; a completion floor whose
+retained patches pass is what an engine change exists to move.
+
+> **Recorded amendment (V5a, 2026-09-02).** The paragraph above supersedes
+> the prior wording: "A task at or near ceiling is smoke only. A task at the
+> floor is a capability wall, not something an engine change moves. Diagnosis
+> lives in between." The corrected probes falsified the floor sentence: bare
+> Pi recorded 0/4 successful attempts on `local-pings` while retained patches
+> passed a fresh preservation suite, and the Engine composite then recorded
+> 2/4; the pilot recorded Engine 6/6 against a 0/6 Baseline on
+> `stringified-annotations`. Decision and per-arm index:
+> `docs/superpowers/specs/2026-09-02-v5a-admission-rule-design.md`.
 
 The four deterministic capture checks prove a task is **valid** — un-done at
 base, and winnable. They say nothing about **discriminating power**. The prior
@@ -125,6 +142,12 @@ Every suite it built saturated, and the two tasks that discriminated were
 found by running batches, not by design. **A suite with headroom is design
 work that this project still owes**, and the diagnostic summary is only
 informative on tasks whose baseline can move. See `ROADMAP.md`.
+
+> **Recorded amendment (V5a, 2026-09-02).** "Middle band" is read on the
+> arms under comparison, not on the bare-Pi reference alone — see the
+> diagnostic-workload amendment above and the V5a design spec. Two probed
+> tasks (`local-pings`, `stringified-annotations`) are admissible under that
+> reading; suite-headroom design work remains owed for the rest.
 
 ## Where to start
 

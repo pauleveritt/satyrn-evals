@@ -49,15 +49,21 @@ provenance
 
 baseline probe
   The baseline attempt command at n=4–6, recorded once as a property of
-  the task, so the diagnostic loop has something to move. A task at or
-  near ceiling is smoke only; a task at the floor is a capability wall.
+  the task, so the diagnostic loop has something to move. The middle-band
+  bar applies to the arms under comparison, not to the reference arm alone:
+  a task is admissible when its probe records those arms in different
+  successful-attempt bands, with the metric fixed before the run and
+  successful-attempt outcome, retained-patch production, and conditional
+  retained-patch quality kept separate. (Amended by V5a, 2026-09-02; the
+  prior wording — "a task at or near ceiling is smoke only; a task at the
+  floor is a capability wall" — is superseded by the V5a design spec.)
   V4 provides the real attempt; baseline-probe admission belongs to V5.
 
 diagnostic workload
   A {term}`task` used to see whether an engine change helped; it must be
-  able to show a difference. Requires a {term}`baseline probe`. Not the
-  same job as a {term}`grader fixture` — picking one artifact for both
-  picks the wrong artifact for each.
+  able to show a difference between the arms under comparison. Requires a
+  {term}`baseline probe`. Not the same job as a {term}`grader fixture` —
+  picking one artifact for both picks the wrong artifact for each.
 
 evidence floor
   The minimum proof a grader must reach: it has accepted a known-good

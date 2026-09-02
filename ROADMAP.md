@@ -32,6 +32,11 @@ V5 is therefore split: **V5a** decides the rule and indexes the suite with no
 model runs at all; **V5b** is the run-and-summarize loop, sequenced by what
 V5a admits. See the Phases table below and `BRIEF.md` for the binding rules.
 
+**V5a decision recorded 2026-09-02** in
+[`docs/superpowers/specs/2026-09-02-v5a-admission-rule-design.md`](docs/superpowers/specs/2026-09-02-v5a-admission-rule-design.md),
+pending maintainer confirmation per `CLAUDE.md`; V5b stays blocked until the
+proposal is confirmed.
+
 ## Concept budget
 
 *Every term below is a cost against a 5–10 h/wk volunteer's ability to hold
@@ -52,7 +57,7 @@ lands.
 | V2 | Capture by revert | `capture --revert SHA` makes a task winnable by construction, in minutes | Environment materialization, baseline probes, commit mining, a sandbox, Windows | **complete** |
 | V3 | Attempt persistence | `attempt TASK -- COMMAND...` runs a fake command, persists patch and transcript, regrades offline | The real engine seam (V4), the diagnostic loop, transcript format, retry, repair | **complete** |
 | V4 | A real engine attempt | Reconstruct an isolated Git workspace and produce the V3 artifact set with `satyrn-engine attempt` | Model-quality claims, admission, repeated attempts, A/B (V5); containment; Windows | **complete** |
-| V5a | The admission rule | decide and record which arm the middle-band bar applies to, then index every probed task with its band per arm; no model runs | Model runs, the diagnostic loop (V5b), the claims layer | **next** |
+| V5a | The admission rule | decide and record which arm the middle-band bar applies to, then index every probed task with its band per arm; no model runs | Model runs, the diagnostic loop (V5b), the claims layer, an Envelope/Engine-arm probe of `magicmock-factory`, the svcs session suite (V6), near-ceiling boundary calibration, suite-headroom capture — see the spec's Out of scope | **next** |
 | V6 | Session eval | `session TASK -- ADAPTER...` sends ordered prompts to one conversation against one evolving checkout, snapshots a cumulative patch per checkpoint, and grades offline through a grader overlay the executor is never shown | `run --n 8` and admission, model-client integration, retries, a hostile-command sandbox, a persistent Engine daemon | proposed |
 | V7 | Task visibility and leak detection | a manifest field declares each task visible- or hidden-oracle; contamination is detected by content and reported per arm, never absorbed into a denominator | OS-level containment — deferred in `BACKLOG.md`; V7 detects rather than prevents | proposed |
 | V8 | AgentClinic through Evals | reproduce the repair fixtures on this repository's own `capture`/`attempt`/`grade` path, replacing the spike's scratchpad harness | Engine changes, including a `facts` field (satyrn-engine `BACKLOG.md`); an orchestrator | proposed |
@@ -62,7 +67,8 @@ Full done-when criteria for V1–V5 are in `BRIEF.md`'s referenced roadmap
 research, not restated here to avoid drift between two copies. **V5a and
 V6–V8 are new and their done-when lives with each phase's design spec** —
 V6's is `docs/superpowers/specs/2026-09-01-svcs-session-eval-design.md`
-(superseded banner; the design of record for the session mechanics). V5a, V7
+(superseded banner; the design of record for the session mechanics). V5a's
+is `docs/superpowers/specs/2026-09-02-v5a-admission-rule-design.md`. V7
 and V8 have no spec yet and must gain one before implementation, per
 `docs/sdd.md`.
 
