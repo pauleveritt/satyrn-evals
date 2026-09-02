@@ -33,7 +33,7 @@ Phases completed, each with its design spec and implementation plan:
   accepts a bundled task's known-good patch and rejects its known-broken
   one, offline and deterministic. ({doc}`spec <superpowers/specs/2026-08-16-v1-grade-design>`, {doc}`plan <superpowers/plans/2026-08-16-v1-grade>`)
 
-Before V5, the project needs eval tasks whose baseline results show useful
+Before V5b, the project needs eval tasks whose baseline results show useful
 headroom. The roadmap of feature cycles lives in
 [`ROADMAP.md`](https://github.com/pauleveritt/satyrn-evals/blob/main/ROADMAP.md). The `e1` git tag holds the
 scaffolded starting state — toolchain, docs stack, CI, the brief, the
@@ -92,7 +92,11 @@ One phase at a time, each shipping one user-visible behavior:
   command, persists patch and transcript, regrades offline. *Complete.*
 - **V4 — A real engine attempt.** The same artifact set, produced by
   `satyrn-engine attempt` (engine phase E5). *Complete.*
-- **V5 — The diagnostic loop.** `run --n 8` plus a summary: verdict
+- **V5a — The admission rule.** Decide which arm the middle-band bar
+  applies to, and index every probed task by its band per arm. No model runs.
+- **V6–V8.** Session eval; task visibility and leak detection; AgentClinic
+  reproduced through this repository's own path. See `ROADMAP.md`.
+- **V5b — The diagnostic loop.** `run --n 8` plus a summary: verdict
   reasons, repeated calls, churn, tool calls, context, timeouts.
   *Not started.*
 

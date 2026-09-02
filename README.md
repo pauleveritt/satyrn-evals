@@ -64,7 +64,8 @@ Evals builds the engine one loop at a time:
 3. **Grade** — grading reads only the preserved artifacts and records an
    offline verdict — no model, no network. V1, done.
 4. **Diagnose** — a run of n=8 plus a summary: verdict reasons, repeated
-   calls, churn, tool calls, context, timeouts. V5.
+   calls, churn, tool calls, context, timeouts. V5b, after V5a settles which
+   arm the admission bar applies to.
 5. **Fix and re-measure** — the summary names what broke and where; the
    engine gets fixed; the suite re-runs. Each task carries a baseline probe
    — its baseline attempt at n=4–6, recorded once — so a later run shows
@@ -129,7 +130,7 @@ Phases completed, each with its design spec and implementation plan:
   ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-08-16-v1-grade-design.md),
   [_plan_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/plans/2026-08-16-v1-grade.md))
 
-Before V5, the project needs eval tasks whose baseline results show useful
+Before V5b, the project needs eval tasks whose baseline results show useful
 room between floor and ceiling. The roadmap of feature cycles lives in
 [`ROADMAP.md`](ROADMAP.md). The `e1` git tag holds the
 scaffolded starting state — toolchain, docs stack, CI, the brief, the

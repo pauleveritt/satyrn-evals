@@ -83,6 +83,21 @@ serves; a concept budget and a repository-weight budget from phase one.
    a marked integration tier that does not run in CI.
 6. **A refusal test has a sibling success test.** Most of this code tests
    rejection, and rejection is the default outcome of most failures.
+7. **Cite, don't recall.** No claim about a prior result enters a plan, a spec,
+   or a roadmap without a `file:line` citation checked at the time of writing.
+   Earned the hard way: one false claim — "the Engine arm has never been run
+   against a floored task" — was corrected in a research document and then
+   restated three more times in later documents, including once four paragraphs
+   above the `ROADMAP.md` text that already refuted it. Restating a conclusion
+   is not the same as re-deriving it, and the failure mode is invisible from
+   inside the sentence that repeats it.
+8. **A detector must discriminate, in both directions.** Every check must be
+   shown to fire on a known-bad drawn from the *current* batch and stay silent
+   on a known-good from the same batch. Five instrument defects in one spike
+   shared one shape: an absence of signal reported as a finding — a void hiding
+   a fail, a preflight that could not fail, a verdict computed over zero cells,
+   a detector that fired on 104 of 128 cells, and an arm protected from a
+   harness defect its rivals were exposed to.
 
 ## Two selection rules, because there are two jobs
 

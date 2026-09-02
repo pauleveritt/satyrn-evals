@@ -10,10 +10,27 @@ Backlog, not into the current phase.*
 
 ## Now
 
-**V4 is complete. Suite headroom is next.** Before V5 starts, baseline probes
-must identify tasks between the floor and ceiling so the diagnostic loop has
-something useful to measure. See the Phases table below and `BRIEF.md` for the
-binding rules.
+**V4 is complete. V5a — the admission rule — is next.**
+
+Four tasks have now been probed and none admitted: `local-pings`,
+`stringified-annotations`, `magicmock-factory`, and a multi-prompt `svcs`
+session. **No probed task has a bare-Pi baseline in the middle band.** But two
+of them do discriminate between arms — `local-pings` records Engine 2/4 against
+Baseline 0/4 (see the Phases note below), and `stringified-annotations` records
+Engine 6/6 against Baseline 0/6 in the
+[product-path pilot](docs/superpowers/research/2026-08-26-product-path-pilot.md).
+
+That gap is the thing to settle before more probing, and it is a decision, not
+a measurement: **is the admission bar "middle-band for bare Pi", or
+"discriminates between the arms under comparison"?** Under the first, four
+rigorously qualified tasks are discarded. Under the second, at least two are
+admissible today. `BRIEF.md`'s middle-band rule assumes the first without
+saying which arm is the baseline, and that ambiguity now blocks the diagnostic
+loop.
+
+V5 is therefore split: **V5a** decides the rule and indexes the suite with no
+model runs at all; **V5b** is the run-and-summarize loop, sequenced by what
+V5a admits. See the Phases table below and `BRIEF.md` for the binding rules.
 
 ## Concept budget
 
@@ -35,10 +52,19 @@ lands.
 | V2 | Capture by revert | `capture --revert SHA` makes a task winnable by construction, in minutes | **complete** |
 | V3 | Attempt persistence | `attempt TASK -- COMMAND...` runs a fake command, persists patch and transcript, regrades offline | **complete** |
 | V4 | A real engine attempt | Reconstruct an isolated Git workspace and produce the V3 artifact set with `satyrn-engine attempt` | **complete** |
-| V5 | The diagnostic loop | admit tasks with a recorded n=4–6 baseline probe, then `run --n 8` and summarize verdict reasons, repeated calls, churn, tool calls, context, and timeouts | not started |
+| V5a | The admission rule | decide and record which arm the middle-band bar applies to, then index every probed task with its band per arm; no model runs | **next** |
+| V6 | Session eval | `session TASK -- ADAPTER...` sends ordered prompts to one conversation against one evolving checkout, snapshots a cumulative patch per checkpoint, and grades offline through a grader overlay the executor is never shown | proposed |
+| V7 | Task visibility and leak detection | a manifest field declares each task visible- or hidden-oracle; contamination is detected by content and reported per arm, never absorbed into a denominator | proposed |
+| V8 | AgentClinic through Evals | reproduce the repair fixtures on this repository's own `capture`/`attempt`/`grade` path, replacing the spike's scratchpad harness | proposed |
+| V5b | The diagnostic loop | `run --n 8` over admitted tasks, summarizing verdict reasons, repeated calls, churn, tool calls, context, and timeouts | blocked on V5a |
 
-Full done-when criteria are in `BRIEF.md`'s referenced roadmap research, not
-restated here to avoid drift between two copies.
+Full done-when criteria for V1–V5 are in `BRIEF.md`'s referenced roadmap
+research, not restated here to avoid drift between two copies. **V5a and
+V6–V8 are new and their done-when lives with each phase's design spec** —
+V6's is `docs/superpowers/specs/2026-09-01-svcs-session-eval-design.md`
+(superseded banner; the design of record for the session mechanics). V5a, V7
+and V8 have no spec yet and must gain one before implementation, per
+`docs/sdd.md`.
 
 **Design work owed, not a phase:** a suite with headroom. See `BRIEF.md`'s
 "The unsolved problem." V3 deliberately persisted single attempts without
@@ -74,6 +100,32 @@ automated commit mining (after three manual captures show which steps
 repeat); paired A/B of two engine versions (when a contributor needs "did
 my fix help" across versions); resumable large batches (only if the prior
 checkpoint transplants verbatim); the whole claims layer.
+
+**OS-level containment for the attempt** (reopens when all four recorded
+blockers are cleared, or when detection proves insufficient in practice). A
+whole-process sandbox profile was built and measured during the 2026-09-01
+spike and is **deferred, not adopted**: it is macOS-only; it silently removed
+the model's own test runner, so an entire block measured models that could not
+self-verify; a hard link created inside the run root still read the grader
+through it; and it conflicts with V4's absolute external engine-contract path
+— though the V6 design already routes around that last one by copying a public
+contract into the worktree rather than referencing it by task path. V7 uses
+after-the-fact content detection instead. *Recorded direction change:* an
+earlier note in this planning cycle said "make containment genuinely usable,
+including a test runner"; this entry defers it rather than fixing it, and a
+still earlier draft wrote "refused" where the evidence only supports
+"deferred".
+
+**Cheap partial prevention** (reopens with V7): POSIX file modes and a separate
+run user need no new system, and V7 should require one of them for any task
+declaring a hidden oracle rather than relying on detection alone.
+
+**Text-contract support** (reopens when a roster model cannot emit tool calls —
+two of six models measured in the spike could not, so this is when, not if);
+**writable-scope injection** (reopens if scope overreach is measured here);
+**an orchestrator process** (remains unjustified — every effect measured so far
+was obtained without one, and autonomous contract authoring measured worse than
+hand authoring).
 
 ## Prior work
 
