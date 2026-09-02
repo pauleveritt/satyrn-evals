@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from satyrn_evals.attempt_record import AttemptCode, AttemptOutcome, AttemptRecord
-from satyrn_evals.summary import Summary, compute_summary, write_summary
+from satyrn_evals.summary import compute_summary, write_summary
 from satyrn_evals.verdict import Verdict
 
 
