@@ -5,6 +5,12 @@
 [`2026-09-01-handoff-and-eval-harvest.md`](2026-09-01-handoff-and-eval-harvest.md)
 and [`2026-09-01-agentclinic-spike.md`](2026-09-01-agentclinic-spike.md) —
 read-only gap analysis, not a design and not a plan.
+**Sanitized for a public repository (2026-09-02).** Two of the repositories
+surveyed here — `swiftstar` and `ds4-engine` — are **private**. Their file
+paths, verbatim text, and unpublished measurements have been removed; what
+remains is the transferable lesson and a pointer to where the detail lives.
+`local-ai-pi` and `satyrn-engine` are public and cited normally.
+
 **Method:** a separate cross-repo investigation (SwiftStar, local-ai-pi,
 ds4-engine, satyrn-engine, and satyrn-evals' own unmerged branches),
 conducted independently, then checked line by line against a full read of
@@ -21,46 +27,46 @@ only what it doesn't, so a future reader does not re-derive a fifth time.
 
 ## A. SwiftStar findings not in the harvest
 
-- **Pathology #28 — scope overreach via the contract's own prose, and its
-  unvalidated fix.** A contract restricted to `src/svcs/**` still got a docs
-  file edited because the contract's own "Documentation Note" prose asked
-  for it (`swiftstar/docs/pathologies.md:23-28`). SwiftStar built a
-  writable-scope-injection fix and never ran it
-  (`swiftstar/docs/remediations.md:257-266`, under "Built but never measured
-  against the pathology"). This is the single most concretely portable,
-  ready-to-test idea found in either source repo, and it does not appear
-  anywhere in the harvest.
-- **Pathology #2 — "talk yourself out of the answer."** The largest single
-  failure population in a 2026-08-29 classification: 7 of 24 non-passing
-  repair captures, larger than the delivery-defect population (2 of 24) the
-  campaign was actually chasing that day (`swiftstar/ROADMAP.md:798-812`,
-  `docs/pathologies.md:18-19`). Not in the harvest's §4 failure-mode list.
-- **Pathology #19 (locate-only stall)** — real-app turns stalled issuing only
-  read/list/search with zero mutations 4/6 (67%) of the time vs. 12% in a
-  file-list-primed harness — and **pathology #16's specific numbers** (97% of
-  a 16,384-token context consumed by one think-loop probe with no answer;
-  P23 measured the wall-clock ceiling of removing thinking at ~9.3%, "not a
-  throughput lever"). Neither appears.
+- **Scope overreach caused by the contract's own prose, and its unvalidated
+  fix.** A contract restricted to one source subtree still had a docs file
+  edited, because the contract's *own explanatory prose* asked for it. That
+  repository built a writable-scope-injection fix and filed it under "built but
+  never measured against the pathology". This is the single most concretely
+  portable, ready-to-test idea found in either source repo, and it does not
+  appear anywhere in the harvest.
+
+- **"Talk yourself out of the answer."** The largest single failure population
+  in that repository's own classification of non-passing repair captures —
+  larger than the delivery-defect population the campaign was actually chasing
+  that day. Not in the harvest's failure-mode list, and it is plausibly the
+  same shape as the announce-then-stop behaviour the overnight run recorded.
+
+- **A locate-only stall**, where real-app turns issue only read/list/search
+  calls and never mutate anything — markedly more common without a primed file
+  list — and a **think-loop probe** that consumed nearly all of a small context
+  window without producing an answer, alongside a measurement that removing
+  thinking was not a throughput lever. Neither appears in the harvest; the
+  figures stay in the private repository.
+
 - **Two retracted quantitative claims from local-ai-pi**, both published and
   withdrawn the same night: a "4.4× tool-call ratio" that was a
   substring-counting bug over a re-serialized transcript (real ratio 21.9×
   vs. 10.0×), and a "1,416 seconds" wall-clock gap invalidated by
   contiguous-block scheduling on a variable-load machine
   (`local-ai-pi/docs/superpowers/phase-history.md:134-144`). Not mentioned.
-- **`swiftstar/docs/remediations.md`'s ranked-15 list, and its provenance
-  footer.** The footer explicitly separates which remediations trace back to
-  local-ai-pi's own phase 5/7/11 work (ranks 1, 2, 4, 10, 13, 14, 15) from
-  which are SwiftStar-native (ranks 3, 5, 7, 8, 9, 11, 12). Two SwiftStar-
-  original packet-directive fixes with real measured effect — the multi-file
-  repair directive (false clause wrong in 39/40 cells,
-  `remediations.md:121-133`) and count-free plural emission (a 40-cell arm
-  landing 62% [47%,76%], `remediations.md:165-179`, reported honestly as
-  narrowly missing its pre-registered bar) — are not cited. This whole
+- **That repository's ranked remediation list, and its provenance footer.** The footer explicitly separates which remediations trace back to
+  `local-ai-pi`'s own earlier phases from which originated in that repository.
+  Two of its
+  original packet-directive fixes with real measured effect — a multi-file
+  repair directive (correcting a false clause that was wrong in nearly every
+  cell of its arm) and a count-free plural emission (an arm reported honestly
+  as narrowly missing its own pre-registered bar) — are not cited. The figures
+  themselves stay in the private repository. This whole
   document, and the directionality it establishes, is absent from the
   harvest.
-- **The stated origin of the `facts` field.** SwiftStar's own design spec:
-  *"Grounded in the recorded `local-ai-pi` result that facts work and rules
-  of conduct do not"* (`swiftstar/docs/superpowers/specs/2026-08-21-swiftstar-design.md:94`)
+- **The stated origin of the `facts` field.** That repository's own design
+  spec grounds the field explicitly in the recorded `local-ai-pi` result that
+  facts work and rules of conduct do not
   — a direct provenance citation the harvest's Gen 3→4 lineage discussion
   (§0-§1) does not include.
 
@@ -84,7 +90,8 @@ only what it doesn't, so a future reader does not re-derive a fifth time.
   repeated command 178→5 after the fix). Neither is in the satyrn harvest's
   §4 failure-mode list, though §4.1's "mechanism never engaged, graded
   accepted" finding is a related but distinct failure shape.
-- **Pathology #24** — a 24-replicate noise-floor run with 5/6 "tests-vanished"
+- **A noise-floor replicate run** in which almost every cell lost its tests or
+  was damaged, accepting none.
   plus 1 damaged (0/6 accepted).
 
 ## C. ds4-engine work — a different repository, not referenced by the harvest at all
@@ -92,20 +99,16 @@ only what it doesn't, so a future reader does not re-derive a fifth time.
 None of this touches the harvest, since it lives outside the satyrn split
 entirely:
 
-- The full **`ds4-engine/docs/capability-map.md`** ranked capability list (35
-  entries) and the specific pairing of SwiftStar/local-ai-pi pathologies to
-  capability entries — e.g. pathology 28 (scope overreach) to capability #1
-  (symbol-mask enforcement) and #29 (contract linting); the "talk yourself
-  out of the answer" pathology to #17/#18 (mask-rejection calibration,
-  logprob-aware termination); the Cycle 10/11 measurement collapse to #14
-  (shared-prefix counterfactual sampling).
-- The drafted research note
-  `ds4-engine/docs/superpowers/research/2026-09-01-handoff-packet-engine-capabilities.md`,
-  arguing that packet *authoring* should move to deterministic tooling rather
-  than a second model agent — reaching a similar destination to the harvest's
-  open question 1 ("is a packet with no orchestrator machinery ahead of its
-  contract?"), but by an independent route through a different project's own
-  architecture rules.
+- A ranked capability list in a third, private engine repository, and the
+  specific pairing of the pathologies above to entries on it — scope overreach
+  to symbol-mask enforcement and contract linting; "talk yourself out of the
+  answer" to mask-rejection calibration and termination criteria; a measurement
+  collapse to shared-prefix counterfactual sampling.
+- A drafted research note in that same repository, arguing that packet
+  *authoring* should move to deterministic tooling rather than to a second
+  model agent — reaching a similar destination to the harvest's open question 1
+  ("is a packet with no orchestrator machinery ahead of its contract?"), but by
+  an independent route through a different project's own architecture rules.
 
 ## D. satyrn-engine's own current state — the harvest never inspects this repo
 
@@ -119,7 +122,7 @@ entirely:
   attempts became engineering efforts about orchestration until the machinery
   outgrew anyone's ability to hold it in their head; the concept-budget and
   repository-weight-budget consequences drawn from it — and the explicit
-  Backlog exclusion, **"contract authoring (stays a main-agent skill)."** The
+  Backlog exclusion, which states that **contract authoring is a main-agent skill rather than engine work.** The
   harvest's open question 1 asks almost the identical question independently,
   without knowing this repo already answered the authoring half of it.
 - `tools/replay_orchestrator.mjs`, and that satyrn-engine's phase history
@@ -173,17 +176,35 @@ efforts exist in this repo right now.
   can't be trusted as evidence of availability either — a sharper and more
   actionable version of the same caution.
 
+  **Correction (2026-09-02, from the overnight run).** The supporting instance
+  is wrong; the lesson is right. `gemma-4-12B-it-MLX-8bit` **is** cached
+  locally, at
+  `~/.cache/huggingface/hub/lmstudio-community/gemma-4-12B-it-MLX-8bit` — the
+  search looked under `mlx-community/`, where only the 26B sibling lives. The
+  model demonstrably loads and generates: it served roughly 100 measured cells
+  overnight, and a one-word probe returned in 3.8 s while this correction was
+  being written. So this cannot be cited as an example of a catalog entry
+  without weights.
+
+  The *claim* the instance was offered for still holds, and was independently
+  established the same night by a different route: block 5 of the overnight run
+  lost 16 of 16 cells to zero-event timeouts while `/v1/models` answered
+  normally, because that endpoint is served from a registry and says nothing
+  about whether a model can generate. The fix adopted there was a live
+  one-word completion per model before each block, not a catalog check
+  (overnight `notes/FINDINGS.md` F10). Cite that instance instead of this one.
+
 ## One tension worth checking, not resolving here
 
 The harvest's open question 2 states `removableSymbols` has "no measured
-incidence data in either repo." `swiftstar/docs/remediations.md` rank 13
-describes a measured result (1/4→4/4, Fisher p=0.14, n=4 capped) tied to
-`HandoffContract.removableSymbols`. On a closer read, that measurement may be
+incidence data in either repo." that repository's remediation list
+describes a measured result (a small, n-capped result) tied to
+that contract type's rename-declaring field. On a closer read, that measurement may be
 of the *pre-edit guard* that referenced the field and was later removed for
 lacking visibility into contract-authorized renames — not a direct test of
 the field's own effect — so this may not actually contradict the harvest's
 claim. Flagged here rather than adjudicated, since resolving it needs a
-direct re-read of `swiftstar/docs/remediations.md:181-192` against whatever
+direct re-read of that repository's remediation list against whatever
 source the harvest's open question 2 was drawing on.
 
 ## What this note does not do

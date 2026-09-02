@@ -2,6 +2,14 @@
 
 **Date:** 2026-09-01
 **Status:** spike notes — **input to brainstorming, not a design and not a plan**
+**Sanitized for a public repository.** One of the two source repositories
+(private repo) and a third referenced below (private repo) are **private**.
+Their internal file paths, verbatim text, and unpublished measurements are
+deliberately **not reproduced here** — only the transferable design lessons,
+which are ours to state. Where a claim rests on private evidence this note says
+so and points at the repository rather than quoting it. `local-ai-pi` and
+`satyrn-engine` are public and are cited normally.
+
 **Method:** read-only survey of two evidence repositories, plus a small
 measured probe recorded separately in
 [`2026-09-01-agentclinic-spike.md`](2026-09-01-agentclinic-spike.md).
@@ -28,7 +36,7 @@ it — which this spike did **four** times in one afternoon (§5).
 | `local-ai-pi` `oracle-repair` | Gen-1 packet, chapter prose | **Numbers withdrawn**; mechanism findings stand |
 | `local-ai-pi` `pre-restructure` | 3-phase specs, references, per-phase suites | Fixtures good; SP2 numbers superseded |
 | `local-ai-pi` `main` | Gen-3 typed contract, harvest index | Current |
-| `swiftstar` (private) | Gen-4 packet, campaign discipline, `fixtures/agenttest/` | Current; two live defects noted in §4.2 and §4.3 |
+| `swiftstar` (**private**) | Gen-4 packet type, campaign discipline, repair fixtures | Current; contents not reproduced here |
 
 **Four** generations of the handoff artifact exist. **Do not conflate them.**
 The Gen 3 → Gen 4 lineage is source-attested; the Gen 1 → Gen 2 numbering is
@@ -42,7 +50,7 @@ this document's narrative, not a distinction either source draws.
    call (`main:extensions/implementer/handoff-contract.ts`,
    `main:harness/typed_contract.py`).
 4. **Gen 4 — `HandoffPacket`**, **12** stored properties, `Codable`, captured
-   to disk (`swiftstar:Sources/SwiftStarKit/HandoffPacket.swift:70-90`).
+   to disk (private repo; path withheld).
    (Corrected from "13 typed fields".)
 
 `local-ai-pi`'s SP1/SP2 arc (0/8 → 3/8 → 5/8) is **retracted** — the oracle
@@ -68,27 +76,26 @@ Gen 3's equivalent adds `readableFiles`, `preservedBehavior`, `knownFacts`,
 - **Host-computed**, never model-computed: `writableFiles`, budgets,
   `validationCommand`, `sampling`.
 - **Derived** at dispatch time by reading the worktree: `baselines`
-  (per-file sha256 + line ending + mode) — *"each read from the worktree,
-  never guessed"* (`HandoffPacket.swift:12-14`). An earlier draft quoted
-  *"never authored, never trusted from input"* from a **superseded** schema
-  document; the live source says the above.
+  (per-file sha256 + line ending + mode) — read from the worktree at dispatch
+  time and never guessed or accepted from input.
 
-Stated doctrine: *"Model-authored packets must not mean the model computes
-`writableFiles`, budgets, or `validationCommand`."* The model supplies
+Stated doctrine, paraphrased: even when a model authors the packet, it must
+not be the thing that computes the writable manifest, the budgets, or the
+validation command. The model supplies
 judgment; it never computes its own permissions. Its prose is parsed by the
-same deterministic splitter the host uses, so it *"can only fail closed."*
-**Caveat, from the same spec:** a review found the splitter *"fails **open**,
-not closed … The claimed 'fails closed' property was false for the most
-probable input."* It was then fixed, but the doctrine sentence quoted above
-predates that review — take the principle, not the guarantee.
+same deterministic splitter the host uses, so the intended property is that it
+can only fail closed. **Caveat from that same source:** a later review found
+the splitter actually failed *open* for the most probable input, and the
+"fails closed" claim was false until fixed. Take the principle, not the
+guarantee.
 
 ### Decisions the sources landed on (recorded, not adopted)
 
-- **`facts` pre-empt deliberation.** *"Ambiguity converts directly into
-  deliberation for some models, so an unstated contract is a cost, not a
-  neutral omission."* One phase-2 failure burned **44.7k characters** of
-  reasoning on whether a command changes the working directory. The fix
-  pinned *the consequence the model agonized over*, not the mechanism.
+- **`facts` pre-empt deliberation.** Ambiguity converts directly into
+  deliberation for some models, so an unstated contract is a cost rather than a
+  neutral omission. One recorded failure burned tens of thousands of characters
+  of reasoning on a single unstated environmental question. The fix pinned the
+  *consequence* the model was agonising over, not just the mechanism.
 - **Facts must be rendered, not merely stored** — only `taskText` is sent, so
   a fact left in a struct field is a no-op. Assembly order puts facts first.
 - **`redacts` are checked across every channel the worker sees** — task text,
@@ -102,31 +109,29 @@ predates that review — take the principle, not the guarantee.
   our "grading must be re-runnable against stored artifacts" rule.
 - **Validate before the model loads, and again on the packet actually
   dispatched.** A refusal is free; a wasted run looks like data.
-- **The validator ships its own limitations in its docstring:** verbatim and
-  case-sensitive, so a restated fix passes, and a spec on disk defeats it
-  entirely. *"It is a tripwire for the mistake that actually happened … not a
-  proof of ignorance."*
+- **The validator ships its own limitations in its own docstring:** the check
+  is verbatim and case-sensitive, so a restated fix passes it, and a spec left
+  on disk defeats it entirely. It is described there as a tripwire for the
+  mistake that actually happened — explicitly not a proof of ignorance.
 
 ### The verdict
 
 Pure, no I/O, ordered, with the order documented as load-bearing: contract
 violation → budget → validation → no-changes → candidate. Contract violation
-outranks budget *"so a contract violation is always reported even when the
-turn also blew the budget."* At the budget limit (`==`) the turn is still a
-candidate. Refusals are typed; what folds back to the orchestrator is *"a
-candidate ref … or a refusal reason — **never the worker's transcript**."*
+outranks budget so that a contract violation is always reported even when the turn also blew its budget. At the budget limit (`==`) the turn is still a
+candidate. Refusals are typed; what folds back to the orchestrator is a candidate reference or a refusal reason — **never the worker's transcript**.
 
 ### `validation` belongs to the parent
 
-*"`validation` is what the parent runs. The implementer never runs it."*
+**`validation` is what the parent runs; the implementer never runs it.**
 The "false passes" examined in `local-ai-pi` turned out to be
 **validation-command drift** (shown for two post-tuning runs, inferred from
 result text; the transcripts were later deleted, so treat as recorded rather
 than reproducible — an earlier draft said "every") — the packet said `uv run pytest -q`, the implementer ran
 `uv run pytest -q tests/test_app.py`, which passed in isolation and failed
 under full collection. Originally misdiagnosed as dishonest reporting;
-corrected in place: *"This is a packet/validation-specification bug, not a
-dishonesty bug."*
+corrected in place to: a packet/validation-specification bug, not a dishonesty
+bug.
 
 ## 2. Eval design
 
@@ -138,40 +143,39 @@ inside the validity checker.
 - "No usable output from the model" (e.g. contract not followed) is a
   **fail**.
 - "The instrument broke" is a **void**, excluded from the denominator.
-  *"This is the distinction whose absence made the original 0/40 Mellum
-  result describe the harness rather than the model."*
+  Its absence is what made an early all-zero result describe the harness
+  rather than the model.
 - Any analyzer error, timeout, or bad JSON defaults to **void**, so
   instrument failure can never become model failure.
 - **Voids stay re-runnable.** Closure means *graded*, not "has a row" —
-  otherwise *"one broken engine permanently fixes n at whatever ran before
-  the breakage."* A stale binary did exactly that to a dry run.
+  otherwise one broken engine permanently fixes n at whatever ran before the
+  breakage. A stale binary did exactly that to a dry run there.
 
 ### Pre-registration, as actually practised
 
 A committed file written **before** the first cell, carrying hypothesis, N,
 config, oracle, seed range, decision bands, and a compromise threshold
-(*"if voids exceed 15% of attempted cells the run is declared COMPROMISED"*).
+(for example, declaring the run compromised if voids exceed a pre-set share of
+attempted cells).
 Two standing invariants: **a recorded cell is never re-run or overwritten**,
-and **debugging seeds are disjoint from measured seeds** (97–99 appear in no
-manifest) so a diagnostic run can never consume a measured cell.
+and **debugging seeds are disjoint from measured seeds** (a reserved debug range that appears in no manifest) so a diagnostic run can never consume a measured cell.
 
-One manifest states its own power honestly: *"At n=40 this is an ESTIMATION
-instrument, not a hypothesis test."* Another pre-registers a three-band
-decision rule and then honours it against a near miss: *"The 19/24 pooled
-near-miss … is DEAD and is not revisited; re-running until a pooled endpoint
-clears its bar is the trap this whole campaign exists to avoid."*
+One manifest states its own power honestly — at its n it is an *estimation*
+instrument, not a hypothesis test. Another pre-registers a three-band decision
+rule and then honours it against a near miss, recording that the near-miss
+result is dead and not to be revisited, because re-running until an endpoint
+clears its bar is the trap the discipline exists to prevent.
 
 ### Negative controls
 
 - A **single-file control** that must *not* move; a drop there voids the arm.
 - A **paired control with exactly one function reverted**, with the exact
   revert instructions committed — because a previous control branch was
-  deleted, *"which is the evidence-hygiene failure P26 was about."*
+  deleted, which is exactly the evidence-hygiene failure that cleanup effort was about
 - The **null arm named as distinct from the control**.
 - Best idea in either repo: **a negative control on the probe itself.** The
   preflight asks the engine to accept a canary flag that cannot exist and
-  fails if it is *not* rejected — *"without this, a change to the engine's
-  error string makes the check above a permanent silent pass."*
+  fails if it is *not* rejected — without it, a changed error string would make the check above a permanent silent pass
 
 ### Reporting
 
@@ -179,39 +183,23 @@ Prefer a **concurrent control on one binary** over a frozen baseline: a frozen
 baseline caps power at *its* n and leaves an irremovable binary-drift
 confound. Report **failure-mode incidence per named mode**, not just success
 rate — the decisive example is two prompt variants of one suite differing by
-**27 words**, success 16/16 both times (saturated, reports nothing) while hang
+wording alone, success 16/16 both times (saturated, reports nothing) while hang
 incidence went 0/16 → 6/16 and mean turns 10.8 → 24.2.
 
 ## 3. The headroom question, already answered elsewhere
 
-`swiftstar` measured the prescriptiveness dial on Laguna S via `/orchestrate`:
+A private companion repository measured the same prescriptiveness dial on a
+larger model through an orchestrated path. **Its figures are not reproduced
+here.** What is reportable, and what matters for us, is its own stated verdict:
+the two arms' confidence intervals **overlap**, so that work does **not**
+establish a difference between the detailed and user-story specs — only that a
+generalization bar was not reached. Its pass criterion also required a
+delegation to have occurred, which is a stricter bar than acceptance alone.
 
-| Spec | Result |
-| --- | ---: |
-| `roadmap` (detailed) | 27/29 = 93% [78%, 98%] |
-| `roadmap-user-story` | 6/9 = 67% [35%, 88%] |
+So the middle-band evidence this project owes is **not** already sitting in
+that repository, and an underpowered non-difference there should not be cited
+as if it were.
 
-**This does not establish a dial, and the earlier reading of it here is
-withdrawn.** The source's own verdict: the two confidence intervals
-**overlap**, so the user-story arm *"does not establish a difference from
-Block A"* — only that a generalization bar was not reached, filed as *"real
-signal that task framing matters beyond the two fixed bugs, underpowered to
-size it further at n=9."*
-
-Three further qualifications the earlier draft omitted:
-
-- The one void was flagged *"ambiguous, do not count as a clean model
-  failure"* — its oracle was written for the other spec — and its capture
-  replays at **13/13** under a since-fixed oracle, not retroactively applied.
-- Block A's pass bar is `finalGrade.exit == 0 && totalDispatches >= 1`: a
-  **delegation requirement**, not pure acceptance. (Notably this is exactly
-  the "mechanism engaged" criterion §4.1 argues for — already built into the
-  pass bar.)
-- Both are "measured on one task", on a different model and orchestration path
-  than ours.
-
-So this is **not** the middle-band evidence this project owes. It is an
-underpowered non-difference that should not be cited as one.
 
 ## 4. Failure modes to build against
 
@@ -229,65 +217,61 @@ mechanism under test provably did not engage must be labelled, never averaged
 in* is this document's paraphrase, not a quotation, and it carries that
 double-edge.
 
-### 4.2 A void that hid a pass — open in `swiftstar`, and flagged by them
+### 4.2 A void that can hide a pass
 
-The plural-fix arm's `plausible-wrong-fix` **seed 5** recorded `harness-void`
-while its own `repair-round-1.json` shows **13/13 pass**; a strict V6 discard
-rule voided a candidate that graded clean. This is **the repo's own flag, not
-an outside accusation** — its roadmap records the false void and says
-*"neither has been chased"* — and its escalation is *"a scorer that drops
-passes is worse than one that drops fails, because it flatters the result."*
-If a void class is adopted here, this is the first test to write.
+A private companion repository has a recorded case where a cell was scored as
+an instrument void while its own underlying grade was a clean pass — a
+discard rule voiding a candidate that had actually succeeded. The detail sits
+in that repository and is not reproduced here; it is flagged there by its own
+authors as open.
 
-### 4.3 A pre-registration with no closing ritual — a derivation, not a repo claim
+The transferable form is the part we need: **a scorer that drops passes is
+worse than one that drops fails, because it flatters the result.** If a void
+class is adopted here, a test for "a void concealing a pass" is the first one
+to write. This is not hypothetical for us — the overnight run produced the
+mirror case, a void concealing a *fail*, within one block.
 
-**Stated carefully, because it is an inference about someone's work.** The
-depth-3 estimation arm has **no committed verdict** applying its own rules
-1–3, 5 or 6; the only document referencing it self-describes as the rule 4
-secondary analysis. Recomputing the committed results TSV gives depth-2 =
-**5 pass / 3 fail of 8**, and the manifest's rule 5 reads *"TRIPWIRE: depth-2
-&lt;= 5/8 flags a regression"* — so the tripwire condition is met, and
-"flags" is the manifest's own verb. Depth-3 = 25/36 graded (voids 10%, under
-the 15% COMPROMISED bar).
+### 4.3 A pre-registration needs a closing ritual
 
-This is a **recomputation from committed data**, not something the repo
-asserts; an uncommitted verdict may exist. The transferable lesson is
-structural regardless: **a pre-registration needs a closing ritual, or its
-rules quietly go unchecked.**
+Also observed in that private repository, and stated here only in the
+generalizable form: a pre-registered arm can run to completion, with its
+decision rules and a regression tripwire fixed in advance, and then have **no
+committed document that applies those rules to the result**. The rules do not
+enforce themselves.
+
+The lesson: **a pre-registration needs a closing ritual** — a required verdict
+written against every rule, including the ones that did not fire — or the
+discipline silently degrades into a document nobody checks against.
 
 ### 4.4 "The harness, not the model" — counted four times
 
-*"This is the third occurrence of one failure class: scoring a run, then
-reading the score as a fact about the model when the harness dominated it."*
-A later doc calls its own cleanup the fourth. Related: a model "pathology"
+That repository counts this as a recurring failure class in its own record —
+scoring a run, then reading the score as a fact about the model when the
+harness dominated it — and reaches at least a fourth instance. Related: a model "pathology"
 that reproduced perfectly turned out to be an engine false positive (a 64-byte
 comment separator tripping a degeneracy guard; **all 5 voided cells ended on a
-dash run of exactly 64**), struck through in place with the note that
-*"misfiling it was the mistake worth remembering."*
+one trivial textual cause), struck through in place, with the note that misfiling it was the mistake worth
+remembering.
 
 ### 4.5 Prompts that make the model wrong
 
-A repair directive asserted *"Exactly one file is wrong"* unconditionally; the
+A repair directive asserted an unconditional claim that exactly one file was wrong; the
 model **cited that text back verbatim to justify not making the correct
-multi-file fix**, across 39/40 cells. The fix deliberately names **no number
-at all** — *"Naming a number here would just repeat P17's mistake in the other
-direction, so the fix is to let the model's own diagnosis set the count."*
+multi-file fix**, across nearly every cell of that arm. The fix deliberately
+names **no number at all** — naming a different number would just repeat the original mistake in the other direction
 Four instances of under-specified authored prompts were counted in one day.
 
 ### 4.6 Determinism ephemera
 
 Two runs at the same seed produced different prompts because of a worktree
-UUID in a traceback and pytest's `in 0.20s` timing line — *"the first repaired
-where the second failed."* **Normalize ephemera before capping**, so byte
+UUID in a traceback and pytest's `in 0.20s` timing line — one run repaired where the other failed, differing only by that ephemeral line. **Normalize ephemera before capping**, so byte
 offsets don't shift; tail-truncate logs, **middle**-truncate file bodies
 (a fix is as likely at the end as the start), and mark the drop inline.
 
 ### 4.7 Rounds that were not rounds
 
-`head` never advanced on `.validationFailed`, so *"'N rounds' collapsed into N
-independent single-shot attempts against the same starting point"* — 18/40
-cells. And exhaustion graded the **pre-repair** tree, so the verdict described
-a tree predating every repair round, in **21 of 21** affected cells.
+`head` never advanced on `.validationFailed`, so multi-round repair collapsed into N independent single-shot attempts from the same base, across a large share of that batch. And exhaustion graded the **pre-repair** tree, so the verdict described
+a tree predating every repair round, in **every affected cell** affected cells.
 
 ## 5. What this spike re-derived that was already written down
 
@@ -300,8 +284,8 @@ Recorded here because the repeat is the finding.
 2. **A spec that omits the framework yields Flask.** Recorded in
    `local-ai-pi` (five of six runs, `TypeError: Flask.__call__()`), corrected
    to *"the withheld fact that matters is the framework, not the filenames"*,
-   **and** in `swiftstar` (seeds 201–204, 4/4 lost the same way). We hit it a
-   third time.
+   **and**, independently, in a private companion repository, which lost a
+   whole arm the same way. We hit it a third time.
 3. **Facts work; rules of conduct do not.** The five interventions and the
    3–2 tally are the source's. **Our claim to have "reproduced this exactly"
    is withdrawn.** The imperative wrapper *did* change behaviour — zero tool
@@ -310,7 +294,7 @@ Recorded here because the repeat is the finding.
    Each fixed the failure it targeted. The tally is also contestable in the
    source's own words: it files one of the five as a rule of conduct while
    describing it as *"a single unambiguous sentence about a checkable
-   **fact**"*. And the accompanying "27 words" figure could not be reproduced
+   **fact**"*. And the accompanying word-count figure could not be reproduced
    from any diff in either repository — treat it as unverified.
 4. **The user-story suite at 15/16 once the facts are supplied.** Recorded in
    `local-ai-pi`, whose roadmap says that suite *"has no headroom"*. The later
@@ -322,9 +306,9 @@ directory was not searched for the task name before probing. **A cheap
 pre-probe ritual — grep the research directory for the workload and the model
 — would have caught all three.**
 
-`swiftstar`'s handling of #2 is the practice to copy: *"The arm was stopped at
-n=4 once the cause was confirmed rather than run to n=10 confirming the same
-bug repeatedly."*
+The practice worth copying from that repository: **an arm is stopped as soon as
+one cause is confirmed for every failure**, rather than run to a larger n
+confirming the same bug repeatedly.
 
 ## 6. Open questions for the brainstorm
 
@@ -352,8 +336,10 @@ Framed as questions, not proposals.
    at n=2. Mellum2-12B-A2.5B (~2.5B active) is the model the original
    observation was about; it appears in the local oMLX model list, which is
    not the same as verifying it loads and runs.
-7. **More phases, or harder prompts?** Both are in scope. `swiftstar`'s
-   `repair/` fixtures are a third axis neither of us has probed.
+7. **More phases, or harder prompts?** Both are in scope. A third axis is the
+   repair-role fixtures held in the private companion repository — bugs whose
+   traceback does not quote the defective line, and whose obvious correction is
+   wrong. The overnight run has since probed these; see the overnight record.
 
 ## 7. Refuted — do not rebuild
 
@@ -366,8 +352,8 @@ Framed as questions, not proposals.
   mechanical verifier are still worthwhile because they move loop control
   outside the SLM."* Not refuted.
 - **A contract-blind path guard.** Built, shipped, removed — it refuses
-  contract-authorized renames the engine would admit. *"A guard with less
-  information than the authoritative layer is not defense in depth."*
+  contract-authorized renames the engine would admit: a guard with less information than the authoritative layer is not defence in
+  depth.
 - **A repeat-breaker keyed on failures** — a design caution, never built and
   therefore never refuted by trial. The evidence is 245 identical
   **successful** `ls -R` calls: a breaker counting only failures would never
@@ -388,12 +374,11 @@ Framed as questions, not proposals.
   refusals in its children — *"the only intervention that has demonstrably
   arrested a runaway."* The 24-run zero-fire was on ceiling/floor suites where
   there was nothing to fire on.
-- **Naming a tool only in prose.** *"the model ignores a prose-named tool that
-  is not in the engine's advertised schema (0 dispatches in 34 tool calls)."*
+- **Naming a tool only in prose.** A model ignores a tool that is named only in prose and is absent from the engine's advertised schema — recorded there as zero dispatches across dozens of tool calls
 
 ## 8. Where the fixtures live
 
-`swiftstar:fixtures/agenttest/` is the best-packaged copy: one cumulative
+the private repo's packet type is the best-packaged copy: one cumulative
 13-test acceptance suite, full 3-phase reference, `broken/app.py`, three spec
 variants (`roadmap.md`, `roadmap-user-story.md`, and a *more* prescriptive
 `roadmap-user-story-mellum-decomposed.md`), six seeded `repair/` bugs authored

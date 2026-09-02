@@ -37,13 +37,14 @@ the best copies are not in `local-ai-pi`.
 | --- | --- |
 | Full 3-phase specs, both variants | `local-ai-pi` branch `pre-restructure`, `examples/agentclinic/specs/` |
 | 3-phase references + per-phase cumulative acceptance suites | `local-ai-pi` branch `pre-restructure`, `examples/reference/phase-{1,2,3}`, `examples/acceptance/phase-{1,2,3}` |
-| **Best packaged fixture set** | `pauleveritt/swiftstar` (private), `fixtures/agenttest/` |
+| **Best packaged fixture set** | a private companion repository (contents not reproduced here) |
 
 `local-ai-pi`'s `main` keeps **only Phase 1** (`examples/agentclinic/phase-1/`);
 Phases 2 and 3 must come from `pre-restructure` or from `swiftstar`.
 
-`swiftstar/fixtures/agenttest/` is the better starting point and should be
-preferred over re-deriving from `local-ai-pi`:
+The private companion repository holds a better-packaged copy than
+`local-ai-pi`, and should be preferred over re-deriving. Its contents are not
+reproduced here; the shape is:
 
 - `acceptance/test_acceptance.py` — one cumulative 13-test suite, harness-owned.
 - `reference/` — the full 3-phase solution; `broken/app.py` — bare app.
@@ -56,8 +57,8 @@ preferred over re-deriving from `local-ai-pi`:
   there, not transplanted**, specifically to close a gap its README names:
   every bug tested until then had a traceback quoting its own defective line
   and a single canonical fix.
-- `PROVENANCE.md` — records recovery commits (`roadmap.md` ← `8af05f8`,
-  `roadmap-user-story.md` ← `191895e`) and the dep pins.
+- a provenance record naming the `local-ai-pi` commits each file was recovered
+  from, and the dependency pins.
 
 ## What was measured
 
@@ -156,7 +157,8 @@ fails.
   later arm below — and by the discovery that `local-ai-pi` had already
   recorded that suite at 15/16 once the same two facts were supplied, so it
   was never the open question this bullet claimed (Correction 9).
-- Nothing about the **repair fixtures**. Never run here.
+- ~~Nothing about the **repair fixtures**. Never run here.~~ **Superseded** — roughly 130 repair cells were run overnight; see
+  [the overnight record](2026-09-02-overnight-packet-and-isolation-run.md).
 - Nothing about other models. One model, one arm.
 - No cross-comparison with `swiftstar`'s recorded numbers: its suite is 13
   tests from commit `8af05f8`; the per-phase suites used here are 14 and 16
@@ -167,7 +169,7 @@ fails.
 
 ## Recommended next phase
 
-1. **Adopt `swiftstar/fixtures/agenttest/` as the input.** Do not re-derive
+1. **Adopt the private companion repository's fixture set as the input.** Do not re-derive
    from `local-ai-pi`, and do not keep the parallel per-phase copies this spike
    built beyond what the next probe needs.
 2. **Probe the user-story variant first**, same protocol, changing only the
@@ -182,9 +184,7 @@ fails.
    cumulative tasks are hand-authored. Today's silent reduction is the same
    class of defect as the `local-pings` unsound oracle.
 
-One caution, from `swiftstar`'s own eval-system audit: it describes "~8–10
-independent eval/experiment codebases sharing almost no code, ≥7 incompatible
-result-file schemas." The probe runner this spike wrote is a candidate to
+One caution, a private companion repository's own audit warns against multiplying independent eval runners and result schemas. The probe runner this spike wrote is a candidate to
 become the next one. Prefer extending the Evals path over adding a runner.
 
 ## Corrections and later arms, same day
@@ -253,10 +253,10 @@ The Gemma column is **withdrawn** — its passes are an artifact of grading in
 an environment the model never ran in (Correction 4). The DeepSeek Flash
 column stands.
 
-The comparison to `swiftstar`'s Laguna S numbers (93% roadmap versus 67%
-user-story) is also **withdrawn as evidence of a dial**: the source records
-that the two confidence intervals overlap and that the arm *"does not
-establish a difference"* — see Correction 8.
+The comparison to the private repository's own prescriptiveness figures is also
+**withdrawn as evidence of a dial**: that source records overlapping confidence
+intervals and states it does not establish a difference. Its numbers are not
+reproduced here — see Correction 8.
 
 **Every Gemma phase was killed at the cap and still graded pass** — the
 contract was satisfied before the kill, with remaining turns going to the
@@ -313,7 +313,7 @@ Gemma's are real application failures. The metric conflates exploration with
 breakage.
 
 This is the same shape as the recorded precedent where two prompt variants
-differing by 27 words scored 16/16 both times while hang incidence went
+differing only in wording scored 16/16 both times while hang incidence went
 0/16 → 6/16. On a saturated workload, success rate reports nothing and
 incidence does.
 
@@ -380,13 +380,11 @@ per-phase effort reading for that arm does not.
 
 ### Correction 8 — the `swiftstar` headroom comparison does not establish a dial
 
-The source records that Block A's 93% interval and the user-story arm's 67%
-interval **overlap**, and that the arm *"does not establish a difference from
-Block A"* — only that a generalization bar was not reached. Additionally: the
-one void was flagged "do not count as a clean model failure", its capture
-replays at 13/13 under a since-fixed oracle, and Block A's pass bar requires
-`dispatches >= 1`, a delegation requirement rather than pure acceptance.
-"The dial is real" is withdrawn.
+That private source records **overlapping confidence intervals** between its
+two arms and states plainly that it does **not** establish a difference — only
+that a generalization bar was not reached. Its pass criterion also required a
+delegation to have occurred, a stricter bar than acceptance. Its figures are
+not reproduced here. "The dial is real" is withdrawn.
 
 Also withdrawn: the claim elsewhere that detailed AgentClinic is saturated for
 DeepSeek Flash. **That was never measured** — DeepSeek Flash ran only the
