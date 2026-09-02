@@ -91,10 +91,10 @@ admission metric after seeing the result."
 **The middle-band bar applies to the arms under comparison, not to the
 bare-Pi arm alone.** Operationally:
 
-1. A task is admissible when its qualifying probe records the arms under
-   comparison at **different successful-attempt bands** — the recorded
-   difference is what the diagnostic loop has to move
-   (`BRIEF.md:110`; `ROADMAP.md:74`).
+1. A task is admissible when its qualifying probe records **at least one
+   pair of the arms under comparison in different successful-attempt
+   bands** (the arms need not all separate) — the recorded difference is
+   what the diagnostic loop has to move (`BRIEF.md:110`; `ROADMAP.md:74`).
 2. The **reference arm (bare Pi) stays the recorded baseline property**, per
    `BRIEF.md:111-112` and the glossary. It is the arm the loop moves *from*;
    its band never admits or refuses on its own — a floor reference can be a
@@ -255,8 +255,9 @@ diff). The operative text becomes:
 > under comparison. It requires a baseline probe — the baseline attempt
 > command at n=4–6, recorded once as a property of the task. The middle-band
 > bar applies to the arms under comparison, not to the reference arm alone:
-> a task is admissible when its probe records those arms in different
-> successful-attempt bands, with the metric and stopping rule fixed before
+> a task is admissible when its probe records at least one pair of those
+> arms in different successful-attempt bands, with the metric and stopping
+> rule fixed before
 > the run and successful-attempt outcome, retained-patch production, and
 > conditional retained-patch quality kept separate. A task is smoke only when
 > its reference arm sits at or near ceiling. A task at the floor is a
@@ -265,7 +266,7 @@ diff). The operative text becomes:
 > whose retained patches pass is what an engine change exists to move.
 
 The glossary entries for `baseline probe` and `diagnostic workload`
-(`docs/glossary.md:50-66`) are updated to match, with the superseded wording
+(`docs/glossary.md:50-67`) are updated to match, with the superseded wording
 kept in a note.
 
 ## Out of scope (deferred, with the phase that reopens each)

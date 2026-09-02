@@ -51,8 +51,9 @@ baseline probe
   The baseline attempt command at n=4–6, recorded once as a property of
   the task, so the diagnostic loop has something to move. The middle-band
   bar applies to the arms under comparison, not to the reference arm alone:
-  a task is admissible when its probe records those arms in different
-  successful-attempt bands, with the metric fixed before the run and
+  a task is admissible when its probe records at least one pair of those
+  arms in different successful-attempt bands, with the metric fixed before
+  the run and
   successful-attempt outcome, retained-patch production, and conditional
   retained-patch quality kept separate. (Amended by V5a, 2026-09-02; the
   prior wording — "a task at or near ceiling is smoke only; a task at the

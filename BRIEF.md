@@ -111,9 +111,9 @@ deterministically, with no network and no third-party dependencies.**
 under comparison. It requires a **baseline probe** — the baseline attempt
 command at n=4–6, recorded once as a property of the task. The middle-band
 bar applies to the arms under comparison, not to the reference arm alone: a
-task is admissible when its probe records those arms in different
-successful-attempt bands, with the metric and stopping rule fixed before the
-run and successful-attempt outcome, retained-patch production, and
+task is admissible when its probe records at least one pair of those arms
+in different successful-attempt bands, with the metric and stopping rule
+fixed before the run and successful-attempt outcome, retained-patch production, and
 conditional retained-patch quality kept separate. A task is smoke only when
 its reference arm sits at or near ceiling. A task at the floor is a
 capability wall only when no arm under comparison is recorded above it and no

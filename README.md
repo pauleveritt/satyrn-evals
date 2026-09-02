@@ -107,7 +107,7 @@ write exception.
 
 ## Status
 
-Phases completed, each with its design spec:
+Phases completed, each with its design spec (and, for the code phases, an implementation plan):
 
 - **V5a — The admission rule.** A documentation phase: it decided that the
   middle-band bar applies to the arms under comparison, and indexed every
