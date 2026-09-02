@@ -56,7 +56,7 @@ than choosing a metric after seeing the result."
 
 ## The corrected probes falsified the floor sentence
 
-The superseded floor claim (preserved at `BRIEF.md:125-126`) said a task at
+The superseded floor claim (preserved at `BRIEF.md:124-125`) said a task at
 the floor "is a capability wall, not something an engine change moves." This
 repo's own records falsify that for the two tasks that discriminate:
 
@@ -69,7 +69,8 @@ repo's own records falsify that for the two tasks that discriminate:
   (`2026-08-27-local-pings-corrected-probe.md:15-23`, preservation rows
   `:128-130`). The floor was a **completion floor** — bare Pi constructed
   the change but could not finish a successful attempt under its own tool
-  loop (`2026-08-27-local-pings-corrected-probe.md:140-143`).
+  loop (`2026-08-27-local-pings-corrected-probe.md:26-27`, tool-loop
+  signals `:140-143`).
 - The follow-up then recorded the Envelope/Engine comparison on the same
   task (`2026-08-27-local-pings-envelope-engine-followup.md:44-46`): Baseline
   0/4, Envelope 0/4, **Engine 2/4** — an engine change moved the floored task.
@@ -124,7 +125,7 @@ multi-prompt `svcs` session are not (each for a recorded reason below).
 The bare-Pi-middle-band reading requires a task's unaided baseline to sit
 between floor and ceiling. Every probed task fails that — all four baselines
 are at or near the floor. The reading therefore discards the two tasks whose
-recorded arms separate, on the superseded sentence (`BRIEF.md:125-126`) this
+recorded arms separate, on the superseded sentence (`BRIEF.md:124-125`) this
 repo's own corrected probes falsified (above), and leaves V5b with an empty
 suite: the diagnostic loop cannot start (`ROADMAP.md:28-29`). Its "floor is a
 wall" premise also collapses the three measurements the corrected probe was
