@@ -10,29 +10,24 @@ Backlog, not into the current phase.*
 
 ## Now
 
-**V5a is complete (2026-09-02). V5b — the diagnostic loop — is next.**
+**V5b is complete (2026-09-02). V5c — capture the admitted suite — is
+proposed, awaiting maintainer confirmation.**
 
-V5a decided the admission question this page posed at kickoff and indexed
-every probed task with its band per arm; the superseded kickoff framing,
-the decision, and the per-arm index are recorded in [`Prior work`](#prior-work)
-below and in its
-[design spec](docs/superpowers/specs/2026-09-02-v5a-admission-rule-design.md)
-(`BRIEF.md:110-121` carries the amended rule, superseded wording preserved
-at `:123-131`). The middle-band bar applies to the arms under comparison,
-not to the bare-Pi reference alone.
+V5b shipped `run --n 8` over the two admitted tasks with a counts-only
+`summary.json` — verdict reasons (`code_counts`/`verdict_counts`), timeouts,
+and the outcome tally — persisted per attempt before cleanup. Its four
+transcript-derived metrics — tool calls, repeat, churn, context — stay
+deferred to the engine-side `facts` field rather than parsed evals-side
+(`BACKLOG.md`; the V5b spec's Out of scope). So V5b ships the loop and the
+sequencing; the diagnosis it is named for largely waits on that engine-side
+field.
 
-Two tasks are admitted to V5b: `local-pings` (Baseline floor vs Engine
-middle) and `stringified-annotations` (Baseline floor vs Engine ceiling).
-`magicmock-factory` is not admitted — its probe recorded no arm under
-comparison, an evidence gap rather than a wall — and the multi-prompt
-`svcs` session is deferred to V6 (Phases table below).
-
-**V5b — the diagnostic loop — is next.** It runs `--n 8` over the two
-admitted tasks and summarizes verdict reasons, repeated calls, churn, tool
-calls, context, and timeouts, sequenced by the index's per-arm bands. The
-claims layer stays excluded (`BRIEF.md:33-36`); a suite with headroom is
-still design work owed (below). V5b needs its own design spec before
-implementation (`docs/sdd.md`).
+V5c captures the admitted suite for that loop: one task, `local-pings`,
+rebuilding the corrected synthetic base/fix pair the probe used and
+reproducing the probe's three-row qualification table as its gate.
+`stringified-annotations` is deferred — its Engine arm sits at 6/6, which
+is regression detection, not headroom. Proposal pending confirmation; no
+code until then (`CLAUDE.md`).
 
 ## Concept budget
 
@@ -58,7 +53,7 @@ lands.
 | V6 | Session eval | `session TASK -- ADAPTER...` sends ordered prompts to one conversation against one evolving checkout, snapshots a cumulative patch per checkpoint, and grades offline through a grader overlay the executor is never shown | `run --n 8` and admission, model-client integration, retries, a hostile-command sandbox, a persistent Engine daemon | proposed |
 | V7 | Task visibility and leak detection | a manifest field declares each task visible- or hidden-oracle; contamination is detected by content and reported per arm, never absorbed into a denominator | OS-level containment — deferred in `BACKLOG.md`; V7 detects rather than prevents | proposed |
 | V8 | AgentClinic through Evals | reproduce the repair fixtures on this repository's own `capture`/`attempt`/`grade` path, replacing the spike's scratchpad harness | Engine changes, including a `facts` field (satyrn-engine `BACKLOG.md`); an orchestrator | proposed |
-| V5b | The diagnostic loop | `run --n 8` over admitted tasks, summarizing verdict reasons, repeated calls, churn, tool calls, context, and timeouts | The claims layer — pre-registration, intervals, void accounting (`BRIEF.md:33-36`) | **next** |
+| V5b | The diagnostic loop | `run --n 8` over admitted tasks, summarizing verdict reasons, repeated calls, churn, tool calls, context, and timeouts | The claims layer — pre-registration, intervals, void accounting (`BRIEF.md:33-36`) | **complete** |
 
 Full done-when criteria for V1–V5 are in `BRIEF.md`'s referenced roadmap
 research, not restated here to avoid drift between two copies. **V6–V8 are
@@ -66,8 +61,8 @@ new and their done-when lives with each phase's design spec** — V6's is
 `docs/superpowers/specs/2026-09-01-svcs-session-eval-design.md`
 (superseded banner; the design of record for the session mechanics). V7
 and V8 have no spec yet and must gain one before implementation, per
-`docs/sdd.md`; V5a's done-when was its design spec, now complete (Prior
-work below).
+`docs/sdd.md`; V5a's and V5b's done-when lived with their design specs, now
+complete (Prior work below).
 
 **Design work owed, not a phase:** a suite with headroom. See `BRIEF.md`'s
 "The unsolved problem." The admission rule keeps the operative measurement
@@ -97,6 +92,14 @@ entry there states what reopens it.
 Completed phases move here (or to `docs/superpowers/phase-history.md`)
 when the roadmap outgrows the front page.
 
+- **V5b — The diagnostic loop (2026-09-02).** `run TASK --n 8 -- COMMAND...`
+  repeats the attempt seam and writes a counts-only `summary.json` — verdict
+  reasons (`code_counts`/`verdict_counts`), timeouts, and the outcome tally.
+  Its four transcript-derived metrics — tool calls, repeat, churn, context —
+  were deferred to the engine-side `facts` field rather than parsed evals-side
+  (`BACKLOG.md`; the V5b spec's Out of scope): the loop ships, while the
+  diagnosis it is named for waits on that engine-side field. Spec and plan
+  recorded under `docs/superpowers/`.
 - **V5a — The admission rule (2026-09-02).** Decided the admission bar:
   the middle-band rule applies to the arms under comparison, not to the
   bare-Pi reference alone. The superseded kickoff framing named four probed
