@@ -18,6 +18,24 @@ This file exists because a predecessor project's `ROADMAP.md` reached roughly
 
 ## Entries
 
+**Transcript-derived summary metrics** — `tool_calls`, `repeat`, `churn`,
+`context` (V5b, 2026-09-02). Their data is Pi's print-mode stream-JSON,
+spooled verbatim by the engine as `transcript.jsonl`
+(`satyrn-engine/src/satyrn_engine/attempt.py:578`, `:206-225`); parsing it in
+evals would reach through the engine seam that V4 established as opaque to
+evals. These counts belong engine-side, published as structured fields — the
+`facts` field already named in `ROADMAP.md:60` (satyrn-engine `BACKLOG.md`).
+Definitions are recorded: `repeat` is identical `(toolName, arguments)` calls
+counted regardless of success
+(`docs/superpowers/research/2026-08-16-harvest-index.md:69-71`); `churn` is
+the same target rewritten with differing content (`:74`), kept separate
+(`docs/superpowers/research/2026-09-01-handoff-and-eval-harvest.md:360`); the
+counts must report **unmeasured**, never zero, where a transcript yields no
+parseable events
+(`docs/superpowers/research/2026-09-02-overnight-packet-and-isolation-run.md:160-162`).
+**Reopens when the engine exposes these counts across the seam** — not when a
+transcript sample becomes available.
+
 **Automated commit mining.** Reopens after three manual captures show which
 steps repeat.
 

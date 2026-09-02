@@ -15,7 +15,13 @@ V5b does not re-admit, re-probe, or compare arms. Admission is V5a's gate
 (`docs/superpowers/specs/2026-09-02-v5a-admission-rule-design.md:238-245`);
 arm comparison and any confidence claim are the claims layer, deferred
 (`BRIEF.md:33-36`). The loop is arm-agnostic: it summarizes whatever command
-is passed.
+is passed. This phase ships the structured tier alone: it is close to what
+the probe records already reported by hand, while the deferred transcript
+metrics (Out of scope) are the ones that catch the harvest-index failure
+modes — 245 identical `ls -R` calls, 27 rewrites of one template
+(`docs/superpowers/research/2026-08-16-harvest-index.md:69-74`). V5b ships
+the loop and the sequencing; the diagnosis it is named for largely waits on
+the engine-side `facts` field.
 
 ## CLI surface
 
@@ -64,34 +70,20 @@ exact cell set it was computed over (the overnight-run standing test,
 - `timeouts` — count of `COMMAND_TIMEOUT` (also in `code_counts`; called
   out because `ROADMAP.md:61` lists it).
 
-**Transcript tier** (best-effort, derived by parsing each `transcript.txt`):
-
-- `tool_calls` — total tool-call events;
-- `repeat` — repeated identical `(toolName, arguments)` calls, counted
-  regardless of success
-  (`docs/superpowers/research/2026-08-16-harvest-index.md:69-71`);
-- `churn` — the same target rewritten with differing content, kept separate
-  from `repeat`
-  (`docs/superpowers/research/2026-08-16-harvest-index.md:74`;
-  `docs/superpowers/research/2026-09-01-handoff-and-eval-harvest.md:360`);
-- `context` — peak reported tokens and turn count
-  (`docs/superpowers/research/2026-08-27-local-pings-baseline-probe.md:111`).
-
-A transcript that yields no parseable tool calls is reported **unmeasured**,
-never zero — the overnight run's finding
-(`docs/superpowers/research/2026-09-02-overnight-packet-and-isolation-run.md:160-162`,
-`:200`: models emit tool calls as literal JSON text or prose, not a uniform
-schema).
-
-**Open dependency.** No transcript grammar is committed in this repository:
-V3 deferred "transcript format" (`ROADMAP.md:55`), and the probes parsed
-adapter transcripts through `analyze.py` scripts in local evidence bundles,
-not committed here
-(`docs/superpowers/specs/2026-09-02-v5a-admission-rule-design.md:309`). The
-plan therefore either pins the grammar from a committed sample transcript
-before its transcript-tier tasks, or ships the structured tier and defers
-the transcript tier with that as the reopen condition. The decision is
-recorded at plan time, before any transcript code is written.
+**Transcript tier — deferred.** The four remaining roadmap metrics —
+`tool_calls`, `repeat`, `churn`, `context` — are not shipped in V5b. Their
+data is Pi's print-mode stream-JSON, spooled verbatim by the engine as
+`transcript.jsonl` (`satyrn-engine/src/satyrn_engine/attempt.py:578`,
+`:206-225`). Parsing that stream inside evals would reach through the engine
+seam to the runtime behind it, coupling evals to an upstream tool's output
+schema — a breach of the V4 property that the Engine contract stays opaque
+to evals. The counts belong engine-side, published as structured fields (the
+`facts` field, `ROADMAP.md:60`); see Out of scope and `BACKLOG.md`. Their
+definitions are already recorded: `repeat` is identical `(toolName,
+arguments)` calls counted regardless of success
+(`docs/superpowers/research/2026-08-16-harvest-index.md:69-71`), `churn` is
+the same target rewritten with differing content (`:74`), kept separate
+(`docs/superpowers/research/2026-09-01-handoff-and-eval-harvest.md:360`).
 
 Counts only: never wall-clock (`BRIEF.md:39-40`). The loop persists all n
 attempts even if conditions drift mid-run (`BRIEF.md:38`); it does not abort
@@ -103,9 +95,9 @@ a batch.
   planted-spawn tripwire). `run` is driven by a deterministic fake seam
   command that writes a known patch + transcript; the summary is computed
   from persisted records only.
-- A refusal test has a sibling success test (`BRIEF.md:84-85`), and every
-  transcript-derived count fires on a known-bad transcript and stays silent
-  on a known-good one, both directions (`BRIEF.md:94-97`).
+- A refusal test has a sibling success test (`BRIEF.md:84-85`); the summary
+  is computed from persisted records only, so its tests never parse a
+  transcript.
 - Capture is separate from grading (`BRIEF.md:72-75`): the summary reads
   only persisted artifacts, so a summary defect re-scores without re-running
   a model.
@@ -115,10 +107,10 @@ a batch.
 ## Done-when
 
 - `run TASK --n 8 -- COMMAND...` executes n attempts, persists each
-  `attempt.json`, and writes `summary.json` with the structured tier always
-  present and the transcript tier best-effort.
-- The default tier proves the six metrics from a deterministic fake seam,
-  with the refusal/success sibling pair and the planted tripwire untouched.
+  `attempt.json`, and writes `summary.json` with the structured tier.
+- The default tier proves the structured tier from a deterministic fake
+  seam (persisted records only; no transcript parsing), with the
+  refusal/success sibling pair and the planted tripwire untouched.
 - The integration tier runs one real attempt command and names both the
   success and failure fixtures.
 
@@ -128,5 +120,10 @@ a batch.
   (`BRIEF.md:33-36`).
 - Arm comparison and suite sequencing beyond one task per invocation.
 - Suite-with-headroom capture (`BRIEF.md:138-142`).
-- A formal transcript schema — V5b parses best-effort; the format contract
-  is its own work, not this phase.
+- The four transcript-derived metrics — `tool_calls`, `repeat`, `churn`,
+  `context` — deferred because their data is Pi's stream-JSON behind the
+  engine seam that V4 established as opaque to evals
+  (`satyrn-engine/src/satyrn_engine/attempt.py:578`, `:206-225`). **Reopens
+  when the engine exposes those counts across the seam** (the `facts` field,
+  `ROADMAP.md:60`; satyrn-engine `BACKLOG.md`) — not when a transcript
+  sample becomes available. Tracked in `BACKLOG.md`.
