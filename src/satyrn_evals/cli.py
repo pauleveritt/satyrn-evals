@@ -12,6 +12,7 @@ from satyrn_evals.capture_record import CaptureOutcome
 from satyrn_evals.errors import SatyrnError, UsageError
 from satyrn_evals.grade import grade
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, resolve_task
+from satyrn_evals.run import run
 from satyrn_evals.verdict import Verdict
 from satyrn_evals.workspace import DEFAULT_TIMEOUT
 
@@ -30,6 +31,18 @@ def positive_finite_timeout(value: str) -> float:
             "timeout must be a finite number greater than zero"
         )
     return timeout
+
+
+def positive_int(value: str) -> int:
+    try:
+        number = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            "--n must be an integer greater than zero"
+        ) from exc
+    if number <= 0:
+        raise argparse.ArgumentTypeError("--n must be an integer greater than zero")
+    return number
 
 
 def split_attempt_argv(argv: list[str]) -> tuple[list[str], list[str]]:
@@ -65,6 +78,22 @@ def main(argv: list[str] | None = None) -> int:
             if record.outcome is AttemptOutcome.REFUSED:
                 return 3
             return 0 if record.verdict in (Verdict.PASS, Verdict.FAIL) else 3
+        if argv[:1] == ["run"]:
+            flags, command = split_attempt_argv(argv[1:])
+            if not command:
+                raise UsageError(
+                    "run command is required: run TASK [flags] -- COMMAND..."
+                )
+            args = parser.parse_args(["run", *flags])
+            run(
+                task=args.task,
+                tasks_root=Path(args.tasks_root),
+                output=Path(args.output),
+                command=command,
+                n=args.n,
+                timeout=args.timeout,
+            )
+            return 0
         args = parser.parse_args(argv)
         if args.command == "grade":
             task_dir = resolve_task(args.task, tasks_root=Path(args.tasks_root))
@@ -119,6 +148,28 @@ attempt_p.add_argument(
     "--output", default="attempts", help="attempt output directory (default: ./attempts)"
 )
 attempt_p.add_argument(
+    "--timeout",
+    type=positive_finite_timeout,
+    default=DEFAULT_TIMEOUT,
+    help=f"command timeout in seconds (default: {DEFAULT_TIMEOUT:g})",
+)
+
+run_p = sub.add_parser(
+    "run", help="run an attempt command n times and write a summary"
+)
+run_p.add_argument("task", help="task name")
+run_p.add_argument(
+    "--n", type=positive_int, default=8, help="attempts per run (default: 8)"
+)
+run_p.add_argument(
+    "--tasks-root",
+    default=str(DEFAULT_TASKS_ROOT),
+    help="task root (default: bundled tasks)",
+)
+run_p.add_argument(
+    "--output", default="runs", help="run output directory (default: ./runs)"
+)
+run_p.add_argument(
     "--timeout",
     type=positive_finite_timeout,
     default=DEFAULT_TIMEOUT,

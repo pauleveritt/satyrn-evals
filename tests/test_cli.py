@@ -1,6 +1,12 @@
 import pytest
 
-from satyrn_evals.cli import main, parser, positive_finite_timeout, split_attempt_argv
+from satyrn_evals.cli import (
+    main,
+    parser,
+    positive_finite_timeout,
+    positive_int,
+    split_attempt_argv,
+)
 from satyrn_evals.workspace import DEFAULT_TIMEOUT
 
 
@@ -74,3 +80,13 @@ def test_attempt_timeout_accepts_positive_finite() -> None:
 def test_attempt_timeout_default_tracks_workspace_default() -> None:
     args = parser.parse_args(["attempt", "task"])
     assert args.timeout == DEFAULT_TIMEOUT
+
+
+def test_run_requires_command() -> None:
+    assert main(["run", "format_number"]) == 2
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "abc"])
+def test_run_n_rejects_non_positive_and_malformed(value: str) -> None:
+    with pytest.raises(Exception, match="integer greater than zero"):
+        positive_int(value)
