@@ -165,6 +165,15 @@ record "unavailable" with a distinct exit code.
   15/16. **Facts work; rules of conduct do not** — across five interventions,
   the three supplying a missing fact worked and the two supplying a rule of
   conduct did not.
+  - **Provenance note (2026-09-01).** The pairing above is transcribed
+    faithfully from the source index, but an adversarial recompute could not
+    reproduce **27** from any diff in either evidence repository (the nearest
+    candidates recompute to −43/+20 words and 146/166 words). Treat the word
+    count as unverified; the 0/16 versus 15/16 incidence is sound. Also note
+    the source itself files one of the five interventions as a rule of conduct
+    while describing it as "a single unambiguous sentence about a checkable
+    **fact**", so the 3–2 tally is contestable in the source's own words. See
+    [the handoff/eval harvest](2026-09-01-handoff-and-eval-harvest.md).
 
 ### "The timing number was wrong"
 
