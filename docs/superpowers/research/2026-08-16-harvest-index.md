@@ -132,6 +132,14 @@ record "unavailable" with a distinct exit code.
   nondeterministically. Audit candidate passes against preservation behavior
   before treating a middle-band score as headroom; see the
   [`local-pings` probe](2026-08-27-local-pings-baseline-probe.md).
+- A second baseline appeared to score 3/6 after five candidate patches passed
+  both its regression and the full 142-test upstream suite. Every patch had
+  weakened rejection of genuine async context managers. One oracle correction
+  left a subtler dual-protocol regression, so the oracle was corrected again
+  and the final probe recorded 0/4. Existing-suite success did not establish
+  semantic preservation. The reruns also used increasingly explicit contracts,
+  so their rates are not a controlled comparison; see the
+  [`magicmock-factory` probe](2026-08-29-magicmock-factory-baseline-probe.md).
 
 ### "The grader rejected a correct solution"
 
