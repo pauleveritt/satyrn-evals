@@ -58,6 +58,15 @@ the [`corrected probe`](docs/superpowers/research/2026-08-27-local-pings-correct
 and the
 [`Envelope/Engine follow-up`](docs/superpowers/research/2026-08-27-local-pings-envelope-engine-followup.md).
 
+`magicmock-factory` is also unadmitted. Successive task versions recorded 3/6,
+1/6, and then 0/4, but their increasingly explicit contracts and fresh
+stochastic samples make those rates unsuitable as a direct comparison. The
+candidate audit is decisive: all five first-stage patches fail correction 1,
+and the sole second-stage passing patch fails correction 2. The final task is
+valid and its exact upstream fix passes all 142 upstream tests, but bare Pi
+retained no patch that passed the final oracle. See the
+[`magicmock-factory` oracle audit and final probe](docs/superpowers/research/2026-08-29-magicmock-factory-baseline-probe.md).
+
 ## Backlog
 
 Deferred, each with the condition that reopens it — see `BRIEF.md`:
