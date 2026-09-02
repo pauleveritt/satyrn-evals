@@ -1,3 +1,5 @@
+import argparse
+
 import pytest
 
 from satyrn_evals.cli import (
@@ -88,5 +90,5 @@ def test_run_requires_command() -> None:
 
 @pytest.mark.parametrize("value", ["0", "-1", "abc"])
 def test_run_n_rejects_non_positive_and_malformed(value: str) -> None:
-    with pytest.raises(Exception, match="integer greater than zero"):
+    with pytest.raises(argparse.ArgumentTypeError, match="integer greater than zero"):
         positive_int(value)
