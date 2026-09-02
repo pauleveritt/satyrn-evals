@@ -1,7 +1,10 @@
 # Phase proposals, and where the spike converges with the session-eval draft
 
 **Date:** 2026-09-02
-**Status:** **input to brainstorming. Not an approved plan, not a phase.**
+**Status:** **superseded in part by maintainer review, 2026-09-02 — see §5.**
+The four-phase shape below is **not** the agreed direction; it is kept because
+the review is easier to follow against what it corrected. Input to
+brainstorming, not an approved plan.
 No code follows from this document until a phase design is proposed and
 confirmed separately, per `CLAUDE.md`.
 
@@ -156,3 +159,83 @@ uncoordinated effort rather than the thing that consolidated the other three.
    difficulty is set by how much of the failure the evidence block reveals?
 5. What is the durability plan for spike evidence? The 166 capture cells and
    the probe harness exist only in a session-scoped temporary directory.
+
+
+## 5. Maintainer review, and what it corrected
+
+Recorded beneath the proposal rather than replacing it.
+
+### The verdict: do not make these four phases. Consolidate around PR #17.
+
+Accepted. The sequence the review proposes:
+
+> reconcile/land PR #17's overlay and session foundations → repair instrument
+> semantics → make containment genuinely usable, including a test runner →
+> reproduce AgentClinic through Evals → then test Engine facts.
+
+Engine facts move to **last**, not second. Every step before it either repairs
+an instrument or removes a confound that would otherwise contaminate it.
+
+### Corrections to specific proposals
+
+**E1 was partly aimed at machinery that does not exist.** Its principles hold,
+but much of it targets batch and reporting machinery Evals has not got. Two
+pieces relocate: the grader tripwire belongs with hidden-oracle support, not as
+free-standing instrument work; and collection-error attribution **conflicts with
+today's "collection error = unavailable" rule** and needs a design decision
+before any fix.
+
+**"Stage 0" rested on a claim that is false, and I propagated it.** The
+assertion that the Engine arm has never been run against a floored task is
+wrong: the earlier three-arm pilot recorded **Baseline 0/6, Envelope 0/6,
+Engine 6/6** on `stringified-annotations`, and that pilot's single
+byte-identical patch was later regraded at **125/125** under the strengthened
+oracle. Engine moving a floor is therefore **already evidenced**, and better
+than the proposed experiment would have shown. What is missing is a
+*generalization* test — a weaker claim than the one this document made.
+
+It is also **not nearly free**. `~/.satyrn-authoring/magicmock-factory/` holds
+a brief and an upstream checkout but **no `manifest.json`, no `base/`, no
+`fixtures/`** — there is no captured task, so the work includes redoing the
+two-stage oracle reconstruction and its curator corrections before a cell runs.
+
+This error has the same shape as the re-derivations catalogued in the harvest:
+a claim inherited from another document and repeated without checking, while
+writing a plan that cites that very lesson.
+
+**Adding `facts` to the Engine contract needs its own specification.** Plausibly
+small, but the exact fact and the exact experiment must be stated, and **block 7
+cannot be its decisive justification** — see the exposure confound recorded in
+the [overnight record](2026-09-02-overnight-packet-and-isolation-run.md).
+
+**E3's declaration and fail-closed behaviour are the strong part; Seatbelt is
+not production-ready.** Four blockers: hard-link uncertainty, the missing test
+runner, macOS-only support, and — the one that is a design conflict rather than
+a gap — **incompatibility with V4's absolute external Engine-contract path**.
+
+**AgentClinic repair is promising, not admitted.** The corrected figure is
+**7/12** for `dumb`, not 8/12; `factonly` sits near ceiling; and "pass" still
+counts retained patches from timed-out attempts, which conflates completion
+with conditional patch quality — the same distinction the `local-pings`
+admission work insisted on keeping separate.
+
+**`tests fixed` does not replace `deepest_pass`.** It suits single-shot repair.
+For genuine cumulative sessions the deepest-milestone measure stays. This
+document over-generalized from a workload where cumulative structure was not
+under test.
+
+**Text-contract support and writable-scope experiments are follow-ups, not
+prerequisites. An orchestrator remains unjustified.**
+
+### The open questions, updated
+
+1. Does PR #17 land as drafted, or does the isolation evidence amend it first?
+   Its overlay clause is confirmed by measurement; its sandbox deferral is
+   contradicted by it. Landing unchanged ships hidden-oracle tasks without
+   containment.
+2. Is collection-error attribution a question of *whose* error it is, or of
+   whether a task whose base cannot import should be capturable at all?
+3. What is the containment bar — does it become a V4 seam change, or does
+   hidden-oracle support wait for a boundary that survives Windows?
+4. What preserves the spike evidence, given it lives in a session-scoped
+   temporary directory and the two probe bundles live on another machine?

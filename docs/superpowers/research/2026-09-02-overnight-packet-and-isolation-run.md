@@ -53,8 +53,42 @@ fact; on the other it recovers none. Worse, the redaction arm was itself
 confounded — removing absolute paths also removes *localisation*, and it **hurt**
 the multi-failure fixture (2/6 against 5/6). Neither pre-registered band fits.
 
-So: **a host-computed fact about grader ownership is the best intervention
-measured, and the mechanism behind it is not settled.**
+### Correction: the ranking is confounded, and the arms are not comparable
+
+**Added 2026-09-02 after maintainer review, which found this and I did not.**
+
+The three arms were under identical sandbox policy, but they were **not equally
+exposed to it**. Counting `pytest` invocations across each arm's 12 cells:
+
+| arm | pytest attempts |
+| --- | ---: |
+| `dumb` | 51 |
+| `stripped` | 206 |
+| **`factonly`** | **9** |
+
+`factonly` is the arm told that validation belongs to the caller. It barely
+used the test runner, so the runner being broken **could not cost it what it
+cost the other two**. The 11/12 versus 7/12 ranking therefore reflects unequal
+exposure to a harness defect as much as anything about the prompt. Equal
+policy, unequal exposure.
+
+Worse for the design: the arm's advantage and its protection share a single
+cause. Telling a model the caller owns validation both suppresses grader search
+*and* suppresses testing. In this prompt those are not separable, so **no
+re-run of this wording disentangles them.** A decisive experiment must split
+the ownership fact from the "you do not need to test" implication, under a
+working runner.
+
+### What survives, and what does not
+
+**Survives:** the narrow behavioural signal. Ownership wording consistently
+suppresses wasted search for the grader. That is visible in the transcripts
+independently of any pass count.
+
+**Does not survive:** the ranking, and any use of this block to justify an
+engine change. **Block 7 alone cannot support that**, and should not be cited
+for it. The decisive follow-up is the same pre-registered comparison under
+corrected isolation with a working local test runner.
 
 ## 2. Grader isolation is required, and achievable without a VM
 
@@ -204,7 +238,20 @@ That document is brainstorming input, not an approved plan.
 ## 7. Recomputation
 
 The scratchpad harness, per-cell captures, pre-registrations (the last one
-machine-stamped and hashed before its block), and a running findings log are
-local and unadmitted. Nothing in this document should enter a plan without
+machine-stamped and hashed before its block), and a running findings log were
+written to a session-scoped temporary directory and have been **archived**,
+following the convention the other baseline probes use:
+
+```text
+~/work/satyrn/evidence/2026-09-02-agentclinic-spike.tar.gz
+sha256: ca69da83fcb50f8e36b549d255926494965b31bcce5c8b6c22d903cf48c39dfd
+```
+
+Verify with `shasum -a 256 -c` against the adjacent `.sha256`. The archive is
+local evidence, not a repository or CI dependency. It is unsanitized — unlike
+this document it still contains private-repository specifics and local absolute
+paths.
+
+These artifacts are local and unadmitted. Nothing in this document should enter a plan without
 re-deriving it against those artifacts or, better, re-running the question
 through this repository's own `capture` / `attempt` / `grade` path.
