@@ -194,7 +194,14 @@ including a clause that targeted the very failure mode under test.
   single host-computed fact outperforms everything else measured.
 - **Do not build an orchestrator yet.** Everything above was measured with none.
 
-## 6. Recomputation
+## 6. Where this goes next
+
+Phase proposals drawn from this run, and the places where it converges with the
+unmerged session-eval design, are in
+[phase proposals and session-eval convergence](2026-09-02-phase-proposals-and-session-eval-convergence.md).
+That document is brainstorming input, not an approved plan.
+
+## 7. Recomputation
 
 The scratchpad harness, per-cell captures, pre-registrations (the last one
 machine-stamped and hashed before its block), and a running findings log are
