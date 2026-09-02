@@ -95,37 +95,8 @@ retained no patch that passed the final oracle. See the
 
 ## Backlog
 
-Deferred, each with the condition that reopens it — see `BRIEF.md`:
-automated commit mining (after three manual captures show which steps
-repeat); paired A/B of two engine versions (when a contributor needs "did
-my fix help" across versions); resumable large batches (only if the prior
-checkpoint transplants verbatim); the whole claims layer.
-
-**OS-level containment for the attempt** (reopens when all four recorded
-blockers are cleared, or when detection proves insufficient in practice). A
-whole-process sandbox profile was built and measured during the 2026-09-01
-spike and is **deferred, not adopted**: it is macOS-only; it silently removed
-the model's own test runner, so an entire block measured models that could not
-self-verify; a hard link created inside the run root still read the grader
-through it; and it conflicts with V4's absolute external engine-contract path
-— though the V6 design already routes around that last one by copying a public
-contract into the worktree rather than referencing it by task path. V7 uses
-after-the-fact content detection instead. *Recorded direction change:* an
-earlier note in this planning cycle said "make containment genuinely usable,
-including a test runner"; this entry defers it rather than fixing it, and a
-still earlier draft wrote "refused" where the evidence only supports
-"deferred".
-
-**Cheap partial prevention** (reopens with V7): POSIX file modes and a separate
-run user need no new system, and V7 should require one of them for any task
-declaring a hidden oracle rather than relying on detection alone.
-
-**Text-contract support** (reopens when a roster model cannot emit tool calls —
-two of six models measured in the spike could not, so this is when, not if);
-**writable-scope injection** (reopens if scope overreach is measured here);
-**an orchestrator process** (remains unjustified — every effect measured so far
-was obtained without one, and autonomous contract authoring measured worse than
-hand authoring).
+Moved to [`BACKLOG.md`](BACKLOG.md), so the phase list stays readable. Every
+entry there states what reopens it.
 
 ## Prior work
 

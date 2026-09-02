@@ -17,7 +17,7 @@ output of a long, twice-reviewed session recorded in
 *within* the current phase — do not reopen the phase list, the
 diagnosis-before-claims split, or the two selection rules for a grader
 fixture versus a diagnostic workload. Each has a recorded reason and a
-recorded condition that would reopen it, in `BRIEF.md`'s Backlog section.
+recorded condition that would reopen it, in `BACKLOG.md`.
 
 ## Rules that govern every edit, not just phase kickoff
 

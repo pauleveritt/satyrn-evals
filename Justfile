@@ -9,3 +9,7 @@ watch-docs:
 # One-shot strict build — the same gate CI runs, for a quick check
 docs:
     uv run --group docs sphinx-build -W -b html docs docs/_build/html
+
+# Enforce the document caps in docs/sdd.md. Caps alone do not work.
+lint-docs:
+    uv run python tools/lint_docs.py

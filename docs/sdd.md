@@ -26,6 +26,49 @@ The disciplines review holds you to:
 - **Non-vacuity** — a refusal test has a sibling success test.
 - **Verify, don't assert** — demonstrate a claim, don't state it.
 
+## Document caps
+
+Two predecessor projects recorded the same failure: machinery, and the
+documents describing it, outgrowing anyone's ability to hold them in mind. One
+of them let `ROADMAP.md` reach roughly 1,000 lines, about 800 of them Backlog,
+one defensible paragraph at a time. Its rules capped *cells* and *plans* but
+never the *file*, so nothing bounded the thing that actually grew.
+
+So: caps, and a checker. Neither works alone — a convention nothing checks is
+one this lineage has already watched fail.
+
+| Document | Cap | Over cap means |
+|---|---|---|
+| `ROADMAP.md` **whole file** | 400 lines | Something owes a move to `docs/superpowers/research/` or deletion |
+| `BACKLOG.md` **whole file** | 400 lines | Prune resolved entries, or a research doc is owed |
+| Phase-table **Direction** cell | 900 chars | A verdict or research doc is owed |
+| Phase-table **Status** cell | 1,000 chars | A verdict or research doc is owed |
+| **Backlog entry** | 1,200 chars | A research doc is owed; the entry keeps a summary, a link, and the reopen condition |
+| **Spec** | 400 lines | Split the design |
+| **Plan** | 400 lines | Split the phase |
+
+**Caps apply at every update, not only at phase close.** A cell growing
+mid-phase is the signal that a document is owed *now*, not later.
+
+**The numbers are inherited, not calibrated here.** They come from a sibling
+project's post-cleanup calibration. An earlier attempt in that lineage used a
+uniform 300-character cap chosen in the abstract and failed immediately against
+real content. If a cap here proves wrong against this project's own writing,
+change it deliberately and record why — do not quietly exceed it.
+
+Enforcement is `just lint-docs`.
+
+## Backlog discipline
+
+1. **Every entry states what reopens it.** An entry that cannot say what would
+   make it relevant again is deleted, not kept "just in case".
+2. **An entry over its cap owes a research doc.** The entry keeps a summary, a
+   link, and the reopen condition — not the argument.
+3. **Entries are pruned, not archived in place.** Resolved, retired and
+   superseded entries are removed once their outcome is recorded in a phase row
+   or a research doc that the row links.
+
+
 ## V4 verification record
 
 V4 was verified on macOS against satyrn-engine E5 commit
