@@ -16,7 +16,24 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
 
-from lint_docs import BACKLOG_ENTRY_CAP, check  # noqa: E402
+from lint_docs import (  # noqa: E402
+    BACKLOG_ENTRY_CAP,
+    DIRECTION_CAP,
+    GRANDFATHERED,
+    ROOT,
+    STATUS_CAP,
+    check,
+)
+
+PHASE_HEADER = "| # | Phase | Direction (one sentence) | Excludes | Status |"
+PHASE_RULE = "|---|---|---|---|---|"
+
+
+def _roadmap(root: Path, direction: str, excludes: str, status: str) -> None:
+    (root / "ROADMAP.md").write_text(
+        f"# Roadmap\n\n{PHASE_HEADER}\n{PHASE_RULE}\n"
+        f"| V1 | A phase | {direction} | {excludes} | {status} |\n"
+    )
 
 
 def _write(root: Path, name: str, body: str) -> None:
@@ -72,3 +89,48 @@ def test_bold_text_that_is_not_an_entry_does_not_fire(tmp_path: Path, backlog: s
     _write(tmp_path, "BACKLOG.md", backlog)
 
     assert check(tmp_path).failures == []
+
+
+def test_status_cap_measures_status_not_excludes(tmp_path: Path) -> None:
+    """Five columns: # | Phase | Direction | Excludes | Status.
+
+    A sibling project added the Excludes column and its positional checker kept
+    reading the last two cells, so the Status cap silently began measuring
+    Excludes; it was caught only at phase close-out. This pins the mapping.
+    """
+    _roadmap(tmp_path, direction="short", excludes="Short", status="x" * (STATUS_CAP + 1))
+
+    failures = check(tmp_path).failures
+
+    assert any("Status" in f for f in failures), failures
+    assert not any("Direction" in f for f in failures), failures
+
+
+def test_direction_cap_measures_direction_not_excludes(tmp_path: Path) -> None:
+    _roadmap(tmp_path, direction="x" * (DIRECTION_CAP + 1), excludes="Short", status="done")
+
+    failures = check(tmp_path).failures
+
+    assert any("Direction" in f for f in failures), failures
+    assert not any("Status" in f for f in failures), failures
+
+
+def test_a_long_excludes_cell_is_not_capped(tmp_path: Path) -> None:
+    """Excludes is deliberately uncapped, matching the sibling project. This is
+    the sibling success test for the two pins above: they must fire on the
+    columns they name and stay silent on the one they do not."""
+    _roadmap(tmp_path, direction="short", excludes="x" * (STATUS_CAP + 1), status="done")
+
+    assert check(tmp_path).failures == []
+
+
+def test_grandfathered_paths_all_exist() -> None:
+    """Every grandfathered path is a real document in *this* repository.
+
+    Copying this file between the two repositories silently carried the other
+    one's set across, which both exempted documents that do not exist here and
+    stopped exempting the ones that do.
+    """
+    missing = [p for p in GRANDFATHERED if not (ROOT / p).exists()]
+
+    assert missing == [], missing

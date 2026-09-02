@@ -56,15 +56,50 @@ class Report:
         return 0
 
 
-def _phase_rows(text: str) -> list[list[str]]:
-    """Table rows from the phase table, if the file has one."""
-    rows = []
+def _cells(line: str) -> list[str] | None:
+    """Cells of a Markdown table row, or None if the line is not one."""
+    if not line.startswith("|") or set(line) <= set("|- "):
+        return None
+    return [c.strip() for c in line.strip().strip("|").split("|")]
+
+
+def _column_index(header: list[str], *names: str) -> int | None:
+    """Index of the first column whose header starts with one of `names`."""
+    for i, cell in enumerate(header):
+        lowered = cell.strip("* ").lower()
+        if any(lowered.startswith(n) for n in names):
+            return i
+    return None
+
+
+def _phase_rows(text: str) -> list[dict[str, str]]:
+    """Phase-table rows keyed by column, or [] if the file has no phase table.
+
+    **Keyed by header, not by position, on purpose.** A sibling project added an
+    Excludes column between Direction and Status and its positional checker went
+    on measuring the last two cells, so the Status cap silently began measuring
+    Excludes — caught only at phase close-out. A cap that moves to another column
+    when a column is added is not enforcing the cap it names.
+    """
+    header: list[str] | None = None
+    rows: list[dict[str, str]] = []
     for line in text.splitlines():
-        if not line.startswith("|") or set(line) <= set("|- "):
+        if (cells := _cells(line)) is None:
             continue
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if len(cells) >= 4 and cells[0] not in ("#", "Phase"):
-            rows.append(cells)
+        if header is None:
+            if _column_index(cells, "status") is not None:
+                header = cells
+            continue
+        if len(cells) != len(header):
+            continue
+        direction = _column_index(header, "direction", "ships")
+        status = _column_index(header, "status")
+        phase = _column_index(header, "#", "phase")
+        rows.append({
+            "phase": cells[phase] if phase is not None else "?",
+            "direction": cells[direction] if direction is not None else "",
+            "status": cells[status] if status is not None else "",
+        })
     return rows
 
 
@@ -107,8 +142,8 @@ def check(root: Path = ROOT) -> Report:
 
     roadmap = root / "ROADMAP.md"
     if roadmap.exists():
-        for cells in _phase_rows(roadmap.read_text()):
-            phase, direction, status = cells[0], cells[-2], cells[-1]
+        for row in _phase_rows(roadmap.read_text()):
+            phase, direction, status = row["phase"], row["direction"], row["status"]
             if len(direction) > DIRECTION_CAP:
                 failures.append(
                     f"ROADMAP.md phase {phase}: Direction {len(direction)} chars "

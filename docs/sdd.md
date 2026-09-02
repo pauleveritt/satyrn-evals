@@ -43,9 +43,24 @@ one this lineage has already watched fail.
 | `BACKLOG.md` **whole file** | 400 lines | Prune resolved entries, or a research doc is owed |
 | Phase-table **Direction** cell | 900 chars | A verdict or research doc is owed |
 | Phase-table **Status** cell | 1,000 chars | A verdict or research doc is owed |
+| Phase-table **Excludes** cell | uncapped | Deliberate — see below |
 | **Backlog entry** | 1,200 chars | A research doc is owed; the entry keeps a summary, a link, and the reopen condition |
 | **Spec** | 400 lines | Split the design |
 | **Plan** | 400 lines | Split the phase |
+
+**The Excludes column is uncapped, and the checker is header-aware.** A phase
+row states what it ships *and what it does not*, so a reader can tell scope
+creep from progress. The cell is uncapped because it is a list, not an
+argument. The checker keys columns by header name rather than position: the
+sibling project added this column to a positional checker and its Status cap
+silently began measuring Excludes, caught only at phase close-out. Two
+regression tests pin the mapping, with a third asserting Excludes stays
+uncapped.
+
+**Excludes for a phase with no spec is provisional.** Where a spec exists, the
+cell condenses that spec's own non-goals section. Where one does not, it is
+derived from `ROADMAP.md` and `BACKLOG.md` and is superseded by the spec when
+the phase gains one.
 
 **Caps apply at every update, not only at phase close.** A cell growing
 mid-phase is the signal that a document is owed *now*, not later.
