@@ -10,8 +10,7 @@ Backlog, not into the current phase.*
 
 ## Now
 
-**V5b is complete (2026-09-02). V5c — capture the admitted suite — is
-proposed, awaiting maintainer confirmation.**
+**V5b is complete (2026-09-02). V5c — capture the admitted suite — is next.**
 
 V5b shipped `run --n 8` over the two admitted tasks with a counts-only
 `summary.json` — verdict reasons (`code_counts`/`verdict_counts`), timeouts,
@@ -26,8 +25,8 @@ V5c captures the admitted suite for that loop: one task, `local-pings`,
 rebuilding the corrected synthetic base/fix pair the probe used and
 reproducing the probe's three-row qualification table as its gate.
 `stringified-annotations` is deferred — its Engine arm sits at 6/6, which
-is regression detection, not headroom. Proposal pending confirmation; no
-code until then (`CLAUDE.md`).
+is regression detection, not headroom. See the V5c spec for done-when; no
+model runs in this phase.
 
 ## Concept budget
 
@@ -54,6 +53,7 @@ lands.
 | V7 | Task visibility and leak detection | a manifest field declares each task visible- or hidden-oracle; contamination is detected by content and reported per arm, never absorbed into a denominator | OS-level containment — deferred in `BACKLOG.md`; V7 detects rather than prevents | proposed |
 | V8 | AgentClinic through Evals | reproduce the repair fixtures on this repository's own `capture`/`attempt`/`grade` path, replacing the spike's scratchpad harness | Engine changes, including a `facts` field (satyrn-engine `BACKLOG.md`); an orchestrator | proposed |
 | V5b | The diagnostic loop | `run --n 8` over admitted tasks, summarizing verdict reasons, repeated calls, churn, tool calls, context, and timeouts | The claims layer — pre-registration, intervals, void accounting (`BRIEF.md:33-36`) | **complete** |
+| V5c | Capture the admitted suite | reconstruct and `capture --revert` the corrected `local-pings` synthetic pair, then re-record the probe's three-row qualification table as the gate that the capture is faithful | `stringified-annotations` capture (reopens once the loop runs on `local-pings`); `magicmock-factory` (reopens with an Envelope/Engine probe); oracle improvement (its own proposal); running the loop; suite-headroom capture — see the spec's Out of scope | **next** |
 
 Full done-when criteria for V1–V5 are in `BRIEF.md`'s referenced roadmap
 research, not restated here to avoid drift between two copies. **V6–V8 are

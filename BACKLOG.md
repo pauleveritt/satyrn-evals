@@ -36,6 +36,21 @@ parseable events
 **Reopens when the engine exposes these counts across the seam** — not when a
 transcript sample becomes available.
 
+**`stringified-annotations` capture** (V5c, 2026-09-03). Deferred from V5c,
+which captures `local-pings` only: its Engine arm is pinned at ceiling (6/6,
+`docs/superpowers/specs/2026-09-02-v5a-admission-rule-design.md:78`), so it
+buys regression detection rather than headroom. **Reopens once the
+diagnostic loop has run on `local-pings`** (the V5c spec's Out of scope).
+
+**`local-pings` oracle improvement — drop `_svc_type`.** The corrected
+probe's preservation test identifies registry pings through the private
+`_svc_type` field
+(`docs/superpowers/research/2026-08-27-local-pings-corrected-probe.md:46-49`),
+coupling the oracle to an implementation detail. Changing it changes what is
+measured and voids comparison with the recorded probes, so it is not done in
+V5c. **Reopens as its own proposal** — a future admission candidate observing
+public names or callable execution order.
+
 **Automated commit mining.** Reopens after three manual captures show which
 steps repeat.
 
