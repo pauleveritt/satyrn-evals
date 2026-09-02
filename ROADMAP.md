@@ -59,8 +59,10 @@ Full done-when criteria for V1–V5 are in `BRIEF.md`'s referenced roadmap
 research, not restated here to avoid drift between two copies. **V6–V8 are
 new and their done-when lives with each phase's design spec** — V6's is
 `docs/superpowers/specs/2026-09-01-svcs-session-eval-design.md`
-(superseded banner; the design of record for the session mechanics). V7
-and V8 have no spec yet and must gain one before implementation, per
+(superseded banner; the design of record for the session mechanics).
+V5c's done-when is its three-row qualification gate in
+`docs/superpowers/specs/2026-09-02-v5c-capture-admitted-suite-design.md`.
+V7 and V8 have no spec yet and must gain one before implementation, per
 `docs/sdd.md`; V5a's and V5b's done-when lived with their design specs, now
 complete (Prior work below).
 

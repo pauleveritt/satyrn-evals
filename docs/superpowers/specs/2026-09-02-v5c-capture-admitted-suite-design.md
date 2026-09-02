@@ -1,6 +1,6 @@
 # V5c — Capture the admitted suite: design spec
 
-**Phase:** V5c (`ROADMAP.md`). **Date:** 2026-09-03.
+**Phase:** V5c (`ROADMAP.md`). **Date:** 2026-09-02.
 **Status:** proposal confirmed by the maintainer 2026-09-02; spec written
 before implementation per `docs/sdd.md`.
 
