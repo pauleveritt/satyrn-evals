@@ -67,6 +67,20 @@ valid and its exact upstream fix passes all 142 upstream tests, but bare Pi
 retained no patch that passed the final oracle. See the
 [`magicmock-factory` oracle audit and final probe](docs/superpowers/research/2026-08-29-magicmock-factory-baseline-probe.md).
 
+`stringified-annotations`, the only discriminator in the old Cycle 7 batch,
+is not admitted under the rebooted protocol either. Its exact upstream fix
+passes the preservation-strengthened oracle and all 125 test IDs in the
+strengthened suite, but
+the frozen bare Pi plus Gemma probe recorded 0/4. Two invocations retained
+partial patches and neither passed the five-case oracle. An earlier two-case
+probe was superseded after review found a parameter-name loophole. The
+byte-identical Engine patch from the earlier
+[three-arm pilot](docs/superpowers/research/2026-08-26-product-path-pilot.md)
+passes the strengthened suite on regrade, but that pilot used a different
+protocol. This is a valid floor result, not a new comparison with an Envelope
+or Engine arm. See the
+[`stringified-annotations` baseline probe](docs/superpowers/research/2026-08-29-stringified-annotations-baseline-probe.md).
+
 ## Backlog
 
 Deferred, each with the condition that reopens it — see `BRIEF.md`:
