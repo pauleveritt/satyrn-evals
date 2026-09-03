@@ -104,3 +104,60 @@ git commit -m fix
 ```
 
 Scratch artifacts live under `/tmp/satyrn-v5c/` and are not committed.
+
+## Correction and re-record (2026-09-02, after the adversary decision)
+
+**Correction to this record.** This record's row-3 patch was described as a
+"set-union patch" combining service types in a set. The follow-up
+investigation established the known cause of the recorded flakiness: the
+record's own set-union patch preserved insertion order on the processes
+where row 3 read as passing, and whether order is preserved is a discrete
+function of hash stride versus set-table geometry and the classes'
+allocation phase — not a residual probability (see the cross-machine
+research record). The N=2 recorded size does not reproduce on this machine:
+measured 0/60 caught under the curator tests (both parametrizations) in the
+pytest context. The record's "controlled class hashes" phrasing also
+cannot have meant hash seeding: `PYTHONHASHSEED` does not move
+`id()`-based class hashes, so the frozen environment must have controlled
+allocation layout.
+
+**Re-specification (maintainer-confirmed).** Row 3's adversary is now the
+type-set at six registry-only services, per the spec amendment
+(`docs/superpowers/specs/2026-09-02-v5c-capture-admitted-suite-design.md`):
+a re-specification, not a reproduction. The rebuilt synthetic pair (durable
+scratch `~/projects/pauleveritt/satyrn-v5c-scratch/pair`):
+
+```text
+upstream base:    31bc6dfd5d1a570b3b96cfefd878ccc686bde980
+upstream target:  52c6689d34ce80c0f5a754f95d2aad54837402df
+N=6 task base:    71f5f5c  (31bc6df + target's test changes + N=6 curator
+                            test with forward/reversed parametrization +
+                            canary + pyproject pythonpath=["src"])
+N=6 task fix:     96341fa  (upstream source change to get_pings)
+```
+
+The oracle is the five ids: three upstream local-ping tests plus
+`tests/test_eval_preservation.py::test_local_ping_keeps_registry_ping_order[order0]`
+and `[order1]`.
+
+**Re-recorded qualification table** (this machine, Python 3.14.2; each row
+runs the five oracle ids plus the canary in one fresh pytest process):
+
+| Row | Input | Oracle | Canary | Runs |
+| --- | --- | ---: | --- | ---: |
+| 1 | base | 0 pass, 5 fail | scramble face (ok) | 5/5 |
+| 2 | base + known-good (fix diff) | 5 pass | scramble face (ok) | 5/5 |
+| 3 | base + type-set patch | 3 pass, 2 fail | scramble face (ok) | 20/20 |
+
+Row 3 caught the adversary in 20/20 fresh processes (both curator cases
+failed in every run; the parametrization's guarantee — at least one case
+fails whenever the set scrambles — held with margin). No row read
+inconclusive; the gate is meaningful on this machine at N=6.
+
+Recompute:
+
+```bash
+cd ~/projects/pauleveritt/satyrn-v5c-scratch
+./venv/bin/python exp/qualify_gate.py "1,2" 5   # rows 1-2
+./venv/bin/python exp/qualify_gate.py "3" 20    # row 3, 20 fresh processes
+```
