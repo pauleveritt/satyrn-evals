@@ -70,7 +70,7 @@ def materialize_overlay(spec: OverlaySpec, workspace: Path) -> None
 
 Refusals (each with a valid sibling): `grader_overlay` absent-for-session is fine here (session requirement enforced in Task 4); symlink anywhere under the overlay root; a non-regular file; a rel path that overlaps any `manifest.source_paths` entry; empty overlay directory.
 
-- [ ] **Step 1: Failing tests** — one per refusal plus the valid sibling; assert `rel_paths` sorted and digests recomputable:
+- [x] **Step 1: Failing tests** — one per refusal plus the valid sibling; assert `rel_paths` sorted and digests recomputable:
 
 ```python
 def test_load_overlay_records_sorted_paths_and_digests(tmp_path: Path) -> None:
@@ -93,8 +93,8 @@ def test_load_overlay_refuses_overlap_with_source_paths(tmp_path: Path) -> None:
 ```
 
 - [ ] **Step 2: Run** — Expected: FAIL (`No module named 'satyrn_evals.overlay'`).
-- [ ] **Step 3: Implement** — `load_overlay` walks `root.rglob("*")` (reject symlinks via `is_symlink()` on every component), builds digests; `materialize_overlay` copies each file to `workspace / rel_path` creating parents, refusing to write outside `workspace` (reuse the containment idea from `workspace.py:262` `_contains_path`).
-- [ ] **Step 4: Run** — PASS. **Step 5: Commit** `feat: overlay validation and materialization`.
+- [x] **Step 3: Implement** — `load_overlay` walks `root.rglob("*")` (reject symlinks via `is_symlink()` on every component), builds digests; `materialize_overlay` copies each file to `workspace / rel_path` creating parents, refusing to write outside `workspace` (reuse the containment idea from `workspace.py:262` `_contains_path`).
+- [x] **Step 4: Run** — PASS. **Step 5: Commit** `feat: overlay validation and materialization`.
 
 ### Task 3: Overlay-aware grading
 
