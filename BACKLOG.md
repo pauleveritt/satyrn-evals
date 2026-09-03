@@ -123,7 +123,12 @@ fake seam command, which never loads the contract (fixed 2026-09-02). The only
 check today is a real engine attempt. **Reopens when a second captured task
 carries an engine contract, or when the first real engine run lands** — the
 fix is a default-tier assertion that the contract parses under the same loader
-the engine uses, which costs a declared parser dependency.
+the engine uses, which costs a declared parser dependency. *The second reopen
+condition has fired* — the re-probe engine arm
+(`2026-09-03-local-pings-reprobe-protocol.md:224-231`) — so the fuller fix is owed;
+the V5d pre-flight smoke check
+(`docs/superpowers/specs/2026-09-03-v5d-preflight-smoke-check-design.md`) is
+interim mitigation.
 
 **`python -m satyrn_evals.cli` silently no-ops** (V5c, 2026-09-02). `cli.py`
 has no `if __name__ == "__main__"` guard, so module invocation imports the
