@@ -94,3 +94,21 @@ two of six models measured in the spike could not, so this is when, not if.
 **An orchestrator process.** Remains unjustified — every effect measured so far
 was obtained without one, and autonomous contract authoring measured worse than
 hand authoring.
+
+**Captured base trees must not be filtered by the repository `.gitignore`**
+(V5c, 2026-09-02). A bundled task's `base/` is a vendored foreign tree; the
+repo's `.gitignore` patterns (`.idea/`, `.coverage*`, `node_modules/`,
+`docs/_build/`, …) silently drop any *legitimately tracked* file of that name
+when the task is committed, and the loss surfaces only on a fresh clone.
+`local-pings` was unaffected (only ruff's `.ruff_cache/` junk was filtered),
+but the mechanism is live. **Reopens with the next capture whose base tracks a
+file matching a repo `.gitignore` pattern** — fix by committing the vendored
+tree with an explicit allow (e.g. `git add -f`) or by verifying disk-vs-index
+parity after `git add`.
+
+**`python -m satyrn_evals.cli` silently no-ops** (V5c, 2026-09-02). `cli.py`
+has no `if __name__ == "__main__"` guard, so module invocation imports the
+parser, does nothing, and exits 0 — it cost one confused capture run (reported
+"captured", wrote nothing). The console script `satyrn-evals` is the supported
+entry. **Reopens when module invocation should either work or fail loudly** —
+the fix is a two-line guard plus a tripwire test asserting `python -m` runs.

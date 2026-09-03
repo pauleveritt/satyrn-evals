@@ -45,3 +45,8 @@ def test_local_pings_known_broken_patch_is_rejected(tmp_path: Path) -> None:
     assert code == 0
     data = json.loads(receipt.read_text())
     assert data["verdict"] == "fail"
+    # The failure must be the curator cases catching the type-set adversary
+    # (row 3's shape), not "anything went wrong": rejection is the default
+    # outcome of most failures, so a broken test would pass silently.
+    assert data["evidence"]["counts"]["passed"] == 3
+    assert data["evidence"]["counts"]["failed"] == 2

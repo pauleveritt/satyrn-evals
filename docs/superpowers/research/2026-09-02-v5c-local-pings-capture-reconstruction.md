@@ -140,6 +140,14 @@ The oracle is the five ids: three upstream local-ping tests plus
 `tests/test_eval_preservation.py::test_local_ping_keeps_registry_ping_order[order0]`
 and `[order1]`.
 
+**Provenance is local evidence.** The captured task's manifest `provenance`
+(`repo`/`base_sha`/`fix_sha`, the manifest loader's fixed three keys) names
+the machine-local scratch pair, which is not in this repository and whose
+SHAs therefore do not resolve from the repository alone — the probe records
+mark their local bundles the same way. The SHAs resolve via the rebuild
+recipe above plus the public upstream commits (`31bc6dfd`, `52c6689d`,
+`github.com/hynek/svcs`).
+
 **Re-recorded qualification table** (this machine, Python 3.14.2; each row
 runs the five oracle ids plus the canary in one fresh pytest process):
 
