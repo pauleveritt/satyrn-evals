@@ -137,3 +137,48 @@ done
 
 Ruff lint (`ruff check .`), Pyrefly, strict Sphinx, and `git diff --check` also
 passed on the same tree. Windows is not part of this evidence.
+
+## V6 verification record
+
+V6's default tier is model-, network-, and subprocess-free; the session
+executor, the shipped Pi adapter's process behavior, and the oracle floor
+tests are marked integration and excluded from CI. The deterministic
+four-prompt proof replaces Pi with a scripted RPC fixture (the V4
+substitution pattern) and is called adapter integration — it makes no
+real-model claim.
+
+```text
+.venv/bin/pytest -q
+518 passed, 140 deselected
+
+.venv/bin/pytest tests/integration -m integration -q
+132 passed, 3 skipped
+
+.venv/bin/pytest -m '' --cov=src/satyrn_evals --cov-branch \
+  --cov-report=term-missing --cov-fail-under=100
+655 passed, 3 skipped
+2209 statements, 711 branches, 100% coverage
+```
+
+Ruff lint clean; `just lint-docs` within caps; the svcs probe import
+hashes to `296a961f…` as committed (V6 delta spec, Delta 5). macOS-only
+evidence; Windows is not part of this record. A worktree needs
+`uv sync --group integration` — the integration group carries the svcs
+runtime's third-party imports (`pyproject.toml:39-44`).
+
+### The real-model smoke (layer (b))
+
+The smoke is an explicit V6 done-when item and is deliberately manual
+(V5d's practice; see `docs/session-smoke.md`): one uncounted real-model
+session through the shipped adapter against the supported Pi executable,
+with a durable evidence directory and the five session-specific
+assertions evidenced individually in this section — Pi accepted the model
+configuration; genuine model-stream events; one conversation across the
+ordered prompts reached; parseable session/checkpoint artifacts; clean
+teardown — plus the no-shim outcome. Model behavior may pass or fail; the
+smoke makes no admission, difficulty, or quality claim.
+
+**Status: pending the maintainer's manual run** — it costs real
+wall-clock time and model money by design and is not automatable per the
+landed V5d practice. The phase's machinery done-when is met by the tiers
+above; the smoke completes V6's done-when when recorded here.
