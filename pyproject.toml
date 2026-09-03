@@ -44,7 +44,13 @@ integration = [
 
 [tool.pytest.ini_options]
 # docs/_build is the docs build output, never project tests.
-norecursedirs = ["docs/_build", "src/satyrn_evals/tasks", ".worktrees"]
+norecursedirs = [
+    "docs/_build",
+    "src/satyrn_evals/tasks",
+    ".worktrees",
+    "tests/data",
+    "tests/integration/data",
+]
 addopts = ["-m", "not integration", "--strict-markers"]
 strict_xfail = true
 markers = [
