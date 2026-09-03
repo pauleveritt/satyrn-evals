@@ -4,6 +4,68 @@
 **Status:** proposal confirmed by the maintainer 2026-09-02; spec written
 before implementation per `docs/sdd.md`.
 
+> **Amendment (2026-09-02, maintainer-confirmed).** Row 3's adversary is
+> re-specified — the recorded N=2 type-set does not reproduce on this
+> machine (`docs/superpowers/research/2026-09-02-v5c-local-pings-capture-reconstruction.md`),
+> and the cross-machine investigation shows the catch is a discrete function
+> of hash stride versus table geometry and allocation phase, not a
+> stateable probability (see the cross-machine research record). The
+> sections this amendment supersedes are marked below; the original text is
+> kept, not edited away.
+>
+> **Row 3's adversary.** The type-set at **six** registry-only services
+> (`Service`, `AnotherService` from `tests/ifaces.py`, plus four classes
+> defined in the curator module), documented as a **re-specification**, not a
+> reproduction. N=6 lands on the scramble face in every context measured
+> (this machine's pytest gate, bare contexts on 3.14.2 and 3.14.7, and the
+> reviewer's machine), unlike N=2 (preserve face here; dead on both
+> machines) and N=8 (flips between machines). The object-set substitution is
+> dropped: N=6 keeps the recorded defect kind — a set of service *types*,
+> per the probe's prose — and only scales the fixture. Whether the probe's
+> model actually wrote a type-set or an object-set is settled only by the
+> evidence archive on the other machine, which this phase did not have;
+> that is recorded, not resolved here.
+>
+> **The curator test** registers six registry services in a known order plus
+> one local ping, parametrized over forward and reversed registration order
+> (node ids `[order0]`/`[order1]`): a single iteration order cannot match
+> both, so at least one case fails whenever the environment scrambles.
+>
+> **`expected_test_ids`** is the **five** ids: the three upstream
+> local-ping tests plus the two curator parametrizations
+> (`[order0]`, `[order1]`).
+>
+> **The canary.** The curator module carries a third test,
+> `test_environment_scrambles_registry_type_set`, which is **not** part of
+> `expected_test_ids`. It mirrors the adversary's exact mechanism — it
+> compares `list(set(registry._services) - local_svc_types)` against
+> `list(registry._services)`, never the raw source set, because set
+> subtraction rebuilds the table — and it runs in the same process and
+> context as row 3. The gate has **three outcomes, not two**: pass, fail,
+> and **inconclusive**. Inconclusive is when the canary reads the preserve
+> face (the type-set is then undetectable by any order comparison, and a
+> silent pass is the exact silent-zero shape this repository has four
+> recorded incidents of). **Inconclusive stops capture and is never a pass.**
+>
+> **Test-tier correction.** The V1-property grade tests (`grade` accepts the
+> known-good patch and rejects the known-broken one) spawn Git and pytest
+> and therefore belong to the **integration** tier, mirroring
+> `tests/integration/test_bundled.py`; the default tier cannot run them (the
+> audit-hook tripwire blocks spawning, `tests/conftest.py:17-23`). The
+> manifest-shape test is default tier.
+>
+> **Environment.** Grading and capture run the oracle with the invoking
+> Python, so that environment needs svcs's test dependencies (attrs, sybil,
+> pytest-asyncio). The synthetic base's `pyproject.toml` gains
+> `pythonpath = ["src"]` under `[tool.pytest.ini_options]` — a
+> test-runner-only deviation so uninstalled tree copies can run, since the
+> grade machinery copies `base/` and does not install.
+>
+> First-look gate results at N=6 (this machine; see the re-recorded
+> qualification table in the reconstruction record for the full run):
+> base 0/5; known-good 5/5; type-set 3 pass / 2 fail in 20/20 fresh
+> processes; canary ok 20/20.
+
 ## What V5c ships
 
 V5c reconstructs and captures one task, `local-pings`, so V5b's diagnostic
@@ -81,6 +143,10 @@ engine-contract.yaml
 `expected_test_ids` carries the corrected four-test oracle, including the
 curator preservation test:
 
+> **Superseded by the Amendment above**: the oracle is five ids — three
+> upstream local-ping tests plus `[order0]`/`[order1]`. The single curator
+> node id below is the pre-amendment form.
+
 ```text
 tests/test_eval_preservation.py::test_local_ping_keeps_registry_ping_order
 ```
@@ -91,9 +157,13 @@ tests/test_eval_preservation.py::test_local_ping_keeps_registry_ping_order
 **Default tier** (no model, no network, no subprocess; planted tripwire
 untouched):
 
-- `grade` accepts the captured known-good patch and rejects the
+> **Superseded by the Amendment above**: the grade accept/reject tests are
+> integration tier (they spawn Git and pytest). The default tier holds the
+> manifest-shape test only.
+
+- ~~`grade` accepts the captured known-good patch and rejects the
   known-broken one — the V1 property, now on a real task — as a refusal
-  test with its sibling success test (`BRIEF.md:84-85`).
+  test with its sibling success test (`BRIEF.md:84-85`).~~
 - A manifest-shape test asserts `expected_test_ids` matches the oracle the
   probe records.
 
@@ -101,8 +171,17 @@ untouched):
 
 - The capture reproduction itself: real Git, fetch upstream, build the
   synthetic pair, run `capture`.
+- The V1-property evidence floor on the captured task: `grade` accepts the
+  known-good patch and rejects the known-broken one, asserted by name
+  (mirrors `tests/integration/test_bundled.py`; requires svcs test
+  dependencies in the runtime environment).
 
 ## The qualification gate
+
+> **Superseded by the Amendment above.** The gate is re-recorded at N=6 with
+> a canary verdict reported alongside each row; the gate has three outcomes
+> (pass, fail, inconclusive) and inconclusive stops capture. The table below
+> is the pre-amendment form (four-test oracle at the recorded N=2 fixture).
 
 Re-record the corrected probe's qualification table against the newly
 captured task (`2026-08-27-local-pings-corrected-probe.md:62-68`):
@@ -123,13 +202,18 @@ oracle accepted a patch that combined registry and local service types in a
 ## Risks
 
 1. **Reconstruction, not transcription.** The recorded failure mode is the
-   order-losing set patch; the qualification table is the guard.
+   order-losing set patch; the qualification table is the guard. Row 3 is
+   now a re-specification (N=6 type-set), per the Amendment.
 2. **Environment-dependent determinism.** The probe states that, in the
    frozen Python 3.14 environment, "controlled class hashes make the
    previously accepted set-union patch fail deterministically"
-   (`2026-08-27-local-pings-corrected-probe.md:42-44`). If this environment
-   differs, row 3 may not reproduce. That is a stop-and-record condition —
-   **not** something to tune until it passes.
+   (`2026-08-27-local-pings-corrected-probe.md:42-44`). This environment
+   differed, row 3 did not reproduce at the recorded size, and the cause is
+   now recorded (hash stride vs table geometry and allocation phase — the
+   probe's "controlled class hashes" cannot have meant hash seeding, which
+   does not move `id()`-based residues). The canary converts any residual
+   preserve-face environment into an **inconclusive** stop rather than a
+   silent pass.
 
 ## Out of scope (deferred, with what reopens each)
 
@@ -149,9 +233,12 @@ oracle accepted a patch that combined registry and local service types in a
 ## Done-when
 
 - `local-pings` exists as a captured task with the `format_number` shape.
-- The three-row qualification table reproduces exactly, recorded with the
-  command that recomputes it.
-- The default tier proves `grade` accepts known-good and rejects
-  known-broken, with the sibling pair.
+- The three-row qualification table is re-recorded at the N=6 fixture
+  across ≥20 fresh processes with the canary verdict reported alongside,
+  recorded with the command that recomputes it; no row is inconclusive
+  (the canary must read the scramble face in every run).
+- The integration tier proves `grade` accepts known-good and rejects
+  known-broken, with the sibling pair, and the default tier proves the
+  manifest shape (five ids).
 - `satyrn-evals run local-pings --n 8 -- COMMAND...` is *executable*
   (execution itself is the next step, not this phase's done-when).
