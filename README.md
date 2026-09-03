@@ -75,12 +75,13 @@ Evals builds the engine one loop at a time:
 ## Usage
 
 From a checkout, `uv sync` installs evals into the project environment.
-The CLI ships three commands:
+The CLI ships four commands:
 
 ```console
 $ uv run satyrn-evals grade format_number src/satyrn_evals/tasks/format_number/fixtures/known-good.patch
 $ uv run satyrn-evals capture --revert <sha> --repo /src/app --output tasks
 $ uv run satyrn-evals attempt format_number -- command-that-writes-a-patch
+$ uv run satyrn-evals run local-pings --n 8 -- command-that-writes-a-patch
 ```
 
 An Engine-capable task declares an opaque Engine contract. Evals appends that
@@ -94,10 +95,10 @@ $ uv run satyrn-evals attempt format_number --timeout 30 -- \
 
 Grading is silent over the CLI; the verdict — `pass`, `fail`, or
 `unavailable` — is written to a receipt, never read from stdout or an exit
-code. Exit code `0` means the operation completed, `2` a usage error, `3`
-an operational failure that names its cause. Grading and capture remain
-offline; the attempt command may invoke a local model. `capture` writes a
-task directory plus a capture record;
+code. `run` repeats the `attempt` seam for one task (eight times by default)
+and writes a counts-only `summary.json`; its result is the summary, not its
+exit code. Grading and capture remain offline; the attempt command may invoke
+a local model. `capture` writes a task directory plus a capture record;
 pre-existing source files and the source repository's index, branch, and
 `HEAD` are never changed. Declared artifacts below `--output` are the sole
 write exception.

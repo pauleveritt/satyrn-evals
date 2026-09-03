@@ -1,6 +1,6 @@
 # Usage
 
-V4 ships three commands: `grade`, `capture`, and `attempt`. See the
+The CLI ships four commands: `grade`, `capture`, `attempt`, and `run`. See the
 [glossary](glossary.md) for the vocabulary.
 
 ## grade
@@ -274,3 +274,40 @@ $ satyrn-evals attempt format_number --timeout 30 -- \
 
 Evals appends `engine-contract.yaml`; Engine writes the patch and transcript
 through the same reserved artifact paths used by the fake command.
+
+## run
+
+Repeat an {term}`attempt command` for one {term}`task` — typically an admitted
+one, though `run` does not enforce admission — preserving each attempt and
+writing a counts-only diagnostic summary. `run` uses the
+same command seam, worktree isolation, artifact preservation, and offline
+grading as `attempt`; it adds repetition and aggregation, not another engine
+integration.
+
+```console
+satyrn-evals run TASK [--n N] [--tasks-root DIR] [--output DIR] [--timeout SECONDS] -- COMMAND...
+```
+
+- `TASK`, `--tasks-root`, `--timeout`, and `-- COMMAND...` have the same
+  meaning as for `attempt`.
+- `--n N` — a positive number of attempts; default `8`.
+- `--output DIR` — directory containing the individual attempt directories
+  and the run's `summary.json`; default `./runs/`.
+
+`run` completes all `n` attempts, including refusals, then writes
+`<output>/summary.json`. Its structured counts are `n`, `attempted`,
+`refused`, `code_counts`, `verdict_counts`, and `timeouts`. The summary is
+the authoritative result: exit code `0` means the loop and summary write
+completed, regardless of individual verdicts or refusals; `2` is a usage
+error and `3` means the loop could not complete.
+
+For example:
+
+```console
+$ satyrn-evals run local-pings --n 8 --timeout 900 --output runs/engine -- \
+    /src/satyrn-engine/.venv/bin/satyrn-engine attempt
+```
+
+Transcript-derived telemetry such as tool calls, repeat, churn, and context
+is not yet included: it requires an engine-side emitter so evals does not
+parse the engine's private transcript format.

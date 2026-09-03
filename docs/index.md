@@ -22,6 +22,13 @@ engine internals; a fake command satisfies the same seam, and V4 runs
 
 Phases completed, each with its design spec and implementation plan:
 
+- **V5c — Capture the admitted suite.** `local-pings` is now a bundled
+  task, with known-good and known-broken fixtures and a faithful
+  qualification gate.
+- **V5b — The diagnostic loop.** `run TASK --n 8 -- COMMAND...` repeats an
+  attempt command for one task and writes a counts-only
+  `summary.json`.
+
 - **V4 — A real engine attempt.** Evals reconstructs an isolated Git
   workspace and runs `satyrn-engine attempt` through the executable seam.
 - **V3 — Attempt persistence.** `attempt TASK -- COMMAND...` runs the seam,
@@ -33,8 +40,8 @@ Phases completed, each with its design spec and implementation plan:
   accepts a bundled task's known-good patch and rejects its known-broken
   one, offline and deterministic. ({doc}`spec <superpowers/specs/2026-08-16-v1-grade-design>`, {doc}`plan <superpowers/plans/2026-08-16-v1-grade>`)
 
-Before V5b, the project needs eval tasks whose baseline results show useful
-headroom. The roadmap of feature cycles lives in
+V6 — session eval — is proposed next. A suite with headroom remains design
+work owed. The roadmap of feature cycles lives in
 [`ROADMAP.md`](https://github.com/pauleveritt/satyrn-evals/blob/main/ROADMAP.md). The `e1` git tag holds the
 scaffolded starting state — toolchain, docs stack, CI, the brief, the
 roadmap, and the harvest index — for learners following along step by
@@ -70,15 +77,17 @@ a consumer needs it.
 
 ### How it works, from an end-user's perspective
 
-The CLI now has `grade`, `capture`, and `attempt`. `grade` applies a patch to
+The CLI now has `grade`, `capture`, `attempt`, and `run`. `grade` applies a patch to
 the task's base state, runs the task's
 {term}`oracle`, and writes a {term}`receipt` whose {term}`verdict` —
 `pass`, `fail`, or `unavailable` — never comes from stdout or an exit code.
 
 `capture --revert SHA` makes a task winnable by construction in minutes;
-`attempt TASK -- COMMAND...` runs the seam and preserves patch and transcript.
+`attempt TASK -- COMMAND...` runs the seam once and preserves patch and transcript;
+`run TASK --n 8 -- COMMAND...` repeats that attempt seam for one task
+and writes a counts-only `summary.json`.
 For Engine-capable tasks, evals creates a clean detached worktree and invokes
-`satyrn-engine attempt`. A future `run --n 8` produces the diagnostic summary.
+`satyrn-engine attempt`.
 
 ### What is planned
 
@@ -93,12 +102,13 @@ One phase at a time, each shipping one user-visible behavior:
 - **V4 — A real engine attempt.** The same artifact set, produced by
   `satyrn-engine attempt` (engine phase E5). *Complete.*
 - **V5a — The admission rule.** Decide which arm the middle-band bar
-  applies to, and index every probed task by its band per arm. No model runs.
+  applies to, and index every probed task by its band per arm. *Complete.*
+- **V5b — The diagnostic loop.** `run --n 8` repeats an attempt for one
+  task and writes a counts-only summary. *Complete.*
+- **V5c — Capture the admitted suite.** Captured `local-pings` as the first
+  bundled task. *Complete.*
 - **V6–V8.** Session eval; task visibility and leak detection; AgentClinic
   reproduced through this repository's own path. See `ROADMAP.md`.
-- **V5b — The diagnostic loop.** `run --n 8` plus a summary: verdict
-  reasons, repeated calls, churn, tool calls, context, timeouts.
-  *Not started.*
 
 The roadmap, concept budget, and backlog live in
 [`ROADMAP.md`](https://github.com/pauleveritt/satyrn-evals/blob/main/ROADMAP.md)
