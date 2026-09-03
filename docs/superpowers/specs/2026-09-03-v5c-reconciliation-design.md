@@ -132,6 +132,9 @@ never silently applied in either direction.
 
 - Any retrospective V5c plan (ratified missing, decision 2).
 - V5d: no row, no doc, no confirmation on main (decision 4).
+  **Superseded 2026-09-03:** the maintainer confirmed V5d and it landed
+  — `2026-09-03-v5d-preflight-smoke-check-design.md` (status line) and
+  the `ROADMAP.md` phase row.
 - Editing the protocol's pre-registered body (corrections live in the
   dated results section).
 - Any diagnostic batches beyond the pre-registered arms — n=8 per arm, no

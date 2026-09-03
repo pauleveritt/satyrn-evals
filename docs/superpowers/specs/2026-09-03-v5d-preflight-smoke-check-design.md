@@ -1,8 +1,10 @@
 # V5d — The pre-flight smoke check: design spec
 
 **Phase:** V5d (`ROADMAP.md`). **Date:** 2026-09-03 (revised).
-**Status:** proposal, revised and posted for confirmation per `CLAUDE.md`.
-Supersedes the proposal at commit `9893d40` (branch
+**Status:** confirmed by the maintainer and landed on main, 2026-09-03 —
+superseding the V5c reconciliation's decision 4 (no V5d row or doc on
+main), which held only while V5d was unconfirmed. Supersedes the proposal
+at commit `9893d40` (branch
 `v5d-realmodel-smoke-check`, cut from pre-close-out history `36d7974`),
 which carried stale statements. No new machinery ships until confirmed.
 
