@@ -10,6 +10,7 @@ dependencies = []
 
 [project.scripts]
 satyrn-evals = "satyrn_evals.cli:main"
+satyrn-evals-session-pi = "satyrn_evals.adapters.pi_session:main"
 
 [build-system]
 requires = ["hatchling"]
