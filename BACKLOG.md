@@ -107,6 +107,20 @@ file matching a repo `.gitignore` pattern** — fix by committing the vendored
 tree with an explicit allow (e.g. `git add -f`) or by verifying disk-vs-index
 parity after `git add`.
 
+**Engine-contract content is never validated** (V5c, 2026-09-02).
+`manifest.py` validates only the `engine_contract` *path*
+(`src/satyrn_evals/manifest.py:28-54`) — a safe relative path naming a regular
+file. Nothing checks the file parses as satyrn-engine's contract schema,
+because that schema is the engine's and evals declares no YAML parser. The
+captured `local-pings` contract shipped invalid — an unquoted `task:` scalar
+containing `": "`, rejected by `satyrn_engine.contract.load_contract` — and no
+evals test could have caught it: V5c done-when #4 exercised `run` through a
+fake seam command, which never loads the contract (fixed 2026-09-02). The only
+check today is a real engine attempt. **Reopens when a second captured task
+carries an engine contract, or when the first real engine run lands** — the
+fix is a default-tier assertion that the contract parses under the same loader
+the engine uses, which costs a declared parser dependency.
+
 **`python -m satyrn_evals.cli` silently no-ops** (V5c, 2026-09-02). `cli.py`
 has no `if __name__ == "__main__"` guard, so module invocation imports the
 parser, does nothing, and exits 0 — it cost one confused capture run (reported
