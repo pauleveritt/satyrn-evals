@@ -4,7 +4,7 @@
 
 **Goal:** Add the grader-only overlay to ordinary grading, and the pure session machinery — `session.json` loader, typed records, and the adapter protocol parser — entirely in the default tier.
 
-**Architecture:** Plan 1 of 3 for V6; `sdd.md`'s 400-line plan cap splits the phase's plan along the 2026-09-01 spec's reviewable slices. This plan is pure/default-tier only: no subprocess, no model. `manifest.py` gains one validated field; a new `overlay.py` validates and materializes grader-only files; `grade()` grows optional overlay/selectors parameters. Three new pure modules (`session_manifest`, `session_record`, `session_protocol`) are consumed by Plan 2's executor.
+**Architecture:** Plan 1 of 3 for V6; `sdd.md`'s 400-line plan cap splits the phase's plan along the 2026-09-01 spec's reviewable slices. `manifest.py` gains one validated field; a new `overlay.py` validates and materializes grader-only files; `grade()` grows optional overlay/selectors parameters. Three new pure modules (`session_manifest`, `session_record`, `session_protocol`) are consumed by Plan 2's executor. Tasks 1–2 and 4–6 are default tier; **Task 3's floor tests run the real oracle and live in the integration tier** — `grade()` spawns pytest (`grade.py:79-104`) and the planted tripwire blocks spawn outside `@mark.integration` (recorded correction during execution review: no default-tier test may call `grade()`; today's `grade()` tests are `tests/integration/test_grade.py`).
 
 **Tech Stack:** Python 3.14, `dataclasses`, `pytest`, `uv`.
 
@@ -98,7 +98,7 @@ def test_load_overlay_refuses_overlap_with_source_paths(tmp_path: Path) -> None:
 
 ### Task 3: Overlay-aware grading
 
-**Files:** Modify `src/satyrn_evals/grade.py`; test `tests/test_grade_overlay.py` (new); fixture task `tests/data/overlay-task/` committed.
+**Files:** Modify `src/satyrn_evals/grade.py`; test `tests/integration/test_grade_overlay.py` (integration — real oracle execution); fixture task `tests/data/overlay-task/` committed.
 
 **Interfaces produced:** `grade(task_dir, patch_path, receipt_path, *, overlay: OverlaySpec | None = None, selectors: tuple[str, ...] = (), expected: tuple[str, ...] | None = None) -> Receipt` — defaults preserve today's signature and behavior exactly (backward compatibility is a spec requirement).
 
@@ -129,7 +129,7 @@ def test_grading_without_overlay_is_unchanged(tmp_path: Path) -> None:
     assert receipt.verdict is Verdict.PASS  # public suite passes; overlay never copied
 ```
 
-- [ ] **Step 3: Run** — FAIL (`grade() got an unexpected keyword argument`).
+- [ ] **Step 3: Run** — FAIL (`grade() got an unexpected keyword argument`): `uv run pytest tests/integration/test_grade_overlay.py -m integration -q`.
 - [ ] **Step 4: Implement** in `grade.py`: thread `overlay`/`selectors`/`expected` into the workspace build (`materialize_overlay` after patch application) and into `_run_oracle` (`grade.py:74`) — append `*selectors` to the pytest argv; pass `expected` through to `compute_verdict` (`verdict.py:82`).
 - [ ] **Step 5: Run** — PASS. **Step 6: Commit** `feat: overlay-aware grading`.
 

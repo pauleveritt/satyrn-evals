@@ -21,7 +21,7 @@
 
 ### Task 1: The `session-mechanics` fixture task
 
-**Files:** Create `src/satyrn_evals/tasks/session-mechanics/{manifest.json,session.json,base/**,grader/overlay/**,fixtures/*}`; test `tests/test_session_mechanics_fixture.py`.
+**Files:** Create `src/satyrn_evals/tasks/session-mechanics/{manifest.json,session.json,base/**,grader/overlay/**,fixtures/*}`; tests `tests/test_session_mechanics_fixture.py` (default tier: manifest/shape assertions) and `tests/integration/test_session_mechanics_fixture.py` (integration — the grade() floor, per Plan 1's recorded correction).
 
 **Contents:**
 
@@ -32,7 +32,7 @@
 - `fixtures/known-good.patch`: the complete three-function patch; `fixtures/known-broken.patch`: milestone-1-only. Generate both by committing successive states on a throwaway clone of `base/` and `git diff`ing from base — commit the resulting patch files.
 
 - [ ] **Step 1: Write the fixture files** exactly as above.
-- [ ] **Step 2: Failing default-tier tests** (floor, by name — consumes Plan 1):
+- [ ] **Step 2: Failing tests** — default tier: manifest/shape assertions (`grader_overlay` set, `engine_contract` absent, session.json loads, overlay validates). Integration tier — floor, by name (consumes Plan 1; `TASK = Path("src/satyrn_evals/tasks/session-mechanics")`):
 
 ```python
 TASK = Path("src/satyrn_evals/tasks/session-mechanics")
@@ -62,6 +62,17 @@ def test_known_broken_preserves_base(tmp_path: Path) -> None:
 
 def test_fixture_declares_no_engine_contract() -> None:
     assert load_manifest(TASK).engine_contract is None
+```
+
+Default-tier siblings (in `tests/test_session_mechanics_fixture.py`):
+
+```python
+def test_fixture_manifest_shape() -> None:
+    manifest = load_manifest(TASK)
+    assert manifest.grader_overlay == "grader/overlay"
+    assert manifest.engine_contract is None
+    spec = load_session_spec(TASK)
+    assert [s.kind for s in spec.steps] == ["feature", "feature", "feature", "review"]
 ```
 
 - [ ] **Step 3: Run** — FAIL (fixture absent). **Step 4: Run after Step 1** — PASS. **Step 5: Commit** `feat: session-mechanics grader fixture`.
