@@ -37,8 +37,8 @@ def build_cumulative_patch(worktree: Path, base_commit: str) -> PatchCapture
 
 Implementation (the 2026-09-01 spec's exact technique): set `GIT_INDEX_FILE` to a fresh temp file **outside** the worktree; `git read-tree <base_commit>`; `git add -N --all .`; `git diff --binary --full-index <base_commit>`; `git status --porcelain --untracked-files=all`; remove the temp index. The worktree's real index is never touched — the next prompt observes it unchanged.
 
-- [ ] **Step 1: Failing integration test** — build a real repo (reuse the clone-cache pattern from `tests/integration/test_workspace.py`), commit base, mutate: edit a tracked file, add an untracked file, delete a file, `chmod +x` one; assert the patch contains all four change classes, `changed_paths` names them, and a second `build_cumulative_patch` call is byte-identical (idempotent) and the worktree's `git status` still shows the real index clean of the temp additions.
-- [ ] **Step 2: Run** `uv run pytest tests/integration/test_session_patch.py -m integration -q` — FAIL. **Step 3: Implement.** **Step 4: Run** — PASS. **Step 5: Commit** `feat: alternate-index cumulative patch`.
+- [x] **Step 1: Failing integration test** — build a real repo (reuse the clone-cache pattern from `tests/integration/test_workspace.py`), commit base, mutate: edit a tracked file, add an untracked file, delete a file, `chmod +x` one; assert the patch contains all four change classes, `changed_paths` names them, and a second `build_cumulative_patch` call is byte-identical (idempotent) and the worktree's `git status` still shows the real index clean of the temp additions.
+- [x] **Step 2: Run** `uv run pytest tests/integration/test_session_patch.py -m integration -q` — FAIL. **Step 3: Implement.** **Step 4: Run** — PASS. **Step 5: Commit** `feat: alternate-index cumulative patch`.
 
 ### Task 2: Adapter process lifecycle — `adapter_process.py`
 
