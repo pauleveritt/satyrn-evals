@@ -109,6 +109,14 @@ write exception.
 
 Phases completed, each with its design spec (and, for the code phases, an implementation plan):
 
+- **V5c — Capture the admitted suite.** `local-pings` is captured as a
+  bundled task with the `format_number` shape — a five-id oracle (three
+  upstream local-ping tests plus the two-order curator preservation
+  parametrization), known-good and known-broken fixtures, engine contract —
+  whose qualification gate was re-recorded at an N=6 fixture with a canary
+  after the recorded N=2 adversary proved machine-dependent. The V5b loop
+  now has a real admitted target on this machine.
+  ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-09-02-v5c-capture-admitted-suite-design.md))
 - **V5a — The admission rule.** A documentation phase: it decided that the
   middle-band bar applies to the arms under comparison, and indexed every
   probed task with its band per arm — `local-pings` and
@@ -138,9 +146,10 @@ Phases completed, each with its design spec (and, for the code phases, an implem
   [_plan_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/plans/2026-08-16-v1-grade.md))
 
 V5b — `run --n 8` over the tasks V5a admitted (`local-pings`,
-`stringified-annotations`) — is next; a suite with headroom remains design
-work owed (`BRIEF.md`'s "The unsolved problem"). The roadmap of feature cycles
-lives in
+`stringified-annotations`) — shipped the diagnostic loop; `local-pings` is
+now captured (V5c), so the loop has a target, and running it is next. V6 —
+session eval — is proposed. A suite with headroom remains design work owed
+(`BRIEF.md`'s "The unsolved problem"). The roadmap of feature cycles lives in
 [`ROADMAP.md`](ROADMAP.md). The `e1` git tag holds the
 scaffolded starting state — toolchain, docs stack, CI, the brief, the
 roadmap, and the harvest index — for learners following along step by

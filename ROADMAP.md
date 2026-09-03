@@ -10,23 +10,22 @@ Backlog, not into the current phase.*
 
 ## Now
 
-**V5b is complete (2026-09-02). V5c — capture the admitted suite — is next.**
+**V5c is complete (2026-09-02). V6 — session eval — is proposed next.**
 
-V5b shipped `run --n 8` over the two admitted tasks with a counts-only
-`summary.json` — verdict reasons (`code_counts`/`verdict_counts`), timeouts,
-and the outcome tally — persisted per attempt before cleanup. Its four
-transcript-derived metrics — tool calls, repeat, churn, context — stay
-deferred to the engine-side `facts` field rather than parsed evals-side
-(`BACKLOG.md`; the V5b spec's Out of scope). So V5b ships the loop and the
-sequencing; the diagnosis it is named for largely waits on that engine-side
-field.
-
-V5c captures the admitted suite for that loop: one task, `local-pings`,
-rebuilding the corrected synthetic base/fix pair the probe used and
-reproducing the probe's three-row qualification table as its gate.
-`stringified-annotations` is deferred — its Engine arm sits at 6/6, which
-is regression detection, not headroom. See the V5c spec for done-when; no
-model runs in this phase.
+V5c captured the admitted suite's first task: `local-pings` exists as a
+bundled task with the `format_number` shape (manifest, `base/`, known-good
+and known-broken fixtures, engine contract) whose oracle is the five ids —
+three upstream local-ping tests plus the two-order curator preservation
+parametrization (`[order0]`/`[order1]`). Row 3's adversary was re-specified
+mid-phase (maintainer-confirmed amendment): the recorded N=2 type-set does
+not reproduce on this machine, and the cross-machine investigation showed
+the set-order catch is a discrete function of hash stride versus table
+geometry and allocation phase, not a stateable probability — so the fixture
+scales to six registry services and the gate carries a canary with a third
+outcome (inconclusive) that stops capture rather than silently passing.
+V5b's `run --n 8` now has a real admitted target on this machine; running
+the loop is the next step, not this phase's. `stringified-annotations`
+stays deferred (`BACKLOG.md`); no model ran in this phase.
 
 ## Concept budget
 
@@ -53,7 +52,7 @@ lands.
 | V7 | Task visibility and leak detection | a manifest field declares each task visible- or hidden-oracle; contamination is detected by content and reported per arm, never absorbed into a denominator | OS-level containment — deferred in `BACKLOG.md`; V7 detects rather than prevents | proposed |
 | V8 | AgentClinic through Evals | reproduce the repair fixtures on this repository's own `capture`/`attempt`/`grade` path, replacing the spike's scratchpad harness | Engine changes, including a `facts` field (satyrn-engine `BACKLOG.md`); an orchestrator | proposed |
 | V5b | The diagnostic loop | `run --n 8` over admitted tasks, summarizing verdict reasons, repeated calls, churn, tool calls, context, and timeouts | The claims layer — pre-registration, intervals, void accounting (`BRIEF.md:33-36`) | **complete** |
-| V5c | Capture the admitted suite | reconstruct and `capture --revert` the corrected `local-pings` synthetic pair, then re-record the probe's three-row qualification table as the gate that the capture is faithful | `stringified-annotations` capture (reopens once the loop runs on `local-pings`); `magicmock-factory` (reopens with an Envelope/Engine probe); oracle improvement (its own proposal); running the loop; suite-headroom capture — see the spec's Out of scope | **next** |
+| V5c | Capture the admitted suite | reconstruct and `capture --revert` the corrected `local-pings` synthetic pair, then re-record the probe's three-row qualification table as the gate that the capture is faithful | `stringified-annotations` capture (reopens once the loop runs on `local-pings`); `magicmock-factory` (reopens with an Envelope/Engine probe); oracle improvement (its own proposal); running the loop; suite-headroom capture — see the spec's Out of scope | **complete** |
 
 Full done-when criteria for V1–V5 are in `BRIEF.md`'s referenced roadmap
 research, not restated here to avoid drift between two copies. **V6–V8 are
@@ -61,7 +60,8 @@ new and their done-when lives with each phase's design spec** — V6's is
 `docs/superpowers/specs/2026-09-01-svcs-session-eval-design.md`
 (superseded banner; the design of record for the session mechanics).
 V5c's done-when is its three-row qualification gate in
-`docs/superpowers/specs/2026-09-02-v5c-capture-admitted-suite-design.md`.
+`docs/superpowers/specs/2026-09-02-v5c-capture-admitted-suite-design.md`
+(complete — see Prior work below).
 V7 and V8 have no spec yet and must gain one before implementation, per
 `docs/sdd.md`; V5a's and V5b's done-when lived with their design specs, now
 complete (Prior work below).
@@ -94,6 +94,24 @@ entry there states what reopens it.
 Completed phases move here (or to `docs/superpowers/phase-history.md`)
 when the roadmap outgrows the front page.
 
+- **V5c — Capture the admitted suite (2026-09-02).** `local-pings` is
+  captured as a bundled task with the `format_number` shape: manifest with
+  the five-id oracle (three upstream local-ping tests plus the two-order
+  curator preservation parametrization `[order0]`/`[order1]`), `base/` (the
+  N=6 synthetic base; `pyproject.toml` gains `pythonpath = ["src"]` so
+  uninstalled tree copies run), known-good and known-broken fixtures, and
+  the engine contract. The gate re-recorded at N=6 across fresh processes
+  with the canary reporting the scramble face every run: base 0/5,
+  known-good 5/5, type-set 3 pass / 2 fail (caught 20/20). Row 3's
+  adversary was re-specified by maintainer-confirmed amendment — the
+  recorded N=2 type-set does not reproduce on this machine, and the
+  cross-machine investigation (research record) shows the set-order catch
+  is a discrete function of hash stride versus table geometry and
+  allocation phase; the object-set substitution was dropped, and the gate
+  gained a canary whose third outcome (inconclusive) stops capture. The
+  `local-pings` admission numbers are recorded as unearned pending a
+  re-probe against the captured task. Spec amendment, reconstruction
+  correction, and research record under `docs/superpowers/`.
 - **V5b — The diagnostic loop (2026-09-02).** `run TASK --n 8 -- COMMAND...`
   repeats the attempt seam and writes a counts-only `summary.json` — verdict
   reasons (`code_counts`/`verdict_counts`), timeouts, and the outcome tally.
