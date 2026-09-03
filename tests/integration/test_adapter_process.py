@@ -1,8 +1,6 @@
 """The adapter process: line deadlines, EOF, and group teardown."""
 
 import os
-import signal
-import subprocess
 import sys
 import time
 from pathlib import Path

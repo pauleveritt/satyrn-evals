@@ -7,14 +7,14 @@ interpretation, and teardown escalates SIGTERM to SIGKILL across the
 whole process group, confirming reap before returning.
 """
 
+import contextlib
 import os
 import select
-from collections.abc import Sequence
 import signal
 import subprocess
 import time
+from collections.abc import Sequence
 from pathlib import Path
-from typing import IO
 
 from satyrn_evals.errors import SatyrnError
 
@@ -42,26 +42,27 @@ class AdapterProcess:
         cwd: Path,
         *,
         stderr_path: Path | None = None,
-    ) -> "AdapterProcess":
-        stderr: IO[bytes] | int
-        handle = None
+    ) -> AdapterProcess:
         if stderr_path is None:
-            stderr = subprocess.DEVNULL
-        else:
-            handle = open(stderr_path, "wb")
-            stderr = handle  # type: ignore[assignment]
-        try:
             proc = subprocess.Popen(
                 list(argv),
                 cwd=cwd,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
-                stderr=stderr,
+                stderr=subprocess.DEVNULL,
                 start_new_session=True,
             )
-        finally:
-            if handle is not None:
-                handle.close()
+        else:
+            with open(stderr_path, "wb") as handle:
+                # the child keeps its own descriptor; the parent need not
+                proc = subprocess.Popen(
+                    list(argv),
+                    cwd=cwd,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=handle,
+                    start_new_session=True,
+                )
         return cls(proc)
 
     def read_line(self, timeout: float) -> str | None:
@@ -102,17 +103,13 @@ class AdapterProcess:
 
     def terminate_and_reap(self, timeout: float) -> None:
         """SIGTERM the group, escalate to SIGKILL, confirm reap."""
-        try:
+        with contextlib.suppress(ProcessLookupError):
             self._signal_group(signal.SIGTERM)
-        except ProcessLookupError:
-            pass
         try:
             self._proc.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
-            try:
+            with contextlib.suppress(ProcessLookupError):
                 self._signal_group(signal.SIGKILL)
-            except ProcessLookupError:
-                pass
             try:
                 self._proc.wait(timeout=timeout)
             except subprocess.TimeoutExpired as e:

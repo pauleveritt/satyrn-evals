@@ -59,7 +59,7 @@ class AdapterProcess:
 Started with `start_new_session=True` (own process group). `terminate_and_reap` escalates: SIGTERM group → wait → SIGKILL group → wait; raises `_CleanupError` if any descendant survives, retaining the recovery path (`WORKSPACE_FAILED`/`CLEANUP_FAILED` semantics). Spooling rule: **every raw line read is appended to the transcript file and fsynced before parsing** — the executor owns this ordering, not the process class; the class returns raw lines only.
 
 - [ ] **Step 1: Failing integration tests** — start an echo adapter; read its banner within deadline; `read_line` raises `AdapterTimeout` on a silent adapter; `terminate_and_reap` reaps a process that spawned a grandchild (the V4 descendant rule); a `CleanupError` sibling when the script traps SIGTERM and ignores SIGKILL is *not* testable portably — instead assert the escalation path issues SIGKILL (script writes a marker file only if SIGKILLed).
-- [ ] **Step 2: Run** — FAIL. **Step 3: Implement** with `os.killpg`; deadlines via `select.select` on stdout. **Step 4: Run** — PASS. **Step 5: Commit** `feat: adapter process lifecycle`.
+- [x] **Step 2: Run** — FAIL. **Step 3: Implement** with `os.killpg`; deadlines via `select.select` on stdout. **Step 4: Run** — PASS. **Step 5: Commit** `feat: adapter process lifecycle`.
 
 ### Task 3: Fake session adapter and minimal test task
 
