@@ -234,6 +234,24 @@ oracle accepted a patch that combined registry and local service types in a
 - **Suite-with-headroom capture** (`BRIEF.md`'s unsolved problem).
   *Reopens with the suite search.*
 
+## Recorded process deviation: no implementation plan
+
+`docs/sdd.md:3-14` requires every feature cycle to commit both a design spec
+and an implementation plan before the code. **V5c shipped code without a
+plan** — a captured task, two test files, a `pyproject.toml` dependency
+group, a ruff config change, and an engine contract — so step 3 of the cycle
+was skipped. V5a had no plan legitimately (documentation only, no code);
+V5c is not that case.
+
+Recorded rather than retrofitted: `docs/sdd.md:49` and `tools/lint_docs.py`
+already establish that closed plans are not written after the fact. Three
+defects were found after the phase closed — a rejection test asserting only
+the verdict, undeclared integration dependencies, and an engine contract
+that never parsed — and each is the kind that step 4's per-task evidence
+requirement ("a command a contributor can run", naming a success and a
+failure fixture) exists to surface. The phase's own done-when was satisfied
+by a fake seam command, which is where that gap sat.
+
 ## Done-when
 
 - `local-pings` exists as a captured task with the `format_number` shape.
