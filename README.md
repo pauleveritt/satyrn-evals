@@ -103,6 +103,22 @@ pre-existing source files and the source repository's index, branch, and
 `HEAD` are never changed. Declared artifacts below `--output` are the sole
 write exception.
 
+### Sessions
+
+`session` sends ordered prompts to one conversation against one evolving
+checkout, snapshots a cumulative patch per checkpoint, and grades offline
+through a grader overlay the executor is never shown:
+
+```console
+$ uv run satyrn-evals session session-mechanics -- \
+    uv run satyrn-evals-session-pi --provider PROVIDER --model MODEL
+```
+
+The bundled `session-mechanics` task is a grader fixture: it validates the
+machinery only and makes no admission or model-quality claim. Before the
+first real-model use of a session path, run the uncounted pre-flight smoke
+— [docs/session-smoke.md](docs/session-smoke.md).
+
 > More: [usage](docs/usage.md) — the receipt format, the exit-code table,
 > the capture record, and the bundled task.
 
