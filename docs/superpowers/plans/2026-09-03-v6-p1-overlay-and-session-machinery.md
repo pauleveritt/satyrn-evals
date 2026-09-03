@@ -104,8 +104,8 @@ def test_load_overlay_refuses_overlap_with_source_paths(tmp_path: Path) -> None:
 
 Ordering is the invariant: copy `base/` → apply patch → **then** overlay → run oracle with `selectors` appended as pytest args and `expected` (default `manifest.expected_test_ids`) given to the hook.
 
-- [ ] **Step 1: Build the test fixture task** `tests/data/overlay-task/`: `manifest.json` (`source_paths: ["solution.py"]`, `expected_test_ids`, `grader_overlay: "grader/overlay"`, oracle as in `format_number`'s manifest), `base/` (`solution.py`, `test_solution.py`), `grader/overlay/tests/test_hidden.py`, `fixtures/known-good.patch` (adds `slugify` to `solution.py`), `fixtures/known-broken.patch` (leaves `slugify` absent/broken). Commit these files.
-- [ ] **Step 2: Failing tests** (floor, by name):
+- [x] **Step 1: Build the test fixture task** `tests/data/overlay-task/`: `manifest.json` (`source_paths: ["solution.py"]`, `expected_test_ids`, `grader_overlay: "grader/overlay"`, oracle as in `format_number`'s manifest), `base/` (`solution.py`, `test_solution.py`), `grader/overlay/tests/test_hidden.py`, `fixtures/known-good.patch` (adds `slugify` to `solution.py`), `fixtures/known-broken.patch` (leaves `slugify` absent/broken). Commit these files.
+- [x] **Step 2: Failing tests** (floor, by name):
 
 ```python
 TASK = tests_data / "overlay-task"
@@ -129,9 +129,9 @@ def test_grading_without_overlay_is_unchanged(tmp_path: Path) -> None:
     assert receipt.verdict is Verdict.PASS  # public suite passes; overlay never copied
 ```
 
-- [ ] **Step 3: Run** — FAIL (`grade() got an unexpected keyword argument`): `uv run pytest tests/integration/test_grade_overlay.py -m integration -q`.
-- [ ] **Step 4: Implement** in `grade.py`: thread `overlay`/`selectors`/`expected` into the workspace build (`materialize_overlay` after patch application) and into `_run_oracle` (`grade.py:74`) — append `*selectors` to the pytest argv; pass `expected` through to `compute_verdict` (`verdict.py:82`).
-- [ ] **Step 5: Run** — PASS. **Step 6: Commit** `feat: overlay-aware grading`.
+- [x] **Step 3: Run** — FAIL (`grade() got an unexpected keyword argument`): `uv run pytest tests/integration/test_grade_overlay.py -m integration -q`.
+- [x] **Step 4: Implement** in `grade.py`: thread `overlay`/`selectors`/`expected` into the workspace build (`materialize_overlay` after patch application) and into `_run_oracle` (`grade.py:74`) — append `*selectors` to the pytest argv; pass `expected` through to `compute_verdict` (`verdict.py:82`).
+- [x] **Step 5: Run** — PASS. **Step 6: Commit** `feat: overlay-aware grading`.
 
 ### Task 4: `session.json` loader — `session_manifest.py`
 
