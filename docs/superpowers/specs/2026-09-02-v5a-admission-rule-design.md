@@ -193,6 +193,22 @@ carry forward.
 > decision** (candidate re-open conditions: higher n; a different
 > fixture or adversary; a revised band rule). This update neither
 > re-admits nor de-admits the task.
+>
+> **Recorded decision (de-admission, 2026-09-03).** The maintainer
+> **de-admitted `local-pings` as a diagnostic workload** on the binding
+> evidence of the captured-task re-probe above: Baseline 3/8 and Engine
+> 4/8 are both middle-band, so no compared pair occupies different bands
+> and V5a's admission rule is not met
+> ([record](../research/2026-09-03-local-pings-deadmission.md)). The
+> "admissible" verdict above is superseded for the captured N=6/five-ID
+> task; the N=2/four-test evidence it was built on is preserved as
+> history and does not govern the captured task. `local-pings` remains a
+> valid bundled grader/smoke/regression fixture; no recorded cell is
+> rerun or reinterpreted. Re-admission requires a newly preregistered
+> qualifying probe. Recovering the historical Envelope artifact is
+> optional research, backlogged — and any Envelope assembled with current
+> Pi, a new adapter, or a selected prompt is a **new prospective arm, not
+> a reproduction**.
 
 ### stringified-annotations
 
