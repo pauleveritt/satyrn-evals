@@ -92,7 +92,7 @@ def test_load_overlay_refuses_overlap_with_source_paths(tmp_path: Path) -> None:
         load_overlay(tmp_path, load_manifest(tmp_path))
 ```
 
-- [ ] **Step 2: Run** — Expected: FAIL (`No module named 'satyrn_evals.overlay'`).
+- [x] **Step 2: Run** — Expected: FAIL (`No module named 'satyrn_evals.overlay'`).
 - [x] **Step 3: Implement** — `load_overlay` walks `root.rglob("*")` (reject symlinks via `is_symlink()` on every component), builds digests; `materialize_overlay` copies each file to `workspace / rel_path` creating parents, refusing to write outside `workspace` (reuse the containment idea from `workspace.py:262` `_contains_path`).
 - [x] **Step 4: Run** — PASS. **Step 5: Commit** `feat: overlay validation and materialization`.
 
@@ -159,7 +159,7 @@ def load_session_spec(task_dir: Path) -> SessionSpec
 
 Loader refusals (2026-09-01 spec, Task layout): file missing for a task whose manifest declares `grader_overlay`-required session shape is *not* an error here — ordinary tasks simply have no `session.json` and this function is only called for session tasks; refuse: fewer than two steps; duplicate ids; empty prompt; ids not filesystem-safe tokens (`[A-Za-z0-9._-]+`); a `feature` step with no new selector; duplicate or missing `new_feature_selectors` across the spec; empty `base_preservation_selectors`; unknown `kind`; unknown top-level keys; wrong `version`.
 
-- [ ] **Step 1: Failing tests** — refusal table + valid sibling, both real:
+- [x] **Step 1: Failing tests** — refusal table + valid sibling, both real:
 
 ```python
 VALID = {"version": 1, "steps": [
@@ -191,7 +191,7 @@ def test_session_spec_valid_sibling(tmp_path: Path) -> None:
     assert [s.id for s in spec.steps] == ["add-slugify", "review"]
     assert spec.steps[1].new_feature_selectors == ()
 ```
-- [ ] **Step 2: Run** — FAIL. **Step 3: Implement** with a `match` over the payload structure and a single `SessionSpecError(SatyrnError)`. **Step 4: Run** — PASS. **Step 5: Commit** `feat: session.json loader`.
+- [x] **Step 2: Run** — FAIL. **Step 3: Implement** with a `match` over the payload structure and a single `SessionSpecError(SatyrnError)`. **Step 4: Run** — PASS. **Step 5: Commit** `feat: session.json loader`.
 
 ### Task 5: Session records — `session_record.py`
 
@@ -231,8 +231,8 @@ def session_outcomes(record: SessionRecord, spec: SessionSpec) -> dict[str, bool
 
 `session_outcomes` derives, never conflates (2026-09-01 spec, Artifacts): `all_prompts_settled`, `deepest_milestone`, `retained_nonempty_patch`, `all_scope_valid`, `last_preservation_verdict`, `grading_available`. Counts derive from retained events only.
 
-- [ ] **Step 1: Failing tests** — round-trip via `write_session_record`/`load_session_record` (JSON, fsync'd); `deepest_feature_milestone` over a 3-feature spec: settled 3 → 3; step-2 `agent-error` → 1; review step never advances (a review `StepRecord` with selectors present still yields 3). Sibling pairs per derived flag: `all_scope_valid` True vs one violation; `grading_available` True vs `GRADE_UNAVAILABLE`; `retained_nonempty_patch` with a real digest vs `None`.
-- [ ] **Step 2: Run** — FAIL. **Step 3: Implement** (`write_session_record` mirrors `attempt_record`'s fsync-then-atomic-replace pattern; `match` over `SessionCode` for `grading_available`). **Step 4: Run** — PASS. **Step 5: Commit** `feat: session records`.
+- [x] **Step 1: Failing tests** — round-trip via `write_session_record`/`load_session_record` (JSON, fsync'd); `deepest_feature_milestone` over a 3-feature spec: settled 3 → 3; step-2 `agent-error` → 1; review step never advances (a review `StepRecord` with selectors present still yields 3). Sibling pairs per derived flag: `all_scope_valid` True vs one violation; `grading_available` True vs `GRADE_UNAVAILABLE`; `retained_nonempty_patch` with a real digest vs `None`.
+- [x] **Step 2: Run** — FAIL. **Step 3: Implement** (`write_session_record` mirrors `attempt_record`'s fsync-then-atomic-replace pattern; `match` over `SessionCode` for `grading_available`). **Step 4: Run** — PASS. **Step 5: Commit** `feat: session records`.
 
 ### Task 6: Protocol parser — `session_protocol.py`
 
@@ -257,8 +257,8 @@ def serialize_close() -> str
 
 Parser refusals: malformed JSON; unknown `version`; unknown `type`; `session_started` carried by anything but the first message is the *executor's* state rule (not the parser's) — the parser refuses only structural faults; `EventLine.kind` must be one of `turn_end|tool_end|context_compacted|context_reset|other`; `StepFinished.outcome` one of `settled|output-limit|agent-error`; required fields missing/empty (`step_id`, `conversation_id`, `text`).
 
-- [ ] **Step 1: Failing tests** — round-trip each type; one refusal per rule; each with a valid sibling line.
-- [ ] **Step 2: Run** — FAIL. **Step 3: Implement** — `match` on `obj["type"]`; raise `ProtocolError(SatyrnError)` with the offending line retained. **Step 4: Run** — PASS. **Step 5: Commit** `feat: session protocol parser`.
+- [x] **Step 1: Failing tests** — round-trip each type; one refusal per rule; each with a valid sibling line.
+- [x] **Step 2: Run** — FAIL. **Step 3: Implement** — `match` on `obj["type"]`; raise `ProtocolError(SatyrnError)` with the offending line retained. **Step 4: Run** — PASS. **Step 5: Commit** `feat: session protocol parser`.
 
 ### Task 7: Coverage and lint gate
 
