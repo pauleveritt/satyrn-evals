@@ -174,6 +174,25 @@ carry forward.
 > task. The structural decision — which arms separate — is not reopened by
 > this note; the numbers are. See
 > [`2026-09-02-v5c-local-pings-cross-machine-gate-determinism.md`](../research/2026-09-02-v5c-local-pings-cross-machine-gate-determinism.md).
+>
+> **Recorded update (re-probe, 2026-09-03).** The re-probe against the
+> captured task is complete and recorded in the protocol document's
+> results section
+> ([`2026-09-03-local-pings-reprobe-protocol.md`](../research/2026-09-03-local-pings-reprobe-protocol.md)).
+> Counts at n=8 on the five-id oracle: **Baseline 3/8** successful
+> attempts (attempted 3, refused 5; verdicts 3 pass; timeouts 4;
+> retained-patch production 3/8; conditional quality 3/3 pass) and
+> **Engine 4/8** (attempted 4, refused 4; verdicts 3 pass + 1 fail
+> (4/1); timeouts 1; retained-patch production 4/8; conditional quality
+> 3/4 pass). Every retained patch was re-graded offline and reproduced
+> its run-time receipt. Under the band definitions, **both arms read
+> middle** — the Baseline-floor/Engine-middle pairing above does not
+> carry over, and no pair of the compared arms is recorded in different
+> bands at n=8. Whether `local-pings` still separates the arms under
+> comparison is therefore **flagged to the maintainer as an open
+> decision** (candidate re-open conditions: higher n; a different
+> fixture or adversary; a revised band rule). This update neither
+> re-admits nor de-admits the task.
 
 ### stringified-annotations
 
