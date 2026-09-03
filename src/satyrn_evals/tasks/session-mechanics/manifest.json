@@ -1,0 +1,15 @@
+{
+  "name": "session-mechanics",
+  "contract": "Extend textkit across a session: slugify, truncate, pluralize, then review.",
+  "oracle": ["python", "-m", "pytest", "-p", "satyrn_evals.oracle_hook"],
+  "expected_test_ids": [
+    "tests/test_textkit.py::test_normalize",
+    "tests/test_textkit.py::test_wrap"
+  ],
+  "source_paths": ["src/textkit/__init__.py"],
+  "fixtures": {
+    "known_good": "fixtures/known-good.patch",
+    "known_broken": "fixtures/known-broken.patch"
+  },
+  "grader_overlay": "grader/overlay"
+}

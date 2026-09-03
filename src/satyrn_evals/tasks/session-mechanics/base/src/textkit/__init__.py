@@ -10,8 +10,10 @@ def wrap(text: str, width: int) -> str:
     """Break text into width-limited lines on word boundaries."""
     out: list[str] = []
     for word in text.split():
-        if out and len(out[-1]) + 1 + len(word) > width:
+        if not out:
+            out.append(word)
+        elif len(out[-1]) + 1 + len(word) > width:
             out.append(word)
         else:
-            out.append(f"{out[-1]} {word}".strip() if out else word)
+            out[-1] = f"{out[-1]} {word}"
     return "\n".join(out)

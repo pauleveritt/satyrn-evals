@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "steps": [
+    {
+      "id": "add-slugify",
+      "kind": "feature",
+      "prompt": "Add slugify(text): lowercase, strip ends, join words with single dashes.",
+      "new_feature_selectors": [
+        "tests/test_slugify.py::test_slugify_basic",
+        "tests/test_slugify.py::test_slugify_collapses_spaces"
+      ]
+    },
+    {
+      "id": "add-truncate",
+      "kind": "feature",
+      "prompt": "Add truncate(text, width): cut to width, ending with an ellipsis when cut.",
+      "new_feature_selectors": ["tests/test_truncate.py::test_truncate_cuts_with_marker"]
+    },
+    {
+      "id": "add-pluralize",
+      "kind": "feature",
+      "prompt": "Add pluralize(word): es after s/x/ch, otherwise s.",
+      "new_feature_selectors": ["tests/test_pluralize.py::test_pluralize_s_ending"]
+    },
+    {
+      "id": "review-and-regression",
+      "kind": "review",
+      "prompt": "Review the implementation and run the public suite.",
+      "new_feature_selectors": []
+    }
+  ],
+  "base_preservation_selectors": [
+    "tests/test_textkit.py::test_normalize",
+    "tests/test_textkit.py::test_wrap"
+  ]
+}

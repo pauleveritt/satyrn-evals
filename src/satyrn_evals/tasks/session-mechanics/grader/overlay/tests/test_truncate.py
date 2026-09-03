@@ -6,4 +6,4 @@ def test_truncate_short_unchanged():
 
 
 def test_truncate_cuts_with_marker():
-    assert truncate("hello world", 8) == "hello…"
+    assert truncate("hello world", 8) == "hello w…"

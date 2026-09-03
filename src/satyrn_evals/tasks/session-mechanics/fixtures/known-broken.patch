@@ -1,0 +1,23 @@
+diff --git a/src/textkit/__init__.py b/src/textkit/__init__.py
+index c17dd80..b11952b 100644
+--- a/src/textkit/__init__.py
++++ b/src/textkit/__init__.py
+@@ -17,3 +17,18 @@ def wrap(text: str, width: int) -> str:
+         else:
+             out[-1] = f"{out[-1]} {word}"
+     return "\n".join(out)
++
++
++def slugify(text: str) -> str:
++    """Lowercase and join words with single dashes."""
++    return "-".join(text.strip().lower().split())
++
++
++def truncate(text: str, width: int) -> str:
++    """Wrong on purpose: no ellipsis marker."""
++    return text[:width]
++
++
++def pluralize(word: str) -> str:
++    """Wrong on purpose: plain s even after s."""
++    return word + "s"
