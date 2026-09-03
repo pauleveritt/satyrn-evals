@@ -98,7 +98,7 @@ siblings (refusal tests never stand alone):
 
 ## Delta 3 — the proof ladder: two layers, no third thing
 
-### Layer (a) — deterministic Pi-adapter integration (CI-marked integration tier)
+### Layer (a) — deterministic Pi-adapter integration (marked integration tier, excluded from CI)
 
 The `session` machinery starts the shipped adapter executable exactly as
 a real run would; behind it, **Pi is replaced by a deterministic
@@ -111,7 +111,11 @@ behaviors — and asserts:
 - one conversation identity held across all four prompts;
 - event-kind mapping with the complete original Pi event retained in
   `payload`;
-- any compaction event recorded;
+- **compaction, non-vacuous:** the scripted fixture always emits a
+  compaction event; the test asserts its mapped `context_compacted`
+  event kind and that the original Pi event is retained unmodified in
+  `payload` — the assertion cannot pass on a run where none was
+  emitted;
 - **cumulative union**: checkpoint *n*'s feature selection is the union
   of hidden selectors introduced through that step;
 - **review-does-not-advance**: the final feature milestone is unchanged
@@ -155,6 +159,16 @@ V5d's confirmed practice governs scoping and reading
   executable itself. (The recorded engine smoke needed exactly such a
   shim; under this rule that outcome is a visible failure, and the shim
   debt stays in satyrn-engine's backlog.)
+- **Settled is not required.** Reaching a settled first checkpoint is
+  model behavior, not a smoke requirement. Whatever terminal state
+  occurs — settled, `agent-error`, `output-limit`, or timeout — the
+  smoke requires a parseable `session-record.json` recording the
+  terminal reason, plus the artifacts the base lifecycle guarantees for
+  the prompts reached: a checkpoint patch, snapshot, and transcript
+  prefix per captured step, including the terminal one. With genuine
+  model-stream events retained, any of these terminals is a plumbing
+  pass; without them, an early failure is plumbing-shaped and the smoke
+  fails.
 - **Durable evidence:** a uniquely named directory, never `/tmp`; its
   path is recorded with the outcome in the verification record.
 
@@ -186,8 +200,10 @@ the 2026-09-01 session JSONL protocol on stdin/stdout and driving one
   the docs carry a Python `subprocess.Popen` client example
   (`rpc.md:1526-1532`). Engine evidence corroborates but does not
   derive; evals imports no Engine module.
-- The scripted RPC fixture (layer (a)) asserts the wire protocol in
-  CI, so a Pi runtime change is caught without a model.
+- The scripted RPC fixture (layer (a)) asserts the wire protocol every
+  time the integration tier runs — the verification record includes the
+  command — so a Pi runtime change is caught without a model and
+  without CI.
 - **Plan obligations:** pin the tested Pi version; pin the protocol
   messages the adapter uses (the session-relevant subset of
   `rpc.md`); the smoke then proves the real path end to end.
