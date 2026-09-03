@@ -13,7 +13,9 @@ Backlog, not into the current phase.*
 **V5d is complete (2026-09-03). V6 — session eval — is proposed next.**
 V5d landed the pre-flight smoke check as a confirmed, documented practice
 — one uncounted real-model smoke per materially distinct execution path,
-at that path's first real use.
+at that path's first real use. V6's approved delta design is
+`docs/superpowers/specs/2026-09-03-v6-session-eval-design.md`; its
+implementation plan follows maintainer spec review.
 
 V5c captured the admitted suite's first task: `local-pings` exists as a
 bundled task with the `format_number` shape (manifest, `base/`, known-good
@@ -69,7 +71,10 @@ Full done-when criteria for V1–V5 are in `BRIEF.md`'s referenced roadmap
 research, not restated here to avoid drift between two copies. **V6–V8 are
 new and their done-when lives with each phase's design spec** — V6's is
 `docs/superpowers/specs/2026-09-01-svcs-session-eval-design.md`
-(superseded banner; the design of record for the session mechanics).
+(superseded banner; the design of record for the session mechanics),
+as amended by `docs/superpowers/specs/2026-09-03-v6-session-eval-design.md`
+(the V6 delta spec: slice-5 replacement, the session fixture, the proof
+ladder, and the smoke done-when).
 V5c's done-when is its three-row qualification gate in
 `docs/superpowers/specs/2026-09-02-v5c-capture-admitted-suite-design.md`
 (complete — see Prior work below).
