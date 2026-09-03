@@ -31,8 +31,8 @@
 - `manifest.json`: as `format_number`'s shape minus `engine_contract`, plus `"grader_overlay": "grader/overlay"`; `source_paths: ["src/textkit/__init__.py"]`; `fixtures` as usual.
 - `fixtures/known-good.patch`: the complete three-function patch; `fixtures/known-broken.patch`: milestone-1-only. Generate both by committing successive states on a throwaway clone of `base/` and `git diff`ing from base — commit the resulting patch files.
 
-- [ ] **Step 1: Write the fixture files** exactly as above.
-- [ ] **Step 2: Failing tests** — default tier: manifest/shape assertions (`grader_overlay` set, `engine_contract` absent, session.json loads, overlay validates). Integration tier — floor, by name (consumes Plan 1; `TASK = Path("src/satyrn_evals/tasks/session-mechanics")`):
+- [x] **Step 1: Write the fixture files** exactly as above.
+- [x] **Step 2: Failing tests** — default tier: manifest/shape assertions (`grader_overlay` set, `engine_contract` absent, session.json loads, overlay validates). Integration tier — floor, by name (consumes Plan 1; `TASK = Path("src/satyrn_evals/tasks/session-mechanics")`):
 
 ```python
 TASK = Path("src/satyrn_evals/tasks/session-mechanics")
@@ -75,7 +75,7 @@ def test_fixture_manifest_shape() -> None:
     assert [s.kind for s in spec.steps] == ["feature", "feature", "feature", "review"]
 ```
 
-- [ ] **Step 3: Run** — FAIL (fixture absent). **Step 4: Run after Step 1** — PASS. **Step 5: Commit** `feat: session-mechanics grader fixture`.
+- [x] **Step 3: Run** — FAIL (fixture absent). **Step 4: Run after Step 1** — PASS. **Step 5: Commit** `feat: session-mechanics grader fixture`.
 
 ### Task 2: The Pi adapter — mapping (pure)
 
