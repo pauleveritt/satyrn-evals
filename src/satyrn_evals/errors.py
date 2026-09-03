@@ -107,3 +107,7 @@ class OverlayError(UsageError):
 
 class SessionSpecError(UsageError):
     """Exit 2: the task's session.json violates the session spec rules."""
+
+
+class ProtocolError(SatyrnError):
+    """The adapter violated the session protocol; the sequence stops."""
