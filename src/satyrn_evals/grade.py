@@ -17,6 +17,7 @@ from satyrn_evals.errors import (
     PatchRejected,
 )
 from satyrn_evals.manifest import TaskManifest, load_manifest
+from satyrn_evals.overlay import OverlaySpec, materialize_overlay
 from satyrn_evals.patch import check_allowlist, parse_patch_paths
 from satyrn_evals.receipt import Receipt, patch_digest, write_receipt
 from satyrn_evals.verdict import (
@@ -29,11 +30,24 @@ from satyrn_evals.verdict import (
 )
 
 
-def grade(task_dir: Path, patch_path: Path, receipt_path: Path) -> Receipt:
+def grade(
+    task_dir: Path,
+    patch_path: Path,
+    receipt_path: Path,
+    *,
+    overlay: OverlaySpec | None = None,
+    selectors: tuple[str, ...] = (),
+    expected: tuple[str, ...] | None = None,
+) -> Receipt:
     """Grade PATCH against TASK, write the receipt, return it.
 
     Exit-code policy is the CLI's; this returns the artifact, whose
     `verdict` (pass/fail/unavailable) the caller maps to an exit code.
+
+    ``overlay`` materializes grader-only files after the patch applies and
+    before the oracle runs; ``selectors`` are appended to the oracle argv
+    (node ids); ``expected`` overrides ``manifest.expected_test_ids`` as
+    the verdict's target set. Defaults preserve ordinary grading exactly.
     """
     manifest = load_manifest(task_dir)
     try:
@@ -47,15 +61,23 @@ def grade(task_dir: Path, patch_path: Path, receipt_path: Path) -> Receipt:
     try:
         paths = parse_patch_paths(patch_text)
         check_allowlist(paths, manifest.source_paths)
-        hook = _run_oracle(manifest, task_dir, patch_text)
-        verdict = compute_verdict(hook, manifest.expected_test_ids)
+        hook = _run_oracle(
+            manifest, task_dir, patch_text, overlay=overlay, selectors=selectors
+        )
+        verdict = compute_verdict(
+            hook,
+            expected if expected is not None else manifest.expected_test_ids,
+        )
         evidence = {
             "executed_test_ids": list(hook.executed_test_ids),
             "outcomes": hook.outcomes,
             "counts": hook.counts,
         }
         if verdict is Verdict.UNAVAILABLE:
-            reason = describe_unavailable(hook, manifest.expected_test_ids)
+            reason = describe_unavailable(
+                hook,
+                expected if expected is not None else manifest.expected_test_ids,
+            )
     except (PatchRejected, ApplyError, OracleError, HookError) as e:
         verdict = Verdict.UNAVAILABLE
         reason = str(e)
@@ -71,7 +93,14 @@ def grade(task_dir: Path, patch_path: Path, receipt_path: Path) -> Receipt:
     return receipt
 
 
-def _run_oracle(manifest: TaskManifest, task_dir: Path, patch_text: str) -> HookResult:
+def _run_oracle(
+    manifest: TaskManifest,
+    task_dir: Path,
+    patch_text: str,
+    *,
+    overlay: OverlaySpec | None = None,
+    selectors: tuple[str, ...] = (),
+) -> HookResult:
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp) / "work"
         shutil.copytree(task_dir / "base", work, symlinks=True)
@@ -91,6 +120,8 @@ def _run_oracle(manifest: TaskManifest, task_dir: Path, patch_text: str) -> Hook
             raise ApplyError(
                 "patch did not apply: " + os.fsdecode(applied.stderr).strip()
             )
+        if overlay is not None:
+            materialize_overlay(overlay, work)
         fd, hook_path = tempfile.mkstemp(prefix="satyrn-hook-", suffix=".json")
         os.close(fd)
         os.unlink(hook_path)  # reserve a unique name; a silent oracle leaves NO file
@@ -101,7 +132,9 @@ def _run_oracle(manifest: TaskManifest, task_dir: Path, patch_text: str) -> Hook
         )
         run_started = time.time()
         try:
-            subprocess.run(manifest.oracle, cwd=work, env=env, capture_output=True)
+            subprocess.run(
+                [*manifest.oracle, *selectors], cwd=work, env=env, capture_output=True
+            )
         except OSError as e:
             raise OracleError(f"oracle failed to start: {e}") from e
         try:

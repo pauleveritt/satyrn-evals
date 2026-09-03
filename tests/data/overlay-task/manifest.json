@@ -1,0 +1,12 @@
+{
+  "name": "overlay-task",
+  "contract": "Add slugify(text) returning lowercase words joined by dashes.",
+  "oracle": ["python", "-m", "pytest", "-p", "satyrn_evals.oracle_hook"],
+  "expected_test_ids": ["test_solution.py::test_normalize"],
+  "source_paths": ["solution.py"],
+  "fixtures": {
+    "known_good": "fixtures/known-good.patch",
+    "known_broken": "fixtures/known-broken.patch"
+  },
+  "grader_overlay": "grader/overlay"
+}
