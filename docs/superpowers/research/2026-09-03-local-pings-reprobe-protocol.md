@@ -143,3 +143,36 @@ measurements above are computed from attempt records, plus an offline
 re-grade of every retained patch. Results append to this file as a dated
 result section; the admission caveat in the V5a spec is updated only by
 what the numbers show.
+
+## Smoke findings (2026-09-03; each cost one attempt, per the protocol)
+
+Smoke ran before the arms and caught three plumbing defects, exactly its
+job. None is a model-behavior finding; all are recorded here:
+
+1. **The captured task's `engine-contract.yaml` was invalid YAML** — the
+   unquoted `task:` value contained a colon-plus-space, which the engine's
+   `check` refused as `CONTRACT_INVALID_YAML` (exit 4) before any model
+   ran. Fixed by quoting the value; committed.
+2. **The Engine composite's pi child argv is incompatible with pi 0.84.x's
+   hand-rolled arg parser.** `satyrn-engine` builds `--model=VALUE`
+   (equals form), but pi's `dist/cli/args.js` only matches the literal
+   token `--model` and records `--model=...` as an unknown flag — verified
+   against pi 0.80.10, 0.84.1, 0.84.2, and 0.84.4. The recorded E5 live
+   run (pi 0.84.1, `docs/sdd.md` in satyrn-engine) is therefore **not
+   reproducible against stock pi**: its external transcript artifact is
+   the only evidence it happened. The re-probe runs the engine under a
+   recorded argv-compat shim (scratch `arms/pi`, rewrites `--model=X` to
+   the space form, then execs the real pi); the engine code is measured as
+   shipped. This is a finding for the engine's backlog: either its pi
+   child must use the space form or E5's verification needs a recorded,
+   reproducible pi.
+3. **The shim must be named `pi`** to intercept PATH resolution — a
+   self-inflicted first attempt (`pi-shim` was never found), recorded to
+   avoid repeating it.
+
+Smoke outcomes: the direct engine run produced a real patch (graded fail,
+4 pass / 1 fail — a near-miss implementation, model behavior, not
+plumbing); one evals-seam engine attempt produced no patch because the
+model repeated the recorded invalid-`edit` shape (omitting the required
+`path` property) and declared completion — a legitimate refused attempt.
+The engine arm's plumbing is verified end to end.
