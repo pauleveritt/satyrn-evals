@@ -103,3 +103,7 @@ class CleanupFailed(CaptureRefused):
 
 class OverlayError(UsageError):
     """Exit 2: the task's grader overlay violates the overlay rules."""
+
+
+class SessionSpecError(UsageError):
+    """Exit 2: the task's session.json violates the session spec rules."""
