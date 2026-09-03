@@ -116,7 +116,7 @@ def main() -> None:
     prompt = os.environ.get("SATYRN_TASK_CONTRACT", "")
     cmd = [
         "pi", "--print", "--mode", "json", "--no-session",
-        f"--model={args.model}",
+        "--model", args.model,  # space form: pi 0.84.x rejects --model=VALUE
         "--no-extensions", "--no-skills", "--no-prompt-templates",
         "--no-themes", "--no-context-files", "--no-approve",
         "--tools", "read,bash,edit,write", prompt,
