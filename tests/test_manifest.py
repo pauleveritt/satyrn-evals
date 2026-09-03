@@ -352,3 +352,31 @@ def _write_manifest_with_overlay(task_dir: Path, value: str) -> None:
     data = json.loads((task_dir / "manifest.json").read_text())
     data["grader_overlay"] = value
     (task_dir / "manifest.json").write_text(json.dumps(data))
+
+
+def test_grader_overlay_refuses_uninspectable_component(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    task_dir = _valid_task(tmp_path)
+    (task_dir / "grader" / "overlay").mkdir(parents=True)
+    _write_manifest_with_overlay(task_dir, "grader/overlay")
+    original_lstat = Path.lstat
+
+    def deny_overlay(path: Path):
+        if path == task_dir / "grader" / "overlay":
+            raise PermissionError("permission denied")
+        return original_lstat(path)
+
+    monkeypatch.setattr(Path, "lstat", deny_overlay)
+    with pytest.raises(
+        ManifestError, match="cannot inspect grader overlay.*permission denied"
+    ):
+        load_manifest(task_dir)
+
+
+def test_grader_overlay_refuses_file_parent(tmp_path: Path) -> None:
+    task_dir = _valid_task(tmp_path)
+    (task_dir / "grader").write_text("a file, not a directory")
+    _write_manifest_with_overlay(task_dir, "grader/overlay/deeper")
+    with pytest.raises(ManifestError, match="parent must be a directory"):
+        load_manifest(task_dir)

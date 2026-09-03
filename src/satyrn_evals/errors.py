@@ -99,3 +99,7 @@ class ArtifactFailed(CaptureRefused):
 
 class CleanupFailed(CaptureRefused):
     code = CaptureCode.CLEANUP_FAILED
+
+
+class OverlayError(UsageError):
+    """Exit 2: the task's grader overlay violates the overlay rules."""

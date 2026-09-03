@@ -27,7 +27,7 @@
 
 **Interfaces produced:** `TaskManifest.grader_overlay: str | None` — a safe relative directory path naming an existing directory below the task dir, or `None`. Ordinary tasks unchanged (field optional).
 
-- [ ] **Step 1: Write the failing tests** (refusal + sibling):
+- [x] **Step 1: Write the failing tests** (refusal + sibling):
 
 ```python
 def test_manifest_accepts_grader_overlay(tmp_path: Path) -> None:
@@ -46,10 +46,10 @@ def test_manifest_refuses_grader_overlay_outside_task(tmp_path: Path) -> None:
         load_manifest(tmp_path)
 ```
 
-- [ ] **Step 2: Run** `uv run pytest tests/test_manifest.py -q` — Expected: FAIL (no such field/validation).
-- [ ] **Step 3: Implement** in `manifest.py`, mirroring `_validate_engine_contract` (`manifest.py:28`): validate shape (relative, no `..`, names a directory), return `None` when absent; add the field to `TaskManifest`.
-- [ ] **Step 4: Run** — Expected: PASS, full file green.
-- [ ] **Step 5: Commit** `feat: grader_overlay manifest field`.
+- [x] **Step 2: Run** `uv run pytest tests/test_manifest.py -q` — Expected: FAIL (no such field/validation).
+- [x] **Step 3: Implement** in `manifest.py`, mirroring `_validate_engine_contract` (`manifest.py:28`): validate shape (relative, no `..`, names a directory), return `None` when absent; add the field to `TaskManifest`.
+- [x] **Step 4: Run** — Expected: PASS, full file green.
+- [x] **Step 5: Commit** `feat: grader_overlay manifest field`.
 
 ### Task 2: Overlay validation — `overlay.py`
 
