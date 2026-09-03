@@ -46,7 +46,10 @@ markers = [
 # Python quoted as it was *proposed* in a plan or *recorded* in a result;
 # `ruff format` rewrites those code blocks, which silently edits history
 # this project deliberately preserves.
-extend-exclude = ["docs"]
+# src/satyrn_evals/tasks/ is oracle fixture data: bundled tasks carry a
+# foreign starting tree (e.g. the svcs checkout) that is neither project
+# code nor ours to reformat. pytest and pyrefly already exclude it.
+extend-exclude = ["docs", "src/satyrn_evals/tasks"]
 
 [tool.ruff.lint]
 # Proportionate, not maximalist: correctness and clarity rules a
