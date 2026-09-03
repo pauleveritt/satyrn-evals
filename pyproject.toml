@@ -31,6 +31,16 @@ docs = [
     "myst-parser>=5.0.0",
     "sphinx-autobuild>=2025.8.25",
 ]
+# Integration tier only: the bundled local-pings task's base is the svcs
+# checkout, whose root conftest.py imports sybil unconditionally and whose
+# runtime needs attrs; pytest-asyncio serves svcs's async suite during
+# capture's full-suite oracle. The default tier must never need these --
+# the evidence floor's tests are marked integration and do not run in CI.
+integration = [
+    "attrs>=21.3.0",  # svcs runtime dependency
+    "sybil>=6",       # svcs root conftest: from sybil import Sybil
+    "pytest-asyncio>=1.4.0",
+]
 
 [tool.pytest.ini_options]
 # docs/_build is the docs build output, never project tests.

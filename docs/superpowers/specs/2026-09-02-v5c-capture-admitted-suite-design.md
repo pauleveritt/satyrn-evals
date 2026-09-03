@@ -55,11 +55,15 @@ before implementation per `docs/sdd.md`.
 > manifest-shape test is default tier.
 >
 > **Environment.** Grading and capture run the oracle with the invoking
-> Python, so that environment needs svcs's test dependencies (attrs, sybil,
-> pytest-asyncio). The synthetic base's `pyproject.toml` gains
-> `pythonpath = ["src"]` under `[tool.pytest.ini_options]` — a
-> test-runner-only deviation so uninstalled tree copies can run, since the
-> grade machinery copies `base/` and does not install.
+> Python, and the bundled base's root conftest imports sybil
+> unconditionally, so the runtime needs svcs's test dependencies. They are
+> declared as the `integration` dependency group (`pyproject.toml`);
+> `uv sync --group integration` reproduces the evidence floor from a fresh
+> clone, and the default tier never needs them. The synthetic base's
+> `pyproject.toml` gains `pythonpath = ["src"]` under
+> `[tool.pytest.ini_options]` — a test-runner-only deviation so uninstalled
+> tree copies can run, since the grade machinery copies `base/` and does
+> not install.
 >
 > First-look gate results at N=6 (this machine; see the re-recorded
 > qualification table in the reconstruction record for the full run):

@@ -4,8 +4,10 @@ Mirrors tests/integration/test_bundled.py for format_number: the grader is
 not done until it has accepted the known-good patch and rejected the
 known-broken one, each asserted by naming the fixture (BRIEF.md rule 2).
 
-These tests spawn Git and pytest and need svcs's test dependencies in the
-runtime environment, so they are marked integration and do not run in CI.
+These tests spawn Git and pytest and need the `integration` dependency
+group (`uv sync --group integration` — svcs's attrs/sybil/pytest-asyncio,
+declared in `pyproject.toml`), so they are marked integration and do not
+run in CI.
 """
 
 import json
