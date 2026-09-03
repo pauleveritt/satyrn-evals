@@ -74,6 +74,14 @@ receipts, and the summary.json (V5b's counts-only shape) are the record.
   attempt loop itself.
 - **Task:** the captured `local-pings` task (five-id oracle) on branch
   `v5c-capture-admitted-suite`, graded offline after each attempt.
+
+  > **Correction (2026-09-03, results section).** The branch name above is
+  > stale. The arms executed from the trees recorded in the results
+  > section: baseline — the worktree `.worktrees/v5c-capture-admitted-suite`,
+  > branch `research/local-pings-reprobe` @ `36d7974`, clean at run time;
+  > engine — main @ `1900388` (same task machinery as `36d7974` plus the
+  > close-out design spec). The pre-registered text above is left as
+  > registered.
 - **Backend env:** `SATYRN_MODEL=omlx/gemma-4-12B-it-MLX-8bit`;
   `SATYRN_ENGINE_REPO=/Users/pauleveritt/projects/pauleveritt/satyrn-engine`
   (Engine arm only).
@@ -176,3 +184,113 @@ plumbing); one evals-seam engine attempt produced no patch because the
 model repeated the recorded invalid-`edit` shape (omitting the required
 `path` property) and declared completion — a legitimate refused attempt.
 The engine arm's plumbing is verified end to end.
+
+## Results — baseline and engine arms (2026-09-03)
+
+**Status:** both arms complete at n=8 on the captured task's five-id
+oracle; results recorded 2026-09-03 with provenance corrections; the V5a
+caveat is updated from these numbers only.
+
+### Provenance corrections (recorded, not edited away)
+
+1. The Conditions entry above names branch `v5c-capture-admitted-suite`;
+   the actual trees were: **baseline** — worktree
+   `.worktrees/v5c-capture-admitted-suite`, branch
+   `research/local-pings-reprobe` @ `36d7974`, clean at run time (the
+   attempt records' command lines name that path); **engine** — main
+   working tree @ `1900388` (= `36d7974` plus the close-out design spec
+   `docs/superpowers/specs/2026-09-03-v5c-reconciliation-design.md`; task
+   machinery identical), clean at run time except pre-existing uncommitted
+   docs edits (`docs/glossary.md` from before this session;
+   `README.md`, `docs/index.md`, `docs/usage.md` modified concurrently
+   during the run and preserved untouched — no machine code reads them).
+2. Commit `96a1282`'s message says "record smoke outcomes — baseline
+   pass" but its sole diff changes the baseline wrapper's model flag to
+   the space form. The baseline smoke outcome is recorded here for the
+   first time: n=1, `OK`, verdict pass 1/1 (`runs/baseline-smoke/`,
+   `local-pings-20260903-115016-091286`). The engine smoke outcomes are
+   already recorded in the Smoke findings section above.
+3. The baseline arm's eight attempts postdated the branch tip `36d7974`
+   and were unrecorded in the repository until this section.
+
+### Counts (counts only; no wall-clock comparison between arms)
+
+**Baseline** (`runs/baseline/`, dirs `local-pings-20260903-121436-076311`
+through `local-pings-20260903-134510-268940`): n=8, attempted 3 (all
+`OK`), refused 5 — 1 `NO_PATCH` (0-byte patch) and 4 `COMMAND_TIMEOUT`
+(no patch retained). Verdicts: pass 3 (each 5/5), fail 0, unavailable 0;
+timeouts 4. Retained-patch production 3/8; conditional retained-patch
+quality 3/3 pass.
+
+**Engine** (`runs/engine/`, dirs `local-pings-20260903-173353-432674`
+through `local-pings-20260903-182438-836746`): n=8, attempted 4 (all
+`OK`), refused 4 — 3 `NO_PATCH` and 1 `COMMAND_TIMEOUT` (none retained a
+patch). Verdicts: pass 3 (each 5/5), fail 1 (4 pass / 1 fail —
+`local-pings-20260903-182235-985930`), unavailable 0; timeouts 1.
+Retained-patch production 4/8; conditional retained-patch quality 3/4
+pass.
+
+**Offline re-grade.** Every retained patch (3 baseline, 4 engine) was
+re-graded through `grade` against the five-id oracle; every verdict
+reproduced the run-time receipt exactly (baseline 3× pass 5/5; engine 3×
+pass 5/5, 1× fail 4/1).
+
+**Wrapper property (instrument, not a model finding).** The baseline
+wrapper harvests the worktree diff only after the pi subprocess exits, so
+a 900-second timeout cannot retain a patch by construction — unlike the
+recorded probe's evidence adapter, which snapshotted the diff every two
+seconds. The engine composite's harvest has the same post-completion
+shape (its one timeout retained none). Retained-patch production above is
+bounded accordingly and is kept separate from the primary metric, per the
+fixed measurements.
+
+**Plumbing.** No new defects: `code_counts` contain no
+`WORKSPACE_FAILED`, no `CLEANUP_FAILED`, no `TRANSCRIPT_MISSING` or
+`TRANSCRIPT_EMPTY`, and `PATCH_INVALID` is 0 in both arms. The
+smoke-caught fixes (quoted contract YAML, shim named `pi`, space-form
+model flag) held for all eight engine attempts.
+
+### Band reading and the admission flag
+
+Under the V5a band definitions (floor = all or nearly all attempts
+failed; ceiling = all or nearly all succeeded): **both arms read middle**
+— Baseline 3/8 and Engine 4/8 successful attempts. The recorded
+probe-era pairing (Baseline floor 0/4, Engine middle 2/4 at the N=2
+four-test fixture) does not carry over to the captured task.
+
+> **Flag for the maintainer (recorded, not decided here).** With both
+> compared arms in the middle band at n=8 — pass verdicts 3 vs 3 — no
+> pair of arms is recorded in different bands, so the V5a admission basis
+> for `local-pings` is **not re-earned by this re-probe**. Whether the
+> task still separates the arms under comparison is an open maintainer
+> decision (candidate re-open conditions: a higher n; a different
+> fixture or adversary; a revised band rule). This record neither
+> re-admits nor de-admits the task; the V5a caveat is updated strictly
+> from these numbers.
+
+### Recompute
+
+```bash
+cat ~/projects/pauleveritt/satyrn-v5c-scratch/runs/baseline/summary.json
+cat ~/projects/pauleveritt/satyrn-v5c-scratch/runs/engine/summary.json
+ls ~/projects/pauleveritt/satyrn-v5c-scratch/runs/baseline \
+   ~/projects/pauleveritt/satyrn-v5c-scratch/runs/engine
+# offline re-grade of every retained patch (verdicts above):
+for arm in baseline engine; do
+  for d in ~/projects/pauleveritt/satyrn-v5c-scratch/runs/$arm/local-pings-*/; do
+    [ -s "$d/patch.diff" ] && uv run satyrn-evals grade local-pings \
+      "$d/patch.diff" --receipt /tmp/regrade.json
+  done
+done
+```
+
+The engine arm was executed as registered, from main @ `1900388`:
+
+```bash
+PATH="$HOME/projects/pauleveritt/satyrn-v5c-scratch/arms:$PATH" \
+SATYRN_MODEL=omlx/gemma-4-12B-it-MLX-8bit \
+SATYRN_ENGINE_REPO=/Users/pauleveritt/projects/pauleveritt/satyrn-engine \
+  .venv/bin/satyrn-evals run local-pings --n 8 --timeout 900 \
+  --output ~/projects/pauleveritt/satyrn-v5c-scratch/runs/engine \
+  -- /Users/pauleveritt/projects/pauleveritt/satyrn-engine/.venv/bin/satyrn-engine attempt
+```
