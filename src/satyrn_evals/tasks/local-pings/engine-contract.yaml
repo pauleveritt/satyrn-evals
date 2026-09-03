@@ -1,4 +1,4 @@
+task: "Container.get_pings() must include pings from locally registered factories: a local ping overrides a global ping of the same type, a local registration without a ping discards the global ping, and registry-only pings keep their registration order."
 id: local-pings
-task: Container.get_pings() must include pings from locally registered factories: a local ping overrides a global ping of the same type, a local registration without a ping discards the global ping, and registry-only pings keep their registration order.
 writable_paths:
   - src/svcs/_core.py
