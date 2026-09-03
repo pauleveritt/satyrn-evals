@@ -67,9 +67,9 @@ Started with `start_new_session=True` (own process group). `terminate_and_reap` 
 
 **Behavior:** scenario from `sys.argv[1]`: `clean` (settled per step, emits `turn_end`/`tool_end`/one `compaction`-kind event, edits a file per step), `scope` (also writes `outside.txt`), `wrong-id` (changes `conversation_id` at step 2), `output-limit` (`step_finished` outcome `output-limit` at step 2), `hang` (never answers step 2). First message: `session_started` with a fixed id.
 
-- [ ] **Step 1: Write the adapter** (deterministic, no network, no model; ~60 lines of scripted `print(json.dumps(...), flush=True)` + file edits relative to cwd).
-- [ ] **Step 2: Wire the mini-session task** — 2 feature steps + 1 review; selectors resolve in the overlaid task.
-- [ ] **Step 3: Commit** `test: fake session adapter and mini-session task`.
+- [x] **Step 1: Write the adapter** (deterministic, no network, no model; ~60 lines of scripted `print(json.dumps(...), flush=True)` + file edits relative to cwd).
+- [x] **Step 2: Wire the mini-session task** — 2 feature steps + 1 review; selectors resolve in the overlaid task.
+- [x] **Step 3: Commit** `test: fake session adapter and mini-session task` (with the capture-loop commit).
 
 ### Task 4: The executor — capture loop
 
@@ -108,7 +108,7 @@ match first:  # session_started or PROTOCOL_ERROR
 
 Refusal/stop mapping: timeout → `STEP_TIMEOUT`; `output-limit` → `OUTPUT_LIMIT`; adapter exit/EOF pre-terminal → `ADAPTER_ERROR`; parser/state faults (second `session_started`, changed identity, context reset, wrong/duplicate step, unknown version/type) → `PROTOCOL_ERROR`; workspace allocation failure → `WORKSPACE_FAILED`; unconfirmed reap → `CLEANUP_FAILED` — in all captured cases the session record is still finalized and written (normative). Counts (`turn_count`, `tool_count`, `context_events`) derive from retained `EventLine`s — the terminal message supplies no totals.
 
-- [ ] **Step 1: Failing integration tests** — concrete core (remaining scenarios follow the same shape):
+- [x] **Step 1: Failing integration tests** — concrete core (remaining scenarios follow the same shape):
 
 ```python
 def test_clean_session_captures_three_checkpoints(tmp_path: Path) -> None:
@@ -130,8 +130,8 @@ def test_scope_violation_stops_and_retains(tmp_path: Path) -> None:
 ```
 
 `wrong-id` asserts `PROTOCOL_ERROR` and a parseable finalized record; `output-limit` asserts `OUTPUT_LIMIT` with the captured first checkpoint still on disk; `hang` asserts `STEP_TIMEOUT` and that the patch digest was recorded *after* reap (fake adapter writes a post-kill file; assert it is absent from the snapshot). Plus a start-refusal sibling (missing adapter binary → recorded refusal, nothing graded).
-- [ ] **Step 2: Run** — FAIL. **Step 3: Implement** (`session.py`; workspace allocation reuses `workspace.py`'s private-repo + detached-worktree lifecycle exactly — extract shared helpers, do not fork).
-- [ ] **Step 4: Run** — PASS. **Step 5: Commit** `feat: session capture loop`.
+- [x] **Step 2: Run** — FAIL. **Step 3: Implement** (`session.py`; workspace allocation reuses `workspace.py`'s private-repo + detached-worktree lifecycle exactly — extract shared helpers, do not fork).
+- [x] **Step 4: Run** — PASS. **Step 5: Commit** `feat: session capture loop` (corrections recorded in the commit).
 
 ### Task 5: The grader stage and record finalization
 
