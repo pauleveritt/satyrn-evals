@@ -125,14 +125,14 @@ The adapter's own output lines carry the active `step_id` and the `conversation_
 
 **Files:** Create `docs/superpowers/research/2026-09-01-svcs-autowire-session-probe.md` (exact blob).
 
-- [ ] **Step 1: Import**
+- [x] **Step 1: Import**
 
 ```bash
 git show 577d540:docs/superpowers/research/2026-09-01-svcs-autowire-session-probe.md \
   > docs/superpowers/research/2026-09-01-svcs-autowire-session-probe.md
 ```
 
-- [ ] **Step 2: Verify before commit**
+- [x] **Step 2: Verify before commit**
 
 ```bash
 shasum -a 256 docs/superpowers/research/2026-09-01-svcs-autowire-session-probe.md
@@ -145,11 +145,11 @@ No banner, no header, no edit of any kind inside the file — provenance lives i
 
 **Files:** Modify `README.md` (session usage section); create `docs/session-smoke.md` (the manual runbook).
 
-- [ ] **Step 1: Write the runbook** — the V5d-consistent practice, session-side: one uncounted `session session-mechanics -- satyrn-evals-session-pi --provider … --model …` against a **durable, uniquely named** output directory (never `/tmp`); read `session-record.json` always, per-checkpoint receipts only when grading ran; plumbing-failure shapes (adapter/Pi exit before the model runs; no genuine model-stream events in retained payloads; plumbing code where model behavior was expected; receipt without verdict); **settled is not required** — any terminal state passes plumbing given a parseable record, the lifecycle-guaranteed artifacts for the prompts reached, and genuine model-stream events; if a shim was needed, record the stock-adapter proof as **failed**. State the five verification-record assertions verbatim from the delta spec.
-- [ ] **Step 2: README session section** — the `session` command, the fixture's mechanics-only classification, pointer to the smoke runbook and the delta spec.
-- [ ] **Step 3: Commit** `docs: session usage and the real-model smoke runbook`.
+- [x] **Step 1: Write the runbook** — the V5d-consistent practice, session-side: one uncounted `session session-mechanics -- satyrn-evals-session-pi --provider … --model …` against a **durable, uniquely named** output directory (never `/tmp`); read `session-record.json` always, per-checkpoint receipts only when grading ran; plumbing-failure shapes (adapter/Pi exit before the model runs; no genuine model-stream events in retained payloads; plumbing code where model behavior was expected; receipt without verdict); **settled is not required** — any terminal state passes plumbing given a parseable record, the lifecycle-guaranteed artifacts for the prompts reached, and genuine model-stream events; if a shim was needed, record the stock-adapter proof as **failed**. State the five verification-record assertions verbatim from the delta spec.
+- [x] **Step 2: README session section** — the `session` command, the fixture's mechanics-only classification, pointer to the smoke runbook and the delta spec.
+- [x] **Step 3: Commit** `docs: session usage and the real-model smoke runbook`.
 
 ### Task 7: Verification record
 
-- [ ] Run and record (V4's shape, `docs/sdd.md`): `uv run pytest -q`; `uv run pytest tests/integration -m integration -q`; `uv run pytest -m '' --cov=src/satyrn_evals --cov-branch --cov-fail-under=100`; `uv run ruff check .`; `just lint-docs`.
+- [x] Run and record (V4's shape, `docs/sdd.md`): `uv run pytest -q`; `uv run pytest tests/integration -m integration -q`; `uv run pytest -m '' --cov=src/satyrn_evals --cov-branch --cov-fail-under=100`; `uv run ruff check .`; `just lint-docs`.
 - [ ] Then — outside this plan's automation — run the smoke per the runbook against the supported Pi executable, and append the smoke section to `docs/sdd.md`'s V6 record: durable evidence path, each of the five assertions evidenced individually, the no-shim outcome, and the statement that model behavior may pass or fail with no admission, difficulty, or quality claim. Commit `docs: V6 verification record and smoke evidence`.
