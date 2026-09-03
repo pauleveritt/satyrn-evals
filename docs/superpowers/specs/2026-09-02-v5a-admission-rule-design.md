@@ -167,6 +167,14 @@ and ceiling" (`2026-08-27-local-pings-envelope-engine-followup.md:94-96`).
 This decision records that reading as superseded, so those verdicts do not
 carry forward.
 
+> **Recorded caveat (V5c, 2026-09-02).** The arm numbers above were graded
+> under the superseded four-test oracle at the N=2 fixture. The captured
+> task's oracle is now five ids at an N=6 fixture (V5c spec amendment); the
+> numbers are therefore **unearned pending a re-probe** against the captured
+> task. The structural decision — which arms separate — is not reopened by
+> this note; the numbers are. See
+> [`2026-09-02-v5c-local-pings-cross-machine-gate-determinism.md`](../research/2026-09-02-v5c-local-pings-cross-machine-gate-determinism.md).
+
 ### stringified-annotations
 
 Record: product-path pilot (`2026-08-26-product-path-pilot.md`), three arms,

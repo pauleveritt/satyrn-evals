@@ -202,6 +202,42 @@ record "unavailable" with a distinct exit code.
 - **A content criterion needs a stability-under-perturbation test as a gate on
   itself** before it earns model time.
 
+### "The qualification number reproduced on one machine and inverted on another"
+
+- The recorded row-3 adversary (a `get_pings` that iterates service types
+  through a `set`) was caught 0/20 on one machine's pytest gate at N=8 and
+  20/20 on another's — both measurements faithful, both robust to churn.
+  Order preservation for `id()`-hashed classes is a discrete function of
+  hash stride versus set-table geometry (8 → 32 slots at N=5; there is no
+  16-slot table) **and allocation phase** — what else was imported before
+  the classes, which is fixed per harness and differs across harnesses and
+  machines. N=8 sits on the knife edge; N=5/N=6 scrambled in every context
+  measured. A gate value must be chosen on cross-context evidence, and a
+  fixture that depends on which face a machine lands on must carry a canary
+  that reports inconclusive on the wrong face rather than passing silently.
+  See the [cross-machine record](2026-09-02-v5c-local-pings-cross-machine-gate-determinism.md)
+  and the reconstruction correction
+  ([`2026-09-02-v5c-local-pings-capture-reconstruction.md`](2026-09-02-v5c-local-pings-capture-reconstruction.md)).
+- **"Controlled class hashes" cannot have meant hash seeding.**
+  `PYTHONHASHSEED` does not move `id()`-based class hashes (verified across
+  seeds 0/1/42/random). The probe's frozen environment must have controlled
+  allocation layout. Indexed here so the next reader does not chase
+  `PYTHONHASHSEED`.
+
+### "The canary read the wrong set and agreed with a gate that was measuring nothing"
+
+- A canary checking whether the *raw source set*
+  (`set(registry._services)`) scrambles read "preserve face" while the
+  gate's curator test was catching the adversary 20/20 in the same process.
+  The defective code iterates `set(registry._services) - local_svc_types`,
+  and **set subtraction rebuilds the table**, so the subtraction result's
+  iteration order can differ from the raw source set's. A mechanism check
+  that does not reproduce the mechanism is a false instrument — it would
+  have let a preserve-face machine report a silent pass, the exact
+  silent-zero shape this list documents. Mirror the defect's exact
+  operation, and run the canary in the same process and context as the
+  measurement it guards.
+
 ---
 
 ## To both
