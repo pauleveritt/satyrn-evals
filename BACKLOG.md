@@ -23,8 +23,9 @@ This file exists because a predecessor project's `ROADMAP.md` reached roughly
 spooled verbatim by the engine as `transcript.jsonl`
 (`satyrn-engine/src/satyrn_engine/attempt.py:578`, `:206-225`); parsing it in
 evals would reach through the engine seam that V4 established as opaque to
-evals. These counts belong engine-side, published as structured fields — the
-`facts` field already named in `ROADMAP.md:60` (satyrn-engine `BACKLOG.md`).
+evals. These counts belong engine-side, published as an artifact the engine
+derives from its own Pi stream — not satyrn-engine's `facts` field, which is
+prompt content rendered into the handoff, not run telemetry.
 Definitions are recorded: `repeat` is identical `(toolName, arguments)` calls
 counted regardless of success
 (`docs/superpowers/research/2026-08-16-harvest-index.md:69-71`); `churn` is

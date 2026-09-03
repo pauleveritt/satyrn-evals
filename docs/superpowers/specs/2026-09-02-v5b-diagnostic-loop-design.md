@@ -21,7 +21,7 @@ metrics (Out of scope) are the ones that catch the harvest-index failure
 modes — 245 identical `ls -R` calls, 27 rewrites of one template
 (`docs/superpowers/research/2026-08-16-harvest-index.md:69-74`). V5b ships
 the loop and the sequencing; the diagnosis it is named for largely waits on
-the engine-side `facts` field.
+an engine-side emitter for those counts.
 
 ## CLI surface
 
@@ -77,8 +77,8 @@ data is Pi's print-mode stream-JSON, spooled verbatim by the engine as
 `:206-225`). Parsing that stream inside evals would reach through the engine
 seam to the runtime behind it, coupling evals to an upstream tool's output
 schema — a breach of the V4 property that the Engine contract stays opaque
-to evals. The counts belong engine-side, published as structured fields (the
-`facts` field, `ROADMAP.md:60`); see Out of scope and `BACKLOG.md`. Their
+to evals. The counts belong engine-side, published as an artifact the engine
+derives from its own Pi stream; see Out of scope and `BACKLOG.md`. Their
 definitions are already recorded: `repeat` is identical `(toolName,
 arguments)` calls counted regardless of success
 (`docs/superpowers/research/2026-08-16-harvest-index.md:69-71`), `churn` is
@@ -124,6 +124,11 @@ a batch.
   `context` — deferred because their data is Pi's stream-JSON behind the
   engine seam that V4 established as opaque to evals
   (`satyrn-engine/src/satyrn_engine/attempt.py:578`, `:206-225`). **Reopens
-  when the engine exposes those counts across the seam** (the `facts` field,
-  `ROADMAP.md:60`; satyrn-engine `BACKLOG.md`) — not when a transcript
-  sample becomes available. Tracked in `BACKLOG.md`.
+  when the engine exposes those counts across the seam** — a new engine-side
+  emitter reading its own Pi stream — and not when a transcript sample
+  becomes available. Tracked in `BACKLOG.md`. *Recorded correction
+  (2026-09-02): this deferral previously named satyrn-engine's `facts`
+  field as the home; that field is a `Contract` field rendered into the
+  handoff prompt (`satyrn-engine/src/satyrn_engine/contract.py:23-28`,
+  `attempt.py:229-238`) — prompt content, not run telemetry. The pointer
+  was wrong.*

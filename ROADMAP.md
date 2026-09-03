@@ -116,7 +116,7 @@ when the roadmap outgrows the front page.
   repeats the attempt seam and writes a counts-only `summary.json` — verdict
   reasons (`code_counts`/`verdict_counts`), timeouts, and the outcome tally.
   Its four transcript-derived metrics — tool calls, repeat, churn, context —
-  were deferred to the engine-side `facts` field rather than parsed evals-side
+  were deferred to an engine-side emitter rather than parsed evals-side
   (`BACKLOG.md`; the V5b spec's Out of scope): the loop ships, while the
   diagnosis it is named for waits on that engine-side field. Spec and plan
   recorded under `docs/superpowers/`.
