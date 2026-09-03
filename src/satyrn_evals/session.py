@@ -20,7 +20,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from satyrn_evals.adapter_process import AdapterCleanupError, AdapterProcess, AdapterTimeout
+from satyrn_evals.adapter_process import (
+    AdapterCleanupError,
+    AdapterProcess,
+    AdapterTimeout,
+)
 from satyrn_evals.errors import ProtocolError, UsageError
 from satyrn_evals.manifest import TaskManifest, load_manifest, resolve_task
 from satyrn_evals.overlay import OverlaySpec, load_overlay
@@ -42,9 +46,7 @@ from satyrn_evals.session_record import (
 )
 from satyrn_evals.workspace import (
     SessionWorkspace,
-    WorkspaceReleaseError,
     prepare_session_workspace,
-    release_session_workspace,
     snapshot_tree,
 )
 
@@ -142,7 +144,7 @@ def run_session(
     start_timeout: float = 60.0,
     step_timeout: float = 600.0,
     close_timeout: float = 30.0,
-    grader: "SessionGrader | None" = None,
+    grader: SessionGrader | None = None,
 ) -> SessionRecord:
     """Run one session against TASK and return the durable record."""
     task_dir = resolve_task(task, tasks_root)
@@ -196,7 +198,7 @@ def _drive(
     *, manifest: TaskManifest, spec: SessionSpec, overlay: OverlaySpec,
     workspace: SessionWorkspace, session_dir: Path, transcript_path: Path,
     adapter_command: list[str], start_timeout: float, step_timeout: float,
-    close_timeout: float, grader: "SessionGrader | None",
+    close_timeout: float, grader: SessionGrader | None,
 ) -> SessionRecord:
     checkpoints: list[StepRecord] = []
     conversation_id: str | None = None
@@ -291,7 +293,7 @@ def _drive(
                                     f"during {spec_step.id!r}",
                                 )
                                 break
-                        case EventLine(step_id=step_id, kind=kind):
+                        case EventLine(step_id=step_id):
                             if step_id != spec_step.id:
                                 stop = _Stop(
                                     SessionCode.PROTOCOL_ERROR,

@@ -5,13 +5,13 @@
       "id": "add-a",
       "kind": "feature",
       "prompt": "Add feature_a returning 'a'.",
-      "new_feature_selectors": ["test_hidden.py::test_a"]
+      "new_feature_selectors": ["test_hidden_a.py::test_a"]
     },
     {
       "id": "add-b",
       "kind": "feature",
       "prompt": "Add feature_b returning 'b'.",
-      "new_feature_selectors": ["test_hidden.py::test_b"]
+      "new_feature_selectors": ["test_hidden_b.py::test_b"]
     },
     {
       "id": "review",

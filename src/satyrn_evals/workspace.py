@@ -17,12 +17,12 @@ import subprocess
 import tempfile
 import time
 from collections.abc import Iterable, Mapping, Sequence
-
-from satyrn_evals.errors import SatyrnError
 from dataclasses import dataclass
 from enum import Enum, StrEnum, auto
 from pathlib import Path
 from typing import BinaryIO
+
+from satyrn_evals.errors import SatyrnError
 
 DEFAULT_TIMEOUT = 30.0
 DEFAULT_TEARDOWN_GRACE = 0.25

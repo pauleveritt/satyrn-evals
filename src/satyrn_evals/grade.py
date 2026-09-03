@@ -38,6 +38,7 @@ def grade(
     overlay: OverlaySpec | None = None,
     selectors: tuple[str, ...] = (),
     expected: tuple[str, ...] | None = None,
+    enforce_allowlist: bool = True,
 ) -> Receipt:
     """Grade PATCH against TASK, write the receipt, return it.
 
@@ -60,7 +61,8 @@ def grade(
     reason = ""
     try:
         paths = parse_patch_paths(patch_text)
-        check_allowlist(paths, manifest.source_paths)
+        if enforce_allowlist:
+            check_allowlist(paths, manifest.source_paths)
         hook = _run_oracle(
             manifest, task_dir, patch_text, overlay=overlay, selectors=selectors
         )
