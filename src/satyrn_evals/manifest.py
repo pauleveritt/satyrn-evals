@@ -23,6 +23,36 @@ class TaskManifest:
     fixtures: dict[str, str]
     provenance: Provenance | None = None
     engine_contract: str | None = None
+    grader_overlay: str | None = None
+
+
+def _validate_grader_overlay(task_dir: Path, value: object) -> str | None:
+    """Validate the grader-only overlay directory path without reading files."""
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value:
+        raise ManifestError("grader_overlay must be a non-empty relative path string")
+    parts = value.split("/")
+    if value.startswith("/") or "\\" in value or "\0" in value or any(
+        part in ("", ".", "..") for part in parts
+    ):
+        raise ManifestError("grader_overlay must be a safe relative POSIX path")
+    cursor = task_dir
+    for index, part in enumerate(parts):
+        cursor /= part
+        try:
+            mode = cursor.lstat().st_mode
+        except FileNotFoundError as exc:
+            raise ManifestError(f"grader_overlay directory missing: {value}") from exc
+        except OSError as exc:
+            raise ManifestError(f"cannot inspect grader overlay {value}: {exc}") from exc
+        if stat.S_ISLNK(mode):
+            raise ManifestError("grader_overlay must not contain symbolic links")
+        if index == len(parts) - 1 and not stat.S_ISDIR(mode):
+            raise ManifestError("grader_overlay must name a directory")
+        if index != len(parts) - 1 and not stat.S_ISDIR(mode):
+            raise ManifestError("grader_overlay parent must be a directory")
+    return value
 
 
 def _validate_engine_contract(task_dir: Path, value: object) -> str | None:
@@ -116,6 +146,7 @@ def load_manifest(task_dir: Path) -> TaskManifest:
         if not (task_dir / fixtures[key]).is_file():
             raise ManifestError(f"fixture file missing: {fixtures[key]}")
     engine_contract = _validate_engine_contract(task_dir, data.get("engine_contract"))
+    grader_overlay = _validate_grader_overlay(task_dir, data.get("grader_overlay"))
     return TaskManifest(
         name=name,
         contract=contract,
@@ -125,6 +156,7 @@ def load_manifest(task_dir: Path) -> TaskManifest:
         fixtures=fixtures,
         provenance=provenance,
         engine_contract=engine_contract,
+        grader_overlay=grader_overlay,
     )
 
 

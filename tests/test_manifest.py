@@ -292,3 +292,63 @@ def test_load_rejects_missing_symlink_and_nonregular_engine_contract(
     (task_dir / "manifest.json").write_text(json.dumps(data))
     with pytest.raises(ManifestError, match="parent"):
         load_manifest(task_dir)
+
+
+def test_grader_overlay_absent_defaults_to_none(tmp_path: Path) -> None:
+    task_dir = _valid_task(tmp_path)
+    assert load_manifest(task_dir).grader_overlay is None
+
+
+def test_grader_overlay_accepts_existing_directory(tmp_path: Path) -> None:
+    task_dir = _valid_task(tmp_path)
+    (task_dir / "grader" / "overlay").mkdir(parents=True)
+    (task_dir / "grader" / "overlay" / "tests").mkdir()
+    _write_manifest_with_overlay(task_dir, "grader/overlay")
+    assert load_manifest(task_dir).grader_overlay == "grader/overlay"
+
+
+def test_grader_overlay_refuses_missing_directory(tmp_path: Path) -> None:
+    task_dir = _valid_task(tmp_path)
+    _write_manifest_with_overlay(task_dir, "grader/overlay")
+    with pytest.raises(ManifestError, match="grader_overlay"):
+        load_manifest(task_dir)
+
+
+def test_grader_overlay_refuses_escape(tmp_path: Path) -> None:
+    task_dir = _valid_task(tmp_path)
+    _write_manifest_with_overlay(task_dir, "../outside")
+    with pytest.raises(ManifestError, match="grader_overlay"):
+        load_manifest(task_dir)
+
+
+def test_grader_overlay_refuses_symlink_component(tmp_path: Path) -> None:
+    task_dir = _valid_task(tmp_path)
+    real = tmp_path / "elsewhere"
+    real.mkdir()
+    (task_dir / "grader").mkdir()
+    (task_dir / "grader" / "overlay").symlink_to(real)
+    _write_manifest_with_overlay(task_dir, "grader/overlay")
+    with pytest.raises(ManifestError, match="symbolic links"):
+        load_manifest(task_dir)
+
+
+def test_grader_overlay_refuses_file(tmp_path: Path) -> None:
+    task_dir = _valid_task(tmp_path)
+    (task_dir / "grader").mkdir()
+    (task_dir / "grader" / "overlay").write_text("not a dir")
+    _write_manifest_with_overlay(task_dir, "grader/overlay")
+    with pytest.raises(ManifestError, match="must name a directory"):
+        load_manifest(task_dir)
+
+
+def test_grader_overlay_refuses_empty_string(tmp_path: Path) -> None:
+    task_dir = _valid_task(tmp_path)
+    _write_manifest_with_overlay(task_dir, "")
+    with pytest.raises(ManifestError, match="grader_overlay"):
+        load_manifest(task_dir)
+
+
+def _write_manifest_with_overlay(task_dir: Path, value: str) -> None:
+    data = json.loads((task_dir / "manifest.json").read_text())
+    data["grader_overlay"] = value
+    (task_dir / "manifest.json").write_text(json.dumps(data))
