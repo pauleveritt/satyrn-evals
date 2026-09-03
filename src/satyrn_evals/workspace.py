@@ -1039,6 +1039,10 @@ def run_workspace(
     return pending
 
 
+class WorkspacePrepareError(SatyrnError):
+    """Exit 3: the session workspace could not be prepared."""
+
+
 class WorkspaceReleaseError(SatyrnError):
     """Exit 3: the session workspace could not be confirmed cleaned up."""
 
@@ -1081,7 +1085,11 @@ def prepare_session_workspace(
         repository=parent / "repo",
         worktree=parent / "worktree",
     )
-    _prepare_repository(base, state, git_environment)
+    try:
+        _prepare_repository(base, state, git_environment)
+    except _WorkspaceError as exc:
+        shutil.rmtree(parent, ignore_errors=True)
+        raise WorkspacePrepareError(str(exc)) from exc
     assert state.base_sha is not None
     return SessionWorkspace(
         parent=parent,

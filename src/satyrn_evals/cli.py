@@ -13,6 +13,9 @@ from satyrn_evals.errors import SatyrnError, UsageError
 from satyrn_evals.grade import grade
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, resolve_task
 from satyrn_evals.run import run
+from satyrn_evals.session import run_session
+from satyrn_evals.session_grader import SessionGrader
+from satyrn_evals.session_record import SessionCode
 from satyrn_evals.verdict import Verdict
 from satyrn_evals.workspace import DEFAULT_TIMEOUT
 
@@ -94,6 +97,34 @@ def main(argv: list[str] | None = None) -> int:
                 timeout=args.timeout,
             )
             return 0
+        if argv[:1] == ["session"]:
+            flags, command = split_attempt_argv(argv[1:])
+            if not command:
+                raise UsageError(
+                    "session adapter is required: session TASK [flags] -- ADAPTER..."
+                )
+            args = parser.parse_args(["session", *flags])
+            record = run_session(
+                task=args.task,
+                tasks_root=Path(args.tasks_root),
+                output=Path(args.output),
+                adapter_command=command,
+                start_timeout=args.start_timeout,
+                step_timeout=args.step_timeout,
+                close_timeout=args.close_timeout,
+                grader=SessionGrader(
+                    task_dir=resolve_task(args.task, tasks_root=Path(args.tasks_root))
+                ),
+            )
+            match record.code:
+                case (
+                    SessionCode.WORKSPACE_FAILED
+                    | SessionCode.CLEANUP_FAILED
+                    | SessionCode.GRADE_UNAVAILABLE
+                ):
+                    return 3
+                case _:
+                    return 0
         args = parser.parse_args(argv)
         if args.command == "grade":
             task_dir = resolve_task(args.task, tasks_root=Path(args.tasks_root))
@@ -174,4 +205,34 @@ run_p.add_argument(
     type=positive_finite_timeout,
     default=DEFAULT_TIMEOUT,
     help=f"command timeout in seconds (default: {DEFAULT_TIMEOUT:g})",
+)
+
+session_p = sub.add_parser(
+    "session",
+    help="send ordered prompts to one conversation, snapshot checkpoints, grade offline",
+)
+session_p.add_argument("task", help="task name")
+session_p.add_argument(
+    "--tasks-root", default=str(DEFAULT_TASKS_ROOT), help="task root (default: bundled tasks)"
+)
+session_p.add_argument(
+    "--output", default="sessions", help="session output directory (default: ./sessions)"
+)
+session_p.add_argument(
+    "--start-timeout",
+    type=positive_finite_timeout,
+    default=60.0,
+    help="seconds to wait for session_started (default: 60)",
+)
+session_p.add_argument(
+    "--step-timeout",
+    type=positive_finite_timeout,
+    default=600.0,
+    help="seconds to wait for one prompt (default: 600)",
+)
+session_p.add_argument(
+    "--close-timeout",
+    type=positive_finite_timeout,
+    default=30.0,
+    help="seconds for graceful adapter close (default: 30)",
 )

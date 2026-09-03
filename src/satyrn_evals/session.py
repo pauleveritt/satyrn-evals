@@ -46,6 +46,7 @@ from satyrn_evals.session_record import (
 )
 from satyrn_evals.workspace import (
     SessionWorkspace,
+    WorkspacePrepareError,
     prepare_session_workspace,
     snapshot_tree,
 )
@@ -155,10 +156,22 @@ def run_session(
     output.mkdir(parents=True, exist_ok=True)
     session_dir = output / session_dir_name(manifest.name, datetime.now(UTC))
     session_dir.mkdir()
-    workspace = prepare_session_workspace(
-        base=task_dir / "base",
-        protected_paths=(task_dir, output, Path.cwd()),
-    )
+    try:
+        workspace = prepare_session_workspace(
+            base=task_dir / "base",
+            protected_paths=(task_dir, output, Path.cwd()),
+        )
+    except WorkspacePrepareError as exc:
+        record = SessionRecord(
+            version=1,
+            task=manifest.name,
+            adapter_command=tuple(adapter_command),
+            base_commit="",
+            code=SessionCode.WORKSPACE_FAILED,
+            message=str(exc),
+        )
+        write_session_record(session_dir / "session-record.json", record)
+        return record
     record = _drive(
         manifest=manifest,
         spec=spec,
