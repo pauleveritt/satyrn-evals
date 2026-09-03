@@ -26,10 +26,27 @@ The proposal was carried onto current history and amended on four points:
    always, and the receipt only when grading occurred
    (`src/satyrn_evals/attempt.py:204-241`).
 4. **Smoke is scoped per materially distinct command/adapter/runtime
-   path**, not merely once per task. The new canonical-Envelope adapter
-   (a new prospective arm, not a reproduction — de-admission record
-   `:41-44`) needs its own uncounted smoke even though `local-pings`
-   already exercised the Engine path.
+   path**, not merely once per task. A new prospective read/write Envelope
+   adapter (a new prospective arm, not a reproduction — de-admission
+   record `:41-44`) needs its own uncounted smoke even though
+   `local-pings` already exercised the Engine path.
+
+### Second revision (2026-09-03, maintainer review)
+
+5. **Wording — a new prospective read/write Envelope, not a canonical
+   one.** The historical canonical Envelope is unreconstructable
+   (de-admission record, reconstruction stop), so this proposal's
+   "canonical-Envelope adapter/probe" phrasings are replaced with "new
+   prospective read/write Envelope" throughout.
+6. **Smoke evidence is durable.** The practice's example output directory
+   is no longer `/tmp/smoke` (ephemeral); smoke writes to a durable,
+   uniquely named evidence directory whose path is recorded with the
+   outcome, so it survives cleanup and can be re-graded.
+7. **Completion at landing, not at the next captured task.** Waiting for
+   "the next captured task" would leave V5d open indefinitely and could
+   encourage capturing a task merely to close the phase. V5d completes
+   when the confirmed practice lands; the next captured task must follow
+   it, and any failure to do so reopens V5d.
 
 ## What V5d ships
 
@@ -98,8 +115,15 @@ path's first real use — after `capture`, before treating the path as ready
 for `run --n 8` against a real arm:
 
 ```bash
-satyrn-evals run TASK --n 1 --output /tmp/smoke -- REAL_COMMAND
+satyrn-evals run TASK --n 1 --output "$SMOKE_OUTPUT" -- REAL_COMMAND
 ```
+
+`SMOKE_OUTPUT` is a durable, uniquely named evidence directory — never
+`/tmp`, where a smoke record would vanish before a defect review. Follow
+the project's durable-scratch pattern (the re-probe's
+`~/projects/pauleveritt/satyrn-v5c-scratch/runs/smoke-<task>-<path>-<date>/`)
+and record the path with the smoke outcome so the evidence survives
+cleanup and can be re-graded offline.
 
 **Read the resulting `attempt.json` — always.** It is written for every
 refusal and success (`src/satyrn_evals/attempt.py:200-241`) and records
@@ -186,9 +210,10 @@ outcome is recorded at `:210-212`, the engine's in the smoke findings).
 **A path that has already had a budgeted real-model run against the task
 does not need a smoke**; the budgeted run itself already exercised
 everything smoke would check, at higher cost. Distinct paths do not share
-a smoke. The new canonical-Envelope adapter — current Pi with the
-canonical `read,write` surface under a new adapter, which the de-admission
-record defines as a **new prospective arm, not a reproduction**
+a smoke. A new prospective read/write Envelope adapter — current Pi
+restricted to the `read,write` surface under a new adapter, which the
+de-admission record defines as a **new prospective arm, not a
+reproduction**
 (`docs/superpowers/research/2026-09-03-local-pings-deadmission.md:41-44`) — has
 never run against `local-pings` (the recorded Envelope was a budget-only
 variant of a broader tool surface,
@@ -196,10 +221,10 @@ variant of a broader tool surface,
 distinct path. Its first real use therefore includes its own uncounted
 smoke, even though `local-pings` already exercised the Engine path.
 
-**V5c impact — limited to process.** The canonical-Envelope admission
-probe — a newly preregistered qualifying probe under the re-admission
-entry's condition (`BACKLOG.md`) — includes one uncounted smoke under this
-rule before its budgeted attempts. That smoke validates the new adapter's
+**V5c impact — limited to process.** A new prospective read/write
+Envelope admission probe — a newly preregistered qualifying probe under
+the re-admission entry's condition (`BACKLOG.md`) — includes one
+uncounted smoke under this rule before its budgeted attempts. That smoke validates the new adapter's
 plumbing; it does not change V5c's recorded evidence (no recorded cell is
 rerun or reinterpreted, de-admission record `:31`) and it does not itself
 earn admission — admission is decided only by the preregistered probe's
@@ -239,9 +264,10 @@ task or path is about to be used.
   change, out of V5d's declared scope; the practice is process, not data.
   *Reopens if a contributor loses track of which paths have been
   smoke-tested without one.*
-- **Deciding `local-pings` admission or the canonical Envelope.** The
-  de-admission record and the re-admission/Envelope-recovery backlog
-  entries are the maintainer's records; V5d does not decide them.
+- **Deciding `local-pings` re-admission or a new prospective read/write
+  Envelope's admission.** The de-admission record and the
+  re-admission/Envelope-recovery backlog entries are the maintainer's
+  records; V5d does not decide them.
 
 ## Done-when
 
@@ -249,11 +275,16 @@ task or path is about to be used.
   practice lands as an active practice on confirmation, not before.
 - The practice is referenced from `BACKLOG.md`'s engine-contract entry as
   the interim mitigation.
-- **Completion is open at landing.** V5d is complete only when the next
-  task captured after `local-pings` records, in its own capture or
-  reconstruction doc, whether smoke was run under this practice and what
-  it found — even if the answer is "passed cleanly." Landing records an
-  active, confirmed practice, not completion.
+- **Completion at landing.** V5d is complete when the maintainer confirms
+  this spec and the practice lands — not when the next task captured after
+  `local-pings` runs its smoke. Waiting for the next capture would keep
+  the phase open indefinitely and could encourage capturing a task merely
+  to close it. The next task captured after `local-pings` **must** follow
+  this practice — its capture or reconstruction doc records whether smoke
+  ran under it and what it found, even when the answer is "passed
+  cleanly." A captured task that reaches a budgeted real-model run
+  without its smoke, or a smoke that passes while concealing a defect,
+  **reopens V5d**.
 
 ## Evidence and recomputation
 
