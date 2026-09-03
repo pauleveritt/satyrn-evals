@@ -169,5 +169,5 @@ Rules (2026-09-01, "Offline grading"): runs only after `terminate_and_reap`/grac
 **Files:** Modify `src/satyrn_evals/cli.py`; test `tests/test_cli.py` (default tier, monkeypatched `run_session`) + `tests/integration/test_session_cli.py`.
 
 - [ ] **Step 1: Failing tests** — `session TASK -- anything` usage refusal (no `--`) → exit 2, nothing written; monkeypatched `run_session` returning `code=COMPLETE` → exit **0**; `SCOPE_VIOLATION` → still 0 (safely captured and graded); `GRADE_UNAVAILABLE`/`WORKSPACE_FAILED`/`CLEANUP_FAILED` → 3. Flags: `--tasks-root --output --start-timeout --step-timeout --close-timeout`.
-- [ ] **Step 2: Run** — FAIL. **Step 3: Implement** — mirror the `attempt`/`run` dispatch (`cli.py:64-93`), one `match` over `SessionCode` for the coarse status. **Step 4: Run** — PASS. **Step 5: Commit** `feat: session CLI`.
+- [x] **Step 2: Run** — FAIL. **Step 3: Implement** — mirror the `attempt`/`run` dispatch (`cli.py:64-93`), one `match` over `SessionCode` for the coarse status. **Step 4: Run** — PASS. **Step 5: Commit** `feat: session CLI`.
 - [ ] **Step 6: Coverage gate** — `uv run pytest -m '' --cov=src/satyrn_evals --cov-branch --cov-fail-under=100 -q` and `uv run pytest tests/integration -m integration -q`; commit residue `chore: plan-2 gates`.
