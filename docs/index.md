@@ -106,9 +106,9 @@ One phase at a time, each shipping one user-visible behavior:
   applies to, and index every probed task by its band per arm. *Complete.*
 - **V5b — The diagnostic loop.** `run --n 8` repeats an attempt for one
   task and writes a counts-only summary. *Complete.*
-- **V5c — Capture the admitted suite.** Captured `local-pings` as the first
-  bundled task; retained as a fixture, de-admitted as a diagnostic workload
-  after the 2026-09-03 re-probe. *Complete.*
+- **V5c — Capture the admitted suite.** Captured `local-pings` as a bundled
+  task; retained as a fixture, de-admitted as a diagnostic workload after
+  the 2026-09-03 re-probe. *Complete.*
 - **V6–V8.** Session eval; task visibility and leak detection; AgentClinic
   reproduced through this repository's own path. See `ROADMAP.md`.
 

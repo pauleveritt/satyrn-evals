@@ -40,8 +40,12 @@ transcript sample becomes available.
 **`stringified-annotations` capture** (V5c, 2026-09-03). Deferred from V5c,
 which captures `local-pings` only: its Engine arm is pinned at ceiling (6/6,
 `docs/superpowers/specs/2026-09-02-v5a-admission-rule-design.md:78`), so it
-buys regression detection rather than headroom. **Reopens once the
-diagnostic loop has run on `local-pings`** (the V5c spec's Out of scope).
+buys regression detection rather than headroom. **Reopened for proposal
+(2026-09-03): the stated trigger — the diagnostic loop has run on
+`local-pings` — has occurred** (the re-probe ran V5b's `run` at n=8 on both
+arms; `2026-09-03-local-pings-reprobe-protocol.md`). Reopened means the
+capture may now be proposed as next work; it is not captured, not
+admitted, and not selected.
 
 **`local-pings` oracle improvement — drop `_svc_type`.** The corrected
 probe's preservation test identifies registry pings through the private
@@ -134,10 +138,13 @@ both middle-band, so no compared pair occupies different bands
 (`docs/superpowers/specs/2026-09-02-v5a-admission-rule-design.md` caveat;
 [de-admission record](docs/superpowers/research/2026-09-03-local-pings-deadmission.md)).
 The task remains a valid bundled grader/smoke/regression fixture.
-**Reopens with a newly preregistered qualifying probe** that records at
-least one compared pair in different bands on the captured N=6/five-ID
-task — higher n, a materially revised task/adversary, or a canonical new
-arm; the completed n=8 cells are not extended or reinterpreted.
+**Reopens with a newly preregistered qualifying probe** on the unchanged
+captured N=6/five-ID task that records at least one compared pair in
+different bands; simply increasing n was set aside as a
+tune-until-separated risk. A materially revised task or adversary is a
+separate track — a new admission candidate requiring its own capture and
+fresh qualification, not a re-scoring of this task. The completed n=8
+cells are not extended or reinterpreted.
 
 **Historical Envelope artifact recovery** (2026-09-03). The canonical
 `read,write` Envelope is unrecoverable on this machine: the pinned
@@ -146,7 +153,9 @@ copies hash `0448af10…`, the pilot's extension — and the era's Pi version,
 adapter, and artifact harvesting were never recorded (`local-ai-pi`
 `workloads/svcs/cells/gemma12b-envelope.toml`; the reconstruction-stop
 evidence is in the de-admission record). Optional research, not a blocker.
-**Reopens when the `b7455133` artifact (or an equivalent recorded
-configuration) is on this machine and the maintainer wants a faithful
-reproduction** — any Envelope assembled with current Pi, a new adapter, or
-a selected prompt is a new prospective arm, not a reproduction.
+**Reopens when the full recorded configuration is recoverable — the
+`b7455133` extension *and* the era's Pi version, prompt, adapter, and
+artifact-harvesting provenance — and the maintainer wants a faithful
+reproduction.** Until then, any Envelope assembled with current Pi, a new
+adapter, or a selected prompt is a new prospective arm, not a
+reproduction.

@@ -204,11 +204,15 @@ carry forward.
 > task; the N=2/four-test evidence it was built on is preserved as
 > history and does not govern the captured task. `local-pings` remains a
 > valid bundled grader/smoke/regression fixture; no recorded cell is
-> rerun or reinterpreted. Re-admission requires a newly preregistered
-> qualifying probe. Recovering the historical Envelope artifact is
-> optional research, backlogged — and any Envelope assembled with current
-> Pi, a new adapter, or a selected prompt is a **new prospective arm, not
-> a reproduction**.
+> rerun or reinterpreted. Re-admission of the unchanged captured task
+> requires a newly preregistered qualifying probe; a materially revised
+> task or adversary is a new admission candidate requiring its own
+> capture and fresh qualification. Recovering the historical Envelope
+> artifact is optional research, backlogged — its reopen condition
+> requires the `b7455133` extension *and* the era's
+> Pi/prompt/adapter/harvesting provenance, not the file alone — and any
+> Envelope assembled with current Pi, a new adapter, or a selected prompt
+> is a **new prospective arm, not a reproduction**.
 
 ### stringified-annotations
 

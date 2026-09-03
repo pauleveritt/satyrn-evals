@@ -31,7 +31,8 @@ so the task does not satisfy V5a's requirement that a compared pair occupy
 different bands and was **de-admitted as a diagnostic workload**
 ([record](docs/superpowers/research/2026-09-03-local-pings-deadmission.md)).
 It remains a valid bundled grader/smoke/regression fixture.
-`stringified-annotations` stays deferred (`BACKLOG.md`).
+`stringified-annotations` capture is **reopened for proposal** — its
+trigger, the local-pings diagnostic run, has occurred (`BACKLOG.md`).
 
 ## Concept budget
 

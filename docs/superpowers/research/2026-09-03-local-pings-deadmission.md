@@ -29,17 +29,26 @@ stand as recorded.
 - The obsolete N=2/four-test admission evidence remains preserved
   historically but does not govern the captured N=6/five-ID task.
 - No existing cells are rerun or reinterpreted.
-- Re-admission requires a newly preregistered qualifying probe.
+- Re-admission of the *unchanged* captured task requires a newly
+  preregistered qualifying probe; simply increasing n was set aside as a
+  tune-until-separated risk.
+- A *materially revised* task or adversary is not re-admission of this
+  task: it is a **new admission candidate** requiring its own capture and
+  fresh qualification.
 - Recovering the historical Envelope artifact is optional research, not a
-  V5c blocker (backlogged with a precise reopen condition).
+  V5c blocker (backlogged with a precise reopen condition that requires
+  the `b7455133` extension *and* the era's Pi/prompt/adapter/harvesting
+  provenance — the file alone is insufficient).
 - Any Envelope assembled with current Pi, a new adapter, or a selected
   prompt must be described as a **new prospective arm, not a
   reproduction**.
 
 ## Why the Envelope re-earn path stopped
 
-The only recorded avenue to *re-earn* admission without a revised task was
-a canonical Envelope arm. Its definition was located in the seed
+The cleanest attempted route to *re-earn* admission was a canonical
+Envelope arm; higher-n and new prospective-arm routes remain open, and a
+materially revised task or adversary is a separate new-candidate track.
+Its definition was located in the seed
 repository (`local-ai-pi`): `workloads/svcs/cells/gemma12b-envelope.toml`
 pins model `omlx/gemma-4-12B-it-MLX-8bit`, `tools = "read,write"`,
 `extensions = "envelope-cap.ts"` at
