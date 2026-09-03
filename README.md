@@ -115,15 +115,19 @@ Phases completed, each with its design spec (and, for the code phases, an implem
   upstream local-ping tests plus the two-order curator preservation
   parametrization), known-good and known-broken fixtures, engine contract —
   whose qualification gate was re-recorded at an N=6 fixture with a canary
-  after the recorded N=2 adversary proved machine-dependent. The V5b loop
-  now has a real admitted target on this machine.
+  after the recorded N=2 adversary proved machine-dependent. `local-pings`
+  is retained as a bundled grader/smoke/regression fixture; the
+  captured-task re-probe (Baseline 3/8, Engine 4/8, both middle) led the
+  maintainer to **de-admit it as a diagnostic workload** on 2026-09-03
+  ([record](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/research/2026-09-03-local-pings-deadmission.md)).
   ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-09-02-v5c-capture-admitted-suite-design.md))
 - **V5a — The admission rule.** A documentation phase: it decided that the
   middle-band bar applies to the arms under comparison, and indexed every
   probed task with its band per arm — `local-pings` and
-  `stringified-annotations` admitted, `magicmock-factory` unadmitted on an
-  evidence gap, the multi-prompt `svcs` session deferred to V6. No command
-  or test changed.
+  `stringified-annotations` admitted (the `local-pings` admission was later
+  superseded for the captured task by the 2026-09-03 de-admission),
+  `magicmock-factory` unadmitted on an evidence gap, the multi-prompt `svcs`
+  session deferred to V6. No command or test changed.
   ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-09-02-v5a-admission-rule-design.md))
 - **V4 — A real engine attempt.** Evals reconstructs an isolated Git
   workspace from the task base and runs `satyrn-engine attempt` through the
@@ -147,9 +151,11 @@ Phases completed, each with its design spec (and, for the code phases, an implem
   [_plan_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/plans/2026-08-16-v1-grade.md))
 
 V5b — `run --n 8` over the tasks V5a admitted (`local-pings`,
-`stringified-annotations`) — shipped the diagnostic loop; `local-pings` is
-now captured (V5c), so the loop has a target, and running it is next. V6 —
-session eval — is proposed. A suite with headroom remains design work owed
+`stringified-annotations`) — shipped the diagnostic loop, which executed
+its first real arms in the 2026-09-03 `local-pings` re-probe; `local-pings`
+is captured (V5c) and retained as a fixture but de-admitted as a
+diagnostic workload. V6 — session eval — is proposed. A suite with
+headroom remains design work owed
 (`BRIEF.md`'s "The unsolved problem"). The roadmap of feature cycles lives in
 [`ROADMAP.md`](ROADMAP.md). The `e1` git tag holds the
 scaffolded starting state — toolchain, docs stack, CI, the brief, the

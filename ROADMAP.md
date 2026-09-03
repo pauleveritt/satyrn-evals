@@ -23,9 +23,15 @@ the set-order catch is a discrete function of hash stride versus table
 geometry and allocation phase, not a stateable probability — so the fixture
 scales to six registry services and the gate carries a canary with a third
 outcome (inconclusive) that stops capture rather than silently passing.
-V5b's `run --n 8` now has a real admitted target on this machine; running
-the loop is the next step, not this phase's. `stringified-annotations`
-stays deferred (`BACKLOG.md`); no model ran in this phase.
+**Close-out (2026-09-03).** The captured-task re-probe ran V5b's `run` at
+n=8 on the Baseline (bare Pi) and Engine arms and recorded both arms
+middle — Baseline 3/8, Engine 4/8
+([results](docs/superpowers/research/2026-09-03-local-pings-reprobe-protocol.md)) —
+so the task does not satisfy V5a's requirement that a compared pair occupy
+different bands and was **de-admitted as a diagnostic workload**
+([record](docs/superpowers/research/2026-09-03-local-pings-deadmission.md)).
+It remains a valid bundled grader/smoke/regression fixture.
+`stringified-annotations` stays deferred (`BACKLOG.md`).
 
 ## Concept budget
 
@@ -110,8 +116,14 @@ when the roadmap outgrows the front page.
   allocation phase; the object-set substitution was dropped, and the gate
   gained a canary whose third outcome (inconclusive) stops capture. The
   `local-pings` admission numbers are recorded as unearned pending a
-  re-probe against the captured task. Spec amendment, reconstruction
-  correction, and research record under `docs/superpowers/`.
+  re-probe against the captured task. The re-probe (2026-09-03) then
+  recorded both arms middle (Baseline 3/8, Engine 4/8), and the maintainer
+  **de-admitted `local-pings` as a diagnostic workload**, retaining it as a
+  bundled grader/smoke/regression fixture
+  ([record](docs/superpowers/research/2026-09-03-local-pings-deadmission.md);
+  the re-probe results carry the numbers). Spec amendment, reconstruction
+  correction, research record, and de-admission record under
+  `docs/superpowers/`.
 - **V5b — The diagnostic loop (2026-09-02).** `run TASK --n 8 -- COMMAND...`
   repeats the attempt seam and writes a counts-only `summary.json` — verdict
   reasons (`code_counts`/`verdict_counts`), timeouts, and the outcome tally.
@@ -137,8 +149,10 @@ when the roadmap outgrows the front page.
   attempts with 2/2 constructible retained quality on `local-pings`; Engine
   2/4 in the follow-up; Engine 6/6 vs Baseline 0/6 in the pilot), so the
   decision admits the two tasks whose recorded arms separate: `local-pings`
-  (Baseline floor / Envelope floor / Engine middle) and
-  `stringified-annotations` (Baseline floor / Envelope floor / Engine
+  (Baseline floor / Envelope floor / Engine middle; **superseded for the
+  captured task by the 2026-09-03 de-admission** —
+  [record](docs/superpowers/research/2026-09-03-local-pings-deadmission.md))
+  and `stringified-annotations` (Baseline floor / Envelope floor / Engine
   ceiling). `magicmock-factory` (Baseline floor, no other arm recorded) is
   unadmitted on an evidence gap; the multi-prompt `svcs` session is deferred
   to V6. `BRIEF.md` and `docs/glossary.md` were amended with the old wording

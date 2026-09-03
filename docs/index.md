@@ -24,7 +24,8 @@ Phases completed, each with its design spec and implementation plan:
 
 - **V5c — Capture the admitted suite.** `local-pings` is now a bundled
   task, with known-good and known-broken fixtures and a faithful
-  qualification gate.
+  qualification gate; retained as a grader/smoke/regression fixture but
+  de-admitted as a diagnostic workload (2026-09-03).
 - **V5b — The diagnostic loop.** `run TASK --n 8 -- COMMAND...` repeats an
   attempt command for one task and writes a counts-only
   `summary.json`.
@@ -106,7 +107,8 @@ One phase at a time, each shipping one user-visible behavior:
 - **V5b — The diagnostic loop.** `run --n 8` repeats an attempt for one
   task and writes a counts-only summary. *Complete.*
 - **V5c — Capture the admitted suite.** Captured `local-pings` as the first
-  bundled task. *Complete.*
+  bundled task; retained as a fixture, de-admitted as a diagnostic workload
+  after the 2026-09-03 re-probe. *Complete.*
 - **V6–V8.** Session eval; task visibility and leak detection; AgentClinic
   reproduced through this repository's own path. See `ROADMAP.md`.
 

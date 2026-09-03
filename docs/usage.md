@@ -308,6 +308,10 @@ $ satyrn-evals run local-pings --n 8 --timeout 900 --output runs/engine -- \
     /src/satyrn-engine/.venv/bin/satyrn-engine attempt
 ```
 
+The example uses `local-pings` — a bundled fixture task currently
+de-admitted as a diagnostic workload (2026-09-03). `run` does not enforce
+admission, so the example stands for smoke or regression use.
+
 Transcript-derived telemetry such as tool calls, repeat, churn, and context
 is not yet included: it requires an engine-side emitter so evals does not
 parse the engine's private transcript format.
