@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "outcome": "captured",
+  "code": "OK",
+  "message": "task captured",
+  "repo": "/Users/pauleveritt/projects/pauleveritt/satyrn-v5c-scratch/pair",
+  "base_sha": "71f5f5cfce89b5a14591b84997206c755e173308",
+  "fix_sha": "96341faa0d757d0631cffd8e1ff85b28f186d33d",
+  "task_dir": "/Users/pauleveritt/projects/pauleveritt/satyrn-evals/.worktrees/v5c-capture-admitted-suite/src/satyrn_evals/tasks/local-pings",
+  "oracle": [
+    "python",
+    "-m",
+    "pytest",
+    "-p",
+    "satyrn_evals.oracle_hook",
+    "tests/test_container.py::TestServicePing::test_local_pings_are_retrieved",
+    "tests/test_container.py::TestServicePing::test_local_pings_override_global_pings",
+    "tests/test_container.py::TestServicePing::test_local_services_without_pings_discard_global_pings",
+    "tests/test_eval_preservation.py::test_local_ping_keeps_registry_ping_order[order0]",
+    "tests/test_eval_preservation.py::test_local_ping_keeps_registry_ping_order[order1]"
+  ],
+  "expected_test_ids": [
+    "tests/test_container.py::TestServicePing::test_local_pings_are_retrieved",
+    "tests/test_container.py::TestServicePing::test_local_pings_override_global_pings",
+    "tests/test_container.py::TestServicePing::test_local_services_without_pings_discard_global_pings",
+    "tests/test_eval_preservation.py::test_local_ping_keeps_registry_ping_order[order0]",
+    "tests/test_eval_preservation.py::test_local_ping_keeps_registry_ping_order[order1]"
+  ],
+  "check_outcomes": {
+    "source_preflight": "passed",
+    "base_oracle": "passed",
+    "un_done_at_base": "passed",
+    "winnable": "passed"
+  }
+}
