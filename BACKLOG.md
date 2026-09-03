@@ -127,3 +127,26 @@ parser, does nothing, and exits 0 — it cost one confused capture run (reported
 "captured", wrote nothing). The console script `satyrn-evals` is the supported
 entry. **Reopens when module invocation should either work or fail loudly** —
 the fix is a two-line guard plus a tripwire test asserting `python -m` runs.
+
+**`local-pings` re-admission** (2026-09-03). De-admitted as a diagnostic
+workload: the captured-task re-probe recorded Baseline 3/8 and Engine 4/8,
+both middle-band, so no compared pair occupies different bands
+(`docs/superpowers/specs/2026-09-02-v5a-admission-rule-design.md` caveat;
+[de-admission record](docs/superpowers/research/2026-09-03-local-pings-deadmission.md)).
+The task remains a valid bundled grader/smoke/regression fixture.
+**Reopens with a newly preregistered qualifying probe** that records at
+least one compared pair in different bands on the captured N=6/five-ID
+task — higher n, a materially revised task/adversary, or a canonical new
+arm; the completed n=8 cells are not extended or reinterpreted.
+
+**Historical Envelope artifact recovery** (2026-09-03). The canonical
+`read,write` Envelope is unrecoverable on this machine: the pinned
+`envelope-cap.ts` (`b7455133…`) exists in no revision here — all seven
+copies hash `0448af10…`, the pilot's extension — and the era's Pi version,
+adapter, and artifact harvesting were never recorded (`local-ai-pi`
+`workloads/svcs/cells/gemma12b-envelope.toml`; the reconstruction-stop
+evidence is in the de-admission record). Optional research, not a blocker.
+**Reopens when the `b7455133` artifact (or an equivalent recorded
+configuration) is on this machine and the maintainer wants a faithful
+reproduction** — any Envelope assembled with current Pi, a new adapter, or
+a selected prompt is a new prospective arm, not a reproduction.
