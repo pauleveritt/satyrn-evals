@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "steps": [
+    {
+      "id": "add-a",
+      "kind": "feature",
+      "prompt": "Add feature_a returning 'a'.",
+      "new_feature_selectors": ["test_hidden.py::test_a"]
+    },
+    {
+      "id": "add-b",
+      "kind": "feature",
+      "prompt": "Add feature_b returning 'b'.",
+      "new_feature_selectors": ["test_hidden.py::test_b"]
+    },
+    {
+      "id": "review",
+      "kind": "review",
+      "prompt": "Review and run the public suite.",
+      "new_feature_selectors": []
+    }
+  ],
+  "base_preservation_selectors": ["test_solution.py::test_existing_preserved"]
+}

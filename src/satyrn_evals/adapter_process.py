@@ -128,5 +128,13 @@ class AdapterProcess:
                 )
             time.sleep(0.01)
 
+    def wait(self, timeout: float) -> int | None:
+        """Reap the adapter; None if it did not exit within the timeout."""
+        try:
+            self._proc.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            return None
+        return self._proc.returncode
+
     def returncode(self) -> int | None:
         return self._proc.returncode

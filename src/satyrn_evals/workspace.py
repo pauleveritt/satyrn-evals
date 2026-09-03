@@ -17,6 +17,8 @@ import subprocess
 import tempfile
 import time
 from collections.abc import Iterable, Mapping, Sequence
+
+from satyrn_evals.errors import SatyrnError
 from dataclasses import dataclass
 from enum import Enum, StrEnum, auto
 from pathlib import Path
@@ -1035,3 +1037,77 @@ def run_workspace(
     if pending is None:
         raise AssertionError("workspace produced no result")
     return pending
+
+
+class WorkspaceReleaseError(SatyrnError):
+    """Exit 3: the session workspace could not be confirmed cleaned up."""
+
+    def __init__(self, message: str, retained_path: str | None = None) -> None:
+        super().__init__(message)
+        self.retained_path = retained_path
+
+
+@dataclass(frozen=True, slots=True)
+class SessionWorkspace:
+    """A prepared detached worktree the session executor drives directly.
+
+    Shares the V4 lifecycle's state machine (``_prepare_repository``,
+    ``_cleanup_worktree``) instead of forking it: the executor starts the
+    adapter once in ``worktree``, snapshots checkpoints, then releases.
+    """
+
+    parent: Path
+    repository: Path
+    worktree: Path
+    base_sha: str
+    _state: _WorkspaceState
+    _environment: dict[str, str]
+
+
+def prepare_session_workspace(
+    *,
+    base: Path,
+    protected_paths: Sequence[Path],
+) -> SessionWorkspace:
+    """Reconstruct the synthetic repository and detached worktree for a session."""
+    environment = dict(os.environ)
+    routing_names = _local_env_vars(environment)
+    git_environment = clean_environment(environment, routing_names)
+    requested_protected = (base, *protected_paths)
+    git_protected = _git_protected_paths(requested_protected, git_environment)
+    parent = _safe_temp_parent((*requested_protected, *git_protected))
+    state = _WorkspaceState(
+        parent=parent,
+        repository=parent / "repo",
+        worktree=parent / "worktree",
+    )
+    _prepare_repository(base, state, git_environment)
+    assert state.base_sha is not None
+    return SessionWorkspace(
+        parent=parent,
+        repository=state.repository,
+        worktree=state.worktree,
+        base_sha=state.base_sha,
+        _state=state,
+        _environment=git_environment,
+    )
+
+
+def release_session_workspace(workspace: SessionWorkspace) -> None:
+    """Clean the worktree and remove the parent; refuse an unconfirmed release."""
+    state = workspace._state
+    try:
+        _cleanup_worktree(state, workspace._environment)
+    except _CleanupError as exc:
+        raise WorkspaceReleaseError(
+            f"session worktree cleanup is unconfirmed: {exc}",
+            os.fspath(state.parent),
+        ) from exc
+    if state.process_cleanup_safe and state.registration is Registration.ABSENT:
+        try:
+            shutil.rmtree(state.parent)
+        except OSError as exc:
+            raise WorkspaceReleaseError(
+                f"cannot remove session workspace parent {state.parent}: {exc}",
+                os.fspath(state.parent),
+            ) from exc

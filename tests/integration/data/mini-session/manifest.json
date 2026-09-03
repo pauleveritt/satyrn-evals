@@ -1,0 +1,12 @@
+{
+  "name": "mini-session",
+  "contract": "Add feature_a and feature_b across a session, then review.",
+  "oracle": ["python", "-m", "pytest", "-p", "satyrn_evals.oracle_hook"],
+  "expected_test_ids": ["test_solution.py::test_existing_preserved"],
+  "source_paths": ["solution.py"],
+  "fixtures": {
+    "known_good": "fixtures/known-good.patch",
+    "known_broken": "fixtures/known-broken.patch"
+  },
+  "grader_overlay": "grader/overlay"
+}
