@@ -262,6 +262,6 @@ Parser refusals: malformed JSON; unknown `version`; unknown `type`; `session_sta
 
 ### Task 7: Coverage and lint gate
 
-- [ ] Run `uv run pytest -m '' --cov=src/satyrn_evals --cov-branch --cov-fail-under=100 -q` — Expected: PASS (100%).
-- [ ] Run `uv run ruff check .` — Expected: clean.
-- [ ] Commit any residue: `chore: plan-1 coverage gate`.
+- [x] Run `uv run pytest -m '' --cov=src/satyrn_evals --cov-branch --cov-fail-under=100 -q` — Expected: PASS (100%).
+- [x] Run `uv run ruff check .` — Expected: clean.
+- [x] Commit any residue: `chore: plan-1 coverage gate`.
