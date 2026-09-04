@@ -14,6 +14,37 @@ task → attempt → saved patch + transcript → offline grade → receipt or s
 You do not need a model, GPU, or the project's research history to begin.
 Start with a bundled change and see the result for yourself.
 
+## See one result
+
+Grading a bundled change records a receipt. The receipt — not the command's
+exit status — is the result:
+
+```json
+{
+  "task": "format_number",
+  "patch_digest": "251a3d81e289f932d69bb1d93116fda757f47b9dcbdb11e9bc68aab7dd687ebc",
+  "verdict": "pass",
+  "reason": "",
+  "evidence": {
+    "executed_test_ids": ["test_solution.py::test_large", "test_solution.py::test_negative", "test_solution.py::test_small", "test_solution.py::test_zero"],
+    "outcomes": {"test_solution.py::test_small": "passed", "test_solution.py::test_large": "passed", "test_solution.py::test_negative": "passed", "test_solution.py::test_zero": "passed"},
+    "counts": {"passed": 4, "failed": 0, "error": 0, "skipped": 0}
+  }
+}
+```
+
+Reproduce it from a checkout:
+
+```console
+$ RESULT_DIR="$(mktemp -d)"
+$ uv run satyrn-evals grade format_number \
+    src/satyrn_evals/tasks/format_number/fixtures/known-good.patch \
+    --receipt "$RESULT_DIR/receipt.json"
+$ uv run python -c 'import json, sys; print(json.load(open(sys.argv[1]))["verdict"])' \
+    "$RESULT_DIR/receipt.json"
+pass
+```
+
 - New here? [See one verdict](tutorials/see-one-verdict.md) in a few minutes.
 - Ready to use an engine? [Evaluate one attempt](guides/evaluate-an-attempt.md).
 

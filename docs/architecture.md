@@ -63,12 +63,14 @@ The defense is structural, not behavioral:
 
 | Module | Responsibility |
 |--------|----------------|
-| `cli.py` | argparse, `grade`, `capture`, and `attempt` commands, exit-code mapping |
+| `cli.py` | argparse, the `grade`, `capture`, `attempt`, and `run` commands, exit-code mapping |
 | `grade.py` | orchestration: materialize, apply, run oracle, write receipt |
 | `capture.py` | orchestration: pin, preflight, derive, worktree, materialize, verify, cleanup, record |
 | `capture_record.py` | the durable capture artifact (E3-shaped JSON) |
 | `attempt.py` | orchestration: invoke the workspace, preserve, refuse, grade, record |
 | `attempt_record.py` | the durable attempt artifact (E3-shaped JSON) |
+| `run.py` | orchestration: repeat the attempt seam `n` times, then write the counts-only summary |
+| `summary.py` | the durable run artifact: `summary.json` computed from attempt records |
 | `workspace.py` | reconstruct a private Git repository; own detached-worktree, process, and cleanup lifecycles |
 | `diff_filter.py` | parse NUL-safe Git change metadata; classify both rename paths with the test-path rule |
 | `discriminating.py` | the {term}`discriminating set` and the recorded oracle |

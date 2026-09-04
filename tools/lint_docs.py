@@ -40,6 +40,11 @@ DIRECTION_CAP = 900
 STATUS_CAP = 1_000
 BACKLOG_ENTRY_CAP = 1_200
 
+# Live documents only. `docs/superpowers/research/` is the preserved record —
+# the same reasoning as GRANDFATHERED, taken one step further: a whitespace
+# check that fails forever on committed history is a check that gets deleted.
+WHITESPACE_SKIP_PARTS = frozenset({"_build", ".venv", "node_modules", "research"})
+
 
 @dataclass(frozen=True, slots=True)
 class Report:
@@ -121,6 +126,33 @@ def _backlog_entries(text: str) -> list[tuple[str, str]]:
     return entries
 
 
+def _whitespace_failures(root: Path) -> list[Failure]:
+    """Trailing whitespace and blank lines at EOF in live documents.
+
+    Added by the D1 amendment (2026-09-04): the D1 design and plan were
+    committed with a trailing blank line each because `git diff --check` was
+    run on the working tree rather than the branch range. The cap checker is
+    the always-running half; this closes the same gap for whitespace.
+    """
+    failures: list[Failure] = []
+    paths = sorted(
+        {*root.glob("*.md"), *root.glob("docs/*.md"), *root.glob("docs/**/*.md")}
+    )
+    for path in paths:
+        if not path.is_file():
+            continue
+        if any(part in WHITESPACE_SKIP_PARTS for part in path.parts):
+            continue
+        rel = path.relative_to(root).as_posix()
+        lines = path.read_text().splitlines()
+        for lineno, line in enumerate(lines, 1):
+            if line != line.rstrip():
+                failures.append(f"{rel}:{lineno}: trailing whitespace")
+        if lines and lines[-1] == "":
+            failures.append(f"{rel}: blank line at EOF")
+    return failures
+
+
 def check(root: Path = ROOT) -> Report:
     failures: list[Failure] = []
 
@@ -139,6 +171,8 @@ def check(root: Path = ROOT) -> Report:
             n = len(path.read_text().splitlines())
             if n > cap:
                 failures.append(f"{path.relative_to(root)}: {n} lines > {cap}")
+
+    failures.extend(_whitespace_failures(root))
 
     roadmap = root / "ROADMAP.md"
     if roadmap.exists():

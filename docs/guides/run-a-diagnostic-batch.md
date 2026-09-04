@@ -6,13 +6,17 @@ counts-only summary.
 
 Before a budgeted diagnostic run on a materially distinct command, adapter, or
 runtime path, perform one uncounted real-model smoke attempt and read its
-attempt record. This confirms that the path starts the model and produces the
-artifacts you expect.
+attempt record — and the receipt, when grading ran. The smoke confirms that
+the path starts the model. `NO_PATCH` and `COMMAND_TIMEOUT` may still pass the
+smoke, but only on positive evidence the model started; a silent path is a
+failed smoke.
 
 ## Run the batch
 
+Run from your Evals checkout; add `--tasks-root tasks` for a captured task.
+
 ```console
-$ satyrn-evals run TASK_NAME --n 8 --output runs/engine -- \
+$ uv run satyrn-evals run TASK_NAME --n 8 --output runs/engine -- \
     /absolute/path/to/attempt-command ARGUMENTS
 ```
 
@@ -32,6 +36,8 @@ The bundled `local-pings` task is retained for grading, smoke, and regression
 use, but was de-admitted as a diagnostic workload. Do not use it as evidence
 that an engine change helped without a newly qualifying probe.
 
-For the full `run` interface, see the [`run` reference](../usage.md#run). For
-the distinction between a valid task and a diagnostic workload, see
+For the full `run` interface, see the [`run` reference](../usage.md#run);
+`summary.json`'s fields are documented in [task and artifact
+formats](../reference/formats.md#run-summary). For the distinction between a
+valid task and a diagnostic workload, see
 [the explanatory topic](../topics/tasks-and-diagnostic-workloads.md).

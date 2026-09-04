@@ -7,5 +7,6 @@ work; for a guided first experience, start with [the tutorial](../tutorials/see-
 :maxdepth: 1
 
 ../usage
+formats
 ../glossary
 ```

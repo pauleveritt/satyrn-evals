@@ -192,9 +192,9 @@ smoke
   {term}`admission` refuses it.
 
 task
-  A bundled development task: {term}`manifest`, base state, and
-  known-good / known-broken fixture patches. Selected under the
-  {term}`grader fixture` rule.
+  A bundled development task: {term}`manifest`, base state, and a known-good
+  fixture patch — a known-broken fixture patch when the task ships one.
+  Selected under the {term}`grader fixture` rule.
 
 tripwire
   The audit hook in the test root that raises on any subprocess spawn

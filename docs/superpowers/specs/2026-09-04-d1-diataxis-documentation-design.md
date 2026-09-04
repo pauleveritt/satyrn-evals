@@ -140,3 +140,56 @@ the command exit status, is the result.
 | V6 session eval | Evals V6 | proposed | Clearly label it as planned; leave it out of operational guides. | A shipped, stable CLI and artifacts. |
 | Engine telemetry across the seam | satyrn-engine | deferred | Document the current counts-only `run` summary and its limits. | Engine-published telemetry for tool-call/repeat/churn/context guidance. |
 
+## Amendment (2026-09-04, reopened)
+
+A deep review found D1 directionally strong but not honestly complete; the
+maintainer reopened the phase rather than opening a corrections phase. Every
+finding below was verified against this branch before amending. Root cause of
+findings 2 and 8: the plan's verification step ran `git diff --check` on the
+working tree only, not the `main...HEAD` range — the unscoped check is itself
+part of the defect, and the plan is corrected in place.
+
+1. The promised "Task and artifact formats" reference was never added;
+   Reference held only the CLI and the glossary (this spec's Information
+   architecture vs `docs/reference/index.md`). Added as
+   `docs/reference/formats.md` — the single home for the task directory,
+   manifest fields, receipt, capture record, attempt directory and record,
+   and run summary; `usage.md` keeps flags, exit codes, and examples and
+   links to it.
+2. The guides did not compose from a clean checkout: the tutorial ran
+   `uv run satyrn-evals` (`docs/tutorials/see-one-verdict.md:28`) while the
+   guides ran bare `satyrn-evals` (`docs/guides/capture-a-task.md:16`,
+   `docs/guides/evaluate-an-attempt.md:24`,
+   `docs/guides/run-a-diagnostic-batch.md:15`), and the capture→attempt
+   handoff dropped `--tasks-root`. Guides now run `uv run` from the checkout
+   and carry `--tasks-root` through capture → attempt → run.
+3. The capture guide named `capture.json`
+   (`docs/guides/capture-a-task.md:20`); capture writes
+   `<name>.capture.json` (`src/satyrn_evals/capture.py:426`).
+4. The attempt guide described refusals as artifact-incompleteness only
+   (`docs/guides/evaluate-an-attempt.md:42`); `attempt.py:40-43` also refuses
+   as `WORKSPACE_FAILED`, `COMMAND_TIMEOUT`, and `CLEANUP_FAILED`.
+5. The diagnostic-batch guide claimed a smoke "confirms that the path starts
+   the model and produces the artifacts you expect"
+   (`docs/guides/run-a-diagnostic-batch.md:9`); the V5d spec permits
+   `NO_PATCH`/`COMMAND_TIMEOUT` smoke passes on positive evidence the model
+   started.
+6. `docs/architecture.md`'s module table omitted `run.py` and `summary.py`,
+   and its `cli.py` row omitted `run`.
+7. The glossary's `task` entry implied every task ships both fixtures;
+   capture produces known-good only and `known_broken` is optional
+   (`src/satyrn_evals/manifest.py:96-99`).
+8. Trailing blank lines at EOF in this spec and its plan, found by
+   `git diff --check main...HEAD` — a check the plan's verification step did
+   not scope.
+9. The receipt example (then in `usage.md`, now `docs/reference/formats.md`
+   and the front page) showed two of the task's four executed test IDs and
+   `passed: 2`. Recomputed during this amendment by running the tutorial's
+   grade command: the real receipt executes four IDs and records
+   `passed: 4`. Corrected in both places to the recomputed output.
+
+Beyond the corrections, the reopened scope adds: the concrete suite example
+(the `format_number` receipt) followed by its runnable command on the
+front page, and a trailing-whitespace/EOF check in `tools/lint_docs.py` so
+finding 8's class is caught mechanically in live documents
+(`docs/superpowers/research/` stays exempt as the preserved record).

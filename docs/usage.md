@@ -38,25 +38,9 @@ satyrn-evals grade TASK PATCH [--receipt PATH] [--tasks-root DIR]
 The {term}`verdict` never comes from stdout or the exit code. Read the
 {term}`receipt`.
 
-### The receipt
-
-```json
-{
-  "task": "format_number",
-  "patch_digest": "251a3d81e289f932d69bb1d93116fda757f47b9dcbdb11e9bc68aab7dd687ebc",
-  "verdict": "pass",
-  "reason": "",
-  "evidence": {
-    "executed_test_ids": ["test_solution.py::test_large", "test_solution.py::test_negative"],
-    "outcomes": {"test_solution.py::test_large": "passed", "test_solution.py::test_negative": "passed"},
-    "counts": {"passed": 2, "failed": 0, "error": 0, "skipped": 0}
-  }
-}
-```
-
-`patch_digest` is the sha256 of the {term}`patch` file, so a {term}`receipt`
-names the exact input it graded — re-scoreable without re-running anything.
-`evidence` is the {term}`hook result` verbatim.
+The {term}`receipt`'s fields — and the {term}`hook result` embedded as
+`evidence` — are documented in [task and artifact
+formats](reference/formats.md#receipt).
 
 ### Example
 
@@ -102,34 +86,10 @@ oracle runs, un-done at base, winnable); a failed check refuses with a
 precise `code` in the {term}`capture record`. Exit codes: `0` captured,
 `2` usage error, `3` refusal.
 
-### The capture record
-
-```json
-{
-  "version": 1,
-  "outcome": "captured",
-  "code": "OK",
-  "message": "task captured",
-  "repo": "/src/app",
-  "base_sha": "…",
-  "fix_sha": "…",
-  "task_dir": "tasks/fix-off-by-one",
-  "oracle": ["python", "-m", "pytest", "-p", "satyrn_evals.oracle_hook", "test_solution.py::test_one"],
-  "expected_test_ids": ["test_solution.py::test_one"],
-  "check_outcomes": {
-    "source_preflight": "passed",
-    "base_oracle": "passed",
-    "un_done_at_base": "passed",
-    "winnable": "passed"
-  }
-}
-```
-
-The record is the authoritative result; the exit code is coarse by design.
-A refusal writes the same shape with `outcome: refused` and a precise
-`code` (e.g. `REPO_DIRTY`, `NO_DISCRIMINATING_TESTS`, `ARTIFACT_FAILED`,
-`CLEANUP_FAILED`). An existing task/record is a usage error and is never
-overwritten.
+The {term}`capture record` — `<output>/<name>.capture.json`, its fields, and
+its refusal codes — is documented in [task and artifact
+formats](reference/formats.md#capture-record); the exit code stays coarse by
+design.
 
 Grade a captured task with `--tasks-root`:
 
@@ -200,57 +160,9 @@ sandbox. Windows is outside the V4 proof.
 The {term}`attempt record` and the {term}`receipt` — not the exit code — are
 the result. The exit code is coarse by design.
 
-### The attempt directory
-
-`<output>/<task>-<timestamp>/`, the timestamp UTC with microsecond
-resolution:
-
-```
-patch.diff        # the delivered patch, when the command wrote one
-transcript.txt    # the delivered transcript, when the command wrote one
-receipt.json      # written only when graded
-attempt.json      # always
-```
-
-### The attempt record
-
-```json
-{
-  "version": 1,
-  "outcome": "attempted",
-  "code": "OK",
-  "message": "attempt recorded and graded",
-  "task": "format_number",
-  "command": ["python", "…/tests/integration/fake_attempt.py", "--patch", "…/src/satyrn_evals/tasks/format_number/fixtures/known-good.patch"],
-  "command_exit": 0,
-  "patch_path": "patch.diff",
-  "transcript_path": "transcript.txt",
-  "patch_digest": "251a3d81e289f932d69bb1d93116fda757f47b9dcbdb11e9bc68aab7dd687ebc",
-  "transcript_digest": "68b680be59b044860a88a04d273ef8df0a3482539ba133c8154d2c4880a56c17",
-  "verdict": "pass",
-  "receipt_path": "receipt.json",
-  "workspace_base_sha": "…",
-  "retained_path": null
-}
-```
-
-The record is authoritative; the exit code is coarse. `command_exit` is
-recorded as diagnostic context and never trusted — a command that exits
-nonzero with complete artifacts is still attempted and graded. It is null if
-no normal child exit was observed. `patch_digest`
-is the sha256 of the persisted `patch.diff`, the same value the
-{term}`receipt` records — one source, no drift. A refusal keeps the same
-shape with `outcome: refused`, a precise `code`, `verdict` and
-`receipt_path` null, and `patch_path`/`transcript_path` null for an artifact
-that never existed; artifacts that do exist are persisted even on refusal,
-so the record names exactly what was preserved.
-
-Refusal is a preservation failure; `unavailable` is a grading failure.
-Refusal = the artifacts were incomplete (no patch / invalid patch / no
-transcript / empty transcript) — no {term}`receipt`, nothing complete to
-grade. `unavailable` = the patch was well-formed but couldn't be graded
-(doesn't apply, touches non-allowlisted paths, no trustworthy {term}`hook
-result`) — the receipt names the cause.
+The attempt directory and the {term}`attempt record` — its fields, the
+refusal codes, and the refusal/`unavailable` distinction — are documented in
+[task and artifact formats](reference/formats.md#attempt-directory-and-record).
 
 ### Example
 
@@ -298,11 +210,11 @@ satyrn-evals run TASK [--n N] [--tasks-root DIR] [--output DIR] [--timeout SECON
   and the run's `summary.json`; default `./runs/`.
 
 `run` completes all `n` attempts, including refusals, then writes
-`<output>/summary.json`. Its structured counts are `n`, `attempted`,
-`refused`, `code_counts`, `verdict_counts`, and `timeouts`. The summary is
-the authoritative result: exit code `0` means the loop and summary write
-completed, regardless of individual verdicts or refusals; `2` is a usage
-error and `3` means the loop could not complete.
+`<output>/summary.json` — its fields are documented in [task and artifact
+formats](reference/formats.md#run-summary). The summary is the authoritative
+result: exit code `0` means the loop and summary write completed, regardless
+of individual verdicts or refusals; `2` is a usage error and `3` means the
+loop could not complete.
 
 For example:
 

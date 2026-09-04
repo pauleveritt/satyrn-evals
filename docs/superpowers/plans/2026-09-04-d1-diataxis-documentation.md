@@ -53,7 +53,37 @@
 - Replace the existing two-level toctree with Start Here, Use Evals,
   Understand, Reference, and Development sections.
 - Run `just lint-docs`, `uv run --group docs sphinx-build -W -b html docs
-  docs/_build/html`, and `git diff --check`.
+  docs/_build/html`, and `git diff --check main...HEAD`.
 - Check that the finished roadmap row summarizes the delivered IA and move D1
   to Prior work without changing V6's runtime status.
 
+## Amendment (2026-09-04): reopened for review corrections
+
+The maintainer reopened D1 after a deep review; the design spec's amendment
+records the verified findings. Correction tasks, all docs-side:
+
+1. Add `docs/reference/formats.md` — task directory, manifest fields, receipt,
+   capture record, attempt directory and record, run summary, hook result —
+   as the single home for artifact formats; `usage.md` keeps flags, exit
+   codes, and examples and links to it; Reference's toctree gains the page.
+2. Add the concrete suite example (the `format_number` receipt) followed by
+   its runnable command to the front page. While verifying it, the receipt
+   example was found stale (two of four executed test IDs, `passed: 2`) and
+   corrected to the recomputed output in both the front page and the formats
+   reference — see the spec amendment's finding 9.
+3. Guides: run `uv run satyrn-evals` from the checkout; carry `--tasks-root`
+   through capture → attempt → run; correct `<TASK_NAME>.capture.json`;
+   state the full refusal-code set; restate the smoke rule per V5d.
+4. Architecture: add `run.py` and `summary.py` rows and `run` to the `cli.py`
+   row. Glossary: `task` entry — the known-broken fixture is optional.
+5. Record the amendment in the design spec; set the D1 roadmap row to active
+   and note the amendment under Prior work.
+6. Add a trailing-whitespace/EOF-blank-line check to `tools/lint_docs.py`
+   (with sibling tests in `tests/test_doc_caps.py`); fix the EOF blank lines
+   in this plan and the design spec that the missing check let through.
+7. Step 5's `git diff --check` is corrected above to `git diff --check
+   main...HEAD` — the unscoped check is how the EOF defects landed.
+
+Verification: `just lint-docs`, `just docs` (strict Sphinx),
+`git diff --check main...HEAD`, and a rerun of the tutorial's command
+sequence from a clean checkout.
