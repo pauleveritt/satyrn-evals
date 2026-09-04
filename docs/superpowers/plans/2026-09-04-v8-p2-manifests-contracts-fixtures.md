@@ -19,7 +19,7 @@
 - MIT notice from swiftstar retained per task (`LICENSE`); `PROVENANCE` names commit, state, reconstruction rule, pins.
 - Contracts never contain any string in the overlay-declared set (`overlay`, `test_acceptance.py`, `overlay/test_acceptance.py`) — `manifest.py:111-127` refuses them.
 
-### Task 3: Projects, public tests, overlays, licenses, provenance (per task)
+### Task 1: Projects, public tests, overlays, licenses, provenance (per task)
 
 **Explicit design decision (recorded; do not treat as routine).** Vendoring
 `reference/tests/test_app.py` as public tests in each `base/`, and including
@@ -35,7 +35,7 @@ contamination subtraction lands before P4's gate runs.
 
 **Files:** per state: `base/pyproject.toml`, `base/uv.lock`, `base/tests/test_app.py`, `overlay/test_acceptance.py`, `LICENSE`, `PROVENANCE`.
 
-**Interfaces:** Produces the task dirs Task 4's manifests reference; `base/pyproject.toml` is what P2's `has_locked_project` detects.
+**Interfaces:** Produces the task dirs Task 2's manifests reference; `base/pyproject.toml` is what P3's `has_locked_project` detects.
 
 - [ ] **Step 1: Author the shared `base/pyproject.toml` (name per state)**
 
@@ -57,7 +57,7 @@ dev = ["pytest==8.3.4"]
 
 - [ ] **Step 2: Lock each project** — per state: `cd src/satyrn_evals/tasks/agentclinic-repair-<state>/base && uv lock`; Expected: `uv.lock` resolved with fastapi 0.115.10 and the dev group. Commit the six locks.
 
-- [ ] **Step 2b: Project-inventory test (sibling to Task 1's app-tree inventory)**
+- [ ] **Step 2b: Project-inventory test (sibling to Plan 1 Task 1's app-tree inventory)**
 
 Extend `tests/test_agentclinic_reconstruction.py`:
 
@@ -84,7 +84,7 @@ for s in depth-2 depth-3 framing-2 framing-2-edit misleading-locus plausible-wro
 done
 ```
 
-(The public tests already landed in `base/tests/` via Task 1's `REF_FILES`; the copy here is the idempotent source-of-truth step.)
+(The public tests already landed in `base/tests/` via Plan 1 Task 1's `REF_FILES`; the copy here is the idempotent source-of-truth step.)
 
 - [ ] **Step 4: Verify overlays are byte-identical** — `sha256sum src/satyrn_evals/tasks/agentclinic-repair-{depth-2,framing-2,misleading-locus}/overlay/test_acceptance.py`; Expected: identical hashes across all six (spec §2's six self-contained copies).
 
@@ -92,7 +92,7 @@ done
 
 - [ ] **Step 6: Commit** — `git add src/satyrn_evals/tasks/agentclinic-repair-*` then `git commit -m "feat: agentclinic bases gain projects, public tests, overlays, provenance"`.
 
-### Task 4: Six hidden manifests with failure-digest contracts
+### Task 2: Six hidden manifests with failure-digest contracts
 
 **Files:** create `manifest.json` per state. **Interfaces:** consumed by P4's gate; must satisfy `load_manifest` incl. `_assert_contract_names_no_overlay`.
 
@@ -197,9 +197,9 @@ def test_manifest_whose_contract_names_overlay_is_refused(tmp_path: Path) -> Non
 
 - [ ] **Step 6: Commit** — `git add src/satyrn_evals/tasks/agentclinic-repair-*/manifest.json tests/test_agentclinic_manifests.py` then `git commit -m "feat: six hidden agentclinic manifests with failure-digest contracts"`.
 
-### Task 5: `known_good` and `known_broken` fixtures (per task)
+### Task 3: `known_good` and `known_broken` fixtures (per task)
 
-**Files:** create `fixtures/known-good.patch`, `fixtures/known-broken.patch` per state. **Interfaces:** P4's gate grades these by name.
+**Files:** create `fixtures/known-good.patch`, `fixtures/known-broken.patch` per state. **Interfaces:** P5's gate grades these by name.
 
 - [ ] **Step 1: Generate each `known-good.patch` from a scratch git repo** (task-relative
 `a/`/`b/` headers — never `--no-index` against absolute temp paths, whose
@@ -252,7 +252,7 @@ def test_known_good_patch_is_in_scope_and_nonempty(state: str) -> None:
 
 Run; PASS.
 
-- [ ] **Step 3: Author each `known-broken.patch`** (a plausible wrong repair that still fails the oracle; P4 proves the failure). Wrong-repair intent per state:
+- [ ] **Step 3: Author each `known-broken.patch`** (a plausible wrong repair that still fails the oracle; P5 proves the failure). Wrong-repair intent per state:
 
 | state | wrong-repair content |
 |---|---|
@@ -307,7 +307,7 @@ through the real grade).
 
 - [ ] **Step 5: Commit** — `git add src/satyrn_evals/tasks/agentclinic-repair-*/fixtures` then `git commit -m "feat: agentclinic known-good and known-broken fixtures"`.
 
-### Task 6: Slice-1 self-review
+### Task 4: Plan-2 self-review
 
 - [ ] **Step 1: Coverage gate** — `uv run pytest -m '' --cov=src/satyrn_evals --cov-branch --cov-report=term-missing --cov-fail-under=100`; Expected: 100% (no production code changed in this plan).
 - [ ] **Step 2: Ruff and doc caps** — `ruff check . && just lint-docs`; Expected: clean.
