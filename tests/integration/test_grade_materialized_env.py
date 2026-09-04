@@ -14,6 +14,7 @@ import os
 import shutil
 import subprocess
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -57,7 +58,7 @@ def test_materialized_grade_attests_resolved_versions(
 
 
 def test_missing_uv_yields_unavailable_not_ambient_pass(
-    bundled_task_dir: Path, tmp_path: Path, monkeypatch
+    bundled_task_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Materialization failure surfaces as unavailable, never an ambient run.
 
@@ -82,7 +83,7 @@ def test_missing_uv_yields_unavailable_not_ambient_pass(
 
 
 def test_freeze_failure_is_unavailable_not_a_silent_drop(
-    bundled_task_dir: Path, tmp_path: Path, monkeypatch
+    bundled_task_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A failing uv pip freeze after a successful sync surfaces as unavailable
     with a reason, never escapes without a receipt."""
@@ -93,7 +94,10 @@ def test_freeze_failure_is_unavailable_not_a_silent_drop(
 
     real_run = _subprocess.run
 
-    def failing_freeze(args, **kwargs):
+    def failing_freeze(
+        args: str | Sequence[str],
+        **kwargs: object,
+    ) -> subprocess.CompletedProcess[str] | subprocess.CompletedProcess[bytes]:
         argv = list(args) if isinstance(args, (list, tuple)) else [str(args)]
         if argv[:1] == ["uv"] and any("freeze" in a for a in argv):
             raise _subprocess.CalledProcessError(3, args)

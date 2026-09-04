@@ -198,7 +198,9 @@ def _run_oracle(
             )
         if overlay is not None:
             materialize_overlay(overlay, work)
-        fd, hook_path = tempfile.mkstemp(prefix="satyrn-hook-", suffix=".json")
+        fd, hook_path = tempfile.mkstemp(
+            prefix="satyrn-hook-", suffix=".json", dir=os.fspath(tmp)
+        )
         os.close(fd)
         os.unlink(hook_path)  # reserve a unique name; a silent oracle leaves NO file
         env_root = _materialize_project_env(work, Path(tmp), task_dir / "base")
