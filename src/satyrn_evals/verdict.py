@@ -79,8 +79,43 @@ def load_hook_result(path: Path, run_started: float) -> HookResult:
     )
 
 
+def _expected_is_collector(entry: str) -> bool:
+    """A pytest node id (contains ``::``) is expected exactly; anything
+    else (a file or directory path) is a collector whose collected ids
+    are only known after the run."""
+    return "::" not in entry
+
+
+def _executed_covered(executed_id: str, expected: tuple[str, ...]) -> bool:
+    """Whether an executed id is one of the expected node ids or was
+    collected from one of the expected file/directory collectors."""
+    for entry in expected:
+        if executed_id == entry:
+            return True
+        if _expected_is_collector(entry) and (
+            executed_id.startswith(f"{entry}/")
+            or executed_id.startswith(f"{entry}::")
+        ):
+            return True
+    return False
+
+
 def compute_verdict(hook: HookResult, expected: tuple[str, ...]) -> Verdict:
-    if set(hook.executed_test_ids) != set(expected):
+    """A verdict with expected ids that are exact node ids or collectors.
+
+    Each node-id entry must have executed exactly; a collector entry
+    (``tests``, ``tests/test_textkit.py``) admits whatever pytest
+    collects beneath it — the ids are not pre-knowable, so the verdict
+    requires every executed id to fall under an expected entry, none to
+    run outside the expectation, and at least one to have run (no
+    vacuous pass). With only node-id entries this reduces to the exact
+    executed==expected rule.
+    """
+    executed = set(hook.executed_test_ids)
+    node_ids = {entry for entry in expected if not _expected_is_collector(entry)}
+    if not executed or not node_ids <= executed:
+        return Verdict.UNAVAILABLE
+    if any(not _executed_covered(eid, expected) for eid in executed):
         return Verdict.UNAVAILABLE
     outcomes = set(hook.outcomes.values())
     if "skipped" in outcomes:
@@ -91,10 +126,15 @@ def compute_verdict(hook: HookResult, expected: tuple[str, ...]) -> Verdict:
 
 
 def describe_unavailable(hook: HookResult, expected: tuple[str, ...]) -> str:
-    if set(hook.executed_test_ids) != set(expected):
-        missing = sorted(set(expected) - set(hook.executed_test_ids))
-        extra = sorted(set(hook.executed_test_ids) - set(expected))
-        return f"executed tests mismatch expected (missing {missing}, extra {extra})"
+    executed = set(hook.executed_test_ids)
+    node_ids = {entry for entry in expected if not _expected_is_collector(entry)}
+    missing = sorted(node_ids - executed)
+    extra = sorted(eid for eid in executed if not _executed_covered(eid, expected))
+    if missing or extra or not executed:
+        return (
+            f"executed tests mismatch expected (missing {missing}, "
+            f"extra {extra}, executed {len(executed)})"
+        )
     if "skipped" in hook.outcomes.values():
         return "suite did not fully run (skipped tests)"
     return "verdict unavailable"

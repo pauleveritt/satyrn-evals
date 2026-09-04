@@ -166,3 +166,70 @@ def test_describe_generic_unavailable() -> None:
         ("a",), {"a": "passed"}, {"passed": 1, "failed": 0, "error": 0, "skipped": 0}
     )
     assert describe_unavailable(hook, ("a",)) == "verdict unavailable"
+
+
+def test_collector_expected_accepts_its_collected_ids() -> None:
+    """A directory collector (e.g. 'tests') collects many node ids that
+    are only known after the run — the verdict must not demand equality
+    with the literal selector (review blocker 4)."""
+    hook = _mk_hook(
+        ["tests/test_textkit.py::test_normalize",
+         "tests/test_textkit.py::test_wrap"],
+        {"tests/test_textkit.py::test_normalize": "passed",
+         "tests/test_textkit.py::test_wrap": "passed"},
+    )
+    assert compute_verdict(hook, ("tests",)) is Verdict.PASS
+
+
+def test_file_collector_matches_ids_under_it() -> None:
+    hook = _mk_hook(
+        ["tests/test_textkit.py::test_normalize"],
+        {"tests/test_textkit.py::test_normalize": "passed"},
+    )
+    assert compute_verdict(hook, ("tests/test_textkit.py",)) is Verdict.PASS
+
+
+def test_collector_failure_is_fail() -> None:
+    hook = _mk_hook(
+        ["tests/test_textkit.py::test_normalize"],
+        {"tests/test_textkit.py::test_normalize": "failed"},
+    )
+    assert compute_verdict(hook, ("tests",)) is Verdict.FAIL
+
+
+def test_collector_that_runs_nothing_is_unavailable() -> None:
+    hook = _mk_hook([], {})
+    assert compute_verdict(hook, ("tests",)) is Verdict.UNAVAILABLE
+
+
+def test_executed_outside_the_expectation_is_unavailable() -> None:
+    """An executed id that is neither a node id nor under a collector is
+    an instrument mismatch, never silently absorbed."""
+    hook = _mk_hook(
+        ["tests/test_textkit.py::test_normalize", "elsewhere.py::test_x"],
+        {"tests/test_textkit.py::test_normalize": "passed",
+         "elsewhere.py::test_x": "passed"},
+    )
+    assert compute_verdict(hook, ("tests",)) is Verdict.UNAVAILABLE
+
+
+def test_missing_node_id_with_collector_present_is_unavailable() -> None:
+    hook = _mk_hook(
+        ["tests/test_textkit.py::test_normalize"],
+        {"tests/test_textkit.py::test_normalize": "passed"},
+    )
+    assert compute_verdict(
+        hook, ("tests", "tests/test_textkit.py::test_wrap")
+    ) is Verdict.UNAVAILABLE
+
+
+def test_mixed_collector_and_node_ids_all_pass() -> None:
+    hook = _mk_hook(
+        ["tests/test_textkit.py::test_normalize",
+         "tests/test_textkit.py::test_wrap"],
+        {"tests/test_textkit.py::test_normalize": "passed",
+         "tests/test_textkit.py::test_wrap": "passed"},
+    )
+    assert compute_verdict(
+        hook, ("tests/test_textkit.py::test_wrap", "tests")
+    ) is Verdict.PASS

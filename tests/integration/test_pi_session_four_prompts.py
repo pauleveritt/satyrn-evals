@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 
+from satyrn_evals.manifest import load_manifest
 from satyrn_evals.session import run_session
 from satyrn_evals.session_grader import SessionGrader
 from satyrn_evals.session_manifest import load_session_spec
@@ -262,3 +263,62 @@ def _session_dir(tmp_path: Path) -> Path:
     dirs = [p for p in tmp_path.iterdir() if p.is_dir()]
     assert len(dirs) == 1
     return dirs[0]
+
+
+def test_directory_preservation_selector_grades_end_to_end(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A base_preservation_selector that is a directory ('tests'), not a
+    node id, collects the ids pytest knows after the run — the verdict
+    must accept the collected set, not demand equality with the literal
+    selector (review blocker 4)."""
+    import dataclasses
+
+    from satyrn_evals.overlay import load_overlay
+
+    argv = _adapter(tmp_path, monkeypatch)
+    record = run_session(
+        task="session-mechanics",
+        tasks_root=TASKS_ROOT,
+        output=tmp_path,
+        adapter_command=argv,
+    )
+    session_dir = next(p for p in tmp_path.iterdir() if p.is_dir())
+    spec = dataclasses.replace(
+        load_session_spec(TASK),
+        base_preservation_selectors=("tests",),
+    )
+    graded = SessionGrader(task_dir=TASK).grade_record(
+        record, spec, load_overlay(TASK, load_manifest(TASK)), session_dir
+    )
+    assert graded.steps[-1].preservation_verdict == "pass"
+    assert graded.steps[-1].preservation_receipt_path is not None
+
+
+def test_hostile_git_env_never_reaches_the_adapter_child_or_capture(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Blocker 2: a caller GIT_DIR/GIT_WORK_TREE must not redirect the
+    model's git operations or the checkpoint capture. The fake (the pi
+    child) reports its inherited git env; the report must show none of
+    the routing variables, and the capture must still complete against
+    the detached workspace."""
+
+    decoy = tmp_path / "decoy"
+    decoy.mkdir()
+    report = tmp_path / "env-report.json"
+    argv = _adapter(tmp_path, monkeypatch)
+    monkeypatch.setenv("GIT_DIR", str(decoy))
+    monkeypatch.setenv("GIT_WORK_TREE", str(decoy))
+    monkeypatch.setenv("GIT_OBJECT_DIRECTORY", str(decoy))
+    monkeypatch.setenv("PI_FAKE_ENV_REPORT", str(report))
+    record = run_session(
+        task="session-mechanics",
+        tasks_root=TASKS_ROOT,
+        output=tmp_path,
+        adapter_command=argv,
+    )
+    assert record.code.value == "COMPLETE"
+    assert record.steps and all(s.patch_digest for s in record.steps)
+    env = json.loads(report.read_text())
+    assert all(env[k] is None for k in env), env

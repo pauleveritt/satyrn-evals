@@ -13,7 +13,7 @@ import select
 import signal
 import subprocess
 import time
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from satyrn_evals.errors import SatyrnError
@@ -48,11 +48,18 @@ class AdapterProcess:
         cwd: Path,
         *,
         stderr_path: Path | None = None,
+        env: Mapping[str, str] | None = None,
     ) -> AdapterProcess:
+        # The child's environment must be the session's cleaned Git
+        # environment (V4's own-git-op discipline), never the raw caller
+        # environment: a GIT_DIR/GIT_WORK_TREE/GIT_OBJECT_DIRECTORY in
+        # the surrounding process could redirect the model's Git
+        # operations outside the detached workspace.
         if stderr_path is None:
             proc = subprocess.Popen(
                 list(argv),
                 cwd=cwd,
+                env=env,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL,
@@ -64,6 +71,7 @@ class AdapterProcess:
                 proc = subprocess.Popen(
                     list(argv),
                     cwd=cwd,
+                    env=env,
                     stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE,
                     stderr=handle,

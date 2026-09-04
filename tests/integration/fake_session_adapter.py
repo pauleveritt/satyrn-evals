@@ -108,6 +108,13 @@ def main() -> int:
             time.sleep(60)  # the executor must stop before this matters
         if scenario == "context-reset" and step == "add-b":
             emit(step, "context_reset")  # design:230: a protocol failure
+        if scenario == "chatty" and step == "add-a":
+            # events keep arriving faster than the deadline: a per-line
+            # timeout would never fire; the per-prompt budget must.
+            while True:
+                emit(step, "turn_end")
+                time.sleep(0.005)  # under the executor's read floor, so
+                # reads keep returning and the deadline pre-check fires
         if scenario == "edit-public-test" and step == "add-a":
             # a self-verifying model that edits the protected public test
             path = Path("test_solution.py")

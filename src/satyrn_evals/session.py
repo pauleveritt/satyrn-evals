@@ -102,7 +102,9 @@ def _capture_checkpoint(
     turn_count: int, tool_count: int, context_events: int,
     source_paths: tuple[str, ...],
 ) -> StepRecord:
-    capture = build_cumulative_patch(workspace.worktree, workspace.base_sha)
+    capture = build_cumulative_patch(
+        workspace.worktree, workspace.base_sha, workspace._environment
+    )
     patch_path = session_dir / "checkpoints" / f"{index:02d}-{spec_step.id}.patch"
     patch_path.parent.mkdir(exist_ok=True)
     patch_path.write_text(capture.patch_text, encoding="utf-8")
@@ -224,6 +226,15 @@ def run_session(
     return record
 
 
+def _scope_code(code: SessionCode, checkpoints: list[StepRecord]) -> SessionCode:
+    """COMPLETE upgrades to SCOPE_VIOLATION once any checkpoint violates."""
+    if code is SessionCode.COMPLETE and any(
+        step.scope_violations for step in checkpoints
+    ):
+        return SessionCode.SCOPE_VIOLATION
+    return code
+
+
 def _record(
     manifest: TaskManifest, adapter_command: list[str], workspace: SessionWorkspace,
     code: SessionCode, conversation_id: str | None, terminal_step: str | None,
@@ -262,6 +273,7 @@ def _drive(
                 adapter_command,
                 cwd=workspace.worktree,
                 stderr_path=session_dir / "adapter-stderr.log",
+                env=workspace._environment,
             )
         except OSError as exc:
             shutil.rmtree(session_dir, ignore_errors=True)
@@ -287,19 +299,33 @@ def _drive(
                 terminal_step = spec_step.id
                 adapter.send_line(serialize_prompt(spec_step.id, spec_step.prompt))
                 prompt_digest = _digest(spec_step.prompt)
+                # step_timeout bounds the WHOLE prompt, not one idle wait:
+                # a deadline set when the prompt is sent, so a chatty
+                # adapter cannot reset the budget by emitting events.
+                step_deadline = time.monotonic() + step_timeout
                 turn_count = tool_count = context_events = 0
                 outcome = ""
                 stop: _Stop | None = None
                 while True:
-                    try:
-                        raw = adapter.read_line(step_timeout)
-                    except AdapterTimeout as exc:
-                        # reap first, then snapshot: no late descendant may
-                        # mutate a patch after its digest is recorded.
+                    remaining = step_deadline - time.monotonic()
+                    if remaining <= 0:
+                        # reap first, then snapshot: no late descendant
+                        # may mutate a patch after its digest is recorded.
                         adapter.terminate_and_reap(step_timeout)
                         stop = _Stop(
                             SessionCode.STEP_TIMEOUT,
-                            f"step {spec_step.id} exceeded {step_timeout:g}s: {exc}",
+                            f"step {spec_step.id} exceeded "
+                            f"{step_timeout:g}s",
+                        )
+                        break
+                    try:
+                        raw = adapter.read_line(max(remaining, 0.01))
+                    except AdapterTimeout as exc:
+                        adapter.terminate_and_reap(step_timeout)
+                        stop = _Stop(
+                            SessionCode.STEP_TIMEOUT,
+                            f"step {spec_step.id} exceeded "
+                            f"{step_timeout:g}s: {exc}",
                         )
                         break
                     if raw is None:
@@ -389,6 +415,20 @@ def _drive(
                         manifest.source_paths,
                     )
                 )
+                # durable linkage BEFORE the next prompt: the running
+                # record is atomically replaced at each checkpoint, so a
+                # crash during a later prompt loses no earlier step
+                # records (2026-09-01 design: step record atomically
+                # replaced at each checkpoint).
+                write_session_record(
+                    session_dir / "session-record.json",
+                    _record(
+                        manifest, adapter_command, workspace,
+                        _scope_code(code, checkpoints),
+                        conversation_id, terminal_step, message,
+                        checkpoints,
+                    ),
+                )
                 if stop is not None:
                     raise stop
                 if outcome != "settled":
@@ -465,10 +505,7 @@ def _drive(
             SessionCode.CLEANUP_FAILED, conversation_id, terminal_step,
             str(cleanup_error), checkpoints,
         )
-    if code is SessionCode.COMPLETE and any(
-        step.scope_violations for step in checkpoints
-    ):
-        code = SessionCode.SCOPE_VIOLATION
+    code = _scope_code(code, checkpoints)
     record = _record(
         manifest, adapter_command, workspace, code, conversation_id,
         terminal_step, message, checkpoints,

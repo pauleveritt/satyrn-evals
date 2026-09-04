@@ -11,6 +11,7 @@ mode, and delete changes.
 import os
 import subprocess
 import tempfile
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -49,12 +50,26 @@ def _parse_status_z(status_z: bytes) -> list[tuple[str, tuple[str, ...]]]:
     return [(entry[:2], (entry[3:],)) for entry in raw]
 
 
-def build_cumulative_patch(worktree: Path, base_commit: str) -> PatchCapture:
-    """Snapshot the whole tree as one cumulative patch from base_commit."""
+def build_cumulative_patch(
+    worktree: Path,
+    base_commit: str,
+    environment: Mapping[str, str] | None = None,
+) -> PatchCapture:
+    """Snapshot the whole tree as one cumulative patch from base_commit.
+
+    ``environment`` must be the session's cleaned Git environment (the
+    capture's git operations must never inherit a caller GIT_DIR or
+    object-directory redirect). It defaults to the raw process
+    environment for direct use, mirroring the session's own default of
+    None meaning the caller's environment.
+    """
     fd, index_path = tempfile.mkstemp(prefix="satyrn-session-index-")
     os.close(fd)
     os.unlink(index_path)  # read-tree creates it fresh
-    env = {**os.environ, "GIT_INDEX_FILE": index_path}
+    env = {
+        **(environment if environment is not None else os.environ),
+        "GIT_INDEX_FILE": index_path,
+    }
     try:
         _git(worktree, env, "read-tree", base_commit)
         _git(worktree, env, "add", "-N", "--all", ".")

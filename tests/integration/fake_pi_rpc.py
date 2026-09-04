@@ -33,6 +33,13 @@ def main() -> int:
     marker = os.environ.get("PI_FAKE_ENV_MARKER")
     if marker and os.environ.get("PYTHONDONTWRITEBYTECODE") != "1":
         Path(marker).write_text("missing")
+    report = os.environ.get("PI_FAKE_ENV_REPORT")
+    if report:
+        keys = ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE",
+                "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES")
+        Path(report).write_text(
+            json.dumps({k: os.environ.get(k) for k in keys})
+        )
     script = json.loads(Path(os.environ["PI_FAKE_SCRIPT"]).read_text())
     target = os.environ["PI_FAKE_FILE"]
     prompted = 0

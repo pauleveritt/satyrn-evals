@@ -1,6 +1,7 @@
 """The session executor against the deterministic fake adapter."""
 
 import sys
+import time
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -427,3 +428,46 @@ def test_context_reset_is_a_protocol_error(tmp_path: Path) -> None:
     session_dir = _session_dir(tmp_path)
     transcript = (session_dir / "transcript.jsonl").read_text()
     assert '"context_reset"' in transcript
+
+
+def test_chatty_adapter_is_bounded_by_the_prompt_deadline(
+    tmp_path: Path,
+) -> None:
+    """Blocker 1: step_timeout bounds the WHOLE prompt, not each idle
+    wait. A chatty adapter that keeps emitting events must still be cut
+    off at the deadline instead of running indefinitely."""
+    started = time.monotonic()
+    record = run_session(
+        task="mini-session", tasks_root=DATA, output=tmp_path,
+        adapter_command=[sys.executable, str(FAKE), "chatty"],
+        step_timeout=1.0,
+    )
+    elapsed = time.monotonic() - started
+    assert record.code is SessionCode.STEP_TIMEOUT
+    assert elapsed < 5.0  # bounded by the 1s budget, not the chatter
+    assert record.terminal_step == "add-a"
+
+
+def test_each_checkpoint_durably_links_its_record_before_the_next_prompt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Blocker 3: the running record is atomically replaced at every
+    checkpoint, so a crash during a later prompt loses no earlier step
+    records. The writer is called once per checkpoint with the steps so
+    far, before the final write."""
+    from satyrn_evals.session_record import write_session_record as real_write
+
+    calls: list[int] = []
+
+    def recording_write(path: Path, record: object) -> None:
+        calls.append(len(record.steps))  # type: ignore[attr-defined]
+        real_write(path, record)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(session_module, "write_session_record", recording_write)
+    record = run_session(
+        task="mini-session", tasks_root=DATA, output=tmp_path,
+        adapter_command=[sys.executable, str(FAKE), "clean"],
+    )
+    assert record.code is SessionCode.COMPLETE
+    # 3 per-checkpoint provisional writes (1,2,3 steps) + the final write
+    assert calls == [1, 2, 3, 3]
