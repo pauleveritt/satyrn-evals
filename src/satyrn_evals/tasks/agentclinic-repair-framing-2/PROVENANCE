@@ -5,3 +5,5 @@ reconstruction: reference tree + repair/framing-2 deltas, .delete honored; tests
 pins: fastapi[standard]==0.115.10 turbohtml==1.5.0 pytest==8.3.4
 digest re-derived: 2026-09-04
 note: superseded for its original purpose per repair/framing-2-edit/README.md; retained as the only author-from-scratch cell
+known-broken intent: 
+known-broken: recreated models.py as a stub naming only what app.py imports (SEED_COMPLAINTS, wrong-shape Complaint) — suite collection still aborts

@@ -15,6 +15,7 @@ from test_agentclinic_reconstruction import STATES
 
 from satyrn_evals.errors import ManifestError
 from satyrn_evals.manifest import load_manifest, resolve_task
+from satyrn_evals.patch import parse_patch_paths
 
 FORBIDDEN = ("overlay", "test_acceptance.py", "overlay/test_acceptance.py")
 
@@ -70,5 +71,35 @@ def test_manifest_whose_contract_names_overlay_is_refused(tmp_path: Path) -> Non
     target = root / data["name"]
     shutil.copytree(src, target)
     (target / "manifest.json").write_text(json.dumps(data))
-    with pytest.raises(ManifestError):
+    with pytest.raises(ManifestError, match="contract names grader-only path"):
         load_manifest(target)
+
+
+def _allowed(source_paths, path) -> bool:
+    return any(path == a or path.startswith(f"{a}/") for a in source_paths)
+
+
+@pytest.mark.parametrize("state", STATES)
+@pytest.mark.parametrize("fixture", ["known-good", "known-broken"])
+def test_fixture_patch_is_in_scope_and_nonempty(state: str, fixture: str) -> None:
+    """Both fixture patches must be non-empty and touch only source_paths
+    files — a patch whose headers carry temp-dir components (git diff
+    --no-index misuse) would fail the allowlist and void the whole attempt."""
+    task_dir = resolve_task(f"agentclinic-repair-{state}")
+    manifest = load_manifest(task_dir)
+    patch = (task_dir / "fixtures" / f"{fixture}.patch").read_text()
+    assert patch.strip(), (state, fixture)
+    paths = parse_patch_paths(patch)
+    assert paths, (state, fixture)
+    for path in paths:
+        assert _allowed(manifest.source_paths, path), (state, fixture, path)
+
+
+def test_all_manifests_share_identical_expected_test_ids() -> None:
+    """The same-13 guarantee the qualification gate relies on: every task's
+    oracle is byte-identical (spec §6 gate rows assume one oracle set)."""
+    id_sets = [
+        load_manifest(resolve_task(f"agentclinic-repair-{state}")).expected_test_ids
+        for state in STATES
+    ]
+    assert all(id_sets[0] == other for other in id_sets[1:])

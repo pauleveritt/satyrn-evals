@@ -4,3 +4,5 @@ source commit: ab1d83d06791432f031e55860961529a048d4d9c
 reconstruction: reference tree + repair/misleading-locus deltas, .delete honored; tests/test_app.py vendored as public tests
 pins: fastapi[standard]==0.115.10 turbohtml==1.5.0 pytest==8.3.4
 digest re-derived: 2026-09-04
+known-broken intent: known-broken: edits the innocent complaints template to skip the first seed (the traceback-pointed file) — seed-details and appears tests still fail
+known-broken: edits the innocent complaints template (the traceback-pointed file) to skip the first seed — seed-details and appears tests still fail
