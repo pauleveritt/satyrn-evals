@@ -1,0 +1,43 @@
+{
+  "name": "agentclinic-repair-misleading-locus",
+  "contract": "Repair the seeded bug in the AgentClinic complaints app. The suite reports one failing check, test_posted_complaint_appears_on_complaints_board: the just-posted complaint never appears on the board, because the POST handler appends to a copy of the seed list and the board re-renders the untouched seed. The seeded defect is in app.py; fix the handler so the complaint is recorded and shown. Your workspace has a runnable public suite under tests/ (uv run pytest tests/); a fix must keep every existing behavior intact.",
+  "oracle": [
+    "python",
+    "-m",
+    "pytest",
+    "-p",
+    "satyrn_evals.oracle_hook"
+  ],
+  "expected_test_ids": [
+    "test_acceptance.py::test_home_still_returns_200_and_tagline",
+    "test_acceptance.py::test_home_has_html5_doctype",
+    "test_acceptance.py::test_home_html_element_declares_english_language",
+    "test_acceptance.py::test_home_still_has_navigation_links",
+    "test_acceptance.py::test_complaints_board_still_lists_seed_complaint",
+    "test_acceptance.py::test_complaints_board_preserves_the_shared_layout",
+    "test_acceptance.py::test_complaints_board_still_has_its_heading",
+    "test_acceptance.py::test_complaints_board_still_renders_seed_complaint_details",
+    "test_acceptance.py::test_complaint_model_contract_is_preserved",
+    "test_acceptance.py::test_seed_complaint_count_is_preserved",
+    "test_acceptance.py::test_post_complaint_redirects_to_complaints_board",
+    "test_acceptance.py::test_posted_complaint_appears_on_complaints_board",
+    "test_acceptance.py::test_complaints_board_renders_add_complaint_form"
+  ],
+  "source_paths": [
+    "app.py",
+    "models.py",
+    "templates",
+    "tests"
+  ],
+  "fixtures": {
+    "known_good": "fixtures/known-good.patch",
+    "known_broken": "fixtures/known-broken.patch"
+  },
+  "grader_overlay": "overlay",
+  "oracle_visibility": "hidden",
+  "provenance": {
+    "repo": "https://github.com/pauleveritt/swiftstar.git",
+    "base_sha": "ab1d83d06791432f031e55860961529a048d4d9c",
+    "fix_sha": "unrecorded"
+  }
+}
