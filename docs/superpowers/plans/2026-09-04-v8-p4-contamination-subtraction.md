@@ -1,10 +1,10 @@
-# V8 Plan 3 of 4 — Contamination base-window subtraction (slice 3)
+# V8 Plan 4 of 5 — Contamination base-window subtraction (slice 3)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Stop the contamination detector from flagging overlay content the model was legitimately shown: subtract any overlay raw-line window that also occurs in the model-visible `base/` from the detector's needle set, additively (default empty), with its own fire/silent sibling pair.
 
-**Architecture:** Plan 3 of 4 for V8 (`docs/superpowers/specs/2026-09-04-v8-agentclinic-evals-design.md` §5). `contamination.scan_patch` stays pure and gains a `visible_texts` parameter; the subtraction happens inside `_match_block`'s window loop (minimal change — evidence order and whole-file/block semantics are untouched). The only caller passing visible texts is `grade()`'s auto-overlay path; `session.py:160` stays default (byte-identical). Runs after P2 (its integration test grades a dependency-bearing task, which needs P2's materialization).
+**Architecture:** Plan 4 of 5 for V8 (`docs/superpowers/specs/2026-09-04-v8-agentclinic-evals-design.md` §5). `contamination.scan_patch` stays pure and gains a `visible_texts` parameter; the subtraction happens inside `_match_block`'s window loop (minimal change — evidence order and whole-file/block semantics are untouched). The only caller passing visible texts is `grade()`'s auto-overlay path; `session.py:160` stays default (byte-identical). Runs after P3 (its integration test grades a dependency-bearing task, which needs P3's materialization).
 
 **Tech Stack:** Python 3.14, `pytest` (pure functions — default tier, no subprocess; one integration test).
 

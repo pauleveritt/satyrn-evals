@@ -1,160 +1,37 @@
-# V8 Plan 1 of 4 — Vendoring, reconstruction, manifests, contracts, fixtures (slice 1)
+# V8 Plan 2 of 5 — Manifests, contracts, fixtures (slice 1b)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Vendor the six `agentclinic-repair-*` tasks from `swiftstar` into `src/satyrn_evals/tasks/`, reconstructing each `base/` per the spec's rule, authoring projects, hidden manifests, failure-digest contracts, and `known_good`/`known_broken` fixtures — offline-verifiable in the default tier except the digest re-derivation run.
+**Goal:** Author the six tasks' hidden manifests with failure-digest contracts, per-task projects/public tests/overlays/licenses/provenance, and `known_good`/`known_broken` fixtures whose application is validated — offline-verifiable in the default tier.
 
-**Architecture:** Plan 1 of 4 for V8 (`docs/superpowers/specs/2026-09-04-v8-agentclinic-evals-design.md`), split along its §12 slices by `sdd.md`'s 400-line plan cap. The reconstruction is a one-time mechanical composition (reference tree + state deltas, `.delete` honored) whose result is committed and pinned by a default-tier inventory test. Manifests mirror the V7 hidden shape (`session-mechanics/manifest.json`). Contracts are failure digests naming test ids and assertion messages, never file names.
+**Architecture:** Plan 2 of 5 for V8 (`docs/superpowers/specs/2026-09-04-v8-agentclinic-evals-design.md` §2, §4, §11). Continues Plan 1's vendoring (the composed `base/` trees). Manifests mirror the V7 hidden shape; contracts are failure digests naming test ids and assertion messages, never file names.
 
-**Tech Stack:** Python 3.14, `uv`, `pytest`, git. Inputs read-only from `~/projects/pauleveritt/swiftstar/fixtures/agenttest/`.
+**Tech Stack:** Python 3.14, `uv`, `pytest`, git.
 
-**Spec:** `docs/superpowers/specs/2026-09-04-v8-agentclinic-evals-design.md` (esp. §2 tables, §4, §11, §14).
+**Spec:** `docs/superpowers/specs/2026-09-04-v8-agentclinic-evals-design.md` (§2 tables, §4, §11, §14).
 
 ## Global Constraints
 
 - Python `>=3.14`; real return annotations; `match`/`case`/walrus house style.
-- Default tier: no model/network/subprocess (planted spawn tripwire). Real git/pytest/uv runs are `@pytest.mark.integration` in `tests/integration/` or recorded ad hoc commands.
+- Default tier: no model/network/subprocess (planted spawn tripwire). Real git/pytest/uv runs are `@pytest.mark.integration` or recorded ad hoc commands.
 - A refusal test has a sibling success test, always.
-- 100% statement+branch coverage gate: `uv run pytest -m '' --cov=src/satyrn_evals --cov-branch --cov-fail-under=100` (no production code changes in this plan, so it must stay green).
-- `ruff check .` clean; `just lint-docs` green.
-- MIT notice from swiftstar retained per task (`LICENSE`); `PROVENANCE` names the swiftstar commit, state, reconstruction rule, pins.
-- Contracts never contain any string in the overlay-declared set (`overlay`, `test_acceptance.py`, `overlay/test_acceptance.py`) — the validator refuses them (`manifest.py:111-127`).
-
-### Task 1: Reconstruction script + six composed `base/` trees
-
-**Files:** Create `tools/reconstruct_agentclinic.py`; create the six `base/` trees via the script; test `tests/test_agentclinic_reconstruction.py`.
-
-**Interfaces:** Consumes the swiftstar fixtures (read-only) and the spec §2 delta table. Produces six committed `base/` trees; Tasks 3-4 add `pyproject.toml`, `uv.lock`, `tests/`, overlay.
-
-- [ ] **Step 1: Write the failing inventory test**
-
-```python
-import pytest
-
-from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
-
-STATES = ["depth-2", "depth-3", "framing-2", "framing-2-edit",
-          "misleading-locus", "plausible-wrong-fix"]
-
-# spec §2: per-state content overrides/additions, and .delete removals.
-DELTA_FILES = {
-    "depth-2": ["app.py", "templates/base.html"],
-    "depth-3": ["models.py", "app.py", "templates/base.html"],
-    "framing-2": ["app.py"],            # .delete removes models.py
-    "framing-2-edit": ["models.py", "app.py"],
-    "misleading-locus": ["app.py"],
-    "plausible-wrong-fix": ["app.py"],
-}
-DELETED = {"framing-2": ["models.py"]}
-SHARED = ["app.py", "models.py", "templates/home.html", "templates/base.html",
-          "templates/complaints.html", "tests/test_app.py"]
-
-
-def _base(state: str):
-    return DEFAULT_TASKS_ROOT / f"agentclinic-repair-{state}" / "base"
-
-
-@pytest.mark.parametrize("state", STATES)
-def test_base_inventory_matches_reconstruction_rule(state: str) -> None:
-    base = _base(state)
-    assert base.is_dir(), f"missing base for {state}"
-    present = {p.relative_to(base).as_posix() for p in base.rglob("*") if p.is_file()}
-    expected = (set(SHARED) - set(DELETED.get(state, []))) | set(DELTA_FILES[state])
-    assert present == expected, f"{state}: {sorted(present)} != {sorted(expected)}"
-
-
-@pytest.mark.parametrize("state", STATES)
-def test_no_junk_or_git_dirs_in_base(state: str) -> None:
-    base = _base(state)
-    bad = [p.name for p in base.rglob("*")
-           if p.name in (".git", "__pycache__", ".delete", "README.md")]
-    assert not bad, f"{state} base contains: {bad}"
-```
-
-- [ ] **Step 2: Run it to verify it fails** — `uv run pytest tests/test_agentclinic_reconstruction.py -q`; Expected: FAIL (six missing `base/` dirs).
-
-- [ ] **Step 3: Write the reconstruction script**
-
-```python
-"""One-time vendoring: compose the six agentclinic repair bases from swiftstar.
-
-Reconstruction rule (V8 spec §2): base = reference app tree (app.py, models.py,
-templates/, tests/test_app.py) MINUS each .delete-named reference file, PLUS the
-state's content overrides/additions. Per-state README*.md and .delete markers are
-reconstruction meta, never vendored into base/.
-"""
-import shutil
-from pathlib import Path
-
-SRC = Path.home() / "projects/pauleveritt/swiftstar/fixtures/agenttest"
-DEST = Path("src/satyrn_evals/tasks")
-
-STATES = ["depth-2", "depth-3", "framing-2", "framing-2-edit",
-          "misleading-locus", "plausible-wrong-fix"]
-REF_FILES = ["app.py", "models.py", "templates/home.html",
-             "templates/base.html", "templates/complaints.html",
-             "tests/test_app.py"]
-
-
-def main() -> None:
-    for state in STATES:
-        base = DEST / f"agentclinic-repair-{state}" / "base"
-        shutil.rmtree(base, ignore_errors=True)
-        base.mkdir(parents=True)
-        for rel in REF_FILES:
-            (base / rel).parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(SRC / "reference" / rel, base / rel)
-        state_dir = SRC / "repair" / state
-        for path in state_dir.rglob("*"):
-            if path.is_file() and path.name != ".delete" and not path.name.endswith("README.md"):
-                rel = path.relative_to(state_dir)
-                (base / rel).parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(path, base / rel)
-        marker = state_dir / ".delete"
-        if marker.exists():
-            for line in marker.read_text().splitlines():
-                (base / line.strip()).unlink(missing_ok=True)
-        print(f"composed {state}")
-
-
-if __name__ == "__main__":
-    main()
-```
-
-- [ ] **Step 4: Run the script, then verify the test passes** — `uv run python tools/reconstruct_agentclinic.py` then `uv run pytest tests/test_agentclinic_reconstruction.py -q`; Expected: six "composed …" lines, then PASS.
-
-- [ ] **Step 5: Byte-fidelity evidence (ad hoc)**
-
-Run: `diff src/satyrn_evals/tasks/agentclinic-repair-framing-2/base/app.py ~/projects/pauleveritt/swiftstar/fixtures/agenttest/repair/framing-2/app.py && diff src/satyrn_evals/tasks/agentclinic-repair-depth-2/base/templates/base.html ~/projects/pauleveritt/swiftstar/fixtures/agenttest/repair/depth-2/templates/base.html`
-Expected: no output (identical), for every state's delta file.
-
-- [ ] **Step 6: Commit** — `git add tools/reconstruct_agentclinic.py src/satyrn_evals/tasks/agentclinic-repair-*` then `git commit -m "feat: vendor six agentclinic repair bases (reconstruction rule)"`.
-
-### Task 2: Digest re-derivation run (integration evidence)
-
-**Files:** no committed code; a recorded ad hoc run whose output Task 4's contracts cite.
-
-- [ ] **Step 1: Run the six composed bases against the real suite, pinned**
-
-```bash
-for s in depth-2 depth-3 framing-2 framing-2-edit misleading-locus plausible-wrong-fix; do
-  d=$(mktemp -d); cp -r "src/satyrn_evals/tasks/agentclinic-repair-$s/base/." "$d/"
-  cp ~/projects/pauleveritt/swiftstar/fixtures/agenttest/acceptance/test_acceptance.py "$d/"
-  echo "== $s =="
-  (cd "$d" && uv run --no-project --quiet --with "fastapi[standard]==0.115.10" \
-    --with "turbohtml==1.5.0" --with httpx --with "pytest==8.3.4" \
-    python -m pytest -q --tb=line test_acceptance.py 2>&1 | tail -6)
-  rm -rf "$d"
-done
-```
-
-- [ ] **Step 2: Verify the output matches spec §2/§14 exactly** — `misleading-locus` 1 failed (`test_posted_complaint_appears_on_complaints_board`); `plausible-wrong-fix` 1 failed (`test_post_complaint_redirects_to_complaints_board`); `depth-2` 3 failed; `depth-3` 4 failed; `framing-2` and `framing-2-edit` collection errors. Any mismatch is a reconstruction bug — stop and fix Task 1.
-
-- [ ] **Step 3: Capture the assertion-mismatch text** (re-derived 2026-09-04; reproduce): `plausible-wrong-fix` → "assert 307 == 303" (307 Temporary Redirect vs expected 303); `misleading-locus` → the posted agent name absent from the board response; `depth-2`/`depth-3` → `AttributeError: 'NoneType' object has no attribute 'casefold'` (missing `lang`) plus depth-3 `assert None is not None` (model contract). Copy the message text into Task 4's contracts, never the `test_acceptance.py` path prefix.
-
-- [ ] **Step 4: Append "digest re-derived 2026-09-04" to each task's `PROVENANCE`** (Task 3 creates them); nothing else commits here.
+- 100% statement+branch coverage gate stays green; `ruff check .` and `just lint-docs` clean.
+- MIT notice from swiftstar retained per task (`LICENSE`); `PROVENANCE` names commit, state, reconstruction rule, pins.
+- Contracts never contain any string in the overlay-declared set (`overlay`, `test_acceptance.py`, `overlay/test_acceptance.py`) — `manifest.py:111-127` refuses them.
 
 ### Task 3: Projects, public tests, overlays, licenses, provenance (per task)
+
+**Explicit design decision (recorded; do not treat as routine).** Vendoring
+`reference/tests/test_app.py` as public tests in each `base/`, and including
+`tests/` in `source_paths`, REVERSES the round-1 recommendation "no public
+tests in `base/`" (approved with Part 1 of the brainstorm). The reversal was
+made at maintainer review round 1 (lean to vendoring), recorded in spec
+§11.7 with its reason, and the spec was approved as amended. This plan
+implements the approved spec; restoring no-public-tests would be a spec
+amendment (back to review), not a plan edit. Consequence (spec §11.5): with
+`tests/` inside `source_paths`, public-test edits cannot void an attempt,
+and the hidden overlay is the sole grade — safe only because P3's
+contamination subtraction lands before P4's gate runs.
 
 **Files:** per state: `base/pyproject.toml`, `base/uv.lock`, `base/tests/test_app.py`, `overlay/test_acceptance.py`, `LICENSE`, `PROVENANCE`.
 
@@ -179,6 +56,22 @@ dev = ["pytest==8.3.4"]
 ```
 
 - [ ] **Step 2: Lock each project** — per state: `cd src/satyrn_evals/tasks/agentclinic-repair-<state>/base && uv lock`; Expected: `uv.lock` resolved with fastapi 0.115.10 and the dev group. Commit the six locks.
+
+- [ ] **Step 2b: Project-inventory test (sibling to Task 1's app-tree inventory)**
+
+Extend `tests/test_agentclinic_reconstruction.py`:
+
+```python
+@pytest.mark.parametrize("state", STATES)
+def test_base_has_exactly_the_locked_project_files(state: str) -> None:
+    base = _base(state)
+    project = sorted(p.name for p in base.iterdir()
+                     if p.name in ("pyproject.toml", "uv.lock"))
+    assert project == ["pyproject.toml", "uv.lock"], state
+    assert (base / "uv.lock").read_text().strip()
+```
+
+Run: `uv run pytest tests/test_agentclinic_reconstruction.py -q`; PASS.
 
 - [ ] **Step 3: Copy public tests and overlay (per state)**
 
@@ -308,24 +201,34 @@ def test_manifest_whose_contract_names_overlay_is_refused(tmp_path: Path) -> Non
 
 **Files:** create `fixtures/known-good.patch`, `fixtures/known-broken.patch` per state. **Interfaces:** P4's gate grades these by name.
 
-- [ ] **Step 1: Generate each `known-good.patch`** — diff the composed broken base against a composed fixed tree (reference files), `source_paths`-scoped, git format:
+- [ ] **Step 1: Generate each `known-good.patch` from a scratch git repo** (task-relative
+`a/`/`b/` headers — never `--no-index` against absolute temp paths, whose
+headers would carry temp-dir components and fail the allowlist)
 
 ```bash
 for s in depth-2 depth-3 framing-2 framing-2-edit misleading-locus plausible-wrong-fix; do
   t="src/satyrn_evals/tasks/agentclinic-repair-$s"
-  fixed=$(mktemp -d); broken=$(mktemp -d)
-  cp -r "$t/base/." "$broken/"
-  for f in app.py models.py templates/base.html templates/home.html templates/complaints.html tests/test_app.py; do
-    mkdir -p "$fixed/$(dirname "$f")"
-    cp ~/projects/pauleveritt/swiftstar/fixtures/agenttest/reference/"$f" "$fixed/$f" 2>/dev/null || true
+  scratch=$(mktemp -d)
+  git -C "$scratch" init -q
+  cp -r "$t/base/." "$scratch/"
+  git -C "$scratch" add -A
+  git -C "$scratch" -c user.email=v8@local -c user.name=v8 commit -qm base
+  # replace every tracked file with the reference (fixed) tree
+  for f in $(git -C "$scratch" ls-files); do rm -f "$scratch/$f"; done
+  for f in app.py models.py templates/home.html templates/base.html templates/complaints.html tests/test_app.py; do
+    mkdir -p "$scratch/$(dirname "$f")"
+    cp ~/projects/pauleveritt/swiftstar/fixtures/agenttest/reference/"$f" "$scratch/$f"
   done
-  git diff --no-index --src-prefix=a/ --dst-prefix=b/ "$broken" "$fixed" \
-    -- app.py models.py templates tests > "$t/fixtures/known-good.patch" || true
-  rm -rf "$broken" "$fixed"
+  git -C "$scratch" add -A
+  # index vs HEAD: a/ b/ paths are task-relative; framing-2 shows models.py
+  # as a new file (author-from-scratch is the point)
+  git -C "$scratch" diff --cached -- app.py models.py templates tests \
+    > "$t/fixtures/known-good.patch"
+  rm -rf "$scratch"
 done
 ```
 
-The patch touches only `source_paths` files; for `framing-2` it also re-creates `models.py` (author-from-scratch is the point).
+The patch touches only `source_paths` files.
 
 - [ ] **Step 2: Verify each known-good parses and stays in scope (default tier)** — extend `tests/test_agentclinic_manifests.py`:
 
@@ -360,9 +263,47 @@ Run; PASS.
 | `framing-2` | stub `models.py` with only the imported names, wrong shapes — contract tests fail |
 | `framing-2-edit` | add `complaints = []` at module scope — seed preservation fails |
 
-Author each by editing a scratch copy of the broken tree then `git diff --no-index` as in Step 1; record the intent in `PROVENANCE`.
+Author each by editing a scratch git repo (same recipe as Step 1: commit the
+broken tree, apply the wrong edit, `git diff --cached`) so headers stay
+task-relative; record the intent in `PROVENANCE`.
 
 - [ ] **Step 4: Extend the Step-2 test to `known_broken`** (parse + in-scope); run; PASS.
+
+- [ ] **Step 4b: Apply-validation test (integration) — every fixture actually applies**
+
+Create `tests/integration/test_agentclinic_fixtures_apply.py`:
+
+```python
+import shutil
+import subprocess
+from pathlib import Path
+
+import pytest
+
+from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
+from tests.test_agentclinic_reconstruction import STATES
+
+pytestmark = pytest.mark.integration
+
+
+@pytest.mark.parametrize("state", STATES)
+@pytest.mark.parametrize("fixture", ["known-good", "known-broken"])
+def test_fixture_applies_cleanly_to_a_fresh_base(state: str, fixture: str,
+                                                 tmp_path: Path) -> None:
+    task_dir = DEFAULT_TASKS_ROOT / f"agentclinic-repair-{state}"
+    work = tmp_path / state
+    shutil.copytree(task_dir / "base", work)
+    subprocess.run(["git", "init", "-q"], cwd=work, check=True, capture_output=True)
+    patch = (task_dir / "fixtures" / f"{fixture}.patch").read_text()
+    applied = subprocess.run(
+        ["git", "apply", "-"], input=patch.encode(), cwd=work,
+        capture_output=True)
+    assert applied.returncode == 0, (state, fixture, applied.stderr.decode())
+```
+
+Run: `uv run pytest tests/integration/test_agentclinic_fixtures_apply.py -q`; PASS
+(git apply is the integration-tier validation; P4 re-applies each fixture
+through the real grade).
 
 - [ ] **Step 5: Commit** — `git add src/satyrn_evals/tasks/agentclinic-repair-*/fixtures` then `git commit -m "feat: agentclinic known-good and known-broken fixtures"`.
 

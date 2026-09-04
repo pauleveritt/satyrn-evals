@@ -1,10 +1,10 @@
-# V8 Plan 2 of 4 — Environment materialization and `resolved_versions` (slice 2)
+# V8 Plan 3 of 5 — Environment materialization and `resolved_versions` (slice 2)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** When grading a dependency-bearing task (its `base/` carries `pyproject.toml` + `uv.lock`), materialize that locked project environment and run the oracle inside it, attesting the executed distributions as `resolved_versions` on the receipt — while every pre-V8 (stdlib/vendored) task grades exactly as today.
 
-**Architecture:** Plan 2 of 4 for V8 (`docs/superpowers/specs/2026-09-04-v8-agentclinic-evals-design.md` §3, §9). A small new pure module `taskenv.py` holds the detection predicate and the `uv pip freeze` parser (default-tier testable). `grade.py`'s `_run_oracle` materializes the env into a relocated project env under its existing scratch `TemporaryDirectory` (`UV_PROJECT_ENVIRONMENT`, `uv sync --locked`, cwd = the graded tree) and returns the frozen distributions; `grade()` writes them on the receipt. Oracle runs get `PYTHONPATH` to the evals source (the hook plugin) and `PYTHONDONTWRITEBYTECODE=1`.
+**Architecture:** Plan 3 of 5 for V8 (`docs/superpowers/specs/2026-09-04-v8-agentclinic-evals-design.md` §3, §9). A small new pure module `taskenv.py` holds the detection predicate and the `uv pip freeze` parser (default-tier testable). `grade.py`'s `_run_oracle` materializes the env into a relocated project env under its existing scratch `TemporaryDirectory` (`UV_PROJECT_ENVIRONMENT`, `uv sync --locked`, cwd = the graded tree) and returns the frozen distributions; `grade()` writes them on the receipt. Oracle runs get `PYTHONPATH` to the evals source (the hook plugin) and `PYTHONDONTWRITEBYTECODE=1`.
 
 **Tech Stack:** Python 3.14, `uv`, `pytest`, dataclasses.
 
@@ -77,12 +77,7 @@ Expected: FAIL — module not found.
 - [ ] **Step 3: Implement `taskenv.py`**
 
 ```python
-"""Task-owned project environments: detection and freeze attestation.
-
-Pure helpers (no I/O, no subprocess) so the default tier can pin the
-predicate and the parser. Materialization itself lives in grade.py (Plan 2
-Task 3), which is the only subprocess-touching caller.
-"""
+"""Task-owned project environments: detection and freeze attestation (pure)."""
 
 from pathlib import Path
 
@@ -121,8 +116,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/satyrn_evals/taskenv.py tests/test_taskenv.py
-git commit -m "feat: taskenv detection and freeze parsing (pure)"
+git add src/satyrn_evals/taskenv.py tests/test_taskenv.py && git commit -m "feat: taskenv detection and freeze parsing (pure)"
 ```
 
 ### Task 2: Receipt field `resolved_versions` with omission semantics
@@ -195,8 +189,7 @@ Expected: PASS (existing tests unchanged — the new key never appears for old s
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/satyrn_evals/receipt.py tests/test_receipt.py
-git commit -m "feat: receipt resolved_versions field, omitted for ambient grading"
+git add src/satyrn_evals/receipt.py tests/test_receipt.py && git commit -m "feat: receipt resolved_versions field, omitted for ambient grading"
 ```
 
 ### Task 3: Materialize the locked env in `grade` and attest it
@@ -310,10 +303,13 @@ def _run_oracle(
         # ... unchanged: oracle subprocess([*manifest.oracle, *selectors], env=env)
         frozen: dict[str, str] | None = None
         if env_root is not None:
-            freeze = subprocess.run(
-                ["uv", "pip", "freeze", "--python", os.fspath(env_root / "bin" / "python")],
-                capture_output=True, check=True, text=True,
-            )
+            try:
+                freeze = subprocess.run(
+                    ["uv", "pip", "freeze", "--python", os.fspath(env_root / "bin" / "python")],
+                    capture_output=True, check=True, text=True,
+                )
+            except (OSError, subprocess.CalledProcessError) as e:
+                raise OracleError(f"cannot attest task environment: {e}") from e
             frozen = parse_freeze(freeze.stdout)
         try:
             return load_hook_result(Path(hook_path), run_started), frozen
@@ -359,20 +355,25 @@ Expected: PASS — stdlib tasks still grade under the ambient interpreter and th
 
 - [ ] **Step 6: A refusal-grade sibling (materialization failure surfaces, not a void)**
 
-Add to the integration file:
+The test calls `grade()` in-process (this file is integration tier) with a
+`PATH` that cannot resolve `uv`, so ONLY the child env lacks uv — replacing
+`PATH` around a CLI subprocess would prevent launching the CLI itself:
 
 ```python
 def test_missing_uv_yields_unavailable_not_ambient_pass(
     bundled_task_dir: Path, tmp_path: Path, monkeypatch
 ) -> None:
-    # Simulate an environment without uv: the materialized path must fail
-    # loudly as unavailable, never fall back to the ambient interpreter.
-    monkeypatch.setenv("PATH", str(tmp_path / "empty-bin"))
-    (tmp_path / "empty-bin").mkdir()
-    known_good = (bundled_task_dir / "fixtures" / "known-good.patch").read_text()
-    receipt = _grade(bundled_task_dir, known_good, tmp_path)
-    assert receipt["verdict"] == "unavailable"
-    assert "cannot materialize task environment" in receipt["reason"]
+    from satyrn_evals.grade import grade
+    patch_path = tmp_path / "p.patch"
+    patch_path.write_text(
+        (bundled_task_dir / "fixtures" / "known-good.patch").read_text())
+    nobin = tmp_path / "nobin"
+    nobin.mkdir()
+    monkeypatch.setenv("PATH", str(nobin))
+    receipt_path = tmp_path / "receipt.json"
+    receipt = grade(bundled_task_dir, patch_path, receipt_path)
+    assert receipt.verdict.value == "unavailable"
+    assert "cannot materialize task environment" in receipt.reason
 ```
 
 Run; PASS.
@@ -380,8 +381,7 @@ Run; PASS.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/satyrn_evals/grade.py tests/integration/test_grade_materialized_env.py
-git commit -m "feat: grade materializes locked task envs and attests resolved_versions"
+git add src/satyrn_evals/grade.py tests/integration/test_grade_materialized_env.py && git commit -m "feat: grade materializes locked task envs and attests resolved_versions"
 ```
 
 ### Task 4: Slice-2 self-review
