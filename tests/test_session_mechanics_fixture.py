@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from satyrn_evals.manifest import load_manifest
+from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, load_manifest
 from satyrn_evals.overlay import load_overlay
 from satyrn_evals.session_manifest import load_session_spec
 
@@ -31,3 +31,9 @@ def test_fixture_overlay_is_one_module_per_milestone() -> None:
         "tests/test_slugify.py",
         "tests/test_truncate.py",
     )
+
+
+def test_session_mechanics_declares_hidden() -> None:
+    manifest = load_manifest(DEFAULT_TASKS_ROOT / "session-mechanics")
+    assert manifest.oracle_visibility == "hidden"
+    assert manifest.grader_overlay == "grader/overlay"

@@ -7,7 +7,11 @@ from pathlib import Path
 import pytest
 
 from satyrn_evals.errors import SessionSpecError
-from satyrn_evals.session_manifest import load_session_spec
+from satyrn_evals.manifest import load_manifest
+from satyrn_evals.session_manifest import (
+    assert_no_overlay_names,
+    load_session_spec,
+)
 
 VALID: dict = {
     "version": 1,
@@ -68,7 +72,109 @@ def test_session_spec_valid_sibling(tmp_path: Path) -> None:
     assert spec.base_preservation_selectors == ("test_solution.py::test_normalize",)
 
 
-def test_session_spec_missing_file_refused(tmp_path: Path) -> None:
+def _hidden_session_task(tmp_path: Path, *, prompts: tuple[str, ...]) -> Path:
+    """Build a minimal hidden session task with the given step prompts.
+
+    The overlay declares one grader-only module (``tests/t_hidden.py`` under
+    ``grader/overlay``); the refusal check trips when a prompt names that
+    path or the overlay root itself.
+    """
+    task = tmp_path / "task"
+    (task / "base").mkdir(parents=True)
+    (task / "grader" / "overlay" / "tests").mkdir(parents=True)
+    (task / "grader" / "overlay" / "tests" / "t_hidden.py").write_text(
+        "def test_x():\n    assert True\n"
+    )
+    (task / "fixtures").mkdir()
+    (task / "fixtures" / "kg.patch").write_text("")
+    (task / "manifest.json").write_text(
+        json.dumps(
+            {
+                "name": "task",
+                "contract": "do the thing without naming the grader",
+                "oracle": ["python", "-m", "pytest"],
+                "expected_test_ids": ["tests/t_hidden.py::test_x"],
+                "source_paths": ["src"],
+                "fixtures": {"known_good": "fixtures/kg.patch"},
+                "grader_overlay": "grader/overlay",
+                "oracle_visibility": "hidden",
+            }
+        )
+    )
+    steps = []
+    for index, prompt in enumerate(prompts):
+        kind = "feature" if index < len(prompts) - 1 else "review"
+        steps.append(
+            {
+                "id": f"step-{index}",
+                "kind": kind,
+                "prompt": prompt,
+                "new_feature_selectors": (
+                    [f"tests/t_hidden.py::test_x_{index}"] if kind == "feature" else []
+                ),
+            }
+        )
+    (task / "session.json").write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "steps": steps,
+                "base_preservation_selectors": ["tests/t_hidden.py::test_base"],
+            }
+        )
+    )
+    return task
+
+
+def test_prompt_naming_overlay_path_refuses(tmp_path: Path) -> None:
+    task = _hidden_session_task(
+        tmp_path,
+        prompts=(
+            "Wire grader/overlay into the build.",
+            "Review the implementation and run the public suite.",
+        ),
+    )
+    spec = load_session_spec(task)
+    manifest = load_manifest(task)
+    with pytest.raises(SessionSpecError, match="names grader-only path"):
+        assert_no_overlay_names(spec, manifest, task)
+
+
+def test_clean_prompts_pass(tmp_path: Path) -> None:
+    task = _hidden_session_task(
+        tmp_path,
+        prompts=(
+            "Add the slugify helper to the public module.",
+            "Review the implementation and run the public suite.",
+        ),
+    )
+    spec = load_session_spec(task)
+    manifest = load_manifest(task)
+    assert_no_overlay_names(spec, manifest, task)  # does not raise
+
+
+def test_assert_no_overlay_names_skips_visible_task(tmp_path: Path) -> None:
+    # A visible task with no overlay is never refused, even if a prompt
+    # mentions a path that would otherwise look overlay-shaped.
+    task = _hidden_session_task(
+        tmp_path,
+        prompts=(
+            "Add tests/t_hidden.py to the public module.",
+            "Review the implementation and run the public suite.",
+        ),
+    )
+    data = json.loads((task / "manifest.json").read_text())
+    data["oracle_visibility"] = "visible"
+    data.pop("grader_overlay")
+    (task / "manifest.json").write_text(json.dumps(data))
+    spec = load_session_spec(task)
+    manifest = load_manifest(task)
+    assert manifest.oracle_visibility == "visible"
+    assert manifest.grader_overlay is None
+    assert_no_overlay_names(spec, manifest, task)  # does not raise
+
+
+def test_session_spec_missing_file_refuses(tmp_path: Path) -> None:
     with pytest.raises(SessionSpecError, match="session.json"):
         load_session_spec(tmp_path)
 
