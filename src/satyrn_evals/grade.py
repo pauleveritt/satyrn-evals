@@ -8,6 +8,7 @@ import tempfile
 import time
 from pathlib import Path
 
+import satyrn_evals
 from satyrn_evals import oracle_hook
 from satyrn_evals.contamination import evidence_dict, scan_patch
 from satyrn_evals.errors import (
@@ -21,6 +22,7 @@ from satyrn_evals.manifest import TaskManifest, load_manifest
 from satyrn_evals.overlay import OverlaySpec, load_overlay, materialize_overlay
 from satyrn_evals.patch import check_allowlist, parse_patch_paths
 from satyrn_evals.receipt import Receipt, patch_digest, write_receipt
+from satyrn_evals.taskenv import has_locked_project, parse_freeze
 from satyrn_evals.verdict import (
     HookResult,
     HookResultData,
@@ -74,11 +76,12 @@ def grade(
 
     evidence: HookResultData | None = None
     reason = ""
+    resolved_versions: dict[str, str] | None = None
     try:
         paths = parse_patch_paths(patch_text)
         if enforce_allowlist:
             check_allowlist(paths, manifest.source_paths)
-        hook = _run_oracle(
+        hook, resolved_versions = _run_oracle(
             manifest, task_dir, patch_text, overlay=overlay, selectors=selectors
         )
         verdict = compute_verdict(
@@ -120,9 +123,33 @@ def grade(
         reason=reason,
         evidence=evidence,
         contamination=contamination,
+        resolved_versions=resolved_versions,
     )
     write_receipt(receipt_path, receipt)
     return receipt
+
+
+def _materialize_project_env(work: Path, tmp: Path, base: Path) -> Path | None:
+    """Relocated project env at tmp/project-env, uv sync --locked in work.
+
+    Returns the env root when the base is a locked uv project (pyproject.toml
+    + uv.lock); None keeps the ambient path unchanged. The env lives OUTSIDE
+    the graded tree (``UV_PROJECT_ENVIRONMENT``), so materialization never
+    pollutes the tree the oracle grades or the patch evidence.
+    """
+    if not has_locked_project(base):
+        return None
+    env_root = tmp / "project-env"
+    env = dict(os.environ)
+    env["UV_PROJECT_ENVIRONMENT"] = os.fspath(env_root)
+    try:
+        subprocess.run(
+            ["uv", "sync", "--locked"],
+            cwd=work, env=env, capture_output=True, check=True,
+        )
+    except (OSError, subprocess.CalledProcessError) as e:
+        raise OracleError(f"cannot materialize task environment: {e}") from e
+    return env_root
 
 
 def _run_oracle(
@@ -132,7 +159,14 @@ def _run_oracle(
     *,
     overlay: OverlaySpec | None = None,
     selectors: tuple[str, ...] = (),
-) -> HookResult:
+) -> tuple[HookResult, dict[str, str] | None]:
+    """Run the oracle and return (hook result, resolved-version attestation).
+
+    The attestation is None for ambient (stdlib/vendored) tasks; for a
+    dependency-bearing task it is the full ``uv pip freeze`` of the
+    materialized env grade actually executed — attested, never parsed from
+    the lock.
+    """
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp) / "work"
         shutil.copytree(task_dir / "base", work, symlinks=True)
@@ -157,11 +191,19 @@ def _run_oracle(
         fd, hook_path = tempfile.mkstemp(prefix="satyrn-hook-", suffix=".json")
         os.close(fd)
         os.unlink(hook_path)  # reserve a unique name; a silent oracle leaves NO file
+        env_root = _materialize_project_env(work, Path(tmp), task_dir / "base")
         env = dict(os.environ)
         env[oracle_hook.RESULT_ENV] = hook_path
-        env["PATH"] = (
-            str(Path(sys.executable).parent) + os.pathsep + env.get("PATH", "")
-        )
+        if env_root is not None:
+            env["PATH"] = os.fspath(env_root / "bin") + os.pathsep + env.get("PATH", "")
+            env["PYTHONPATH"] = os.fspath(
+                Path(satyrn_evals.__file__).resolve().parent.parent
+            )
+            env["PYTHONDONTWRITEBYTECODE"] = "1"
+        else:
+            env["PATH"] = (
+                str(Path(sys.executable).parent) + os.pathsep + env.get("PATH", "")
+            )
         run_started = time.time()
         try:
             subprocess.run(
@@ -169,7 +211,17 @@ def _run_oracle(
             )
         except OSError as e:
             raise OracleError(f"oracle failed to start: {e}") from e
+        frozen: dict[str, str] | None = None
+        if env_root is not None:
+            try:
+                freeze = subprocess.run(
+                    ["uv", "pip", "freeze", "--python", os.fspath(env_root / "bin" / "python")],
+                    capture_output=True, check=True, text=True,
+                )
+            except (OSError, subprocess.CalledProcessError) as e:
+                raise OracleError(f"cannot attest task environment: {e}") from e
+            frozen = parse_freeze(freeze.stdout)
         try:
-            return load_hook_result(Path(hook_path), run_started)
+            return load_hook_result(Path(hook_path), run_started), frozen
         finally:
             Path(hook_path).unlink(missing_ok=True)
