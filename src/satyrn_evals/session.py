@@ -131,6 +131,7 @@ def _capture_checkpoint(
     source_paths: tuple[str, ...],
     overlay: OverlaySpec | None = None,
     visibility: str = "visible",
+    transcript_prior_len: int = 0,
 ) -> StepRecord:
     capture = build_cumulative_patch(
         workspace.worktree, workspace.base_sha, workspace._environment
@@ -158,9 +159,30 @@ def _capture_checkpoint(
         patch_result = scan_patch(capture.patch_text, overlay)
         sources: list[tuple[str, str | None]] = []
         if transcript_path.exists():
-            for line in transcript_path.read_text(
-                encoding="utf-8", errors="replace"
-            ).splitlines():
+            # Scan only the transcript delta since the previous checkpoint:
+            # events emitted during THIS step. Payload sources are labeled
+            # under the current step id, so resurfacing an earlier step's
+            # events here would misattribute them to this step (and rescan
+            # the whole prefix at every checkpoint, O(steps x transcript)).
+            data = transcript_path.read_bytes()
+            if transcript_prior_len > len(data):
+                raise AssertionError(
+                    "transcript prior cursor cannot exceed the transcript"
+                )
+            delta = data[transcript_prior_len:]
+            text = delta.decode(encoding="utf-8", errors="replace")
+            lines = text.splitlines()
+            # prior_len is normally a whole-line boundary (spool appends a
+            # trailing newline and the previous capture ended at a read
+            # boundary); if it is ever mid-line, drop that leading partial
+            # line rather than parse a fragment under the current step.
+            if (
+                transcript_prior_len
+                and data[transcript_prior_len - 1] != ord("\n")
+                and lines
+            ):
+                lines = lines[1:]
+            for line in lines:
                 try:
                     message = parse_session_line(line)
                 except ProtocolError:
@@ -359,6 +381,11 @@ def _drive(
             conversation_id = first.conversation_id
 
             stopped = False
+            # Payload-contamination cursor: the transcript byte length as of
+            # the last capture. Each checkpoint scans only the delta since the
+            # prior capture so payload sources are attributed to the step that
+            # actually emitted them (see _capture_checkpoint).
+            transcript_consumed = 0
             for spec_step in spec.steps:
                 terminal_step = spec_step.id
                 adapter.send_line(serialize_prompt(spec_step.id, spec_step.prompt))
@@ -478,7 +505,15 @@ def _drive(
                         turn_count, tool_count, context_events,
                         manifest.source_paths,
                         overlay=overlay, visibility=manifest.oracle_visibility,
+                        transcript_prior_len=transcript_consumed,
                     )
+                )
+                # the checkpoint captured the transcript as of now: advance the
+                # cursor so the next checkpoint scans only its own step's events.
+                transcript_consumed = (
+                    transcript_path.stat().st_size
+                    if transcript_path.exists()
+                    else 0
                 )
                 # Derive the code/message the record must carry NOW: a
                 # crash immediately after this checkpoint must leave the
