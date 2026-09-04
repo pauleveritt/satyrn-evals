@@ -202,3 +202,16 @@ Exit 3 stays reserved for where grading could not run or the workspace
 failed (`GRADE_UNAVAILABLE`, `WORKSPACE_FAILED`, `CLEANUP_FAILED`). The
 coarse exit reports whether evals captured and graded, never what the
 terminal was.
+
+**Cumulative-suite capture** (V8 input decision, 2026-09-04). `capture --revert`
+records only the *discriminating set* — tests failing at base, passing at fix.
+For a task whose intended oracle is a cumulative suite, that reduction is
+unsound: the AgentClinic spike recorded a Phase-3 capture reduced to 3 of 14
+tests accepting a patch that deleted the Phase 1 home route
+(`docs/superpowers/research/2026-09-01-agentclinic-spike.md`, "Two defects
+found in the Evals path"). V8's six AgentClinic repair tasks sidestep it by
+being hand-authored bundled tasks whose oracle is the full 13-test acceptance
+suite (hidden, overlaid), so `capture` is never exercised on them. **Reopens
+when a task must be captured from git history whose intended oracle is a full
+cumulative suite** — the task declares itself cumulative and `capture` records
+the whole suite, or the capture is documented as hand-authored.
