@@ -30,8 +30,8 @@ made at maintainer review round 1 (lean to vendoring), recorded in spec
 implements the approved spec; restoring no-public-tests would be a spec
 amendment (back to review), not a plan edit. Consequence (spec §11.5): with
 `tests/` inside `source_paths`, public-test edits cannot void an attempt,
-and the hidden overlay is the sole grade — safe only because P3's
-contamination subtraction lands before P4's gate runs.
+and the hidden overlay is the sole grade — safe only because P4's contamination subtraction lands before
+P5's gate runs.
 
 **Files:** per state: `base/pyproject.toml`, `base/uv.lock`, `base/tests/test_app.py`, `overlay/test_acceptance.py`, `LICENSE`, `PROVENANCE`.
 
@@ -94,7 +94,7 @@ done
 
 ### Task 2: Six hidden manifests with failure-digest contracts
 
-**Files:** create `manifest.json` per state. **Interfaces:** consumed by P4's gate; must satisfy `load_manifest` incl. `_assert_contract_names_no_overlay`.
+**Files:** create `manifest.json` per state. **Interfaces:** consumed by P5's gate; must satisfy `load_manifest` incl. `_assert_contract_names_no_overlay`.
 
 - [ ] **Step 1: Write the reference manifest for `plausible-wrong-fix`**
 
@@ -302,7 +302,7 @@ def test_fixture_applies_cleanly_to_a_fresh_base(state: str, fixture: str,
 ```
 
 Run: `uv run pytest tests/integration/test_agentclinic_fixtures_apply.py -q`; PASS
-(git apply is the integration-tier validation; P4 re-applies each fixture
+(git apply is the integration-tier validation; P5 re-applies each fixture
 through the real grade).
 
 - [ ] **Step 5: Commit** — `git add src/satyrn_evals/tasks/agentclinic-repair-*/fixtures` then `git commit -m "feat: agentclinic known-good and known-broken fixtures"`.
