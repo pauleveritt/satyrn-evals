@@ -17,6 +17,7 @@
 - Readability rule: every text-bearing element sits on an **opaque card** (cream/white fill, ink text) — SVGs must be legible in both Furo modes.
 - Fixed vocabulary — the four card labels and their wording are final (spec table): **coding agent** — decides what to ask, uses tools, observes results, and loops; **inference server** — loads the model and provides the request interface; **model** — turns the supplied context into the next tokens; **codebase + tools** — the environment the agent can inspect and change.
 - Every diagram's source and rendered SVG are both committed (a hand-authored fallback commits its SVG only); d2-rendered SVGs are byte-for-byte reproducible with the recorded d2 CLI version.
+- d2 is a **developer-side tool, not a project dependency**: no Homebrew or d2 binary enters CI or the docs build. Installing it is an explicit, user-approved step (Task 1).
 - Satyrn stays out of diagram 1. No animation. No serving-ops detail.
 - Plan and spec each ≤ 400 lines (checked by `just lint-docs`).
 - Every figure has `:alt:` text. Commands run via `uv run` where the project venv is needed; `git` commands run in the worktree.
@@ -37,21 +38,25 @@
 
 ---
 
-### Task 1: Install d2 and verify the render loop
+### Task 1: Make the d2 CLI available and verify the render loop
 
-**Files:** none yet (tool install).
+**Files:** none (developer-side tool; no project dependency).
 
-**Interfaces:** Produces the `d2` binary used by every later task, and knowledge of its current version and theme list.
+**Interfaces:** Produces the `d2` binary used by later tasks, plus its exact version and the pinned flag set (`--sketch --theme <id>`).
 
-- [ ] **Step 1: Install**
+- [ ] **Step 1: Check whether d2 is already available**
 
-Run: `brew install d2`
-Expected: completes without error.
+Run: `command -v d2 && d2 version`
+If present: record the version and skip to Step 3. If absent, continue to Step 2.
 
-- [ ] **Step 2: Record the version**
+- [ ] **Step 2: Install with explicit user approval**
+
+Install command: `brew install d2`. **Get explicit user approval before running it**; if approval is withheld, stop and report — the hand-authored fallback in Task 2 needs no d2. Homebrew is not a hidden project prerequisite: it appears in neither CI nor the docs build.
+
+- [ ] **Step 3: Record the exact version and flags**
 
 Run: `d2 version`
-Expected: a version string. Record it here in the plan's Task 2 commit message and in the `justfile` comment.
+Expected: a version string. The `justfile` recipe and each relevant commit record the exact version and the pinned flags; byte-for-byte reproducibility is defined only against that recorded version and flag set.
 
 - [ ] **Step 3: Verify the render loop with a scratch diagram**
 
@@ -111,28 +116,28 @@ direction: down
 
 The semantic content is fixed (five nodes, containment of model inside the inference server, the two edges) even if layout styling moves: the four card labels below must appear verbatim as node labels, and the model must render **inside** the server's card, not beside it.
 
-- [ ] **Step 2: Render and inspect**
+- [ ] **Step 2: Render and inspect the structure (first pass, not the gate)**
 
 Run: `mkdir -p docs/diagrams && d2 --sketch --theme <default-light-theme> docs/diagrams/agent-big-picture.d2 docs/diagrams/agent-big-picture.svg && open docs/diagrams/agent-big-picture.svg`
 
-Judge against the **lo-fi bar** (all must hold): ink text is readable on an opaque card in the diagram's own background (no text floating on transparency in a way dark Furo mode would kill — if unsure, toggle the site theme later in Task 3's build check); strokes look hand-drawn/wireframe, not production-polished; the containment (model inside server) is legible; the four labels read at a glance; the layout roughly matches the spec's ASCII.
+Structural bar (must hold before proceeding): the model renders **inside** the server's card, not beside it; the four card labels appear verbatim; strokes look hand-drawn/wireframe, not production-polished; no ops detail and no peer model card. Readability at the target width in both Furo themes is judged **in situ in Task 3** — that is the definitive gate, not this first pass.
 
-- [ ] **Step 3: Iterate until the bar is met**
+- [ ] **Step 3: Iterate until the structural bar is met**
 
-If any criterion fails, adjust the `.d2` (per-card `style.fill`, `style.font-color`, edge labels, node ordering/`direction`, theme id) and re-render. Consult current d2 styling syntax via `d2 --help` and the find-docs skill (`d2` docs) rather than recalling it. Do **not** add ops detail, colors that die without the page theme, or a peer model card.
+If any structural criterion fails, adjust the `.d2` (per-card `style.fill`, `style.font-color`, edge labels, node ordering/`direction`, theme id) and re-render. Consult current d2 styling syntax via `d2 --help` and the find-docs skill (`d2` docs) rather than recalling it. Do **not** add ops detail, colors that die without the page theme, or a peer model card.
 
-- [ ] **Step 4: Decide and record — the gate**
+- [ ] **Step 4: Record the first-pass outcome — the definitive gate is Task 3**
 
-- PASS: the recipe below is added, and both files commit.
-- FAIL (cannot reach the bar after genuine iteration): delete `agent-big-picture.d2`, hand-write `docs/diagrams/agent-big-picture.svg` with the same five nodes/containment/labels as a lo-fi card SVG, and commit the SVG only. Record the FAIL and its reason in the commit message and in Task 8's close-out.
+The commit below records the first-pass structural outcome. The definitive visual gate — rendered inspection at the target documentation width, in light and dark Furo, judged by a person — runs in Task 3, where the figure first exists in a real page. If Task 3 fails the diagram and the hand-authored fallback wins, Task 3 deletes the `.d2`, commits the hand SVG, and adjusts the recipe; this Task-2 commit remains in history as the experiment.
 
 - [ ] **Step 5: Add the `diagrams` recipe**
 
 Append to `justfile`:
 
 ```makefile
-# Render committed diagrams from their .d2 sources (d2 CLI, sketch mode).
-# Requires: brew install d2. Version pinned by the byte-for-byte check below.
+# Render committed diagrams that have .d2 sources (d2 CLI --sketch --theme <id>,
+# version <recorded>). If a diagram fell back to hand-authored SVG, it has no
+# source line here and is verified by the strict build instead.
 diagrams:
     d2 --sketch --theme <theme-id> docs/diagrams/agent-big-picture.d2 docs/diagrams/agent-big-picture.svg
     d2 --sketch --theme <theme-id> docs/diagrams/evals-evidence-loop.d2 docs/diagrams/evals-evidence-loop.svg
@@ -140,10 +145,10 @@ diagrams:
 
 Where `<theme-id>` is the id chosen in Step 2. The version is recorded in a comment on the first line and in the commit message.
 
-- [ ] **Step 6: Verify reproducibility**
+- [ ] **Step 6: Verify reproducibility for the d2-authored diagram**
 
 Run: `just diagrams && git diff --exit-code -- docs/diagrams/`
-Expected: re-rendering changes nothing (byte-for-byte with the recorded version).
+Expected: re-rendering changes nothing (byte-for-byte with the recorded version and flags). This applies only while `agent-big-picture.d2` exists; if Task 3 falls back to hand-authored SVG, reproducibility for that diagram is vacuous and the declared fallback state is what gets verified.
 
 - [ ] **Step 7: Commit**
 
@@ -175,18 +180,19 @@ Title: `# What actually happens when an agent works`. Opening line orients the r
 
 - [ ] **Step 2: Embed diagram 1**
 
-Place the figure after beat 4 (the reader now has the full vocabulary the cards name). Use a MyST figure with alt text:
+Place the figure after beat 4 (the reader now has the full vocabulary the cards name). Use a MyST figure whose alt text names the *relationship*, not the artwork:
 
 ```markdown
 ```{figure} ../diagrams/agent-big-picture.svg
-:alt: Developer's task flows down to a coding agent. The coding agent exchanges arrows with a codebase and tools card. A request and response arrow runs from the coding agent down to an inference server card that contains a model card inside it.
+:alt: A coding agent uses tools and a codebase, and exchanges requests and generated tokens with an inference server that runs the model.
 ```
 ```
 
-- [ ] **Step 3: Verify the strict build with the figure**
+- [ ] **Step 3: The definitive visual gate — rendered inspection in context**
 
-Run: `uv run --group docs sphinx-build -W -b html docs docs/_build/html`
-Expected: build succeeds — the SVG is found, the alt text is accepted. Open the built page in dark and light Furo modes and confirm the diagram text is legible in both.
+Run: `uv run --group docs sphinx-build -W -b html docs docs/_build/html`, then open the built page in a browser at the **target documentation width** (the Furo content column, not fullscreen), in **light and dark Furo modes**.
+
+Judge readability **at a glance** — a person judges this, not a command: diagram text legible against the diagram's own opaque cards in both modes; no text collides with or disappears into the page background; labels readable without zooming. If it fails: iterate the `.d2` and re-render (loop back to Task 2's Step 3), or — if genuine iteration cannot reach the bar — the **hand-authored fallback**: delete `agent-big-picture.d2`, hand-write `docs/diagrams/agent-big-picture.svg` with the same five nodes/containment/labels as a lo-fi card SVG, and remove its line from the `justfile` recipe. Record the verdict and, on fallback, the reason, in the commit message and Task 8's close-out.
 
 - [ ] **Step 4: Lint and whitespace**
 
@@ -293,12 +299,12 @@ Expected: the same lo-fi bar holds; the reused agent card is visually the same o
 
 - [ ] **Step 3: Append the page section**
 
-In `docs/what-actually-happens.md`, after beat 6, add a section titled e.g. `## What Evals records` that: names the five elements of diagram 2 in page vocabulary; states the seam in one sentence (the attempt command is diagram 1's whole loop treated as an opaque executable); embeds the figure with alt text; and links to the guides (`guides/evaluate-an-attempt.md`) as the next step.
+In `docs/what-actually-happens.md`, after beat 6, add a section titled e.g. `## What Evals records` that: names the five elements of diagram 2 in page vocabulary; states the seam in one sentence (the attempt command is diagram 1's whole loop treated as an opaque executable); embeds the figure with relationship alt text (e.g. "An attempt command — the agent loop treated as one opaque program — leaves a patch and transcript that Evals grades offline into a receipt."); and links to the guides (`guides/evaluate-an-attempt.md`) as the next step.
 
 - [ ] **Step 4: Verify**
 
-Run: `just lint-docs && uv run --group docs sphinx-build -W -b html docs docs/_build/html && git diff --exit-code -- docs/diagrams/`
-Expected: lint clean, build succeeds, re-render reproduces committed SVGs.
+Run: `just lint-docs && uv run --group docs sphinx-build -W -b html docs docs/_build/html`
+Expected: lint clean, build succeeds. Reproducibility applies to the d2-authored diagram: run `just diagrams && git diff --exit-code -- docs/diagrams/` — byte-for-byte. If diagram 1 fell back to hand-authored SVG in Task 3, the declared fallback state (no source for it, no recipe line) is what is verified here instead.
 
 - [ ] **Step 5: Commit**
 
@@ -358,7 +364,7 @@ uv run pytest -q
 just diagrams && git diff --exit-code -- docs/diagrams/
 ```
 
-Expected: lint clean; strict build succeeds; diff check clean; tests pass; diagrams reproduce byte-for-byte. Navigate the built Start here section and confirm: front page → tutorial → learner page (both figures legible in light and dark Furo modes) → guides.
+Expected: lint clean; strict build succeeds; diff check clean; tests pass. Reproducibility is verified per the declared state: each diagram with a committed `.d2` source regenerates byte-for-byte under `just diagrams`; a hand-authored fallback (no source) is verified by the strict build and the absence of a recipe line — not by pretending generator reproducibility applies. Navigate the built Start here section and confirm: front page → tutorial → learner page (both figures legible at documentation width in light and dark Furo modes) → guides.
 
 - [ ] **Step 4: Commit**
 
