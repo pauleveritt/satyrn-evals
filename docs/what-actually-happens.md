@@ -51,11 +51,9 @@ loads the model, runs inference, and exposes an OpenAI-compatible API. The
 agent sends it a request — "given this conversation, what comes next?" — and
 the server returns the next tokens the model produces.
 
-This split between a client that asks and a server that answers is standard.
-NVIDIA NIM's overview describes the server as a container that loads models,
-runs inference, and exposes an OpenAI-compatible API, and vLLM's architecture
-overview draws the same line between the engine that runs the model and the
-front-end that takes requests. (NVIDIA NIM, *Architecture at a Glance* —
+This client/server split is standard: NVIDIA NIM and vLLM's architecture
+overview draw the same line between the engine that runs the model and the
+service that answers requests. (NVIDIA NIM, *Architecture at a Glance* —
 <https://docs.nvidia.com/nim/large-language-models/latest/introduction.html>;
 vLLM, *Architecture overview* —
 <https://docs.vllm.ai/en/stable/design/arch_overview>.)
