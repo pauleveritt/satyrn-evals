@@ -21,6 +21,12 @@ recorded condition that would reopen it, in `BACKLOG.md`.
 
 ## Rules that govern every edit, not just phase kickoff
 
+- **Commits are maintainer-controlled.** Do not create a commit after each
+  plan task or implementation slice. Leave the worktree available for manual
+  review and commit when the maintainer requests it. The spec and plan must
+  exist before implementation, but their creation is not itself an automatic
+  commit checkpoint.
+
 - **Verify, don't assert.** Claims get demonstrated, not argued. Cite
   `file:line`. Do not write down a number you did not compute yourself;
   carry the command that recomputes it.

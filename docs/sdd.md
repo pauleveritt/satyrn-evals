@@ -2,22 +2,30 @@
 
 This repository runs on **spec-driven development**: every feature cycle
 produces a design spec (what we're building and why) and an implementation
-plan (the task-by-task decomposition), both committed before the code.
+plan (the task-by-task decomposition), both prepared before the code. Commit
+timing is maintainer-controlled; implementation tasks are not automatic
+commit checkpoints.
 
 The cycle shape, from the superpowers workflow:
 
 1. **Brainstorm** — clarify the idea into a design, present it, get
    approval.
 2. **Spec** — write the validated design to
-   `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, commit it.
+   `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`.
 3. **Plan** — write the implementation plan to
-   `docs/superpowers/plans/YYYY-MM-DD-<topic>.md`, commit it.
+   `docs/superpowers/plans/YYYY-MM-DD-<topic>.md`.
 4. **Implement** — work the plan in reviewable cycles, each ending with a
    command a contributor can run and evidence that names a success fixture
    and a failure fixture.
 5. **Record** — completed phases, and the withdrawn framings and retracted
    figures found along the way, move to the archive section of
    `ROADMAP.md` rather than being edited away.
+
+The maintainer decides when to commit. Agents may leave the worktree dirty
+across plan tasks and must not create checkpoint commits unless explicitly
+asked. The maintainer may request a commit at any point, and a phase may be
+landed as one consolidated implementation commit plus a separate close-out
+commit when that is useful.
 
 The disciplines review holds you to:
 

@@ -21,10 +21,11 @@ serves a live-rebuilding copy at http://127.0.0.1:8003.
 
 ## Repository conventions
 
-- **Spec-driven development.** Every real feature has a committed design
-  spec and implementation plan under `docs/superpowers/specs/` and
+- **Spec-driven development.** Every real feature has a design spec and
+  implementation plan under `docs/superpowers/specs/` and
   `docs/superpowers/plans/` before the code — see
-  [`sdd.md`](sdd.md).
+  [`sdd.md`](sdd.md). Commit timing is maintainer-controlled; plan tasks do
+  not require automatic checkpoint commits.
 - **Verify, don't assert.** A claim (a fix works, a test is non-vacuous, a
   refusal fires) gets demonstrated — stash the fix and show the new test
   fails first, or write the exploit and run it — not just stated.
