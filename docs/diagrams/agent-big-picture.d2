@@ -1,7 +1,7 @@
 vars: {
   d2-config: { sketch: true }
 }
-direction: down
+direction: right
 
 "Developer's task": {
   style: {
@@ -49,6 +49,6 @@ direction: down
   }
 }
 
-"Developer's task" -> "coding agent": ""
-"coding agent" <-> "codebase + tools"
+"Developer's task" -> "coding agent": prompt
+"coding agent" <-> "codebase + tools": "tool calls"
 "coding agent" -> "inference server": "request / response"
