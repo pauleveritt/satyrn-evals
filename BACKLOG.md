@@ -187,10 +187,31 @@ grader/smoke/regression fixture until replaced. **Reopens when a
 replacement adversary is proposed** that reproduces deterministically on
 this machine with a canary reporting inconclusive on the wrong face.
 
-**V6 open policy decisions** (2026-09-04, recorded not decided). Two
-independent-review findings await a maintainer decision: (1) the Pi
-adapter silently drops unknown/malformed Pi messages — clarify whether
-raw Pi preservation is required, or retain the drop; (2) the CLI treats
-`ADAPTER_ERROR` and `PROTOCOL_ERROR` as exit 0, which reads inconsistent
-with the documented operational-refusal exit-3 rule — needs an explicit
-decision before V6 merge. **Reopens on a maintainer decision.**
+**Raw-Pi message retention — decided (2026-09-04).** The Pi adapter
+drops parseable-but-unmapped Pi events and malformed (non-JSON) lines.
+Decision: retention is required only for the mapped event vocabulary —
+the design of record requires the complete original Pi event in
+`payload` for the mapped kinds so "its mapping and every count are
+recomputable", and review fix 2 added `message_update` (the genuine
+streaming evidence the smoke discriminator needs). The mapped set
+already carries that evidence: `message_update` holds the stream,
+`turn_end`/`tool_execution_end` hold completions, `agent_end`/
+`auto_retry_end` hold terminal state. Unbounded retention of every Pi
+event (per-token deltas, tool-execution updates) would defeat the
+transcript's bounded, countable design without adding recomputable
+evidence. Malformed lines cannot be forwarded without breaking the JSONL
+protocol and are not retained; the session transcript and the retained
+adapter-stderr log bound the evidence contract.
+
+**CLI exit semantics for ADAPTER_ERROR / PROTOCOL_ERROR — decided
+(2026-09-04).** Exit 0 stands for `ADAPTER_ERROR` and `PROTOCOL_ERROR`.
+The design of record's coarse rule is: 0 for "a safely captured and
+graded session, including a model failure or scope violation", 2 for
+usage/start refusal, 3 for "operational refusal or unavailable grading".
+An adapter-error or protocol-error session is still captured and graded
+(checkpoints retained, offline grading ran, a durable record exists);
+its terminal is a recorded outcome, not an infrastructure refusal.
+Exit 3 stays reserved for where grading could not run or the workspace
+failed (`GRADE_UNAVAILABLE`, `WORKSPACE_FAILED`, `CLEANUP_FAILED`). The
+coarse exit reports whether evals captured and graded, never what the
+terminal was.

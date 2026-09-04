@@ -10,13 +10,14 @@ Backlog, not into the current phase.*
 
 ## Now
 
-**V6 — session eval — is in remediation and re-verification.** Two
-independent reviews (maintainer at `decd5ba`, a second at the final
-review commit) found release blockers; each round was fixed with
-failure-path tests and the gates re-run. V6 is **not** ready to merge:
-its remediation plan (`docs/superpowers/plans/2026-09-04-v6-remediation.md`)
-covers integrity, evidence reconciliation, and one final uncounted
-real-model smoke on the corrected runtime before merge or completion.
+**V6 — session eval — is complete (2026-09-04).** The remediation plan
+(`docs/superpowers/plans/2026-09-04-v6-remediation.md`) closed all three
+tracks: integrity blockers fixed with failure-path tests, evidence
+reconciled, and a final uncounted real-model smoke on the corrected
+runtime passed (all four prompts settled; the preservation-invalid rule
+proven on a real model). Two independent reviews' findings are recorded
+as corrections, not edited away. svcs materialization and re-baselining
+remain a separate, deferred proposal.
 
 V5d landed the pre-flight smoke check as a confirmed, documented practice
 — one uncounted real-model smoke per materially distinct execution path,
@@ -71,7 +72,7 @@ lands.
 | V5b | The diagnostic loop | `run --n 8` over admitted tasks, summarizing verdict reasons, repeated calls, churn, tool calls, context, and timeouts | The claims layer — pre-registration, intervals, void accounting (`BRIEF.md:33-36`) | **complete** |
 | V5c | Capture the admitted suite | reconstruct and `capture --revert` the corrected `local-pings` synthetic pair, then re-record the probe's three-row qualification table as the gate that the capture is faithful | `stringified-annotations` capture (reopens once the loop runs on `local-pings`); `magicmock-factory` (reopens with an Envelope/Engine probe); oracle improvement (its own proposal); running the loop; suite-headroom capture — see the spec's Out of scope | **complete** |
 | V5d | The pre-flight smoke check | run one real-model attempt (`run TASK --n 1`) against each materially distinct command/adapter/runtime path before that path's first budgeted diagnostic run, and read the attempt record — plus the receipt when grading ran — against a short pass/fail checklist; `NO_PATCH`/`COMMAND_TIMEOUT` pass only with positive evidence the model started | automated engine-contract content validation (`BACKLOG.md`); the `pi` argv incompatibility itself (satyrn-engine's backlog); running smoke in CI or any test tier; a manifest smoke-record field; `local-pings` re-admission or new prospective read/write Envelope decisions — see the spec's Out of scope | **complete** |
-| V6 | Session eval | `session TASK -- ADAPTER...` sends ordered prompts to one conversation against one evolving checkout, snapshots a cumulative patch per checkpoint, and grades offline through a grader overlay the executor is never shown | `run --n 8` and admission, model-client integration, retries, a hostile-command sandbox, a persistent Engine daemon | **remediation** |
+| V6 | Session eval | `session TASK -- ADAPTER...` sends ordered prompts to one conversation against one evolving checkout, snapshots a cumulative patch per checkpoint, and grades offline through a grader overlay the executor is never shown | `run --n 8` and admission, model-client integration, retries, a hostile-command sandbox, a persistent Engine daemon | **complete** |
 | V7 | Task visibility and leak detection | a manifest field declares each task visible- or hidden-oracle; contamination is detected by content and reported per arm, never absorbed into a denominator | OS-level containment — deferred in `BACKLOG.md`; V7 detects rather than prevents | proposed |
 | V8 | AgentClinic through Evals | reproduce the repair fixtures on this repository's own `capture`/`attempt`/`grade` path, replacing the spike's scratchpad harness | Engine changes, including a `facts` field (satyrn-engine `BACKLOG.md`); an orchestrator | proposed |
 
@@ -125,6 +126,20 @@ entry there states what reopens it.
 Completed phases move here (or to `docs/superpowers/phase-history.md`)
 when the roadmap outgrows the front page.
 
+- **V6 — Session eval (2026-09-04).** `session TASK -- ADAPTER...`:
+  one conversation against one evolving checkout, cumulative checkpoints
+  snapshotted and durably linked before the next prompt, offline grading
+  through a grader overlay the executor never sees, and a shipped Pi
+  adapter over `pi --mode rpc`. Two independent reviews drove recorded
+  corrections: prompt-wide deadlines, cleaned Git environment, per-
+  checkpoint durable records, collector selectors, context_reset as a
+  protocol failure, message_update retention, Pi-declared terminals,
+  scope-preserving source_paths, and preservation `invalid` on
+  protected-test edits. Session runtime policy
+  (`PYTHONDONTWRITEBYTECODE`) keeps bytecode out of the workspace. Three
+  uncounted real-model smokes on the local model passed plumbing.
+  Bundled `session-mechanics` grader fixture; svcs materialization and
+  qualification remain a separate proposal.
 - **V5d — The pre-flight smoke check (2026-09-03).** The revised proposal
   was confirmed and landed as a documented practice, not new code: one
   uncounted real-model smoke per materially distinct execution path, at

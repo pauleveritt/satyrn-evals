@@ -11,7 +11,7 @@ from satyrn_evals import session as session_module
 from satyrn_evals.adapter_process import AdapterCleanupError  # noqa: F401
 from satyrn_evals.errors import UsageError
 from satyrn_evals.session import run_session
-from satyrn_evals.session_record import SessionCode, load_session_record
+from satyrn_evals.session_record import SessionCode, SessionRecord, load_session_record
 from satyrn_evals.workspace import WorkspaceReleaseError
 
 pytestmark = pytest.mark.integration
@@ -487,3 +487,54 @@ def test_invalid_utf8_adapter_output_still_leaves_a_durable_record(
     assert b"\xff\xfe" in transcript  # bytes preserved verbatim
     loaded = load_session_record(session_dir / "session-record.json")
     assert loaded.code is SessionCode.PROTOCOL_ERROR
+
+
+def _provisional_codes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, scenario: str, **kw: float
+) -> tuple[list[SessionCode], SessionCode]:
+    """Record the code on every write_session_record call (the durable
+    per-checkpoint and final writes) and return (codes, final code)."""
+    from satyrn_evals.session_record import write_session_record as real_write
+
+    codes: list[SessionCode] = []
+
+    def recording_write(path: Path, record: SessionRecord) -> None:
+        codes.append(record.code)
+        real_write(path, record)
+
+    monkeypatch.setattr(session_module, "write_session_record", recording_write)
+    record = run_session(
+        task="mini-session", tasks_root=DATA, output=tmp_path,
+        adapter_command=[sys.executable, str(FAKE), scenario],
+        **kw,
+    )
+    return codes, record.code
+
+
+def test_intermediate_record_code_matches_a_step_timeout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A crash immediately after the timeout checkpoint must leave the
+    durable record at STEP_TIMEOUT, not COMPLETE (maintainer blocker)."""
+    codes, final = _provisional_codes(
+        tmp_path, monkeypatch, "hang", step_timeout=0.6
+    )
+    assert final is SessionCode.STEP_TIMEOUT
+    assert codes[-2] is SessionCode.STEP_TIMEOUT  # last per-checkpoint write
+    assert codes[0] is SessionCode.COMPLETE       # add-a settled earlier
+
+
+def test_intermediate_record_code_matches_a_protocol_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    codes, final = _provisional_codes(tmp_path, monkeypatch, "wrong-id")
+    assert final is SessionCode.PROTOCOL_ERROR
+    assert codes[-2] is SessionCode.PROTOCOL_ERROR
+
+
+def test_intermediate_record_code_matches_a_non_settled_terminal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    codes, final = _provisional_codes(tmp_path, monkeypatch, "output-limit")
+    assert final is SessionCode.OUTPUT_LIMIT
+    assert codes[-2] is SessionCode.OUTPUT_LIMIT

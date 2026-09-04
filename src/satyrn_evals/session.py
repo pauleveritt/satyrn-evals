@@ -436,6 +436,23 @@ def _drive(
                         manifest.source_paths,
                     )
                 )
+                # Derive the code/message the record must carry NOW: a
+                # crash immediately after this checkpoint must leave the
+                # durable record consistent with the terminal it captured
+                # (the stop / non-settled-outcome code assignments below
+                # happen only later in the control flow).
+                if stop is not None:
+                    current_code, current_message = stop.code, stop.message
+                elif outcome != "settled":
+                    current_code, current_message = (
+                        (SessionCode.OUTPUT_LIMIT,
+                         "adapter reported output-limit")
+                        if outcome == "output-limit"
+                        else (SessionCode.ADAPTER_ERROR,
+                              "adapter reported agent-error")
+                    )
+                else:
+                    current_code, current_message = code, message
                 # durable linkage BEFORE the next prompt: the running
                 # record is atomically replaced at each checkpoint, so a
                 # crash during a later prompt loses no earlier step
@@ -445,8 +462,8 @@ def _drive(
                     session_dir / "session-record.json",
                     _record(
                         manifest, adapter_command, workspace,
-                        _scope_code(code, checkpoints),
-                        conversation_id, terminal_step, message,
+                        _scope_code(current_code, checkpoints),
+                        conversation_id, terminal_step, current_message,
                         checkpoints,
                     ),
                 )
