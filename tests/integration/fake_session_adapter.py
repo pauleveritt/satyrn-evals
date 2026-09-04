@@ -106,6 +106,9 @@ def main() -> int:
             out({"version": 1, "type": "step_finished", "step_id": "nope",
                  "conversation_id": CID, "outcome": "settled", "message": None})
             time.sleep(60)  # the executor must stop before this matters
+        if scenario == "garbage-bytes" and step == "add-b":
+            sys.stdout.buffer.write(b"\xff\xfe not json\n")
+            sys.stdout.buffer.flush()
         if scenario == "context-reset" and step == "add-b":
             emit(step, "context_reset")  # design:230: a protocol failure
         if scenario == "chatty" and step == "add-a":

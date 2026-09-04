@@ -256,3 +256,24 @@ def test_preservation_is_invalid_when_the_patch_edits_a_protected_public_test(
     assert step.preservation_receipt_path is None
     assert step.scope_violations == ("t_base.py",)  # the violation is recorded
     assert graded.code is record.code  # not GRADE_UNAVAILABLE: machinery worked
+
+
+def test_deepest_milestone_counts_a_later_repair() -> None:
+    """A failed earlier checkpoint that a later cumulative pass repairs
+    must not score zero (independent-review finding): checkpoint 2's
+    cumulative selection passed even though checkpoint 1 had failed."""
+    steps = (
+        StepRecord("add-a", "p1", "settled", feature_verdict="fail"),
+        StepRecord("add-b", "p2", "settled", feature_verdict="pass"),
+        StepRecord("add-c", "p3", "settled", feature_verdict="fail"),
+    )
+    assert deepest_feature_milestone(SPEC, steps) == 2
+
+
+def test_deepest_milestone_is_the_deepest_pass_not_a_trailing_one() -> None:
+    steps = (
+        StepRecord("add-a", "p1", "settled", feature_verdict="pass"),
+        StepRecord("add-b", "p2", "settled", feature_verdict="fail"),
+        StepRecord("add-c", "p3", "settled", feature_verdict="pass"),
+    )
+    assert deepest_feature_milestone(SPEC, steps) == 3

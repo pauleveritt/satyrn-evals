@@ -256,8 +256,10 @@ Evidence directory:
 
 Plumbing pass, and the `__pycache__` finding is gone: all four prompts
 settled (turns 20/6/7/5), review reached, one conversation
-(`pi-d60db938bdef`), 508 `message_update` events across a 169,752-byte
-transcript, parseable artifacts, clean teardown, exit 0. No
+(`pi-d60db938bdef`), 508 `message_update` events across the full
+386,383-byte transcript (step 1's checkpoint transcript-prefix length is
+169,752 bytes — the prefix, not the whole file), parseable artifacts,
+clean teardown, exit 0. No
 `__pycache__` anywhere in the captured patches.
 
 Model behavior (no admission/quality claim, but recorded): the model

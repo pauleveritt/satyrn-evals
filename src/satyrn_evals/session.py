@@ -16,6 +16,7 @@ import json
 import os
 import shutil
 import time
+from collections.abc import Sequence
 from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
@@ -75,7 +76,14 @@ def _fsync_file(path: Path) -> None:
 
 
 def _spool(transcript_path: Path, raw: str) -> None:
-    with open(transcript_path, "a", encoding="utf-8") as f:
+    # The transcript is byte-verbatim evidence: adapter lines arrive
+    # surrogateescape-decoded, so the file must round-trip surrogates
+    # back to their original bytes. A strict utf-8 writer would raise
+    # UnicodeEncodeError on an invalid-UTF8 adapter line and bypass the
+    # started-session durable-record guarantee.
+    with open(
+        transcript_path, "a", encoding="utf-8", errors="surrogateescape"
+    ) as f:
         f.write(raw + "\n")
         f.flush()
         os.fsync(f.fileno())
@@ -90,9 +98,20 @@ class _Stop(Exception):
         self.message = message
 
 
-def _snapshot(workspace: SessionWorkspace, path: Path) -> None:
+def _snapshot(
+    workspace: SessionWorkspace, path: Path, status_lines: Sequence[str]
+) -> None:
+    # the 2026-09-01 design records "the associated full tree snapshot
+    # and status"; the status lines are load-bearing evidence in the
+    # durable, digested snapshot, not a throwaway.
     entries = snapshot_tree(workspace.worktree)
-    path.write_text(json.dumps([asdict(e) for e in entries], default=str) + "\n")
+    path.write_text(
+        json.dumps(
+            {"tree": [asdict(e) for e in entries], "status": list(status_lines)},
+            default=str,
+        )
+        + "\n"
+    )
     _fsync_file(path)
 
 
@@ -113,14 +132,16 @@ def _capture_checkpoint(
     patch_digest = _digest(capture.patch_text)
     snapshot_path = session_dir / "snapshots" / f"{index:02d}-{spec_step.id}.json"
     snapshot_path.parent.mkdir(exist_ok=True)
-    _snapshot(workspace, snapshot_path)
+    _snapshot(workspace, snapshot_path, capture.status_lines)
     snapshot_digest = _digest(snapshot_path.read_text(encoding="utf-8"))
     transcript_digest = None
     transcript_bytes: int | None = None
     if transcript_path.exists():
         prefix = transcript_path.read_bytes()
         transcript_bytes = len(prefix)
-        transcript_digest = _digest(prefix.decode("utf-8", "surrogateescape"))
+        # the transcript may carry surrogateescape bytes (invalid UTF-8
+        # adapter output, spooled verbatim); digest the raw bytes
+        transcript_digest = hashlib.sha256(prefix).hexdigest()
     return StepRecord(
         step_id=spec_step.id,
         prompt_digest=prompt_digest,

@@ -265,3 +265,15 @@ Parser refusals: malformed JSON; unknown `version`; unknown `type`; `session_sta
 - [x] Run `uv run pytest -m '' --cov=src/satyrn_evals --cov-branch --cov-fail-under=100 -q` — Expected: PASS (100%).
 - [x] Run `uv run ruff check .` — Expected: clean.
 - [x] Commit any residue: `chore: plan-1 coverage gate`.
+
+## Execution record (2026-09-04)
+
+This plan is a historical planning artifact and is **not current
+truth**; it predates two independent review cycles and their
+corrections. Implement, then review-fix, commits on the branch
+supersede individual steps here. Where this plan and the delta spec's
+recorded corrections disagree, the corrections win. See
+`docs/superpowers/specs/2026-09-03-v6-session-eval-design.md`
+(review corrections and remediation record) and the remediation plan
+`2026-09-04-v6-remediation.md`. V6 is in remediation and re-verification,
+not mergeable or complete.

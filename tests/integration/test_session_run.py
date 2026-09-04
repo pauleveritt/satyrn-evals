@@ -471,3 +471,19 @@ def test_each_checkpoint_durably_links_its_record_before_the_next_prompt(
     assert record.code is SessionCode.COMPLETE
     # 3 per-checkpoint provisional writes (1,2,3 steps) + the final write
     assert calls == [1, 2, 3, 3]
+
+
+def test_invalid_utf8_adapter_output_still_leaves_a_durable_record(
+    tmp_path: Path,
+) -> None:
+    """Invalid-UTF8 adapter output must not bypass the started-session
+    durable-record guarantee: the line is spooled byte-verbatim, the
+    sequence stops as a protocol failure, and the record is written."""
+    record = _run(tmp_path, "garbage-bytes")
+    assert record.code is SessionCode.PROTOCOL_ERROR
+    assert record.terminal_step == "add-b"
+    session_dir = _session_dir(tmp_path)
+    transcript = (session_dir / "transcript.jsonl").read_bytes()
+    assert b"\xff\xfe" in transcript  # bytes preserved verbatim
+    loaded = load_session_record(session_dir / "session-record.json")
+    assert loaded.code is SessionCode.PROTOCOL_ERROR

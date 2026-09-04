@@ -56,11 +56,19 @@ def load_overlay(task_dir: Path, manifest: TaskManifest) -> OverlaySpec:
 
 
 def materialize_overlay(spec: OverlaySpec, workspace: Path) -> None:
-    """Copy overlay files into a fresh grader workspace at their rel paths."""
+    """Copy overlay files into a fresh grader workspace at their rel paths.
+
+    The recorded digests are load-bearing: each written file is verified
+    against its digest, so overlay drift between load and materialize is
+    a refused error, not a silent change in what the grader ran.
+    """
     resolved_workspace = workspace.resolve()
     for rel in spec.rel_paths:
         target = workspace / rel
         if not target.resolve().is_relative_to(resolved_workspace):
             raise OverlayError(f"overlay path escapes the workspace: {rel}")
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes((spec.root / rel).read_bytes())
+        data = (spec.root / rel).read_bytes()
+        target.write_bytes(data)
+        if sha256(data).hexdigest() != spec.digests.get(rel):
+            raise OverlayError(f"overlay file digest mismatch: {rel}")

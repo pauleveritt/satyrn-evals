@@ -171,3 +171,15 @@ Rules (2026-09-01, "Offline grading"): runs only after `terminate_and_reap`/grac
 - [ ] **Step 1: Failing tests** — `session TASK -- anything` usage refusal (no `--`) → exit 2, nothing written; monkeypatched `run_session` returning `code=COMPLETE` → exit **0**; `SCOPE_VIOLATION` → still 0 (safely captured and graded); `GRADE_UNAVAILABLE`/`WORKSPACE_FAILED`/`CLEANUP_FAILED` → 3. Flags: `--tasks-root --output --start-timeout --step-timeout --close-timeout`.
 - [x] **Step 2: Run** — FAIL. **Step 3: Implement** — mirror the `attempt`/`run` dispatch (`cli.py:64-93`), one `match` over `SessionCode` for the coarse status. **Step 4: Run** — PASS. **Step 5: Commit** `feat: session CLI`.
 - [ ] **Step 6: Coverage gate** — `uv run pytest -m '' --cov=src/satyrn_evals --cov-branch --cov-fail-under=100 -q` and `uv run pytest tests/integration -m integration -q`; commit residue `chore: plan-2 gates`.
+
+## Execution record (2026-09-04)
+
+This plan is a historical planning artifact and is **not current
+truth**; it predates two independent review cycles and their
+corrections. Implement, then review-fix, commits on the branch
+supersede individual steps here. Where this plan and the delta spec's
+recorded corrections disagree, the corrections win. See
+`docs/superpowers/specs/2026-09-03-v6-session-eval-design.md`
+(review corrections and remediation record) and the remediation plan
+`2026-09-04-v6-remediation.md`. V6 is in remediation and re-verification,
+not mergeable or complete.

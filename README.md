@@ -63,9 +63,12 @@ Evals builds the engine one loop at a time:
    `satyrn-engine attempt` in the same slot.
 3. **Grade** — grading reads only the preserved artifacts and records an
    offline verdict — no model, no network. V1, done.
-4. **Diagnose** — a run of n=8 plus a summary: verdict reasons, repeated
-   calls, churn, tool calls, context, timeouts. V5b, after V5a settles which
-   arm the admission bar applies to.
+4. **Diagnose** — a run of n=8 plus a counts-only summary: verdict
+   reasons, code counts, and timeouts. The transcript-derived metrics
+   (repeated calls, tool calls, churn, context) remain deferred until
+   the engine exposes them across the seam (`BACKLOG.md`), so V5b's
+   summary reports them as unmeasured, never zero. V5b, after V5a
+   settles which arm the admission bar applies to.
 5. **Fix and re-measure** — the summary names what broke and where; the
    engine gets fixed; the suite re-runs. Each task carries a baseline probe
    — its baseline attempt at n=4–6, recorded once — so a later run shows

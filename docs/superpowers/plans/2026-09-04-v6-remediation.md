@@ -43,21 +43,22 @@ generic selector semantics for the grader verdict.
 ### Track 2 — V6 evidence reconciliation (exit: specs, plans, docs, and code agree)
 
 Scope:
-- [ ] Milestone-repair scoring: a later repaired milestone must not be
-      zero because an earlier checkpoint failed (scoring currently stops
-      at the first failed earlier checkpoint).
-- [ ] Invalid-UTF8 record path: adapter output that is not valid UTF-8
-      must not bypass the started-session durable-record guarantee.
-- [ ] Status/digest fossils: the full Git status and
-      `OverlaySpec.digests` are computed but not load-bearing — persist
-      and enforce them, or remove them.
-- [ ] Stale plan docs: append execution/correction notes to
-      `docs/superpowers/plans/2026-09-03-v6-p*.md` so they are not
-      mistaken for current truth.
-- [ ] Front-door docs and verification numbers: correct the active docs
-      (V5b diagnosis overstatement; V6 still described as proposed;
-      `docs/sdd.md` smoke/gate numbers — including the checkpoint-prefix
-      vs full-transcript-length conflation).
+- [x] Milestone-repair scoring: deepest_feature_milestone now scans every
+      feature checkpoint, so a later cumulative pass (a repair) raises the
+      milestone instead of stopping at the first earlier failure.
+- [x] Invalid-UTF8 record path: the transcript spools with
+      surrogateescape (byte-verbatim) and digests hash raw bytes, so
+      invalid-UTF8 adapter output cannot crash the writer; the session
+      still ends with a durable record.
+- [x] Status/digest fossils: git status lines are recorded in the durable
+      digested snapshot; overlay digests are verified at materialization.
+- [x] Stale plan docs: execution/correction notes appended to all three
+      `2026-09-03-v6-p*.md` plans.
+- [x] Front-door docs and verification numbers: README diagnose wording
+      corrected (counts only; transcript metrics deferred); ROADMAP
+      states remediation; sdd.md smoke/gate numbers reconciled to the
+      actual final commands (574/184/758, 2955 stmts/954 branches), with
+      the smoke-2 transcript-prefix-vs-full-length conflation corrected.
 
 ### Track 3 — V6 final smoke (exit: durable record proves the five smoke assertions on the corrected path)
 

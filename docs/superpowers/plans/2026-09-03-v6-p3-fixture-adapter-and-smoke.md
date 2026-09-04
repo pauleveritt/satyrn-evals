@@ -153,3 +153,15 @@ No banner, no header, no edit of any kind inside the file — provenance lives i
 
 - [x] Run and record (V4's shape, `docs/sdd.md`): `uv run pytest -q`; `uv run pytest tests/integration -m integration -q`; `uv run pytest -m '' --cov=src/satyrn_evals --cov-branch --cov-fail-under=100`; `uv run ruff check .`; `just lint-docs`.
 - [ ] Then — outside this plan's automation — run the smoke per the runbook against the supported Pi executable, and append the smoke section to `docs/sdd.md`'s V6 record: durable evidence path, each of the five assertions evidenced individually, the no-shim outcome, and the statement that model behavior may pass or fail with no admission, difficulty, or quality claim. Commit `docs: V6 verification record and smoke evidence`.
+
+## Execution record (2026-09-04)
+
+This plan is a historical planning artifact and is **not current
+truth**; it predates two independent review cycles and their
+corrections. Implement, then review-fix, commits on the branch
+supersede individual steps here. Where this plan and the delta spec's
+recorded corrections disagree, the corrections win. See
+`docs/superpowers/specs/2026-09-03-v6-session-eval-design.md`
+(review corrections and remediation record) and the remediation plan
+`2026-09-04-v6-remediation.md`. V6 is in remediation and re-verification,
+not mergeable or complete.

@@ -92,24 +92,28 @@ def deepest_feature_milestone(
 ) -> int:
     """The deepest passing feature milestone, zero if none passed.
 
-    Feature steps advance only when their captured record settled in
-    scope and its cumulative feature selection passed; review steps
-    never advance the milestone.
+    A feature milestone is the deepest checkpoint whose cumulative
+    selection passed: every feature step's record is scanned, because a
+    LATER checkpoint passing its cumulative union means the model
+    repaired work an EARLIER checkpoint had not yet finished — stopping
+    at the first failure would score a repaired session as zero. A step
+    counts only when its captured record settled in scope and its
+    cumulative feature selection passed; review steps never advance the
+    milestone.
     """
     by_id = {step.step_id: step for step in steps}
     milestone = 0
-    for spec_step in spec.steps:
+    for index, spec_step in enumerate(spec.steps):
         if spec_step.kind != "feature":
             continue
         record = by_id.get(spec_step.id)
         if (
-            record is None
-            or record.outcome != "settled"
-            or record.scope_violations
-            or record.feature_verdict != "pass"
+            record is not None
+            and record.outcome == "settled"
+            and not record.scope_violations
+            and record.feature_verdict == "pass"
         ):
-            break
-        milestone += 1
+            milestone = index + 1
     return milestone
 
 

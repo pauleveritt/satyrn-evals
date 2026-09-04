@@ -157,3 +157,19 @@ def test_load_overlay_refuses_root_that_is_a_file(tmp_path: Path) -> None:
     )
     with pytest.raises(OverlayError, match="must name a directory"):
         load_overlay(task_dir, manifest)
+
+
+def test_materialize_verifies_the_recorded_digests(tmp_path: Path) -> None:
+    """Overlay digests are load-bearing: a file that changes between
+    load_overlay and materialize_overlay is refused, not silently graded."""
+    task_dir = _make_task(tmp_path, {"tests/a.py": b"first\n"})
+    spec = load_overlay(task_dir, load_manifest(task_dir))
+    (task_dir / "grader" / "overlay" / "tests" / "a.py").write_bytes(b"tampered\n")
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    with pytest.raises(OverlayError, match="digest mismatch"):
+        materialize_overlay(spec, workspace)
+    # the honest copy still materializes cleanly (the sibling direction)
+    fresh = load_overlay(task_dir, load_manifest(task_dir))
+    materialize_overlay(fresh, workspace)
+    assert (workspace / "tests" / "a.py").read_bytes() == b"tampered\n"
