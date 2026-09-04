@@ -19,3 +19,4 @@ lint-docs:
 # it has no source line here and is verified by the strict build instead.
 diagrams:
     d2 --sketch --theme 0 --scale 0.5 docs/diagrams/agent-big-picture.d2 docs/diagrams/agent-big-picture.svg
+    d2 --sketch --theme 0 --scale 0.5 docs/diagrams/evals-evidence-loop.d2 docs/diagrams/evals-evidence-loop.svg
