@@ -112,6 +112,16 @@ laptop, the server and the model run locally, and RAM bounds which model
 fits; on a remote server, they run remotely, and the network takes the RAM's
 place. The picture is the same either way.*
 
+**Amendment (2026-09-04, superseded in implementation).** The sentence above —
+the task arrow is unlabeled because it is the reader's own situation — was
+superseded by the maintainer before landing: the shipped diagram 1 labels the
+task→agent edge `prompt` and the agent↔tools edge `tool calls`, and places
+"Developer's task" off to the left of a horizontal (`direction: right`)
+composition so the picture uses page width. The unlabeled-arrow rationale is
+kept here as the original decision, not edited away; the shipped labels and
+layout are the decision of record. (Rendered at `d2 --scale 0.5`; flags
+recorded in the Justfile `diagrams` recipe.)
+
 ## Diagram 2 — how Evals uses those pieces
 
 Developed after diagram 1 is approved complete; the cycle closes with both.
