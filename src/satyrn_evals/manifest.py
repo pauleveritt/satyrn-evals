@@ -89,7 +89,15 @@ def _validate_engine_contract(task_dir: Path, value: object) -> str | None:
 
 
 def _overlay_declared_names(task_dir: Path, overlay_root: str) -> tuple[str, ...]:
-    """Names whose appearance in authored text leaks a hidden oracle."""
+    """Authoring-time names whose appearance in authored text leaks a hidden oracle.
+
+    Authored text is matched exactly, so the bare overlay root
+    (``grader/overlay``) plus every task-rooted form is enumerated here —
+    a mention can stop at the root with no file name attached. This is
+    intentionally NOT the same candidate set contamination.scan_texts
+    scans (overlay-root-relative rel paths only): the detector's payload
+    blobs are matched by rel-suffix containment, not exact authoring text.
+    """
     names = [overlay_root]
     root = task_dir / overlay_root
     for path in sorted(root.rglob("*")):

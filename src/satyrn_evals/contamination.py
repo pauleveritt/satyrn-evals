@@ -109,33 +109,28 @@ def scan_patch(patch_text: str | None, spec: OverlaySpec) -> CheckResult:
     )
 
 
-def _name_candidates(spec: OverlaySpec) -> tuple[str, ...]:
-    """Root-relative and task-relative forms of every overlay path.
-
-    The shared rule with ``manifest._overlay_declared_names`` (P1 Task 2):
-    both cover root-relative AND task-relative forms of every overlay path.
-    That helper enumerates from the filesystem; this one enumerates from
-    the spec alone. Both must agree on the candidate set (spec §1).
-    """
-    names: list[str] = []
-    for rel in spec.rel_paths:
-        names.append(rel)
-        if spec.root is not None:
-            names.append(f"{spec.root.as_posix()}/{rel}")
-    return tuple(dict.fromkeys(names))
-
-
 def scan_texts(
     sources: Sequence[tuple[str, str | None]], spec: OverlaySpec
 ) -> CheckResult:
-    """Check (c): overlay paths inside executor-visible texts.
+    """Check (c): overlay paths inside executor-visible texts (spec §4).
 
-    Matches both root-relative (``tests/t_hidden.py``) and task-relative
-    (``grader/overlay/tests/t_hidden.py``) forms of every overlay path —
-    the candidate set ``manifest._overlay_declared_names`` (P1 Task 2)
-    computes from the filesystem, derived here from the spec alone (spec
-    §1). Every present, text-bearing source is scanned; a source list
-    with no text at all means the check could not run: `unmeasured`.
+    Scans the overlay-root-relative rel paths only (``tests/t_hidden.py``).
+    Suffix containment does the rest of the work for free: any longer
+    mention — task-relative (``grader/overlay/tests/t_hidden.py``) or an
+    absolute machine path — contains the rel path as a substring, so
+    detection power is unchanged and no machine-specific absolute form is
+    ever a candidate.
+
+    This is deliberately NOT the same candidate set the authoring-time
+    check (``manifest._overlay_declared_names``) enumerates. Authored
+    texts are matched exactly and can stop at ``grader/overlay`` (the bare
+    overlay root) with no file name, so that check separately lists the
+    root plus the task-rooted forms. Detected payload blobs are matched
+    only for the exact rel suffix, so no ``must agree`` invariant binds
+    the two scans.
+
+    Every present, text-bearing source is scanned; a source list with no
+    text at all means the check could not run: `unmeasured`.
     """
     evidence: list[Evidence] = []
     measured = False
@@ -143,7 +138,7 @@ def scan_texts(
         if text is None:
             continue
         measured = True
-        for overlay_path in _name_candidates(spec):
+        for overlay_path in spec.rel_paths:
             if overlay_path in text:
                 evidence.append(Evidence("path", overlay_path, name, None))
     if not measured:

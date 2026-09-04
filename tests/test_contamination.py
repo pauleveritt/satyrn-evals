@@ -163,6 +163,10 @@ def test_detector_silent_on_model_authored_restatement():
 
 
 def test_scan_texts_matches_task_relative_overlay_name_too():
+    # passes via rel-suffix subsumption: the task-relative mention
+    # "grader/overlay/tests/t_hidden.py" contains the rel path
+    # "tests/t_hidden.py" as a substring, which scan_texts matches
+    # without emitting any machine-specific absolute candidate.
     spec = make_spec()
     sources = [("step2/tool_end", "opened grader/overlay/tests/t_hidden.py")]
     assert scan_texts(sources, spec).outcome == "flagged"
