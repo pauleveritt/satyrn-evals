@@ -311,4 +311,4 @@ through the real grade).
 
 - [ ] **Step 1: Coverage gate** — `uv run pytest -m '' --cov=src/satyrn_evals --cov-branch --cov-report=term-missing --cov-fail-under=100`; Expected: 100% (no production code changed in this plan).
 - [ ] **Step 2: Ruff and doc caps** — `ruff check . && just lint-docs`; Expected: clean.
-- [ ] **Step 3: Spec cross-check** — spec §2/§4/§11 map to tasks above; interfaces match P2-P4's expectations (`agentclinic-repair-<state>` tasks, 13-id `expected_test_ids`, `source_paths` incl. `tests`, `overlay` grader dir, digest contracts). Hand off to P2.
+- [ ] **Step 3: Spec cross-check** — spec §2/§4/§11 map to tasks above; interfaces match P3-P5's expectations (`agentclinic-repair-<state>` tasks, 13-id `expected_test_ids`, `source_paths` incl. `tests`, `overlay` grader dir, digest contracts). Hand off to Plan 3 (environment materialization).
