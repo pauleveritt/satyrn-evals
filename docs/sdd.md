@@ -149,15 +149,15 @@ real-model claim.
 
 ```text
 .venv/bin/pytest -q
-560 passed, 177 deselected
+561 passed, 178 deselected
 
 .venv/bin/pytest tests/integration -m integration -q
-169 passed, 3 skipped
+170 passed, 3 skipped
 
 .venv/bin/pytest -m '' --cov=src/satyrn_evals --cov-branch \
   --cov-report=term-missing --cov-fail-under=100
-734 passed, 3 skipped
-2908 statements, 938 branches, 100% coverage
+736 passed, 3 skipped
+2918 statements, 940 branches, 100% coverage
 ```
 
 The statement count is recomputed by the gate command on this tree

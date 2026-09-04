@@ -343,11 +343,20 @@ def _drive(
                                     turn_count += 1
                                 case "tool_end":
                                     tool_count += 1
-                                case (
-                                    "context_compacted"
-                                    | "context_reset"
-                                ):
+                                case "context_compacted":
                                     context_events += 1
+                                case "context_reset":
+                                    # design:230 — a context reset is a
+                                    # protocol failure, not a countable
+                                    # event: stop the sequence (the reset
+                                    # line is already spooled above).
+                                    stop = _Stop(
+                                        SessionCode.PROTOCOL_ERROR,
+                                        f"context reset during step "
+                                        f"{spec_step.id} is a protocol "
+                                        f"failure",
+                                    )
+                                    break
                                 case _:
                                     pass
                         case StepFinished() as finished:

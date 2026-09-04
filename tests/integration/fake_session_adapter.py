@@ -106,6 +106,8 @@ def main() -> int:
             out({"version": 1, "type": "step_finished", "step_id": "nope",
                  "conversation_id": CID, "outcome": "settled", "message": None})
             time.sleep(60)  # the executor must stop before this matters
+        if scenario == "context-reset" and step == "add-b":
+            emit(step, "context_reset")  # design:230: a protocol failure
         if scenario == "chaos-close-line" and step == "add-b":
             out({"version": 1, "type": "close"})  # an adapter must not send this
         emit(step, "turn_end", event_cid)

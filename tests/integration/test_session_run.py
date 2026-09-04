@@ -410,3 +410,20 @@ def test_close_stdin_oserror_is_suppressed(
     monkeypatch.setattr(AdapterProcess, "close_stdin", raising_close)
     record = _run(tmp_path, "clean")
     assert record.code is SessionCode.COMPLETE
+
+
+def test_context_reset_is_a_protocol_error(tmp_path: Path) -> None:
+    """design:230 — a context reset stops the sequence as PROTOCOL_ERROR;
+    the reset line is preserved in the transcript and the terminal
+    checkpoint is captured (the failure-path sibling of context_compacted,
+    which counts and continues)."""
+    record = _run(tmp_path, "context-reset")
+    assert record.code is SessionCode.PROTOCOL_ERROR
+    assert record.terminal_step == "add-b"
+    # the step that was in flight still yields its checkpoint
+    assert [s.step_id for s in record.steps] == ["add-a", "add-b"]
+    assert record.steps[1].patch_digest is not None
+    # the reset event is spooled before parsing (evidence retained)
+    session_dir = _session_dir(tmp_path)
+    transcript = (session_dir / "transcript.jsonl").read_text()
+    assert '"context_reset"' in transcript
