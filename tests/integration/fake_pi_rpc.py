@@ -28,6 +28,11 @@ def out(obj: dict) -> None:
 
 
 def main() -> int:
+    # session-runtime-policy check: the adapter's pi child must inherit
+    # PYTHONDONTWRITEBYTECODE (the fake IS the pi child in these tests)
+    marker = os.environ.get("PI_FAKE_ENV_MARKER")
+    if marker and os.environ.get("PYTHONDONTWRITEBYTECODE") != "1":
+        Path(marker).write_text("missing")
     script = json.loads(Path(os.environ["PI_FAKE_SCRIPT"]).read_text())
     target = os.environ["PI_FAKE_FILE"]
     prompted = 0
@@ -45,6 +50,17 @@ def main() -> int:
             sys.stdout.write("not json at all\n")
             sys.stdout.flush()
         prompted += 1
+        if os.environ.get("PI_FAKE_PYTEST"):
+            import subprocess
+
+            result = subprocess.run(
+                [sys.executable, "-m", "pytest", "tests", "-q"],
+                cwd=Path.cwd(), capture_output=True,
+            )
+            if os.environ.get("PI_FAKE_PYTEST_RAN"):
+                Path(os.environ["PI_FAKE_PYTEST_RAN"]).write_text(
+                    f"rc={result.returncode}"
+                )
         if os.environ.get("PI_FAKE_RETRY_FAIL") and prompted == 2:
             out({"type": "auto_retry_end", "success": False, "finalError": "boom"})
         if os.environ.get("PI_FAKE_DIE") and prompted == 2:

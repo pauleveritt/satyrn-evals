@@ -228,7 +228,55 @@ Running the public tests writes `__pycache__/*.pyc` under `src/` and
 `tests/`; those land in the cumulative patch and become scope violations,
 so hidden feature grading is skipped for the checkpoint. A model that
 self-verifies — which any real diagnostic run requires — would have its
-checkpoints marked out-of-scope. Fix candidates for a maintainer
-decision before any budgeted run: `PYTHONDONTWRITEBYTECODE=1` in the
-adapter spawn environment, and/or excluding `__pycache__` via the task
-base's `.gitignore` (which `git add -N` already honors).
+checkpoints marked out-of-scope.
+
+**Resolution (maintainer decision 2026-09-04): the session runtime
+policy.** `PYTHONDONTWRITEBYTECODE=1` is set on the pi child's environment
+by the shipped adapter (`_SESSION_RUNTIME_ENV` in
+`src/satyrn_evals/adapters/pi_session.py`), so the model's python
+subprocesses inherit it. Deliberately no fixture `.gitignore`: a
+gitignore would change the evidence boundary and could hide unrelated
+mutations under ignored paths; the environment policy leaves
+`source_paths` enforcement intact. Tested in three directions: a real
+pytest run inside the workspace leaves no `__pycache__` in the captured
+tree; a genuine out-of-scope edit still produces `SCOPE_VIOLATION` while
+bytecode stays suppressed; and the adapter's pi child is shown to
+inherit the setting.
+
+### Second real-model smoke (2026-09-04, corrected adapter — revised execution path)
+
+One more uncounted smoke on the corrected stock adapter (the policy
+changed the shipped adapter's effective execution environment), same
+model and rule as the first (local `omlx/gemma-4-12B-it-MLX-8bit`,
+stock pi 0.84.4, no shim, durable evidence):
+
+Evidence directory:
+`~/projects/satyrn-v6-scratch/sessions/smoke2-session-mechanics-20260904-052924/`
+(record `session-mechanics-session-20260904-092640-*`).
+
+Plumbing pass, and the `__pycache__` finding is gone: all four prompts
+settled (turns 20/6/7/5), review reached, one conversation
+(`pi-d60db938bdef`), 508 `message_update` events across a 169,752-byte
+transcript, parseable artifacts, clean teardown, exit 0. No
+`__pycache__` anywhere in the captured patches.
+
+Model behavior (no admission/quality claim, but recorded): the model
+produced a competent alternate structure — new sibling modules
+`slugify.py`/`truncate.py`/`pluralize.py` with re-exports added to
+`__init__.py`, plus its own test files, and edits to the public
+`tests/test_textkit.py`. Under the fixture's narrow `source_paths`
+(`src/textkit/__init__.py` only) every one of those is out-of-scope, so
+the record ends `SCOPE_VIOLATION` and feature grading is skipped
+(`feature_verdict: None`) even though the re-export structure would
+satisfy the hidden tests. Preservation at the last checkpoint reports
+`pass` — graded against the model's own edited public test, which is
+circular.
+
+**Fixture-calibration question for a maintainer decision before any
+budgeted use of `session-mechanics`:** a single-file `source_paths`
+punishes normal competent model behavior (sibling modules, self-written
+tests). The svcs task's shape (`src/svcs/**`) admits sibling modules;
+whether `session-mechanics` should widen to `src/textkit/**` — and how
+public-test edits should be treated — is a fixture-design decision, not
+a machinery defect. The second smoke's preservation verdict should be
+read with the circularity above in mind.

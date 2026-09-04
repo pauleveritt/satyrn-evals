@@ -28,6 +28,19 @@ from typing import BinaryIO, Protocol, TextIO
 
 from satyrn_evals.errors import ProtocolError
 
+# Session runtime policy: the model's python tool runs must not leave
+# bytecode in the session workspace. A `__pycache__` tree under the
+# evolving checkout is predictable runtime detritus — it lands in every
+# cumulative patch and trips scope detection, so a self-verifying model
+# would have every checkpoint marked out-of-scope. The policy is
+# environment-side (PYTHONDONTWRITEBYTECODE on the pi child, inherited by
+# the model's subprocesses), deliberately NOT a fixture `.gitignore`:
+# a gitignore would change the evidence boundary and could hide
+# unrelated mutations under ignored paths, whereas the environment
+# policy leaves source_paths enforcement untouched.
+_SESSION_RUNTIME_ENV = {"PYTHONDONTWRITEBYTECODE": "1"}
+
+
 _SESSION_KINDS = {
     "turn_end": "turn_end",
     "tool_execution_end": "tool_end",
@@ -318,6 +331,7 @@ def main(argv: list[str] | None = None) -> int:
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
+        env={**os.environ, **_SESSION_RUNTIME_ENV},
     )
     assert proc.stdin is not None and proc.stdout is not None
     sys.stdout.write(

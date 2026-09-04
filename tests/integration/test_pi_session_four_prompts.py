@@ -186,3 +186,79 @@ def test_retry_failure_terminal_through_the_adapter(
     )
     assert record.code.value == "ADAPTER_ERROR"
     assert record.steps[1].outcome == "agent-error"
+
+
+def test_python_test_run_leaves_no_bytecode_in_the_workspace(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Session runtime policy: a self-verifying model's pytest run must
+    not leave __pycache__ in the evolving checkout (the smoke finding).
+    The fake really runs pytest; the ran-marker proves it; the captured
+    tree shows no bytecode scope violations and no __pycache__ paths."""
+    argv = _adapter(tmp_path, monkeypatch)
+    pytest_ran = tmp_path / "pytest-ran"
+    monkeypatch.setenv("PI_FAKE_PYTEST", "1")
+    monkeypatch.setenv("PI_FAKE_PYTEST_RAN", str(pytest_ran))
+    record = run_session(
+        task="session-mechanics",
+        tasks_root=TASKS_ROOT,
+        output=tmp_path,
+        adapter_command=argv,
+        grader=SessionGrader(task_dir=TASK),
+    )
+    assert record.code.value == "COMPLETE"
+    assert pytest_ran.exists() and pytest_ran.read_text().startswith("rc=0")
+    for step in record.steps:
+        assert not any("__pycache__" in v for v in step.scope_violations)
+        assert step.scope_violations == ()
+    session_dir = _session_dir(tmp_path)
+    patch = (session_dir / record.steps[-1].patch_path).read_text()
+    assert "__pycache__" not in patch
+
+
+def test_out_of_scope_edit_still_violates_with_the_policy_active(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The policy must not weaken scope detection: a genuine out-of-scope
+    edit still produces SCOPE_VIOLATION while bytecode stays suppressed
+    (the sibling of the bytecode-clean test above)."""
+    argv = _adapter(tmp_path, monkeypatch)
+    monkeypatch.setenv("PI_FAKE_PYTEST", "1")
+    monkeypatch.setenv("PI_FAKE_OUTSIDE", "1")
+    record = run_session(
+        task="session-mechanics",
+        tasks_root=TASKS_ROOT,
+        output=tmp_path,
+        adapter_command=argv,
+        grader=SessionGrader(task_dir=TASK),
+    )
+    assert record.code.value == "SCOPE_VIOLATION"
+    assert record.steps[0].scope_violations == ()
+    for step in record.steps[1:]:
+        assert "outside.txt" in step.scope_violations
+        assert not any("__pycache__" in v for v in step.scope_violations)
+
+
+def test_the_pi_child_inherits_the_runtime_policy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The fake stands in as the adapter's pi child; it writes a marker
+    only when PYTHONDONTWRITEBYTECODE is missing, so a missing marker
+    proves the setting was inherited through the shipped adapter."""
+    argv = _adapter(tmp_path, monkeypatch)
+    marker = tmp_path / "env-marker"
+    monkeypatch.setenv("PI_FAKE_ENV_MARKER", str(marker))
+    record = run_session(
+        task="session-mechanics",
+        tasks_root=TASKS_ROOT,
+        output=tmp_path,
+        adapter_command=argv,
+    )
+    assert record.code.value == "COMPLETE"
+    assert not marker.exists()  # the child saw the policy; nothing written
+
+
+def _session_dir(tmp_path: Path) -> Path:
+    dirs = [p for p in tmp_path.iterdir() if p.is_dir()]
+    assert len(dirs) == 1
+    return dirs[0]
