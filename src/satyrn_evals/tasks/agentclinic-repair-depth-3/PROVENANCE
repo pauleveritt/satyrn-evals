@@ -4,5 +4,4 @@ source commit: ab1d83d06791432f031e55860961529a048d4d9c
 reconstruction: reference tree + repair/depth-3 deltas, .delete honored; tests/test_app.py vendored as public tests
 pins: fastapi[standard]==0.115.10 turbohtml==1.5.0 pytest==8.3.4
 digest re-derived: 2026-09-04
-known-broken intent: 
-known-broken: fixes the 303 redirect and the base.html lang, misses the naive-timestamp defect — model-contract test still fails
+known-broken intent: fixes the redirect (303) and the base.html lang attribute but never touches models.py — the model-contract test still fails

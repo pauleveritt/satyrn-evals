@@ -15,7 +15,7 @@ from test_agentclinic_reconstruction import STATES
 
 from satyrn_evals.errors import ManifestError
 from satyrn_evals.manifest import load_manifest, resolve_task
-from satyrn_evals.patch import parse_patch_paths
+from satyrn_evals.patch import parse_patch_paths, within_source
 
 FORBIDDEN = ("overlay", "test_acceptance.py", "overlay/test_acceptance.py")
 
@@ -75,10 +75,6 @@ def test_manifest_whose_contract_names_overlay_is_refused(tmp_path: Path) -> Non
         load_manifest(target)
 
 
-def _allowed(source_paths, path) -> bool:
-    return any(path == a or path.startswith(f"{a}/") for a in source_paths)
-
-
 @pytest.mark.parametrize("state", STATES)
 @pytest.mark.parametrize("fixture", ["known-good", "known-broken"])
 def test_fixture_patch_is_in_scope_and_nonempty(state: str, fixture: str) -> None:
@@ -92,7 +88,7 @@ def test_fixture_patch_is_in_scope_and_nonempty(state: str, fixture: str) -> Non
     paths = parse_patch_paths(patch)
     assert paths, (state, fixture)
     for path in paths:
-        assert _allowed(manifest.source_paths, path), (state, fixture, path)
+        assert within_source(path, manifest.source_paths), (state, fixture, path)
 
 
 def test_all_manifests_share_identical_expected_test_ids() -> None:
