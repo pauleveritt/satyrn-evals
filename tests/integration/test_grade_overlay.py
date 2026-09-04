@@ -45,12 +45,23 @@ def test_known_broken_fails_with_overlay(tmp_path: Path) -> None:
     assert receipt.verdict is Verdict.FAIL
 
 
-def test_grading_without_overlay_is_unchanged(tmp_path: Path) -> None:
+def test_bare_grade_on_hidden_task_narrows_to_expected_ids(tmp_path: Path) -> None:
+    """A bare grade on a hidden task auto-overlays but stays closed.
+
+    overlay=None triggers the auto-overlay path: grade loads the overlay and
+    narrows selectors to manifest.expected_test_ids, so the hidden overlay
+    tests are NOT executed and only the public base node runs. The verdict
+    is PASS and the receipt still carries the contamination finding with
+    visibility hidden. This is V7's auto-overlay behavior, not V6's
+    no-overlay path.
+    """
     receipt = grade(
         TASK, TASK / "fixtures" / "known-good.patch", tmp_path / "receipt.json"
     )
     assert receipt.verdict is Verdict.PASS
     assert receipt.evidence["executed_test_ids"] == ["test_solution.py::test_normalize"]
+    assert receipt.contamination is not None
+    assert receipt.contamination["visibility"] == "hidden"
 
 
 def test_materialized_overlay_files_are_read_only(
