@@ -54,15 +54,19 @@ def grade(
 
     When ``overlay`` is ``None`` and the manifest declares a hidden oracle,
     grade loads the overlay itself, runs the contamination detector over
-    the patch, and annotates the receipt with the finding. Explicit-overlay
-    callers (the session grader) get no annotation here — session findings
-    land on the session record (P4). Detection never changes a verdict or
-    an exit code.
+    the patch, and annotates the receipt with the finding. In that auto path
+    the run is closed: ``selectors`` narrows to ``manifest.expected_test_ids``
+    so only the expected node ids execute and verdicts stay meaningful
+    (hidden overlay tests do not leak into a bare grade). ``expected`` still
+    defaults to ``manifest.expected_test_ids``. Explicit-overlay callers (the
+    session grader) get no annotation here — session findings land on the
+    session record (P4). Detection never changes a verdict or an exit code.
     """
     manifest = load_manifest(task_dir)
     auto_overlay = overlay is None and manifest.oracle_visibility == "hidden"
     if auto_overlay:
         overlay = load_overlay(task_dir, manifest)
+        selectors = manifest.expected_test_ids
     try:
         patch_bytes = patch_path.read_bytes()
     except OSError as e:
