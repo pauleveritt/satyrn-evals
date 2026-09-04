@@ -59,9 +59,16 @@ result is a deliberately smaller hybrid, recorded in the next section.
 
 ## The hybrid visual model
 
-Maintainer-provided (this session, 2026-09-04); no prior repository document
-defines it (checked: no hit for "hybrid visual" or "inference server" in
-`docs/`, `ROADMAP.md`, `BACKLOG.md` on 2026-09-04).
+An **original Satyrn synthesis**, produced for this phase and informed by the
+cited references: Hugging Face supplies the agent model (a system using a
+model as its reasoning engine, acting on its environment through tools);
+NIM and vLLM supply the serving model (a server that loads the model and
+provides the request interface, distinct from the model that generates). The
+precise diagram composition — containment, the four cards, the unlabeled
+task arrow — is maintainer-provided (this session, 2026-09-04). No prior
+repository document defines the synthesis (checked: no hit for "hybrid
+visual" or "inference server" in `docs/`, `ROADMAP.md`, `BACKLOG.md` on
+2026-09-04).
 
 ```text
   [ Developer's task ]
