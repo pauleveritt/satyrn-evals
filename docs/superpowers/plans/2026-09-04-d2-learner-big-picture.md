@@ -185,7 +185,7 @@ Title: `# What actually happens when an agent works`. Opening line orients the r
 Place the figure after beat 4 (the reader now has the full vocabulary the cards name). Use a MyST figure whose alt text names the *relationship*, not the artwork:
 
 ```markdown
-```{figure} ../diagrams/agent-big-picture.svg
+```{figure} diagrams/agent-big-picture.svg
 :alt: A coding agent uses tools and a codebase, and exchanges requests and generated tokens with an inference server that runs the model.
 ```
 ```
