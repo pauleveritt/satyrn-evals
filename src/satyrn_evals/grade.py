@@ -6,11 +6,10 @@ import subprocess
 import sys
 import tempfile
 import time
-from dataclasses import asdict
 from pathlib import Path
 
 from satyrn_evals import oracle_hook
-from satyrn_evals.contamination import scan_patch
+from satyrn_evals.contamination import evidence_dict, scan_patch
 from satyrn_evals.errors import (
     ApplyError,
     HookError,
@@ -109,7 +108,7 @@ def grade(
                 {
                     "check": result.check,
                     "outcome": result.outcome,
-                    "evidence": [asdict(item) for item in result.evidence],
+                    "evidence": [evidence_dict(item) for item in result.evidence],
                 }
             ],
         }

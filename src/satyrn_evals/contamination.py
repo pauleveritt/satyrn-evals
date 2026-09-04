@@ -33,6 +33,21 @@ class Evidence:
     line: int | None  # 1-based into the `in_path` artifact; None for payload blobs
 
 
+def evidence_dict(evidence: Evidence) -> dict[str, object]:
+    """The serialized evidence shape the spec pins (V7 spec §7).
+
+    The artifact an evidence item points into is keyed ``in`` (a reserved
+    word in Python, so the dataclass field is ``in_path`` and the wire
+    shape renames it) — receipts and session records carry ``in``.
+    """
+    return {
+        "kind": evidence.kind,
+        "overlay_path": evidence.overlay_path,
+        "in": evidence.in_path,
+        "line": evidence.line,
+    }
+
+
 @dataclass(frozen=True, slots=True)
 class CheckResult:
     check: ContaminationCheck

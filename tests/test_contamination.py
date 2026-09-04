@@ -170,3 +170,17 @@ def test_scan_texts_matches_task_relative_overlay_name_too():
     spec = make_spec()
     sources = [("step2/tool_end", "opened grader/overlay/tests/t_hidden.py")]
     assert scan_texts(sources, spec).outcome == "flagged"
+
+
+def test_evidence_serializes_with_in_key() -> None:
+    """The wire shape keys the artifact ``in``, per V7 spec §7 — never in_path."""
+    from satyrn_evals.contamination import Evidence, evidence_dict
+
+    item = evidence_dict(Evidence("block", "tests/t_hidden.py", "src/m.py", 3))
+    assert item == {
+        "kind": "block",
+        "overlay_path": "tests/t_hidden.py",
+        "in": "src/m.py",
+        "line": 3,
+    }
+    assert "in_path" not in item

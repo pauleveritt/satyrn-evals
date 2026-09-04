@@ -28,6 +28,7 @@ from satyrn_evals.adapter_process import (
     AdapterTimeout,
 )
 from satyrn_evals.contamination import (
+    evidence_dict,
     payload_strings,
     scan_patch,
     scan_texts,
@@ -197,7 +198,7 @@ def _capture_checkpoint(
                 {
                     "check": result.check,
                     "outcome": result.outcome,
-                    "evidence": [asdict(item) for item in result.evidence],
+                    "evidence": [evidence_dict(item) for item in result.evidence],
                 }
                 for result in (patch_result, payload_result)
             ],
