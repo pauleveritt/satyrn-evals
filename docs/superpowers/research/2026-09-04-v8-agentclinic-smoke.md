@@ -77,3 +77,42 @@ satyrn-engine `BACKLOG.md`), surfaced here with a one-character repro: equals vs
   must accept the equals form) before the smoke can be re-run; the smoke is then re-attempted
   uncounted under the same V5d rules. Per spec §7 engine defects are recorded here, not fixed
   in V8.
+
+## Second smoke — the engine fix, PASS (2026-09-04)
+
+The maintainer fixed the recorded engine defect: `satyrn-engine` `build_pi_command`
+now emits pi's model as separate tokens (`"--model", model`), with its precise unit
+expectation updated (`satyrn-engine` commit `d5d5d37`, branch
+`research/facts-field-backlog`). The first timed-out run also surfaced that evals'
+`attempt` default command timeout is 30 s (`workspace.py:28`), so the smoke re-ran
+with `--timeout 1800`.
+
+Evidence (durable, uniquely named):
+
+```text
+~/projects/satyrn-v8-scratch/smoke2-pwf-20260904-160143/
+  engine-contract.yaml  evals-attempt2.log
+  agentclinic-repair-plausible-wrong-fix-20260904-200233-557586/
+    attempt.json  patch.diff (372 B)  transcript.txt (92,801 B)  receipt.json
+```
+
+**Verdict: pass.** The five assertions, evidenced from the retained artifacts:
+
+1. **Model accepted config and acted** — 92,801-byte transcript: one session, 9
+   turns, 18 messages, 95 `message_update` events, 8 `tool_execution` pairs,
+   `agent_settled`; a genuine streamed model session, not a stub.
+2. **Attempt record read** — `outcome: attempted`, `code: OK`, `command_exit: 0`.
+3. **Receipt read (grading ran)** — verdict `pass`, 13/13
+   (`evidence.counts.passed == 13`), reason empty.
+4. **Patch + transcript preserved before cleanup** — both on disk in the attempt
+   dir; the patch is a real, minimal, correct repair (`RedirectResponse("/complaints")`
+   → `status_code=303`), i.e. the model found and fixed the seeded bug. Recorded as
+   model behavior, no quality/admission claim.
+5. **Teardown clean** — exit 0, record written, workspace released.
+
+**Environment attestation:** `resolved_versions` on the receipt names 47 installed
+distributions of the materialized oracle env — `fastapi 0.115.10`, `pytest 8.3.4` —
+and the contamination check is `clean` (the model never copied hidden-overlay
+content). This is the dependency-bearing hidden-oracle single-shot path through the
+stock engine, offline-graded through the locked project environment: the qualified
+path V8 set out to prove works end to end.
