@@ -305,6 +305,12 @@ Service Discovery
     Another sad consequence of the overloaded term {term}`service`.
 
     Common examples of implementations are [Consul](https://www.consul.io), [*etcd*](https://etcd.io), or [Apache ZooKeeper](https://zookeeper.apache.org).
+
+
+Oracle
+    An authoritative source of truth used to decide whether an outcome is
+    correct. In testing, an oracle supplies the expected behavior or result
+    against which the code under test is checked.
 :::
 
 
