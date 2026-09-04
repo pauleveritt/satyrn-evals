@@ -378,3 +378,19 @@ Expected: lint clean; strict build succeeds; diff check clean; tests pass. Repro
 git add ROADMAP.md docs/superpowers/plans/2026-09-04-d2-learner-big-picture.md
 git commit -m "docs: close D2 — learner big picture with two diagrams (d2 <version>, bake-off <OUTCOME>)"
 ```
+
+## Addendum (2026-09-04): clean-build fixes, recorded
+
+Four warnings failed a CLEAN strict Sphinx build (the CI gate) and were fixed
+during Task 3's resume (commit 24f4d67). All four were branch-health repairs
+owed by this phase's own authoring, recorded so reviewers can tell repairs
+from cleanup:
+
+1. `docs/reference/formats.md`:3 — link target `usage.md` corrected to
+   `../usage.md` (resolved wrong from `docs/reference/`).
+2. This plan's Task-4 example (then `:239`) — live MyST link resolved from
+   the plan's own location; wrapped in inline code.
+3-4. This plan's two `d2`-tagged fences (then `:65`, `:100`) retagged
+   `text` (no Pygments `d2` lexer).
+
+No content or behavior changed beyond those targets.
