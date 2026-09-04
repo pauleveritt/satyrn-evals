@@ -73,8 +73,8 @@ before running an untrusted command.
 
 ## Current status
 
-`grade`, `capture`, `attempt`, and `run` are available. V6 session evaluation
-is proposed, not yet an operational interface. The
+`grade`, `capture`, `attempt`, `run`, and `session` are available; V6 session
+eval is complete (2026-09-04). The
 [roadmap](https://github.com/pauleveritt/satyrn-evals/blob/main/ROADMAP.md)
 has the complete phase history and current design work.
 

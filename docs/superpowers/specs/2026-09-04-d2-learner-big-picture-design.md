@@ -239,4 +239,4 @@ in a later phase.
 | Dependency | Owner | Status | D2 may proceed with | Waits for |
 | --- | --- | --- | --- | --- |
 | D1 amendment | Evals D1 | complete on this branch (`5e733ef`) | Builds on the amended IA and front page; no further dependency. | — |
-| V6 session eval | Evals V6 | proposed | No interaction; V6 docs stay excluded per D1. | A shipped, stable CLI and artifacts. |
+| V6 session eval | Evals V6 | **complete** — shipped 2026-09-04 (reconciled on the merge onto main) | No interaction; D2 excluded V6 docs and continues to. | — (met) |

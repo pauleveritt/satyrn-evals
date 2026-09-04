@@ -169,7 +169,7 @@ vacuously.
 ## Current boundary
 
 The diagnostic loop and {term}`baseline probe` admission are available in V5.
-V6 session evaluation is proposed rather than a current interface. The claims
+V6 session evaluation is complete (2026-09-04). The claims
 layer—pre-registration, confidence intervals, condition enforcement, and A/B
 publication—remains deliberately deferred until a consumer needs it.
 

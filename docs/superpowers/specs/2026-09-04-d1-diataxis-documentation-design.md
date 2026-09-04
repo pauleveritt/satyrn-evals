@@ -137,7 +137,7 @@ the command exit status, is the result.
 
 | Dependency | Owner | Status | D1 may proceed with | Waits for |
 | --- | --- | --- | --- | --- |
-| V6 session eval | Evals V6 | proposed | Clearly label it as planned; leave it out of operational guides. | A shipped, stable CLI and artifacts. |
+| V6 session eval | Evals V6 | **complete** — shipped 2026-09-04, after D1 (reconciled on the merge onto main) | D1 proceeded per this row; V6 operational docs now belong on main. | — (met) |
 | Engine telemetry across the seam | satyrn-engine | deferred | Document the current counts-only `run` summary and its limits. | Engine-published telemetry for tool-call/repeat/churn/context guidance. |
 
 ## Amendment (2026-09-04, reopened)
