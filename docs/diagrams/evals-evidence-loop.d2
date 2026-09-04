@@ -12,13 +12,22 @@ direction: right
     border-radius: 8
   }
 }
-"coding agent": {
+"attempt command": {
   style: {
     fill: "#fffdf5"
     font-color: "#2b2b2b"
     stroke: "#7a6a4a"
     stroke-width: 1
     border-radius: 8
+  }
+  subtitle: {
+    label: "agent loop, treated as opaque"
+    style: {
+      fill: "transparent"
+      stroke: "transparent"
+      stroke-width: 0
+      font-color: "#2b2b2b"
+    }
   }
 }
 "saved patch + transcript": {
@@ -49,7 +58,7 @@ direction: right
   }
 }
 
-"Developer's task" -> "coding agent": ""
-"coding agent" -> "saved patch + transcript": ""
+"Developer's task" -> "attempt command": ""
+"attempt command" -> "saved patch + transcript": ""
 "saved patch + transcript" -> "offline grade": ""
 "offline grade" -> "receipt": ""
