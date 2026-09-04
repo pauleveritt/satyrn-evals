@@ -84,6 +84,7 @@ has the complete phase history and current design work.
 
 why
 tutorials/index
+what-actually-happens
 ```
 
 ```{toctree}
