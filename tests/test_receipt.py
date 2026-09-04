@@ -43,3 +43,23 @@ def test_write_receipt_unavailable(tmp_path) -> None:
     data = json.loads(path.read_text())
     assert data["verdict"] == "unavailable"
     assert data["evidence"] is None
+
+
+def test_visible_receipt_has_no_contamination_key(tmp_path) -> None:
+    receipt = Receipt("t", "d", Verdict.PASS, "", None)
+    path = tmp_path / "receipt.json"
+    write_receipt(path, receipt)
+    assert "contamination" not in json.loads(path.read_text())
+
+
+def test_hidden_receipt_round_trips_contamination(tmp_path) -> None:
+    finding = {
+        "visibility": "hidden",
+        "checks": [
+            {"check": "grader_content_in_patch", "outcome": "clean", "evidence": []}
+        ],
+    }
+    receipt = Receipt("t", "d", Verdict.PASS, "", None, contamination=finding)
+    path = tmp_path / "receipt.json"
+    write_receipt(path, receipt)
+    assert json.loads(path.read_text())["contamination"] == finding

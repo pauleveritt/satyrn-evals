@@ -214,3 +214,37 @@ def test_git_apply_error_preserves_filesystem_bytes(
         grade_module._run_oracle(load_manifest(tmp_task), tmp_task, GOOD_PATCH)
 
     assert b"bad \xff" in os.fsencode(str(raised.value))
+
+
+# --- V7 P3 Task 1: hidden-task receipts carry contamination findings ---
+# grade() spawns git + the oracle (subprocess), so these live in the
+# integration tier alongside the rest of the end-to-end grade tests. The
+# receipt round-trip tests stay pure (default tier) in tests/test_receipt.py.
+
+def test_hidden_task_receipt_annotated(tmp_hidden_task: Path, clean_patch: Path) -> None:
+    grade(tmp_hidden_task, clean_patch, tmp_hidden_task / "receipt.json")
+    data = json.loads((tmp_hidden_task / "receipt.json").read_text())
+    assert data["contamination"]["visibility"] == "hidden"
+    checks = {c["check"]: c["outcome"] for c in data["contamination"]["checks"]}
+    assert checks == {"grader_content_in_patch": "clean"}
+
+
+def test_visible_task_receipt_unannotated(
+    tmp_visible_task: Path, clean_patch: Path
+) -> None:
+    grade(tmp_visible_task, clean_patch, tmp_visible_task / "receipt.json")
+    data = json.loads((tmp_visible_task / "receipt.json").read_text())
+    assert "contamination" not in data
+
+
+def test_contaminated_patch_flags_but_verdict_unchanged(
+    tmp_hidden_task: Path, contaminated_patch: Path
+) -> None:
+    receipt = grade(
+        tmp_hidden_task, contaminated_patch, tmp_hidden_task / "receipt.json"
+    )
+    data = json.loads((tmp_hidden_task / "receipt.json").read_text())
+    checks = {c["check"]: c["outcome"] for c in data["contamination"]["checks"]}
+    assert checks["grader_content_in_patch"] == "flagged"
+    # detection never reclassifies: the verdict is whatever the oracle said
+    assert receipt.verdict in (Verdict.PASS, Verdict.FAIL, Verdict.UNAVAILABLE)

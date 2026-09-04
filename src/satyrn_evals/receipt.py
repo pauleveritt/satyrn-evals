@@ -15,6 +15,7 @@ class Receipt:
     verdict: Verdict
     reason: str
     evidence: HookResultData | None
+    contamination: dict | None = None
 
 
 def patch_digest(data: bytes) -> str:
@@ -22,4 +23,7 @@ def patch_digest(data: bytes) -> str:
 
 
 def write_receipt(path: Path, receipt: Receipt) -> None:
-    path.write_text(json.dumps(asdict(receipt), indent=2) + "\n")
+    data = asdict(receipt)
+    if receipt.contamination is None:
+        del data["contamination"]
+    path.write_text(json.dumps(data, indent=2) + "\n")

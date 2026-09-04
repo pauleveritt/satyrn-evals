@@ -6,9 +6,11 @@ import subprocess
 import sys
 import tempfile
 import time
+from dataclasses import asdict
 from pathlib import Path
 
 from satyrn_evals import oracle_hook
+from satyrn_evals.contamination import scan_patch
 from satyrn_evals.errors import (
     ApplyError,
     HookError,
@@ -17,7 +19,7 @@ from satyrn_evals.errors import (
     PatchRejected,
 )
 from satyrn_evals.manifest import TaskManifest, load_manifest
-from satyrn_evals.overlay import OverlaySpec, materialize_overlay
+from satyrn_evals.overlay import OverlaySpec, load_overlay, materialize_overlay
 from satyrn_evals.patch import check_allowlist, parse_patch_paths
 from satyrn_evals.receipt import Receipt, patch_digest, write_receipt
 from satyrn_evals.verdict import (
@@ -49,8 +51,18 @@ def grade(
     before the oracle runs; ``selectors`` are appended to the oracle argv
     (node ids); ``expected`` overrides ``manifest.expected_test_ids`` as
     the verdict's target set. Defaults preserve ordinary grading exactly.
+
+    When ``overlay`` is ``None`` and the manifest declares a hidden oracle,
+    grade loads the overlay itself, runs the contamination detector over
+    the patch, and annotates the receipt with the finding. Explicit-overlay
+    callers (the session grader) get no annotation here — session findings
+    land on the session record (P4). Detection never changes a verdict or
+    an exit code.
     """
     manifest = load_manifest(task_dir)
+    auto_overlay = overlay is None and manifest.oracle_visibility == "hidden"
+    if auto_overlay:
+        overlay = load_overlay(task_dir, manifest)
     try:
         patch_bytes = patch_path.read_bytes()
     except OSError as e:
@@ -84,12 +96,27 @@ def grade(
         verdict = Verdict.UNAVAILABLE
         reason = str(e)
 
+    contamination: dict | None = None
+    if auto_overlay:
+        result = scan_patch(patch_text, overlay)
+        contamination = {
+            "visibility": "hidden",
+            "checks": [
+                {
+                    "check": result.check,
+                    "outcome": result.outcome,
+                    "evidence": [asdict(item) for item in result.evidence],
+                }
+            ],
+        }
+
     receipt = Receipt(
         task=manifest.name,
         patch_digest=patch_digest(patch_bytes),
         verdict=verdict,
         reason=reason,
         evidence=evidence,
+        contamination=contamination,
     )
     write_receipt(receipt_path, receipt)
     return receipt
