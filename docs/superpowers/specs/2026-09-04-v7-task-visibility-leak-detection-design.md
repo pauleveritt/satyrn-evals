@@ -5,6 +5,12 @@
 (0o444 as accidental-exposure prevention, conservative content matching);
 implementation plan follows external review of this file.
 
+**Amendment (2026-09-04, close-out):** V7 is implemented and merged to
+main; its verification record is in `docs/sdd.md`. Post-merge corrections:
+`run` names cells from the record's `attempt_dir`, and serialized evidence
+is keyed `in`. Backlog anchors for the two entries pruned at close-out are
+superseded (outcomes in the ROADMAP V7 row); survivors are cited by title.
+
 ## Relationship to what is on main
 
 The grader-overlay *mechanics* are landed and reviewed: `overlay.py`
@@ -20,9 +26,9 @@ prevention for hidden-oracle tasks rather than V6 preventing them"
 V7 adds what does not exist yet: a declared visibility per task, a
 definition of contamination with a detector that discriminates in both
 directions, per-arm reporting that leaves every denominator alone, and
-the cheap-prevention requirement the backlog pins on this phase
-(`BACKLOG.md:90-92`). V7 detects rather than prevents; OS-level
-containment stays deferred (`BACKLOG.md:75-86`).
+the cheap-prevention requirement the backlog pins on this phase (the
+"Cheap partial prevention" entry, closed by V7). OS-level containment
+stays deferred (its own entry).
 
 ## 1. The visibility field
 
@@ -192,7 +198,7 @@ claim may rest on them, and none is made.
 
 ## 5. Cheap partial prevention, and its stated limit
 
-`BACKLOG.md:90-92` reopens with V7 and requires POSIX file modes *or* a
+The "Cheap partial prevention" entry reopens with V7 and requires POSIX file modes *or* a
 separate run user for any hidden-oracle task, rather than detection
 alone. V7 takes file modes, with the maintainer's correction stated
 plainly:
@@ -256,7 +262,8 @@ Loaders tolerate the key's absence — stored artifacts must replay.
 same vocabulary; loaders tolerate absence.
 
 **The summary** — since V7 changes its format, the V5 evidence-provenance
-correction fires now (`BACKLOG.md:168-176`): the summary must name the
+correction fires now (entry pruned at close-out; the ROADMAP V7 row
+records it): the summary must name the
 exact cell set it was computed over, recomputable by filter, not by
 hand. `summary.json` gains, always: `oracle_visibility` (`"visible"` or
 `"hidden"`) and `cells` (the n attempt directory names, in run order);
@@ -300,14 +307,15 @@ with `:=` where a computed value is branched on.
 
 ## 10. Non-goals
 
-- OS-level containment — deferred, `BACKLOG.md:75-86`; V7 detects.
+- OS-level containment — deferred ("OS-level containment" entry); V7 detects.
 - Any claim about engine-owned ordinary-attempt transcripts (§6).
 - Preventing paraphrased leaks — the detector is a verbatim tripwire
   whose limitation ships in its docstring (§3).
 - The claims layer: no arm-to-arm statistics or intervals; "per arm"
   means findings sit beside per-arm counts, never pooled into them.
 - No rerun, reinterpretation, or re-scoring of completed V5 cells; the
-  cell-set naming is prospective from V7 onward (`BACKLOG.md:168-176`).
+  cell-set naming is prospective from V7 onward (V5 evidence-provenance
+correction — closed by V7).
   The `local-pings` adversary replacement and V5 evidence-provenance
   maintenance stay backlog tracks; `stringified-annotations` capture and
   svcs materialization/re-baseline stay their own proposals. V7 ships
@@ -375,10 +383,7 @@ parameter `grade.py:38,103`; session grader passes it
 (`session_grader.py:144-159`, scope-skip at `:75-79`); mapped payload
 kinds `session_protocol.py:18-21`; exit mapping `errors.py:22-31,104`;
 attempt directory naming `attempt.py:75`; manifest dataclass
-`manifest.py:18-27`; V6 hand-off
-`2026-09-03-v6-session-eval-design.md:245`.
-
-Research and backlog anchors:
+`manifest.py:18-27`; V6 hand-off `2026-09-03-v6-session-eval-design.md:245`.
 
 - Measured leak surfaces:
   `docs/superpowers/research/2026-09-02-phase-proposals-and-session-eval-convergence.md:33`
@@ -387,11 +392,6 @@ Research and backlog anchors:
 - Sixfold overstatement:
   `docs/superpowers/research/2026-09-02-overnight-packet-and-isolation-run.md:168-171`;
   the zero-cells "unmeasured" incident `:161-163`.
-
-- V7 obligations pinned in the backlog: cheap partial prevention
-  (`BACKLOG.md:90-92`); the summary cell-set obligation
-  (`BACKLOG.md:168-176`); containment deferred (`BACKLOG.md:75-86`);
-  payload retention decision (`BACKLOG.md:190`).
 
 - Git mode vocabulary: `git ls-files -s
   src/satyrn_evals/tasks/session-mechanics/grader/overlay/` reports all

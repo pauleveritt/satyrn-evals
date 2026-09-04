@@ -348,3 +348,59 @@ claim.
 Exit condition for remediation track 3 is met: the durable record
 proves the five smoke assertions on the corrected path. V6 may then be
 considered for merge/completion, subject to the maintainer.
+
+## V7 verification record
+
+V7's default tier stays model-, network-, and subprocess-free. The
+detection machinery is pure; the grading and session paths that spawn git,
+pytest, and the fake adapters are marked integration. The bundled
+`local-pings` fixture pair (`tests/integration/test_local_pings_bundled.py`)
+needs an external ping receiver that is absent on this machine and fails
+identically on the baseline commit — it is excluded below, and the
+exclusion is the only deviation from the V6 record's shape.
+
+```text
+.venv/bin/pytest -q
+630 passed, 207 deselected
+
+.venv/bin/pytest -m integration -q \
+  --ignore=tests/integration/test_local_pings_bundled.py
+204 passed, 1 skipped, 630 deselected
+
+.venv/bin/pytest -m '' --cov=src/satyrn_evals --cov-branch \
+  --cov-report=term-missing --cov-fail-under=100 \
+  --ignore=tests/integration/test_local_pings_bundled.py
+834 passed, 1 skipped
+3208 statements, 1094 branches, 100% coverage
+```
+
+The 100% gate is the invariant; the statement count is recomputed by the
+gate command on this tree. The coverage recovery is recorded, not edited
+away: Sol's post-merge review found V7 merged without a committed
+verification record, and running the gate then exposed three uncovered
+branches in `session.py` (the transcript-delta fix's defensive edges) —
+closed by `tests/integration/test_session_capture_delta.py`, which drives
+`_capture_checkpoint` directly against a real prepared workspace.
+
+**Fixture discrimination, both directions (BRIEF rule 8), asserted by
+name** — `tests/test_contamination.py`:
+
+- `test_detector_fires_on_contaminated_patch_built_from_bundled_overlay`
+  — a patch embedding five non-blank lines of the bundled
+  `session-mechanics` overlay flags with evidence naming the overlay file;
+- `test_detector_silent_on_bundled_known_good` — the task's own
+  `fixtures/known-good.patch` stays clean;
+- `test_detector_silent_on_model_authored_restatement` — a same-behavior,
+  different-bytes test never fires (the sixfold-overstatement lesson).
+
+**Workspace absence, not merely read-only** —
+`tests/integration/test_session_workspace.py`:
+`test_hidden_overlay_absent_from_executor_worktree` scans the real
+executor worktree and finds no overlay path or overlay-digest file;
+`test_overlay_content_in_base_refuses_the_build` proves a copied overlay
+file inside base refuses the build. `run_workspace`'s refusal branch is
+covered by `test_run_workspace_refuses_overlay_content_in_base`
+(`tests/integration/test_workspace.py`).
+
+Ruff lint clean and `just lint-docs` within caps on the recorded tree.
+macOS-only evidence; Windows is not part of this record.
