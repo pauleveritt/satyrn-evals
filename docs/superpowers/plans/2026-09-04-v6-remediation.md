@@ -57,7 +57,7 @@ Scope:
 - [x] Front-door docs and verification numbers: README diagnose wording
       corrected (counts only; transcript metrics deferred); ROADMAP
       states remediation; sdd.md smoke/gate numbers reconciled to the
-      actual final commands (574/184/758, 2955 stmts/954 branches), with
+      actual final commands (574/179/758, 2956 stmts/954 branches), with
       the smoke-2 transcript-prefix-vs-full-length conflation corrected.
 
 ### Track 3 — V6 final smoke (exit: durable record proves the five smoke assertions on the corrected path)

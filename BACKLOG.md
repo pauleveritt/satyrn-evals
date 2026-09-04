@@ -164,3 +164,33 @@ artifact-harvesting provenance — and the maintainer wants a faithful
 reproduction.** Until then, any Envelope assembled with current Pi, a new
 adapter, or a selected prompt is a new prospective arm, not a
 reproduction.
+
+**V5 evidence-provenance correction** (V6 remediation, 2026-09-04). The
+V5 diagnostic summary (V5b) does not name the exact attempt
+directories/cell set it summarizes, so reusing an output directory makes
+the summarized n unverifiable. Future run summaries must name the exact
+cell set (a recomputable filter, not a hand tally); the existing V5
+aggregate counts (baseline n=8 = 3 attempted / 5 refused / 3 passed / 4
+timed out; Engine n=8 = 4/4/3/1/1) are treated as limited where their
+input cells cannot be reconstructed from the durable record. **Reopens
+when the run-summary format next changes** or when a future summary is
+written; V5's completed diagnostic cells are not reopened or
+reinterpreted.
+
+**Replace the `local-pings` known-broken adversary** (V6 remediation,
+2026-09-04). The allocator-sensitive adversary (a `get_pings` iterating
+through a `set`) is credibly flaky: it sits on an N=8 knife edge of hash
+stride versus set-table geometry and allocation phase (harvest index,
+cross-machine record). This is fixture-reliability maintenance, not
+evidence that changes the V5 result — the bundle stays a valid
+grader/smoke/regression fixture until replaced. **Reopens when a
+replacement adversary is proposed** that reproduces deterministically on
+this machine with a canary reporting inconclusive on the wrong face.
+
+**V6 open policy decisions** (2026-09-04, recorded not decided). Two
+independent-review findings await a maintainer decision: (1) the Pi
+adapter silently drops unknown/malformed Pi messages — clarify whether
+raw Pi preservation is required, or retain the drop; (2) the CLI treats
+`ADAPTER_ERROR` and `PROTOCOL_ERROR` as exit 0, which reads inconsistent
+with the documented operational-refusal exit-3 rule — needs an explicit
+decision before V6 merge. **Reopens on a maintainer decision.**
