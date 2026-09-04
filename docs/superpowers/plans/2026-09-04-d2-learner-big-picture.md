@@ -337,6 +337,8 @@ git add docs/superpowers/plans/2026-09-04-d2-learner-big-picture.md
 git commit -m "docs: plan D2 — review-template visual-assets step (code-reviewer.md, global)"
 ```
 
+- [ ] Landed 2026-09-04: code-reviewer.md gained the Visual assets group (maintainer-authorized cross-project).
+
 ---
 
 ### Task 8: Close-out — roadmap, bake-off record, full verification
