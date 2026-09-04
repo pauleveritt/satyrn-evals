@@ -240,6 +240,19 @@ record "unavailable" with a distinct exit code.
 
 ---
 
+### "The endpoint reported reachable and the server was down"
+
+- A reachability probe ran `curl … | head -c 400; echo "exit=$?"` — the
+  reported status was **head's**, not curl's, so a connection-refused local
+  gateway looked reachable and a subagent dispatch was attempted against a
+  dead endpoint. Read curl's own status (`curl -sS -o /dev/null -w
+  "%{http_code}"`) or use `set -o pipefail` before reporting reachability.
+- Same family as the verification-scope defect recorded in the D1 amendment:
+  a check that passes because it measured the wrong thing.
+- Source: D2 docs-phase session (2026-09-04); dispatch against the ds4
+  provider (local 127.0.0.1:8000) failed with a connection error after the
+  piped probe reported success.
+
 ## To both
 
 - **Verify, don't assert.** Six numbers were published wrong in a single day,
