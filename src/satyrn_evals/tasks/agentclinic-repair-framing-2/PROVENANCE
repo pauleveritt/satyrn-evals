@@ -5,4 +5,4 @@ reconstruction: reference tree + repair/framing-2 deltas, .delete honored; tests
 pins: fastapi[standard]==0.115.10 turbohtml==1.5.0 pytest==8.3.4
 digest re-derived: 2026-09-04
 note: superseded for its original purpose per repair/framing-2-edit/README.md; retained as the only author-from-scratch cell
-known-broken intent: recreates models.py as a stub providing only app.py's imports (SEED_COMPLAINTS, minimal Complaint) — the suite still cannot collect (models.complaints is absent)
+known-broken intent: recreates models.py so the app imports and the suite collects (Complaint dataclass + module-level complaints + SEED_COMPLAINTS alias), but leaves the store empty and app.py still importing the old alias — the seed-preservation checks fail (board lacks the seed complaint; count 0 not in 3-5)
