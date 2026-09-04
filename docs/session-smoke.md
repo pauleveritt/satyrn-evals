@@ -1,3 +1,7 @@
+---
+orphan: true
+---
+
 # The real-model session smoke
 
 V6's layer (b): one uncounted real-model session per materially distinct

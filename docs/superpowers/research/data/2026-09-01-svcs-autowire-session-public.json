@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "name": "svcs-autowire-session",
+  "upstream": "https://github.com/hynek/svcs",
+  "base_sha": "816403b5c1d3b9fff22bd9141fe836221dfe9d9c",
+  "reference_sha": "6bb3f2800a57f4f74641d6e7415c9865293a4016",
+  "source_paths": ["src/svcs/**"],
+  "steps": [
+    {
+      "id": "sync-functions",
+      "kind": "feature",
+      "prompt": "We need dependency autowiring in svcs. Add public svcs.autowire and svcs.aautowire helpers. autowire(fn_or_cls) must return a factory whose only argument is the current svcs.Container; the factory resolves fn_or_cls's annotated parameters from that container and then calls fn_or_cls. aautowire must return the asynchronous counterpart, using Container.aget and awaiting an awaitable result. For this first step, support ordinary functions, preserve positional-only and keyword-only parameters, use defaults when an optional service is absent, and leave *args and **kwargs alone. Modify only src/svcs and keep the existing API working."
+    },
+    {
+      "id": "classes-and-types",
+      "kind": "feature",
+      "prompt": "Now extend autowire to classes. Constructor dependencies should resolve with the same signature rules. Support dataclass InitVar annotations, string annotations, Annotated, NewType, and runtime-checkable Protocol types. A Container-annotated parameter should receive the current container itself."
+    },
+    {
+      "id": "sync-lifecycle-and-errors",
+      "kind": "feature",
+      "prompt": "Harden the synchronous helper. Do not mask a ServiceNotFoundError raised while building a registered dependency. Required unannotated parameters should fail clearly, while unannotated defaults still work. Reject bare generator factories, preserve contextmanager cleanup, follow functools.wraps, resolve forward references lazily, reuse resolved signatures across containers, and report a clear TypeError for callables whose signature cannot be inspected."
+    },
+    {
+      "id": "async-parity",
+      "kind": "feature",
+      "prompt": "Bring aautowire to full parity now. Its returned async factory should support classes as well as functions, including signature kinds, defaults, special annotation types, Container injection, InitVar, and the same missing-service behavior as autowire."
+    },
+    {
+      "id": "async-lifecycle",
+      "kind": "feature",
+      "prompt": "Finish the asynchronous lifecycle behavior. aautowire must handle async callable objects and awaitables returned by synchronous callables, enter and clean up async context managers without awaiting the manager itself first, preserve asynccontextmanager cleanup, and reject bare generator and async-generator factories. Keep nested ServiceNotFoundError behavior consistent with autowire."
+    },
+    {
+      "id": "review-and-regression",
+      "kind": "review",
+      "prompt": "Review the complete autowire and aautowire implementation as production library code. Remove inconsistencies between the sync and async paths, fix any remaining edge cases or regressions, and run the full existing test suite. Do not modify anything outside src/svcs."
+    }
+  ]
+}

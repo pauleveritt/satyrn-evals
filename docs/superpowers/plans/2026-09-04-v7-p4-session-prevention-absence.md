@@ -341,8 +341,6 @@ git commit -m "feat: session checkpoints record contamination from retained arti
 
 ---
 
----
-
 ### Task 4: Docs, glossary, and backlog close-out
 
 **Files:**
