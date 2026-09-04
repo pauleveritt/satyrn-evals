@@ -25,6 +25,10 @@ The disciplines review holds you to:
   contributor's ability to hold the design in mind.
 - **Non-vacuity** — a refusal test has a sibling success test.
 - **Verify, don't assert** — demonstrate a claim, don't state it.
+- **Diagrams** — contrast holds on the diagram's own card background (never
+  on the page theme), card labels match the page's vocabulary, no orphaned
+  asset files, and every figure is verified in the strict build with alt
+  text present.
 
 ## Document caps
 
