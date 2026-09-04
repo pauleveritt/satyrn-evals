@@ -10,12 +10,20 @@ Backlog, not into the current phase.*
 
 ## Now
 
-**V5d is complete (2026-09-03). V6 — session eval — is proposed next.**
+**V6 — session eval — is in remediation and re-verification.** Two
+independent reviews (maintainer at `decd5ba`, a second at the final
+review commit) found release blockers; each round was fixed with
+failure-path tests and the gates re-run. V6 is **not** ready to merge:
+its remediation plan (`docs/superpowers/plans/2026-09-04-v6-remediation.md`)
+covers integrity, evidence reconciliation, and one final uncounted
+real-model smoke on the corrected runtime before merge or completion.
+
 V5d landed the pre-flight smoke check as a confirmed, documented practice
 — one uncounted real-model smoke per materially distinct execution path,
-at that path's first real use. V6's approved delta design is
-`docs/superpowers/specs/2026-09-03-v6-session-eval-design.md`; its
-implementation plan follows maintainer spec review.
+at that path's first real use. V6's delta design is
+`docs/superpowers/specs/2026-09-03-v6-session-eval-design.md`, amended
+by its recorded corrections; implementation followed
+`docs/superpowers/plans/2026-09-03-v6-p*.md`, annotated for staleness.
 
 V5c captured the admitted suite's first task: `local-pings` exists as a
 bundled task with the `format_number` shape (manifest, `base/`, known-good
@@ -63,7 +71,7 @@ lands.
 | V5b | The diagnostic loop | `run --n 8` over admitted tasks, summarizing verdict reasons, repeated calls, churn, tool calls, context, and timeouts | The claims layer — pre-registration, intervals, void accounting (`BRIEF.md:33-36`) | **complete** |
 | V5c | Capture the admitted suite | reconstruct and `capture --revert` the corrected `local-pings` synthetic pair, then re-record the probe's three-row qualification table as the gate that the capture is faithful | `stringified-annotations` capture (reopens once the loop runs on `local-pings`); `magicmock-factory` (reopens with an Envelope/Engine probe); oracle improvement (its own proposal); running the loop; suite-headroom capture — see the spec's Out of scope | **complete** |
 | V5d | The pre-flight smoke check | run one real-model attempt (`run TASK --n 1`) against each materially distinct command/adapter/runtime path before that path's first budgeted diagnostic run, and read the attempt record — plus the receipt when grading ran — against a short pass/fail checklist; `NO_PATCH`/`COMMAND_TIMEOUT` pass only with positive evidence the model started | automated engine-contract content validation (`BACKLOG.md`); the `pi` argv incompatibility itself (satyrn-engine's backlog); running smoke in CI or any test tier; a manifest smoke-record field; `local-pings` re-admission or new prospective read/write Envelope decisions — see the spec's Out of scope | **complete** |
-| V6 | Session eval | `session TASK -- ADAPTER...` sends ordered prompts to one conversation against one evolving checkout, snapshots a cumulative patch per checkpoint, and grades offline through a grader overlay the executor is never shown | `run --n 8` and admission, model-client integration, retries, a hostile-command sandbox, a persistent Engine daemon | proposed |
+| V6 | Session eval | `session TASK -- ADAPTER...` sends ordered prompts to one conversation against one evolving checkout, snapshots a cumulative patch per checkpoint, and grades offline through a grader overlay the executor is never shown | `run --n 8` and admission, model-client integration, retries, a hostile-command sandbox, a persistent Engine daemon | **remediation** |
 | V7 | Task visibility and leak detection | a manifest field declares each task visible- or hidden-oracle; contamination is detected by content and reported per arm, never absorbed into a denominator | OS-level containment — deferred in `BACKLOG.md`; V7 detects rather than prevents | proposed |
 | V8 | AgentClinic through Evals | reproduce the repair fixtures on this repository's own `capture`/`attempt`/`grade` path, replacing the spike's scratchpad harness | Engine changes, including a `facts` field (satyrn-engine `BACKLOG.md`); an orchestrator | proposed |
 

@@ -374,3 +374,24 @@ into the 2026-09-01 text, which stays design of record.
    length); `provenance` is populated from the manifest (both session
    fixtures declare honest synthetic provenance); `retained_path` carries
    the cleanup-failure recovery path.
+## Remediation record (2026-09-04, independent review)
+
+V6 is in **remediation and re-verification** — not ready to merge, not
+complete. A second independent review confirmed the full gate green yet
+found release blockers; the maintainer directed a bounded plan
+(`docs/superpowers/plans/2026-09-04-v6-remediation.md`) with three
+tracks, each with an exit condition. No merge, no completion, before the
+final smoke.
+
+**Track 1 — integrity (complete).** Prompt-wide deadline; cleaned Git
+environment on the adapter and capture; per-checkpoint durable record
+linkage; collector-selector verdicts. Each fixed with failure-path
+tests; gates 754 passed / 100% coverage.
+
+**Track 2 — evidence reconciliation (in progress):** milestone-repair
+scoring, invalid-UTF8 record durability, status/digest fossil
+resolution, stale plan/front-door/verification-number corrections.
+
+**Track 3 — final smoke (pending):** one new uncounted real-model smoke
+on the corrected runtime (a materially revised execution path); the
+durable record must prove the five smoke assertions.
