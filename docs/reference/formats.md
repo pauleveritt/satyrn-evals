@@ -2,7 +2,7 @@
 
 Reference for the on-disk formats: what a {term}`task` directory contains and
 what each command writes. Command flags and exit codes live in the [CLI
-reference](usage.md); goal-oriented instructions live in the
+reference](../usage.md); goal-oriented instructions live in the
 [guides](../guides/index.md).
 
 ## The task directory

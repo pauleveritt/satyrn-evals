@@ -62,7 +62,7 @@ Expected: a version string. The `justfile` recipe and each relevant commit recor
 
 Write `/tmp/d2scratch.d2`:
 
-```d2
+```text
 vars: {
   d2-config: {
     sketch: true
@@ -97,7 +97,7 @@ Expected: a numbered list of theme names; note the default and a light theme id 
 
 Create `docs/diagrams/agent-big-picture.d2`:
 
-```d2
+```text
 vars: {
   d2-config: { sketch: true }
 }
@@ -236,7 +236,7 @@ what-actually-happens
 
 - [ ] **Step 2: Extend the tutorial's closing links**
 
-In `docs/tutorials/see-one-verdict.md`, where the page currently links straight to the attempt guide and trust boundaries, add between them a link to the new page — e.g. "To see what actually happened under you — the agent, its tools, and the model behind it — read [what actually happens when an agent works](../what-actually-happens.md)." Keep the existing links.
+In `docs/tutorials/see-one-verdict.md`, where the page currently links straight to the attempt guide and trust boundaries, add between them a link to the new page — e.g. "To see what actually happened under you — the agent, its tools, and the model behind it — read `[what actually happens when an agent works](../what-actually-happens.md)`." Keep the existing links.
 
 - [ ] **Step 3: Verify**
 
