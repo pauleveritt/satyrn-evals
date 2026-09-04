@@ -104,7 +104,17 @@ def grade(
 
     contamination: dict | None = None
     if auto_overlay:
-        result = scan_patch(patch_text, overlay)
+        base_root = task_dir / "base"
+        visible_texts = (
+            [
+                path.read_text(encoding="utf-8", errors="replace")
+                for path in sorted(base_root.rglob("*"))
+                if path.is_file()
+            ]
+            if base_root.is_dir()
+            else []
+        )
+        result = scan_patch(patch_text, overlay, visible_texts=visible_texts)
         contamination = {
             "visibility": "hidden",
             "checks": [
