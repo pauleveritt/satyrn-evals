@@ -155,7 +155,9 @@ Expected: re-rendering changes nothing (byte-for-byte with the recorded version 
 ```bash
 git add justfile docs/diagrams/ ROADMAP.md
 # ROADMAP.md: flip the D2 row Status from 'proposed' to 'active' first.
-git commit -m "docs: diagram 1 (agent ↔ tools, agent → server → model) — d2 <version>, bake-off PASS|FAIL: <reason>"
+# Commit message records the FIRST-PASS structural outcome; the definitive
+# visual gate and any fallback verdict land in Task 3 / close-out.
+git commit -m "docs: diagram 1 (agent ↔ tools, agent → server → model) — d2 <version>, first-pass structural pass"
 ```
 
 ---
