@@ -38,9 +38,10 @@ so in words, and something else has to do the actual work. That something is a
 
 > The Agent interprets the LLM's text-based tool invocation, executes the specified tool on the LLM's behalf, and retrieves the results.
 
-The *Tools* card is the set of actions the agent can take on your behalf —
-run a command, read a file, edit code — and the *Codebase* card is the
-project those actions touch. (Hugging Face Agents Course, *What are tools?* —
+The *codebase + tools* card is the environment the agent can inspect and
+change: the tools are the actions it can take on your behalf — run a command,
+read a file, edit code — and the codebase is the project those actions touch.
+(Hugging Face Agents Course, *What are tools?* —
 `units/en/unit1/tools.mdx`;
 <https://huggingface.co/learn/agents-course/unit1/tools>.)
 

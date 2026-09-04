@@ -52,7 +52,7 @@ The word **receipt** names the durable JSON result. The word **verdict** is its
 `pass`, `fail`, or `unavailable` field. You do not need the rest of Evals'
 vocabulary to repeat this exercise.
 
-To see what actually happened under you — the agent, its tools, and the model
+To see what actually happened under the hood — the agent, its tools, and the model
 behind it — read [what actually happens when an agent works](../what-actually-happens.md).
 
 When you are ready to run a real command that produces a change, continue to
