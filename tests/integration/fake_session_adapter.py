@@ -108,6 +108,10 @@ def main() -> int:
             time.sleep(60)  # the executor must stop before this matters
         if scenario == "context-reset" and step == "add-b":
             emit(step, "context_reset")  # design:230: a protocol failure
+        if scenario == "edit-public-test" and step == "add-a":
+            # a self-verifying model that edits the protected public test
+            path = Path("test_solution.py")
+            path.write_text(path.read_text() + "# edited by the model\n")
         if scenario == "chaos-close-line" and step == "add-b":
             out({"version": 1, "type": "close"})  # an adapter must not send this
         emit(step, "turn_end", event_cid)

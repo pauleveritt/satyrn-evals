@@ -221,3 +221,38 @@ def test_grader_skips_preservation_for_a_patchless_last_step(
     assert graded.code is record.code
     assert graded.steps[0].feature_verdict is None
     assert graded.steps[0].preservation_verdict is None
+
+
+def test_preservation_is_invalid_when_the_patch_edits_a_protected_public_test(
+    tmp_path: Path,
+) -> None:
+    """A patch that changes a protected public test makes preservation
+    circular; the grader must record 'invalid', not a vacuous pass
+    (smoke-2 finding; the sibling — a non-protected out-of-scope file
+    still grades — lives in the integration session-grading tests)."""
+    from satyrn_evals.session_grader import (
+        PRESERVATION_INVALID,
+        SessionGrader,
+    )
+
+    spec = SessionSpec(
+        steps=(SPEC.steps[0], SPEC.steps[3]),
+        base_preservation_selectors=("t_base.py::t_keep",),
+    )
+    record = _record(
+        steps=(
+            StepRecord(
+                "add-a", "p1", "settled",
+                patch_path="checkpoints/01-add-a.patch",
+                scope_violations=("t_base.py",),
+            ),
+        )
+    )
+    graded = SessionGrader(task_dir=tmp_path).grade_record(
+        record, spec, _OverlayShim(), tmp_path
+    )
+    step = graded.steps[0]
+    assert step.preservation_verdict == PRESERVATION_INVALID
+    assert step.preservation_receipt_path is None
+    assert step.scope_violations == ("t_base.py",)  # the violation is recorded
+    assert graded.code is record.code  # not GRADE_UNAVAILABLE: machinery worked

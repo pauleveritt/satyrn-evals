@@ -163,8 +163,22 @@ def parse_patch_paths(patch_text: str) -> tuple[str, ...]:
     return tuple(paths)
 
 
+def within_source(path: str, source_paths: tuple[str, ...]) -> bool:
+    """Whether a changed path is inside the task's writable surface.
+
+    A ``source_paths`` entry names either one file (matched exactly) or a
+    directory (matched by prefix, so ``src/textkit`` admits everything
+    under ``src/textkit/``). The slash guard keeps a file entry like
+    ``solution.py`` from accidentally admitting ``solution.pyc`` or a
+    sibling ``solution.py-adjacent`` path. This is the single rule shared
+    by the session's scope classifier and the grader's allowlist.
+    """
+    return any(
+        path == source or path.startswith(f"{source}/") for source in source_paths
+    )
+
+
 def check_allowlist(paths: tuple[str, ...], source_paths: tuple[str, ...]) -> None:
-    allowed = set(source_paths)
     for path in paths:
-        if path not in allowed:
+        if not within_source(path, source_paths):
             raise PatchRejected(f"patch touches non-source path: {path}")

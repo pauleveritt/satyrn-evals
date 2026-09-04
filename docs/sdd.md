@@ -272,11 +272,33 @@ satisfy the hidden tests. Preservation at the last checkpoint reports
 `pass` — graded against the model's own edited public test, which is
 circular.
 
-**Fixture-calibration question for a maintainer decision before any
-budgeted use of `session-mechanics`:** a single-file `source_paths`
-punishes normal competent model behavior (sibling modules, self-written
-tests). The svcs task's shape (`src/svcs/**`) admits sibling modules;
-whether `session-mechanics` should widen to `src/textkit/**` — and how
-public-test edits should be treated — is a fixture-design decision, not
-a machinery defect. The second smoke's preservation verdict should be
-read with the circularity above in mind.
+**Resolution (maintainer decision 2026-09-04) — fixture/grader
+correction, recorded with tests.** Two changes, neither requiring an
+adapter smoke (the adapter/runtime path is unchanged):
+
+1. **`source_paths` widened to `src/textkit`** (the package directory,
+   directory-prefix matching — not a `**` glob). This admits the normal
+   sibling-module implementation (`slugify.py`/`truncate.py`/
+   `pluralize.py` with re-exports) while keeping the task's code
+   boundary clear. `tests/` stays immutable and out of scope: public-test
+   edits are never an accepted way to satisfy preservation. Making the
+   widening work required unifying two matching rules that had drifted:
+   the session scope classifier already matched directory prefixes but
+   the grader's `check_allowlist` was exact-only — both now share one
+   `within_source` rule in `src/satyrn_evals/patch.py` (a directory
+   entry admits everything under it; the slash guard keeps a file entry
+   from admitting prefix look-alikes).
+
+2. **Circular-preservation fix.** When the captured patch changes a
+   protected public test (the module file of a
+   `base_preservation_selectors` id), the grader records
+   `preservation_verdict: "invalid"` — explicitly not meaningful for
+   that checkpoint — with no preservation receipt, instead of presenting
+   a circular passing receipt as evidence of preserved behavior. The
+   scope violation stays recorded, and the session still ends
+   `SCOPE_VIOLATION`. A scope violation that is *not* a protected
+   public test (e.g. a stray file) still grades preservation normally.
+
+The svcs proposal inherits both rules: its `source_paths` shape admits
+the package directory, its protected public tests are immutable, and a
+patch editing them yields preservation `invalid`, never a circular pass.

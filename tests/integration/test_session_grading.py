@@ -158,3 +158,21 @@ def test_preservation_unavailable_maps_grade_unavailable(
     regressed = grader.grade_record(record, spec, overlay, session_dir)
     assert regressed.code is SessionCode.GRADE_UNAVAILABLE
     assert regressed.steps  # grading failure must not drop the captured step
+
+
+def test_protected_public_test_edit_makes_preservation_invalid(
+    tmp_path: Path,
+) -> None:
+    """Smoke-2 finding fixed: a session whose patch edits the protected
+    public test must not present a passing preservation receipt. The
+    record ends SCOPE_VIOLATION, the violation is retained, and the
+    last step's preservation verdict is explicitly 'invalid' with no
+    receipt — not a circular pass."""
+    from satyrn_evals.session_grader import PRESERVATION_INVALID
+
+    record = _graded(tmp_path, "edit-public-test")
+    assert record.code is SessionCode.SCOPE_VIOLATION
+    last = record.steps[-1]
+    assert "test_solution.py" in last.scope_violations
+    assert last.preservation_verdict == PRESERVATION_INVALID
+    assert last.preservation_receipt_path is None

@@ -16,6 +16,7 @@ from pathlib import Path
 from satyrn_evals.errors import SatyrnError
 from satyrn_evals.grade import grade
 from satyrn_evals.overlay import OverlaySpec
+from satyrn_evals.patch import within_source
 from satyrn_evals.receipt import Receipt
 from satyrn_evals.session_manifest import SessionSpec
 from satyrn_evals.session_record import (
@@ -24,6 +25,24 @@ from satyrn_evals.session_record import (
     StepRecord,
 )
 from satyrn_evals.verdict import Verdict
+
+# The value recorded when preservation is not meaningful for a
+# checkpoint: the captured patch changed a protected public test, so
+# grading against the model's own edited test would be circular. It is
+# distinct from pass/fail/unavailable — the machinery worked; the
+# measurement is definitionally void for that checkpoint.
+PRESERVATION_INVALID = "invalid"
+
+
+def _protected_public_test_files(spec: SessionSpec) -> frozenset[str]:
+    """The public-test files the preservation selectors execute.
+
+    Each base-preservation selector is a pytest node id whose module part
+    (before ``::``) is the file that must stay pristine for preservation
+    to mean anything.
+    """
+    files = {selector.split("::", 1)[0] for selector in spec.base_preservation_selectors}
+    return frozenset(module for module in files if module)
 
 
 def _cumulative_selectors(spec: SessionSpec, index: int) -> tuple[str, ...]:
@@ -79,31 +98,46 @@ class SessionGrader:
                 unavailable = True
         if graded and graded[-1].patch_path is not None:
             last = graded[-1]
-            preservation_receipt = (
-                receipt_dir / f"preservation-{last.step_id}.json"
-            )
-            # preservation grades the patch as captured — the full
-            # evidence patch — so a scope violation is a candidate
-            # failure, never infrastructure unavailability.
-            receipt = self._grade(
-                session_dir / last.patch_path,
-                preservation_receipt,
-                None,
-                spec.base_preservation_selectors,
-                enforce_allowlist=False,
-            )
-            if receipt is not None:
+            protected = _protected_public_test_files(spec)
+            if any(
+                within_source(violation, tuple(protected))
+                for violation in last.scope_violations
+            ):
+                # the patch edited a protected public test: grading
+                # preservation against the model's own edited test would
+                # be circular (a passing receipt would not evidence
+                # preserved base behavior). Record the scope violation
+                # (already on the step) and mark preservation explicitly
+                # not meaningful.
                 graded[-1] = dataclasses.replace(
-                    last,
-                    preservation_verdict=receipt.verdict.value,
-                    preservation_receipt_path=os.fspath(
-                        preservation_receipt.relative_to(session_dir)
-                    ),
+                    last, preservation_verdict=PRESERVATION_INVALID
                 )
-                if receipt.verdict is Verdict.UNAVAILABLE:
-                    unavailable = True
             else:
-                unavailable = True
+                preservation_receipt = (
+                    receipt_dir / f"preservation-{last.step_id}.json"
+                )
+                # preservation grades the patch as captured — the full
+                # evidence patch — so a scope violation is a candidate
+                # failure, never infrastructure unavailability.
+                receipt = self._grade(
+                    session_dir / last.patch_path,
+                    preservation_receipt,
+                    None,
+                    spec.base_preservation_selectors,
+                    enforce_allowlist=False,
+                )
+                if receipt is not None:
+                    graded[-1] = dataclasses.replace(
+                        last,
+                        preservation_verdict=receipt.verdict.value,
+                        preservation_receipt_path=os.fspath(
+                            preservation_receipt.relative_to(session_dir)
+                        ),
+                    )
+                    if receipt.verdict is Verdict.UNAVAILABLE:
+                        unavailable = True
+                else:
+                    unavailable = True
         code = SessionCode.GRADE_UNAVAILABLE if unavailable else record.code
         return dataclasses.replace(record, code=code, steps=tuple(graded))
 

@@ -241,3 +241,25 @@ def test_allowlist_accepts_source_paths() -> None:
 def test_allowlist_rejects_other_paths() -> None:
     with pytest.raises(PatchRejected, match="non-source"):
         check_allowlist(("test_solution.py",), ("solution.py",))
+
+
+def test_within_source_directory_entry_admits_children() -> None:
+    """A directory entry admits everything under it; file entries stay
+    exact (the slash guard blocks prefix look-alikes)."""
+    from satyrn_evals.patch import within_source
+
+    assert within_source("src/textkit/__init__.py", ("src/textkit",))
+    assert within_source("src/textkit/slugify.py", ("src/textkit",))
+    assert not within_source("tests/test_slugify.py", ("src/textkit",))
+    assert within_source("solution.py", ("solution.py",))
+    assert not within_source("solution.pyc", ("solution.py",))
+    assert not within_source("solution_extra.py", ("solution.py",))
+
+
+def test_check_allowlist_directory_entry_accepts_children() -> None:
+    with pytest.raises(PatchRejected, match="non-source"):
+        check_allowlist(("src/textkit/slugify.py",), ("src/textkit/__init__.py",))
+    check_allowlist(("src/textkit/slugify.py", "src/textkit/__init__.py"),
+                    ("src/textkit",))  # must not raise
+    with pytest.raises(PatchRejected, match="non-source"):
+        check_allowlist(("tests/test_slugify.py",), ("src/textkit",))

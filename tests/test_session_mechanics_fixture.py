@@ -13,7 +13,9 @@ def test_fixture_manifest_shape() -> None:
     manifest = load_manifest(TASK)
     assert manifest.grader_overlay == "grader/overlay"
     assert manifest.engine_contract is None
-    assert manifest.source_paths == ("src/textkit/__init__.py",)
+    # the package directory: sibling modules are the model's legitimate
+    # work, tests/ stays out of scope
+    assert manifest.source_paths == ("src/textkit",)
 
 
 def test_fixture_session_shape() -> None:

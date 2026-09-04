@@ -13,7 +13,7 @@
     "tests/test_textkit.py::test_wrap"
   ],
   "source_paths": [
-    "src/textkit/__init__.py"
+    "src/textkit"
   ],
   "fixtures": {
     "known_good": "fixtures/known-good.patch",

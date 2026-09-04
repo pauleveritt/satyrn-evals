@@ -29,6 +29,7 @@ from satyrn_evals.adapter_process import (
 from satyrn_evals.errors import ProtocolError, SatyrnError, UsageError
 from satyrn_evals.manifest import TaskManifest, load_manifest, resolve_task
 from satyrn_evals.overlay import OverlaySpec, load_overlay
+from satyrn_evals.patch import within_source
 from satyrn_evals.session_manifest import SessionSpec, load_session_spec
 from satyrn_evals.session_patch import build_cumulative_patch
 from satyrn_evals.session_protocol import (
@@ -66,12 +67,6 @@ def _digest(text: str) -> str:
 
 def session_dir_name(task: str, when: datetime) -> str:
     return f"{task}-session-{when.strftime('%Y%m%d-%H%M%S-%f')}"
-
-
-def _within_source(path: str, source_paths: tuple[str, ...]) -> bool:
-    return any(
-        path == source or path.startswith(f"{source}/") for source in source_paths
-    )
 
 
 def _fsync_file(path: Path) -> None:
@@ -140,7 +135,7 @@ def _capture_checkpoint(
             sorted(
                 path
                 for path in capture.changed_paths
-                if not _within_source(path, source_paths)
+                if not within_source(path, source_paths)
             )
         ),
         turn_count=turn_count,
