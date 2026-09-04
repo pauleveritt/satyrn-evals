@@ -67,12 +67,31 @@ ceiling
   can be recorded above it. A {term}`task` whose {term}`reference arm`
   sits here is {term}`smoke`.
 
+cell set
+  The named attempt directories (in run order) a summary's counts are
+  computed over, recorded so the tally is recomputable by filter, not by
+  hand. Every summary from V7 names its cell set, so reusing an output
+  directory cannot make the summarized {term}`verdict` counts
+  unverifiable.
+
 completion floor
   A successful-attempt {term}`floor` whose retained patches pass a
   preservation-safe {term}`oracle`: the arm constructs the change but does
   not finish a successful attempt under its own tool loop. Not a wall — it
   is a floor an engine change exists to move, and {term}`admission`
   accepts the {term}`task` when a compared arm is recorded above it.
+
+contamination
+  On a hidden-oracle task: grader/oracle artifact content in
+  executor-reachable material — overlay content in a workspace, grader
+  content inside a retained patch, or overlay paths/names in
+  executor-visible texts. The detector is a verbatim tripwire, not a proof
+  of ignorance: it matches whole-file bytes and stable fragments, and
+  deliberately passes paraphrased leaks and behavior-restating tests. Per
+  graded artifact it records `flagged`, `clean`, or `unmeasured`, reading
+  the artifacts {term}`preservation` guarantees exist before cleanup. It is
+  a separate dimension from the {term}`verdict`: it never changes one,
+  never an exit code, never a denominator.
 
 discriminating set
   The test IDs that fail at base and pass with the fix — the captured
@@ -143,6 +162,14 @@ grader fixture
   deterministically, with no network. Not the same job as a
   {term}`diagnostic workload`.
 
+hidden oracle
+  A {term}`task` whose {term}`oracle` content lives only in the
+  `grader_overlay`, outside `base/`, materialized only into a fresh grader
+  workspace after the patch applies and before the oracle runs
+  (`oracle_visibility: "hidden"`). The V6 session mechanics, now declared.
+  The ⇔ rule ties the field to the overlay: `hidden` requires a
+  `grader_overlay`; a `grader_overlay` requires `hidden`.
+
 hook result
   The JSON the {term}`oracle` writes through the oracle hook — executed
   test IDs, outcomes, counts — at a path only grading knows. The only
@@ -201,8 +228,22 @@ tripwire
   during the default tier. Weakening or removing it fails the build; the
   `integration` marker opens the gate for the {term}`integration tier`.
 
+unmeasured
+  The recorded outcome when a check cannot run over all its required
+  inputs — retained patch bytes missing, a session step with no retained
+  payload events, a pre-V7 {term}`receipt`. Absence of signal is not
+  cleanliness: `unmeasured` is never folded into `clean` and never
+  reported as zero, and overall `clean` requires every applicable check
+  clean.
+
 verdict
   `pass`, `fail`, or `unavailable`, recorded in a {term}`receipt`. Never
   read from stdout or an exit code — predecessor graders were defeated by
   `addopts = --collect-only` and an import-time `os._exit(0)`.
+
+visible oracle
+  A {term}`task` whose {term}`oracle` content lives in `base/` and may be
+  read or run by the executor. The default — `oracle_visibility` absent or
+  `"visible"` — is the normal TDD-style task. Contrast
+  {term}`hidden oracle`.
 ```

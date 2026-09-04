@@ -80,16 +80,15 @@ the model's own test runner, so an entire block measured models that could not
 self-verify; a hard link created inside the run root still read the grader
 through it; and it conflicts with V4's absolute external engine-contract path
 — though the V6 design already routes around that last one by copying a public
-contract into the worktree rather than referencing it by task path. V7 uses
-after-the-fact content detection instead. *Recorded direction change:* an
+contract into the worktree rather than referencing it by task path. V7
+detected after-the-fact instead — the detector and its stated limit are the
+shipped spec
+(`docs/superpowers/specs/2026-09-04-v7-task-visibility-leak-detection-design.md`).
+*Recorded direction change:* an
 earlier note in this planning cycle said "make containment genuinely usable,
 including a test runner"; this entry defers it rather than fixing it, and a
 still earlier draft wrote "refused" where the evidence only supports
 "deferred".
-
-**Cheap partial prevention** (reopens with V7): POSIX file modes and a separate
-run user need no new system, and V7 should require one of them for any task
-declaring a hidden oracle rather than relying on detection alone.
 
 **Text-contract support.** Reopens when a roster model cannot emit tool calls —
 two of six models measured in the spike could not, so this is when, not if.
@@ -164,18 +163,6 @@ artifact-harvesting provenance — and the maintainer wants a faithful
 reproduction.** Until then, any Envelope assembled with current Pi, a new
 adapter, or a selected prompt is a new prospective arm, not a
 reproduction.
-
-**V5 evidence-provenance correction** (V6 remediation, 2026-09-04). The
-V5 diagnostic summary (V5b) does not name the exact attempt
-directories/cell set it summarizes, so reusing an output directory makes
-the summarized n unverifiable. Future run summaries must name the exact
-cell set (a recomputable filter, not a hand tally); the existing V5
-aggregate counts (baseline n=8 = 3 attempted / 5 refused / 3 passed / 4
-timed out; Engine n=8 = 4/4/3/1/1) are treated as limited where their
-input cells cannot be reconstructed from the durable record. **Reopens
-when the run-summary format next changes** or when a future summary is
-written; V5's completed diagnostic cells are not reopened or
-reinterpreted.
 
 **Replace the `local-pings` known-broken adversary** (V6 remediation,
 2026-09-04). The allocator-sensitive adversary (a `get_pings` iterating
