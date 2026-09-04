@@ -337,3 +337,40 @@ stock-adapter proof failed and what shim was avoided.
   citing `2026-09-03-local-pings-reprobe-protocol.md:224-231`.
 - V4 substitution precedent: `docs/sdd.md`, V4 verification record
   ("Only Pi is replaced by a deterministic fixture").
+
+
+## Review corrections (2026-09-03, maintainer review at decd5ba)
+
+Five release-blocking findings against the executed branch; each fix
+landed with its failure-path integration test. Recorded here, not edited
+into the 2026-09-01 text, which stays design of record.
+
+1. **Identity on every event.** The 2026-09-01 sentence "Every event and
+   terminal message must carry the active step and the original
+   conversation identity" governs over its own example JSON, which omits
+   it. The event schema now carries `conversation_id`; the parser
+   requires it and the executor validates it per event, not only at the
+   terminal.
+2. **Model-stream evidence retained.** `message_update` — Pi's genuine
+   streaming event — is mapped to kind `other` with pristine payload, so
+   the spooled transcript carries the smoke's positive evidence that the
+   model actually ran.
+3. **Terminal outcomes are Pi-declared.** The adapter tracked nothing
+   from `agent_end` and mapped every `agent_settled` to settled. It now
+   derives the outcome from the last message's `stopReason`
+   (`rpc.md:1469`: `length` -> `output-limit`; `error`/`aborted` ->
+   `agent-error`), from `auto_retry_end{success:false}` -> `agent-error`,
+   and from `willRetry` -> not terminal; `agent_settled` emits the
+   tracked outcome.
+4. **A started session always leaves a record.** `_drive` converts
+   post-start adapter-channel failures to `ADAPTER_ERROR`, keeping the
+   checkpoints captured so far; `run_session` releases the workspace in
+   exactly one place (a `finally`) — the release failure becomes
+   `CLEANUP_FAILED` with the retained recovery path, and a double-release
+   defect in the first cut of this fix was found by its own test.
+5. **The durable record is complete.** Each step records the snapshot
+   digest and the transcript-prefix digest *and prefix byte length* (the
+   prefix is verifiable against the growing transcript only with the
+   length); `provenance` is populated from the manifest (both session
+   fixtures declare honest synthetic provenance); `retained_path` carries
+   the cleanup-failure recovery path.

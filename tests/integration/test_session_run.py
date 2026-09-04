@@ -2,12 +2,16 @@
 
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
+from satyrn_evals import session as session_module
+from satyrn_evals.adapter_process import AdapterCleanupError  # noqa: F401
 from satyrn_evals.errors import UsageError
 from satyrn_evals.session import run_session
 from satyrn_evals.session_record import SessionCode, load_session_record
+from satyrn_evals.workspace import WorkspaceReleaseError
 
 pytestmark = pytest.mark.integration
 
@@ -102,3 +106,307 @@ def test_missing_adapter_is_a_start_refusal(tmp_path: Path) -> None:
             adapter_command=[str(tmp_path / "no-such-adapter")],
         )
     assert list(tmp_path.iterdir()) == []  # usage writes nothing
+
+
+def test_event_identity_change_is_protocol_error(tmp_path: Path) -> None:
+    marker = tmp_path / "marker"
+    record = _run(tmp_path, "wrong-id-event", marker)
+    assert record.code is SessionCode.PROTOCOL_ERROR
+    assert record.terminal_step == "add-b"
+    assert record.steps[0].outcome == "settled"  # step 1 was clean
+    assert not marker.exists()  # no prompt after the identity failure
+
+
+def test_terminal_identity_change_is_protocol_error(tmp_path: Path) -> None:
+    """Events carry true identity; the terminal drifts: caught at the terminal."""
+    marker = tmp_path / "marker"
+    record = _run(tmp_path, "wrong-id", marker)
+    assert record.code is SessionCode.PROTOCOL_ERROR
+    assert record.terminal_step == "add-b"
+    assert not marker.exists()
+
+
+def test_broken_channel_after_start_still_leaves_a_record(
+    tmp_path: Path,
+) -> None:
+    """A started session always leaves a record (review finding 4): the
+    adapter exits after step 1; the prompt-2 send fails; the record is
+    written with the captured checkpoint and the workspace is released."""
+    record = _run(tmp_path, "die-after-one")
+    assert record.code is SessionCode.ADAPTER_ERROR
+    assert [s.step_id for s in record.steps] == ["add-a"]
+    assert record.steps[0].outcome == "settled"
+    session_dir = _session_dir(tmp_path)
+    assert (session_dir / "session-record.json").is_file()
+    assert (session_dir / "checkpoints" / "01-add-a.patch").is_file()
+
+
+def test_release_failure_becomes_cleanup_failed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from satyrn_evals import session as session_module
+
+    _run(tmp_path, "clean")  # proves the healthy path before the fault
+    session_dir = _session_dir(tmp_path)
+
+    def failing_release(workspace: object) -> None:
+        raise WorkspaceReleaseError(
+            "cleanup unconfirmed", retained_path=str(workspace.parent)
+        )
+
+    monkeypatch.setattr(session_module, "release_session_workspace", failing_release)
+    regressed = session_module.run_session(
+        task="mini-session",
+        tasks_root=DATA,
+        output=tmp_path / "second",
+        adapter_command=[sys.executable, str(FAKE), "clean"],
+    )
+    assert regressed.code is SessionCode.CLEANUP_FAILED
+    assert "retained at" in (regressed.message or "")
+    assert [s.step_id for s in regressed.steps] == ["add-a", "add-b", "review"]
+    assert session_dir != tmp_path / "second"  # the first record is untouched
+
+
+def test_record_carries_artifact_digests_and_provenance(tmp_path: Path) -> None:
+    """Artifact digests are recorded and recomputable from the files;
+    provenance comes from the manifest (review finding 5)."""
+
+    record = _run(tmp_path, "clean")
+    session_dir = _session_dir(tmp_path)
+    for step in record.steps:
+        assert step.snapshot_digest == __import__("hashlib").sha256(
+            (session_dir / step.snapshot_path).read_bytes()
+        ).hexdigest()
+        prefix = (session_dir / step.transcript_prefix_path).read_bytes()[
+            : step.transcript_prefix_bytes
+        ]
+        assert step.transcript_prefix_digest == __import__("hashlib").sha256(
+            prefix
+        ).hexdigest()
+    assert record.provenance == {
+        "repo": "bundled synthetic fixture",
+        "base_sha": "unrecorded",
+        "fix_sha": "unrecorded",
+    }
+
+
+def test_eof_mid_step_is_adapter_error(tmp_path: Path) -> None:
+    """EOF during a step: the checkpoint is captured after the reap."""
+    record = _run(tmp_path, "die-mid-read")
+    assert record.code is SessionCode.ADAPTER_ERROR
+    assert record.steps[0].outcome == ""
+    assert record.steps[0].patch_digest
+
+
+def test_garbage_line_is_protocol_error(tmp_path: Path) -> None:
+    record = _run(tmp_path, "garbage")
+    assert record.code is SessionCode.PROTOCOL_ERROR
+    assert record.terminal_step == "add-b"
+
+
+def test_event_for_wrong_step_is_protocol_error(tmp_path: Path) -> None:
+    record = _run(tmp_path, "event-wrong-step")
+    assert record.code is SessionCode.PROTOCOL_ERROR
+    assert record.terminal_step == "add-b"
+
+
+def test_terminal_for_wrong_step_is_protocol_error(tmp_path: Path) -> None:
+    record = _run(tmp_path, "wrong-step-terminal")
+    assert record.code is SessionCode.PROTOCOL_ERROR
+
+
+def test_adapter_close_line_mid_step_is_protocol_error(tmp_path: Path) -> None:
+    record = _run(tmp_path, "chaos-close-line")
+    assert record.code is SessionCode.PROTOCOL_ERROR
+    assert record.terminal_step == "add-b"
+
+
+def test_workspace_prepare_failure_is_recorded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from satyrn_evals import session as session_module
+    from satyrn_evals.workspace import WorkspacePrepareError
+
+    def failing_prepare(**kwargs: object):
+        raise WorkspacePrepareError("git refused the worktree")
+
+    monkeypatch.setattr(session_module, "prepare_session_workspace", failing_prepare)
+    record = session_module.run_session(
+        task="mini-session", tasks_root=DATA, output=tmp_path,
+        adapter_command=[sys.executable, str(FAKE), "clean"],
+    )
+    assert record.code is SessionCode.WORKSPACE_FAILED
+    session_dir = next(p for p in tmp_path.iterdir() if p.is_dir())
+    loaded = load_session_record(session_dir / "session-record.json")
+    assert loaded.code is SessionCode.WORKSPACE_FAILED
+
+
+def test_unconverted_drive_failure_still_leaves_a_record(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from satyrn_evals import session as session_module
+    from satyrn_evals.errors import SatyrnError
+
+    def broken_drive(**kwargs: object):
+        raise SatyrnError("defensive arm exercised")
+
+    monkeypatch.setattr(session_module, "_drive", lambda **kwargs: (_ for _ in ()).throw(SatyrnError("defensive arm exercised")))
+    record = session_module.run_session(
+        task="mini-session", tasks_root=DATA, output=tmp_path,
+        adapter_command=[sys.executable, str(FAKE), "clean"],
+    )
+    assert record.code is SessionCode.ADAPTER_ERROR
+    assert "defensive" in (record.message or "")
+    session_dir = next(p for p in tmp_path.iterdir() if p.is_dir())
+    assert (session_dir / "session-record.json").is_file()
+
+
+def test_adapter_exit_before_banner_is_adapter_error(tmp_path: Path) -> None:
+    record = _run(tmp_path, "no-banner")
+    assert record.code is SessionCode.ADAPTER_ERROR
+    assert record.terminal_step is None
+    assert record.steps == ()
+
+
+def test_non_banner_first_line_is_protocol_error(tmp_path: Path) -> None:
+    record = _run(tmp_path, "bad-banner")
+    assert record.code is SessionCode.PROTOCOL_ERROR
+    assert record.terminal_step is None
+
+
+def test_close_timeout_is_adapter_error(tmp_path: Path) -> None:
+    record = run_session(
+        task="mini-session", tasks_root=DATA, output=tmp_path,
+        adapter_command=[sys.executable, str(FAKE), "close-hang"],
+        close_timeout=0.5,
+    )
+    assert record.code is SessionCode.ADAPTER_ERROR
+    assert "close timed out" in (record.message or "")
+
+
+def test_nonzero_close_exit_is_adapter_error(tmp_path: Path) -> None:
+    record = _run(tmp_path, "close-fail")
+    assert record.code is SessionCode.ADAPTER_ERROR
+    assert "exited 3" in (record.message or "")
+
+
+def test_output_after_close_is_adapter_error(tmp_path: Path) -> None:
+    record = _run(tmp_path, "close-extra")
+    assert record.code is SessionCode.ADAPTER_ERROR
+    assert "output after close" in (record.message or "")
+
+
+def test_step_timeout_during_step(tmp_path: Path) -> None:
+    record = run_session(
+        task="mini-session", tasks_root=DATA, output=tmp_path,
+        adapter_command=[sys.executable, str(FAKE), "hang"],
+        step_timeout=0.5,
+    )
+    assert record.code is SessionCode.STEP_TIMEOUT
+    assert record.steps[-1].outcome == ""
+
+
+def test_protocol_fault_at_the_terminal_is_stop(tmp_path: Path) -> None:
+
+    record = _run(tmp_path, "wrong-step-terminal")
+    assert record.code is SessionCode.PROTOCOL_ERROR
+    # the terminal-for-wrong-step scenario leaves the fake sleeping: the
+    # executor must have reaped it to produce a record at all
+    session_dir = _session_dir(tmp_path)
+    assert (session_dir / "session-record.json").is_file()
+
+
+def test_cleanup_error_in_the_stop_path_is_cleanup_failed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+
+    def failing_reap(self: object, timeout: float) -> None:
+        raise AdapterCleanupError("group did not reap")
+
+    monkeypatch.setattr(session_module.AdapterProcess, "terminate_and_reap", failing_reap)
+    regressed = session_module.run_session(
+        task="mini-session", tasks_root=DATA, output=tmp_path / "second",
+        adapter_command=[sys.executable, str(FAKE), "clean"],
+    )
+    assert regressed.code is SessionCode.CLEANUP_FAILED
+    assert "group did not reap" in (regressed.message or "")
+    assert regressed.steps  # captured checkpoints retained
+
+
+def test_garbage_after_close_is_protocol_error(tmp_path: Path) -> None:
+    record = run_session(
+        task="mini-session", tasks_root=DATA, output=tmp_path,
+        adapter_command=[sys.executable, str(FAKE), "close-garbage"],
+        close_timeout=5.0,
+    )
+    assert record.code is SessionCode.PROTOCOL_ERROR
+
+
+def test_release_failure_with_no_record_raises(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A non-SatyrnError escape from _drive (a bug) whose release also
+    fails: the release error propagates with the retained path."""
+
+    def broken_drive(**kwargs: object):
+        raise RuntimeError("a bug, not a session fault")
+
+    def failing_release(workspace: object) -> None:
+        raise WorkspaceReleaseError("cleanup unconfirmed", retained_path="/tmp/x")
+
+    monkeypatch.setattr(session_module, "_drive", broken_drive)
+    monkeypatch.setattr(session_module, "release_session_workspace", failing_release)
+    with pytest.raises(WorkspaceReleaseError):
+        session_module.run_session(
+            task="mini-session", tasks_root=DATA, output=tmp_path,
+            adapter_command=[sys.executable, str(FAKE), "clean"],
+        )
+
+
+def test_checkpoint_without_transcript_prefix_is_recorded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A checkpoint captured before any transcript byte exists: the digest
+    is None and the record still completes (the 123->127 false arm)."""
+    from pathlib import Path as _Path
+
+    from satyrn_evals.session import _capture_checkpoint
+    from satyrn_evals.workspace import (
+        prepare_session_workspace,
+        release_session_workspace,
+    )
+
+    task_dir = (_Path("tests/integration/data") / "mini-session").resolve()
+    workspace = prepare_session_workspace(
+        base=task_dir / "base", protected_paths=(tmp_path,)
+    )
+    try:
+        spec_step = SimpleNamespace(id="add-a")
+        record = _capture_checkpoint(
+            workspace, tmp_path, spec_step, tmp_path / "no-such-transcript.jsonl",
+            1, "settled", "p1", 0, 0, 0, ("solution.py",),
+        )
+        assert record.transcript_prefix_digest is None
+        assert record.transcript_prefix_bytes is None
+        assert record.patch_digest is not None
+    finally:
+        release_session_workspace(workspace)
+
+
+def test_garbage_banner_is_protocol_error(tmp_path: Path) -> None:
+    record = _run(tmp_path, "garbage-banner")
+    assert record.code is SessionCode.PROTOCOL_ERROR
+    assert record.terminal_step is None
+
+
+def test_close_stdin_oserror_is_suppressed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from satyrn_evals.adapter_process import AdapterProcess
+
+    def raising_close(self: object) -> None:
+        raise OSError("descriptor already gone")
+
+    monkeypatch.setattr(AdapterProcess, "close_stdin", raising_close)
+    record = _run(tmp_path, "clean")
+    assert record.code is SessionCode.COMPLETE

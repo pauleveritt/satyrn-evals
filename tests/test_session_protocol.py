@@ -18,7 +18,7 @@ from satyrn_evals.session_protocol import (
 STARTED = '{"version": 1, "type": "session_started", "conversation_id": "c-1"}'
 EVENT = (
     '{"version": 1, "type": "event", "step_id": "add-a", '
-    '"kind": "turn_end", "payload": {"k": 1}}'
+    '"conversation_id": "c-1", "kind": "turn_end", "payload": {"k": 1}}'
 )
 FINISHED = (
     '{"version": 1, "type": "step_finished", "step_id": "add-a", '
@@ -29,7 +29,9 @@ CLOSE = '{"version": 1, "type": "close"}'
 
 def test_parse_round_trips_each_type() -> None:
     assert parse_session_line(STARTED) == SessionStarted(1, "c-1")
-    assert parse_session_line(EVENT) == EventLine(1, "add-a", "turn_end", {"k": 1})
+    assert parse_session_line(EVENT) == EventLine(
+        1, "add-a", "c-1", "turn_end", {"k": 1}
+    )
     assert parse_session_line(FINISHED) == StepFinished(
         1, "add-a", "c-1", "settled", None
     )
@@ -59,6 +61,8 @@ def test_serialize_prompt_and_close_match_the_spec_shapes() -> None:
         (STARTED.replace('{"version": 1, "type": "session_started", "conversation_id": "c-1"}', '{"version": 1, "type": "session_started", "conversation_id": "c-1", "extra": 1}'), "exactly"),
         (EVENT.replace('"turn_end"', '"chaos"'), "unknown event kind"),
         (EVENT.replace('"payload": {"k": 1}', '"payload": 3'), "payload must be an object"),
+        (EVENT.replace('"conversation_id": "c-1", ', ''), "conversation_id"),
+        (EVENT.replace('"conversation_id": "c-1"', '"conversation_id": ""'), "conversation_id must be a non-empty"),
         (EVENT.replace('"step_id": "add-a"', '"step_id": ""'), "step_id must be a non-empty"),
         (FINISHED.replace('"outcome": "settled"', '"outcome": "vibes"'), "unknown outcome"),
         (FINISHED.replace('"message": null', '"message": 3'), "string or null"),
@@ -81,3 +85,15 @@ def test_parse_step_finished_outcomes_the_spec_allows() -> None:
     for outcome in ("settled", "output-limit", "agent-error"):
         line = FINISHED.replace('"outcome": "settled"', f'"outcome": "{outcome}"')
         assert parse_session_line(line).outcome == outcome  # type: ignore[union-attr]
+
+
+def test_step_finished_refuses_empty_step_id() -> None:
+    line = FINISHED.replace('"step_id": "add-a"', '"step_id": ""')
+    with pytest.raises(ProtocolError, match="step_id must be non-empty"):
+        parse_session_line(line)
+
+
+def test_step_finished_refuses_unknown_extra_key() -> None:
+    line = FINISHED.replace('"message": null}', '"message": null, "chaos": 1}')
+    with pytest.raises(ProtocolError, match="step_finished must hold exactly"):
+        parse_session_line(line)

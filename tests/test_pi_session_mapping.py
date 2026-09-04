@@ -25,23 +25,48 @@ def test_mapped_kinds_and_payload_retention() -> None:
     assert json.loads(map_rpc_event(EVENTS["compaction_end"], step_id="add-a", conversation_id="c-1"))["kind"] == "context_compacted"
 
 
-def test_agent_settled_maps_to_the_terminal() -> None:
-    line = map_rpc_event(
-        {"type": "agent_settled"}, step_id="add-a", conversation_id="c-1"
-    )
+def test_terminal_outcome_from_agent_end_stop_reasons() -> None:
+    """Pi declares the terminal via stopReason (rpc.md:1469); the adapter
+    must not blanket-map every settle to "settled" (review finding 3)."""
+    from satyrn_evals.adapters.pi_session import terminal_outcome_from_agent_end
+
+    derive = terminal_outcome_from_agent_end
+    assert derive({"type": "agent_end", "messages": [{"stopReason": "stop"}]}) == "settled"
+    assert derive({"type": "agent_end", "messages": [{"stopReason": "toolUse"}]}) == "settled"
+    assert derive({"type": "agent_end", "messages": [{"stopReason": "length"}]}) == "output-limit"
+    assert derive({"type": "agent_end", "messages": [{"stopReason": "error"}]}) == "agent-error"
+    assert derive({"type": "agent_end", "messages": [{"stopReason": "aborted"}]}) == "agent-error"
+    # willRetry: an automatic retry follows — not terminal
+    assert derive({"type": "agent_end", "willRetry": True, "messages": [{"stopReason": "error"}]}) is None
+    # no messages / no stopReason: settles normally
+    assert derive({"type": "agent_end", "messages": []}) == "settled"
+    assert derive({"type": "agent_end"}) == "settled"
+
+
+def test_agent_end_and_retry_end_are_retained_as_events() -> None:
+    end = {"type": "agent_end", "messages": [{"stopReason": "length"}]}
+    line = map_rpc_event(end, step_id="add-a", conversation_id="c-1")
     obj = json.loads(line)  # type: ignore[arg-type]
-    assert obj == {
-        "version": 1,
-        "type": "step_finished",
-        "step_id": "add-a",
-        "conversation_id": "c-1",
-        "outcome": "settled",
-        "message": None,
-    }
+    assert obj["kind"] == "other" and obj["payload"] == end
+    retry = {"type": "auto_retry_end", "success": False, "finalError": "x"}
+    obj = json.loads(map_rpc_event(retry, step_id="s", conversation_id="c"))  # type: ignore[arg-type]
+    assert obj["kind"] == "other" and obj["payload"] == retry
+
+
+def test_message_update_is_retained_as_model_stream_evidence() -> None:
+    """The smoke's positive evidence: Pi's streaming event reaches the
+    transcript with its payload unmodified (review finding 2)."""
+    event = {"type": "message_update", "delta": {"type": "text", "text": "he"}}
+    line = map_rpc_event(event, step_id="add-a", conversation_id="c-1")
+    assert line is not None
+    obj = json.loads(line)
+    assert obj["type"] == "event"
+    assert obj["kind"] == "other"
+    assert obj["payload"] == event  # pristine
 
 
 def test_unmapped_events_and_responses_are_skipped() -> None:
-    assert map_rpc_event({"type": "message_update"}, step_id="s", conversation_id="c") is None
+    assert map_rpc_event({"type": "message_start"}, step_id="s", conversation_id="c") is None
     assert map_rpc_event({"type": "response", "success": True}, step_id="s", conversation_id="c") is None
 
 
@@ -58,3 +83,10 @@ def test_missing_model_is_refused() -> None:
         from satyrn_evals.adapters.pi_session import main
 
         main(["--provider", "anthropic", "--help" if False else "--pi-bin", "pi"])
+
+
+def test_unknown_adapter_argument_is_refused() -> None:
+    from satyrn_evals.adapters.pi_session import main
+
+    with pytest.raises(Exception, match="unknown adapter argument"):
+        main(["--chaos"])

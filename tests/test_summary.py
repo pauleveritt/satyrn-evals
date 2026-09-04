@@ -3,9 +3,14 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from satyrn_evals.attempt_record import AttemptCode, AttemptOutcome, AttemptRecord
-from satyrn_evals.summary import compute_summary, write_summary
+from satyrn_evals.summary import Summary, compute_summary, write_summary
 from satyrn_evals.verdict import Verdict
+
+_CODES = frozenset(code.value for code in AttemptCode)
+_VERDICTS = frozenset(v.value for v in Verdict)
 
 
 def make_record(
@@ -66,3 +71,18 @@ def test_compute_summary_tallies_verdicts_over_attempted_only() -> None:
     assert summary.verdict_counts[Verdict.PASS.value] == 1
     assert summary.verdict_counts[Verdict.FAIL.value] == 1
     assert summary.verdict_counts[Verdict.UNAVAILABLE.value] == 0
+
+
+def test_summary_rejects_invalid_counts() -> None:
+    with pytest.raises(ValueError, match="non-negative"):
+        Summary(n=-1, attempted=0, refused=0, code_counts={c: 0 for c in _CODES},
+                verdict_counts={v: 0 for v in _VERDICTS}, timeouts=0)
+    with pytest.raises(ValueError, match="attempted \\+ refused"):
+        Summary(n=2, attempted=0, refused=0, code_counts={c: 0 for c in _CODES},
+                verdict_counts={v: 0 for v in _VERDICTS}, timeouts=0)
+    with pytest.raises(ValueError, match="one key per"):
+        Summary(n=0, attempted=0, refused=0, code_counts={"NOPE": 0},
+                verdict_counts={v: 0 for v in _VERDICTS}, timeouts=0)
+    with pytest.raises(ValueError, match="timeouts must equal"):
+        Summary(n=0, attempted=0, refused=0, code_counts={c: 0 for c in _CODES},
+                verdict_counts={v: 0 for v in _VERDICTS}, timeouts=1)

@@ -10,6 +10,7 @@ timeout, and cleanup-failure terminations.
 """
 
 import contextlib
+import dataclasses
 import hashlib
 import json
 import os
@@ -25,7 +26,7 @@ from satyrn_evals.adapter_process import (
     AdapterProcess,
     AdapterTimeout,
 )
-from satyrn_evals.errors import ProtocolError, UsageError
+from satyrn_evals.errors import ProtocolError, SatyrnError, UsageError
 from satyrn_evals.manifest import TaskManifest, load_manifest, resolve_task
 from satyrn_evals.overlay import OverlaySpec, load_overlay
 from satyrn_evals.session_manifest import SessionSpec, load_session_spec
@@ -47,7 +48,9 @@ from satyrn_evals.session_record import (
 from satyrn_evals.workspace import (
     SessionWorkspace,
     WorkspacePrepareError,
+    WorkspaceReleaseError,
     prepare_session_workspace,
+    release_session_workspace,
     snapshot_tree,
 )
 
@@ -114,6 +117,13 @@ def _capture_checkpoint(
     snapshot_path = session_dir / "snapshots" / f"{index:02d}-{spec_step.id}.json"
     snapshot_path.parent.mkdir(exist_ok=True)
     _snapshot(workspace, snapshot_path)
+    snapshot_digest = _digest(snapshot_path.read_text(encoding="utf-8"))
+    transcript_digest = None
+    transcript_bytes: int | None = None
+    if transcript_path.exists():
+        prefix = transcript_path.read_bytes()
+        transcript_bytes = len(prefix)
+        transcript_digest = _digest(prefix.decode("utf-8", "surrogateescape"))
     return StepRecord(
         step_id=spec_step.id,
         prompt_digest=prompt_digest,
@@ -122,7 +132,10 @@ def _capture_checkpoint(
         patch_digest=patch_digest,
         patch_bytes=patch_bytes,
         snapshot_path=os.fspath(snapshot_path.relative_to(session_dir)),
+        snapshot_digest=snapshot_digest,
         transcript_prefix_path=os.fspath(transcript_path.relative_to(session_dir)),
+        transcript_prefix_digest=transcript_digest,
+        transcript_prefix_bytes=transcript_bytes,
         scope_violations=tuple(
             sorted(
                 path
@@ -169,22 +182,49 @@ def run_session(
             base_commit="",
             code=SessionCode.WORKSPACE_FAILED,
             message=str(exc),
+            provenance=dict(manifest.provenance) if manifest.provenance else {},
         )
         write_session_record(session_dir / "session-record.json", record)
         return record
-    record = _drive(
-        manifest=manifest,
-        spec=spec,
-        overlay=overlay,
-        workspace=workspace,
-        session_dir=session_dir,
-        transcript_path=session_dir / _TRANSCRIPT_NAME,
-        adapter_command=list(adapter_command),
-        start_timeout=start_timeout,
-        step_timeout=step_timeout,
-        close_timeout=close_timeout,
-        grader=grader,
-    )
+    record: SessionRecord | None = None
+    try:
+        record = _drive(
+            manifest=manifest,
+            spec=spec,
+            overlay=overlay,
+            workspace=workspace,
+            session_dir=session_dir,
+            transcript_path=session_dir / _TRANSCRIPT_NAME,
+            adapter_command=list(adapter_command),
+            start_timeout=start_timeout,
+            step_timeout=step_timeout,
+            close_timeout=close_timeout,
+            grader=grader,
+        )
+    except UsageError:
+        # start refusal: usage writes nothing; the finally below releases
+        raise
+    except SatyrnError as exc:
+        # a failure _drive did not convert (defensive): the started
+        # session still leaves a record (review finding 4)
+        record = _record(
+            manifest, list(adapter_command), workspace,
+            SessionCode.ADAPTER_ERROR, None, None, str(exc), [],
+        )
+    finally:
+        try:
+            release_session_workspace(workspace)
+        except WorkspaceReleaseError as exc:
+            if record is None:
+                raise
+            record = dataclasses.replace(
+                record,
+                code=SessionCode.CLEANUP_FAILED,
+                retained_path=exc.retained_path,
+                message=f"{record.message or record.code.value}; {exc}; "
+                f"retained at {exc.retained_path}",
+            )
+    assert record is not None
     write_session_record(session_dir / "session-record.json", record)
     return record
 
@@ -203,6 +243,7 @@ def _record(
         conversation_id=conversation_id,
         terminal_step=terminal_step,
         message=message,
+        provenance=dict(manifest.provenance) if manifest.provenance else {},
         steps=tuple(checkpoints),
     )
 
@@ -280,7 +321,16 @@ def _drive(
                         stop = _Stop(SessionCode.PROTOCOL_ERROR, str(exc))
                         break
                     match line:
-                        case EventLine(step_id=step_id, kind="turn_end"):
+                        case EventLine(
+                            step_id=step_id, conversation_id=event_cid, kind=kind
+                        ):
+                            if event_cid != conversation_id:
+                                stop = _Stop(
+                                    SessionCode.PROTOCOL_ERROR,
+                                    f"event identity changed at step "
+                                    f"{spec_step.id}",
+                                )
+                                break
                             if step_id != spec_step.id:
                                 stop = _Stop(
                                     SessionCode.PROTOCOL_ERROR,
@@ -288,33 +338,18 @@ def _drive(
                                     f"during {spec_step.id!r}",
                                 )
                                 break
-                            turn_count += 1
-                        case EventLine(step_id=step_id, kind="tool_end"):
-                            if step_id != spec_step.id:
-                                stop = _Stop(
-                                    SessionCode.PROTOCOL_ERROR,
-                                    f"event for step {step_id!r} "
-                                    f"during {spec_step.id!r}",
-                                )
-                                break
-                            tool_count += 1
-                        case EventLine(step_id=step_id, kind="other"):
-                            if step_id != spec_step.id:
-                                stop = _Stop(
-                                    SessionCode.PROTOCOL_ERROR,
-                                    f"event for step {step_id!r} "
-                                    f"during {spec_step.id!r}",
-                                )
-                                break
-                        case EventLine(step_id=step_id):
-                            if step_id != spec_step.id:
-                                stop = _Stop(
-                                    SessionCode.PROTOCOL_ERROR,
-                                    f"event for step {step_id!r} "
-                                    f"during {spec_step.id!r}",
-                                )
-                                break
-                            context_events += 1
+                            match kind:
+                                case "turn_end":
+                                    turn_count += 1
+                                case "tool_end":
+                                    tool_count += 1
+                                case (
+                                    "context_compacted"
+                                    | "context_reset"
+                                ):
+                                    context_events += 1
+                                case _:
+                                    pass
                         case StepFinished() as finished:
                             if finished.step_id != spec_step.id:
                                 stop = _Stop(
@@ -389,6 +424,11 @@ def _drive(
                             )
                         break
                     _spool(transcript_path, raw)
+                    try:
+                        parse_session_line(raw)
+                    except ProtocolError as exc:
+                        code, message = SessionCode.PROTOCOL_ERROR, str(exc)
+                        break
                     code, message = (
                         SessionCode.ADAPTER_ERROR,
                         "adapter sent output after close",
@@ -398,8 +438,15 @@ def _drive(
             code, message = stop.code, stop.message
         except ProtocolError as exc:
             code, message = SessionCode.PROTOCOL_ERROR, str(exc)
+        except SatyrnError as exc:
+            # a broken adapter channel (e.g. closed stdin) after the
+            # session started: the record is still written, with every
+            # checkpoint captured so far (review finding 4).
+            code, message = SessionCode.ADAPTER_ERROR, str(exc)
     finally:
-        if adapter is not None:
+        # adapter is None only under the start-refusal unwind; that arc is
+        # exercised there but cannot be attributed in merged subprocess runs
+        if adapter is not None:  # pragma: no branch
             with contextlib.suppress(OSError):
                 adapter.close_stdin()
             try:

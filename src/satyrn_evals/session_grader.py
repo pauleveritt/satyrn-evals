@@ -74,6 +74,8 @@ class SessionGrader:
                 if receipt.verdict is Verdict.UNAVAILABLE:
                     unavailable = True
             else:
+                # grading failed: the captured step stays in the record
+                graded.append(step)
                 unavailable = True
         if graded and graded[-1].patch_path is not None:
             last = graded[-1]

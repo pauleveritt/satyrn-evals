@@ -127,3 +127,62 @@ def test_scope_violation_through_the_shipped_adapter(
         assert "outside.txt" in step.scope_violations
         assert step.feature_verdict is None  # hidden grading skipped
     assert record.steps[-1].preservation_verdict == "pass"  # graded as captured
+
+
+def test_output_limit_terminal_through_the_shipped_adapter(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Pi declares stopReason "length" on prompt 2: the adapter must map
+    the terminal to output-limit, not settle it (review finding 3)."""
+    argv = _adapter(tmp_path, monkeypatch)
+    monkeypatch.setenv("PI_FAKE_TERMINAL", "length")
+    record = run_session(
+        task="session-mechanics",
+        tasks_root=TASKS_ROOT,
+        output=tmp_path,
+        adapter_command=argv,
+        grader=SessionGrader(task_dir=TASK),
+    )
+    assert record.code.value == "OUTPUT_LIMIT"
+    assert [s.step_id for s in record.steps] == ["add-slugify", "add-truncate"]
+    assert record.steps[0].outcome == "settled"
+    assert record.steps[1].outcome == "output-limit"
+    assert record.steps[1].patch_digest  # captured after the reap
+
+
+def test_failed_response_is_agent_error_through_the_adapter(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A failed prompt response surfaces agent-error, not success.
+
+    The tree is unedited, so the overlay cannot collect: the record maps
+    to GRADE_UNAVAILABLE while the step's adapter outcome stays
+    agent-error — plumbing pass, candidate failure separated.
+    """
+    argv = _adapter(tmp_path, monkeypatch)
+    monkeypatch.setenv("PI_FAKE_RESPONSE_FAIL", "1")
+    record = run_session(
+        task="session-mechanics",
+        tasks_root=TASKS_ROOT,
+        output=tmp_path,
+        adapter_command=argv,
+        grader=SessionGrader(task_dir=TASK),
+    )
+    assert record.code.value == "GRADE_UNAVAILABLE"
+    assert record.steps[0].outcome == "agent-error"
+
+
+def test_retry_failure_terminal_through_the_adapter(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """auto_retry_end{success:false} before agent_settled maps agent-error."""
+    argv = _adapter(tmp_path, monkeypatch)
+    monkeypatch.setenv("PI_FAKE_RETRY_FAIL", "1")
+    record = run_session(
+        task="session-mechanics",
+        tasks_root=TASKS_ROOT,
+        output=tmp_path,
+        adapter_command=argv,
+    )
+    assert record.code.value == "ADAPTER_ERROR"
+    assert record.steps[1].outcome == "agent-error"

@@ -27,6 +27,12 @@ class AdapterCleanupError(SatyrnError):
     """The adapter process group could not be confirmed reaped."""
 
 
+def _raise_closed_channel(exc: BrokenPipeError) -> None:
+    """Raise the broken channel's exception here, so the exit arc is
+    attributed in-process rather than during the session's unwinding."""
+    raise SatyrnError(f"adapter closed stdin: {exc}") from exc
+
+
 class AdapterProcess:
     """One live adapter subprocess and its process group."""
 
@@ -92,7 +98,7 @@ class AdapterProcess:
             self._proc.stdin.write(line.encode("utf-8"))
             self._proc.stdin.flush()
         except BrokenPipeError as e:
-            raise SatyrnError(f"adapter closed stdin: {e}") from e
+            _raise_closed_channel(e)
 
     def close_stdin(self) -> None:
         if self._proc.stdin is not None:

@@ -149,16 +149,22 @@ real-model claim.
 
 ```text
 .venv/bin/pytest -q
-518 passed, 140 deselected
+560 passed, 177 deselected
 
 .venv/bin/pytest tests/integration -m integration -q
-132 passed, 3 skipped
+169 passed, 3 skipped
 
 .venv/bin/pytest -m '' --cov=src/satyrn_evals --cov-branch \
   --cov-report=term-missing --cov-fail-under=100
-655 passed, 3 skipped
-2209 statements, 711 branches, 100% coverage
+734 passed, 3 skipped
+2908 statements, 938 branches, 100% coverage
 ```
+
+Correction (2026-09-03, review-fix cycle): the earlier "655 passed / 100%"
+line was asserted without reading the gate's full output — the coverage
+gate had been failing under the tail-of-output habit. The numbers above
+are from a run whose full output was read; the 100% gate is now held by
+730+ passing tests including the review-fix failure paths.
 
 Ruff lint clean; `just lint-docs` within caps; the svcs probe import
 hashes to `296a961f…` as committed (V6 delta spec, Delta 5). macOS-only

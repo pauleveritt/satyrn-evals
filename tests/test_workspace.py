@@ -211,3 +211,19 @@ def test_run_workspace_rejects_bad_teardown_grace(
             environment={},
             teardown_grace=grace,
         )
+
+
+def test_remove_parent_removes_the_tree(tmp_path: Path) -> None:
+    from satyrn_evals.workspace import _remove_parent
+
+    parent = tmp_path / "parent"
+    (parent / "deep").mkdir(parents=True)
+    _remove_parent(parent)
+    assert not parent.exists()
+
+
+def test_remove_parent_oserror_propagates(tmp_path: Path) -> None:
+    from satyrn_evals.workspace import _remove_parent
+
+    with pytest.raises(OSError):
+        _remove_parent(tmp_path / "missing")

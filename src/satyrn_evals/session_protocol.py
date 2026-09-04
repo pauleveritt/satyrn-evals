@@ -29,6 +29,7 @@ class SessionStarted:
 class EventLine:
     version: int
     step_id: str
+    conversation_id: str
     kind: EventKind
     payload: dict[str, object]
 
@@ -76,9 +77,17 @@ def parse_session_line(line: str) -> SessionMessage:
                 )
             return SessionStarted(version=1, conversation_id=cid)
         case "event":
-            if set(obj) != {"version", "type", "step_id", "kind", "payload"}:
+            if set(obj) != {
+                "version",
+                "type",
+                "step_id",
+                "conversation_id",
+                "kind",
+                "payload",
+            }:
                 raise ProtocolError(
-                    "event must hold exactly version, type, step_id, kind, payload"
+                    "event must hold exactly version, type, step_id, "
+                    "conversation_id, kind, payload"
                 )
             step_id = obj["step_id"]
             if not isinstance(step_id, str) or not step_id:
@@ -86,11 +95,20 @@ def parse_session_line(line: str) -> SessionMessage:
             kind = obj["kind"]
             if kind not in _EVENT_KINDS:
                 raise ProtocolError(f"unknown event kind: {kind!r}")
+            cid = obj["conversation_id"]
+            if not isinstance(cid, str) or not cid:
+                raise ProtocolError(
+                    "event conversation_id must be a non-empty string"
+                )
             payload = obj["payload"]
             if not isinstance(payload, dict):
                 raise ProtocolError("event payload must be an object")
             return EventLine(
-                version=1, step_id=step_id, kind=kind, payload=payload
+                version=1,
+                step_id=step_id,
+                conversation_id=cid,
+                kind=kind,
+                payload=payload,
             )
         case "step_finished":
             if set(obj) != {

@@ -3,8 +3,13 @@
 A narrow executable owning one conversation with Pi: it speaks the
 2026-09-01 session JSONL protocol on its own stdin/stdout and drives one
 ``pi --mode rpc --no-session`` child (pi 0.84.4 docs/rpc.md). The RPC
-mapping is a pure function; the complete original Pi event is carried
-unmodified under ``payload`` so every count is recomputable.
+mapping and the terminal-outcome derivation are pure functions; the
+driver loop (``serve``) takes its streams and child process as
+parameters so the whole loop is verifiable in process — the coverage
+gate's subprocess patch does not reach this child, and unverified
+branches in an adapter are review findings, not assumptions. The
+complete original Pi event is carried unmodified under ``payload`` so
+every count is recomputable.
 
 The child shares this adapter's process group (no start_new_session), so
 the executor's group teardown reaches Pi too. Model argv is space-form —
@@ -19,6 +24,7 @@ import select
 import subprocess
 import sys
 import uuid
+from typing import BinaryIO, Protocol
 
 from satyrn_evals.errors import ProtocolError
 
@@ -27,7 +33,40 @@ _SESSION_KINDS = {
     "tool_execution_end": "tool_end",
     "compaction_start": "context_compacted",
     "compaction_end": "context_compacted",
+    # Pi's genuine streaming model event: retained (kind "other") so the
+    # transcript carries positive evidence that the model actually ran —
+    # the smoke's discriminator. The original event stays in payload.
+    "message_update": "other",
+    # Retained for evidence; terminal state is derived from them below.
+    "agent_end": "other",
+    "auto_retry_end": "other",
 }
+
+
+def terminal_outcome_from_agent_end(obj: dict[str, object]) -> str | None:
+    """The step outcome Pi declared via agent_end, or None if not terminal.
+
+    ``willRetry`` means an automatic retry follows — not terminal. The
+    last message's ``stopReason`` (rpc.md:1469) is Pi's own declaration:
+    "length" is the output limit, "error"/"aborted" are agent errors,
+    anything else settles normally. Evals never infers a limit from prose.
+    """
+    if obj.get("willRetry"):
+        return None
+    messages = obj.get("messages")
+    stop = None
+    if isinstance(messages, list):
+        for message in reversed(messages):
+            if isinstance(message, dict) and "stopReason" in message:
+                stop = message["stopReason"]
+                break
+    match stop:
+        case "length":
+            return "output-limit"
+        case "error" | "aborted":
+            return "agent-error"
+        case _:
+            return "settled"
 
 
 def build_pi_argv(provider: str, model: str, pi_bin: str = "pi") -> list[str]:
@@ -53,21 +92,13 @@ def map_rpc_event(
 ) -> str | None:
     """Map one Pi RPC message to a session line, or None when unmapped.
 
-    ``agent_settled`` maps to the terminal message. A response (command
-    acknowledgement) is not an event; the driver handles it.
+    ``agent_settled`` is the terminal; the driver supplies the tracked
+    outcome. A response (command acknowledgement) is not an event; the
+    driver handles it.
     """
     event_type = obj.get("type")
     if event_type == "agent_settled":
-        return _session_line(
-            {
-                "version": 1,
-                "type": "step_finished",
-                "step_id": step_id,
-                "conversation_id": conversation_id,
-                "outcome": "settled",
-                "message": None,
-            }
-        )
+        return None
     kind = _SESSION_KINDS.get(event_type)  # type: ignore[arg-type]
     if kind is None:
         return None
@@ -76,15 +107,26 @@ def map_rpc_event(
             "version": 1,
             "type": "event",
             "step_id": step_id,
+            "conversation_id": conversation_id,
             "kind": kind,
             "payload": obj,
         }
     )
 
 
-def _emit(line: str) -> None:
-    sys.stdout.write(line)
-    sys.stdout.flush()
+class _PiHandle(Protocol):
+    """The subset of ``Popen`` the driver loop touches."""
+
+    stdin: BinaryIO
+    stdout: BinaryIO
+
+    def poll(self) -> int | None: ...
+
+    def terminate(self) -> None: ...
+
+    def kill(self) -> None: ...
+
+    def wait(self, timeout: float) -> int: ...
 
 
 def _parse_args(args: list[str]) -> tuple[str, str, str]:
@@ -108,89 +150,96 @@ def _parse_args(args: list[str]) -> tuple[str, str, str]:
     return provider, model, pi_bin
 
 
-def main(argv: list[str] | None = None) -> int:
-    provider, model, pi_bin = _parse_args(
-        list(sys.argv[1:] if argv is None else argv)
-    )
-    conversation_id = f"pi-{uuid.uuid4().hex[:12]}"
-    proc = subprocess.Popen(
-        build_pi_argv(provider, model, pi_bin),
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-    )
-    assert proc.stdin is not None and proc.stdout is not None
-    _emit(
-        _session_line(
-            {
-                "version": 1,
-                "type": "session_started",
-                "conversation_id": conversation_id,
-            }
-        )
-    )
+def _serve(
+    stdin_file, stdout_file, proc, *, conversation_id: str
+) -> None:
+    """Drive one conversation between session stdin and the pi child.
+
+    Both streams and the child handle are parameters so the loop runs
+    in-process under the coverage gate; ``main`` is the executable shell.
+    Stdin is read from its raw descriptor with an explicit line buffer: a
+    buffered reader would hide lines from ``select`` and stall the loop.
+    """
     current_step: str | None = None
     request = 0
     pending_prompt = False
+    pending_outcome = "settled"
     pi_buf = b""
-    stdin_fd = sys.stdin.fileno()
+    stdin_buf = b""
+    stdin_eof = False
+    stdin_fd = stdin_file.fileno()
 
-    def fail_agent_error(reason: str) -> str:
+    def emit(line: str) -> None:
+        stdout_file.write(line)
+        stdout_file.flush()
+
+    def step_finished(outcome: str, message: str | None) -> str:
         return _session_line(
             {
                 "version": 1,
                 "type": "step_finished",
                 "step_id": current_step,
                 "conversation_id": conversation_id,
-                "outcome": "agent-error",
-                "message": reason,
+                "outcome": outcome,
+                "message": message,
             }
         )
+
+    def send_prompt(message: dict[str, object]) -> None:
+        nonlocal current_step, request, pending_prompt, pending_outcome
+        if pending_prompt:
+            return  # protocol: no prompt before settled
+        current_step = message["step_id"]  # type: ignore[assignment]
+        request += 1
+        pending_prompt = True
+        pending_outcome = "settled"
+        proc.stdin.write(
+            json.dumps(
+                {
+                    "id": f"req-{request}",
+                    "type": "prompt",
+                    "message": message["text"],
+                }
+            ).encode("utf-8")
+            + b"\n"
+        )
+        proc.stdin.flush()
+
+    def handle_input(line: str) -> bool:
+        """One decoded session line; returns True when the loop must close."""
+        message = json.loads(line)
+        match message.get("type"):
+            case "prompt":
+                send_prompt(message)
+            case "close":
+                return True
+        return False
 
     closed = False
     while not closed:
         readable = [fd for fd in (stdin_fd, proc.stdout.fileno()) if fd >= 0]
         ready, _, _ = select.select(readable, [], [], 1.0)
-        for fd in ready:
-            if fd == stdin_fd:
-                raw = sys.stdin.readline()
-                if not raw:
-                    closed = True
-                    break
-                line = raw.strip()
-                if not line:
-                    continue
-                message = json.loads(line)
-                match message.get("type"):
-                    case "prompt":
-                        if pending_prompt:
-                            continue  # protocol: no prompt before settled
-                        current_step = message["step_id"]
-                        request += 1
-                        pending_prompt = True
-                        proc.stdin.write(
-                            json.dumps(
-                                {
-                                    "id": f"req-{request}",
-                                    "type": "prompt",
-                                    "message": message["text"],
-                                }
-                            ).encode("utf-8")
-                            + b"\n"
-                        )
-                        proc.stdin.flush()
-                    case "close":
+        if stdin_fd in ready and not stdin_eof:
+            chunk = os.read(stdin_fd, 65536)
+            if not chunk:
+                stdin_eof = True
+            else:
+                stdin_buf += chunk
+                while b"\n" in stdin_buf:
+                    raw_line, _, stdin_buf = stdin_buf.partition(b"\n")
+                    line = raw_line.decode("utf-8", "surrogateescape").strip()
+                    if not line:
+                        continue
+                    if handle_input(line):
                         closed = True
                         break
-        if closed:
+        if stdin_eof and not pending_prompt:
             break
         if proc.stdout.fileno() in ready:
             chunk = os.read(proc.stdout.fileno(), 65536)
             if not chunk:
                 if pending_prompt and current_step is not None:
-                    _emit(
-                        fail_agent_error("pi exited before settling the step")
-                    )
+                    emit(step_finished("agent-error", "pi exited before settling the step"))
                 break
             pi_buf += chunk
             while b"\n" in pi_buf:
@@ -206,24 +255,41 @@ def main(argv: list[str] | None = None) -> int:
                         and pending_prompt
                         and current_step is not None
                     ):
-                        _emit(
-                            fail_agent_error(str(obj.get("error", "prompt failed")))
+                        emit(
+                            step_finished(
+                                "agent-error", str(obj.get("error", "prompt failed"))
+                            )
                         )
                         pending_prompt = False
                         current_step = None
                     continue
                 if current_step is None:
                     continue
+                # terminal state is tracked from agent_end / auto_retry_end
+                # BEFORE agent_settled (review finding 3): the settled
+                # terminal carries the outcome Pi declared, never a
+                # blanket "settled".
+                match obj.get("type"):
+                    case "agent_end":
+                        declared = terminal_outcome_from_agent_end(obj)
+                        if declared is not None:
+                            pending_outcome = declared
+                    case "auto_retry_end":
+                        if obj.get("success") is False:
+                            pending_outcome = "agent-error"
                 mapped = map_rpc_event(
                     obj, step_id=current_step, conversation_id=conversation_id
                 )
-                if mapped is None:
-                    continue
-                _emit(mapped)
-                mapped_obj = json.loads(mapped)
-                if mapped_obj.get("type") == "step_finished":
+                if mapped is not None:
+                    emit(mapped)
+                if obj.get("type") == "agent_settled":
+                    emit(step_finished(pending_outcome, None))
                     pending_prompt = False
                     current_step = None
+
+
+def reap(proc) -> None:
+    """Stop and reap the pi child: close stdin, TERM, then KILL on refusal."""
     with contextlib.suppress(OSError):
         proc.stdin.close()
     if proc.poll() is None:
@@ -235,6 +301,32 @@ def main(argv: list[str] | None = None) -> int:
             with contextlib.suppress(ProcessLookupError):
                 proc.kill()
             proc.wait(timeout=5)
+
+
+def main(argv: list[str] | None = None) -> int:
+    provider, model, pi_bin = _parse_args(
+        list(sys.argv[1:] if argv is None else argv)
+    )
+    conversation_id = f"pi-{uuid.uuid4().hex[:12]}"
+    proc = subprocess.Popen(
+        build_pi_argv(provider, model, pi_bin),
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    assert proc.stdin is not None and proc.stdout is not None
+    sys.stdout.write(
+        _session_line(
+            {
+                "version": 1,
+                "type": "session_started",
+                "conversation_id": conversation_id,
+            }
+        )
+    )
+    sys.stdout.flush()
+    _serve(sys.stdin, sys.stdout, proc, conversation_id=conversation_id)
+    reap(proc)
     return 0
 
 

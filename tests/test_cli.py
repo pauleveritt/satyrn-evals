@@ -2,6 +2,7 @@ import argparse
 
 import pytest
 
+from satyrn_evals import cli as cli_module
 from satyrn_evals.cli import (
     main,
     parser,
@@ -92,3 +93,15 @@ def test_run_requires_command() -> None:
 def test_run_n_rejects_non_positive_and_malformed(value: str) -> None:
     with pytest.raises(argparse.ArgumentTypeError, match="integer greater than zero"):
         positive_int(value)
+
+
+def test_run_cli_dispatch(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, object] = {}
+    monkeypatch.setattr(cli_module, "run", lambda **kw: seen.update(kw))
+    assert cli_module.main(["run", "format_number", "--n", "2", "--", "cmd"]) == 0
+    assert seen["n"] == 2 and seen["task"] == "format_number"
+
+
+def test_run_cli_rejects_nonpositive_n() -> None:
+    with pytest.raises(SystemExit):
+        cli_module.main(["run", "format_number", "--n", "0", "--", "cmd"])

@@ -50,7 +50,10 @@ class StepRecord:
     patch_digest: str | None = None
     patch_bytes: int | None = None
     snapshot_path: str | None = None
+    snapshot_digest: str | None = None
     transcript_prefix_path: str | None = None
+    transcript_prefix_digest: str | None = None
+    transcript_prefix_bytes: int | None = None
     feature_receipt_path: str | None = None
     preservation_receipt_path: str | None = None
     scope_violations: tuple[str, ...] = ()
@@ -74,6 +77,7 @@ class SessionRecord:
     terminal_step: str | None = None
     message: str | None = None
     provenance: dict[str, str] = field(default_factory=dict)
+    retained_path: str | None = None
     steps: tuple[StepRecord, ...] = ()
 
     def __post_init__(self) -> None:

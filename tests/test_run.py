@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 import satyrn_evals.run as run_module
 from satyrn_evals.attempt_record import AttemptCode, AttemptOutcome, AttemptRecord
 from satyrn_evals.verdict import Verdict
@@ -61,3 +63,23 @@ def test_run_refuses_non_positive_n(tmp_path: Path, monkeypatch) -> None:
         pass
     else:
         raise AssertionError("run accepted n=0")
+
+
+def test_run_rejects_a_nonpositive_n_directly(tmp_path: Path) -> None:
+    import pytest
+
+    from satyrn_evals.errors import UsageError
+    from satyrn_evals.run import run
+
+    with pytest.raises(UsageError, match="positive --n"):
+        run(task="format_number", tasks_root=tmp_path, output=tmp_path,
+            command=["whatever"], n=0, timeout=5.0)
+
+
+def test_run_rejects_an_empty_command_directly(tmp_path: Path) -> None:
+    from satyrn_evals.errors import UsageError
+    from satyrn_evals.run import run
+
+    with pytest.raises(UsageError, match="run command is required"):
+        run(task="format_number", tasks_root=tmp_path, output=tmp_path,
+            command=[], n=1, timeout=5.0)

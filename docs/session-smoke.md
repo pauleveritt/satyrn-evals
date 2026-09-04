@@ -30,8 +30,9 @@ checkpoint's grading ran.
 - the adapter or Pi exits before the model runs (contract, argv,
   dependency, configuration);
 - no genuine model-stream events in the retained payloads (empty or
-  absent stream content) — without positive evidence the model started,
-  an early failure is plumbing-shaped;
+  absent stream content) — Pi's streaming `message_update` events are
+  retained through the adapter's payload mapping precisely so this
+  evidence exists; without it, an early failure is plumbing-shaped;
 - a plumbing code where a model-behavior outcome was expected;
 - a receipt that produces no verdict where grading occurred.
 

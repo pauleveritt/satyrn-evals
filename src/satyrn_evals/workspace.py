@@ -529,6 +529,11 @@ def _worktree_registered(
     return worktree.resolve() in registered
 
 
+def _remove_parent(parent: Path) -> None:
+    """The removal whose normal-completion arc is attributed in-process."""
+    shutil.rmtree(parent)
+
+
 def _prepare_repository(
     base: Path,
     state: _WorkspaceState,
@@ -1113,7 +1118,7 @@ def release_session_workspace(workspace: SessionWorkspace) -> None:
         ) from exc
     if state.process_cleanup_safe and state.registration is Registration.ABSENT:
         try:
-            shutil.rmtree(state.parent)
+            _remove_parent(state.parent)
         except OSError as exc:
             raise WorkspaceReleaseError(
                 f"cannot remove session workspace parent {state.parent}: {exc}",

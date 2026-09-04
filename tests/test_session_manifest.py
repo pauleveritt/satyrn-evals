@@ -81,3 +81,47 @@ def test_session_spec_duplicate_selector_refused(tmp_path: Path) -> None:
     _write(tmp_path, payload)
     with pytest.raises(SessionSpecError, match="duplicate"):
         load_session_spec(tmp_path)
+
+
+def test_session_spec_refuses_step_with_unknown_keys(tmp_path: Path) -> None:
+    payload = copy.deepcopy(VALID)
+    payload["steps"][0]["chaos"] = 1
+    _write(tmp_path, payload)
+    with pytest.raises(SessionSpecError, match="exactly"):
+        load_session_spec(tmp_path)
+
+
+def test_session_spec_refuses_non_string_selector(tmp_path: Path) -> None:
+    payload = copy.deepcopy(VALID)
+    payload["steps"][0]["new_feature_selectors"] = [3]
+    _write(tmp_path, payload)
+    with pytest.raises(SessionSpecError, match="non-empty strings"):
+        load_session_spec(tmp_path)
+
+
+def test_session_spec_refuses_review_with_selectors(tmp_path: Path) -> None:
+    payload = copy.deepcopy(VALID)
+    payload["steps"][1]["new_feature_selectors"] = ["a.py::t"]
+    _write(tmp_path, payload)
+    with pytest.raises(SessionSpecError, match="review step"):
+        load_session_spec(tmp_path)
+
+
+def test_session_spec_refuses_malformed_json(tmp_path: Path) -> None:
+    (tmp_path / "session.json").write_text("{not json")
+    with pytest.raises(SessionSpecError, match="malformed session.json"):
+        load_session_spec(tmp_path)
+
+
+def test_session_spec_refuses_unreadable_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "session.json"
+    path.write_text("{}")
+
+    def deny(path: Path):
+        raise PermissionError("permission denied")
+
+    monkeypatch.setattr(Path, "read_text", deny)
+    with pytest.raises(SessionSpecError, match="cannot read"):
+        load_session_spec(tmp_path)
