@@ -1,0 +1,22 @@
+diff --git a/models.py b/models.py
+new file mode 100644
+index 0000000..3cfd54d
+--- /dev/null
++++ b/models.py
+@@ -0,0 +1,16 @@
++# Wrong repair: the model module is recreated so the app imports and the
++# suite collects, but the store is left empty — the seed content the board
++# must show is missing, and app.py still imports the old alias.
++from dataclasses import dataclass, field
++from datetime import datetime, timezone
++
++
++@dataclass
++class Complaint:
++    agent_name: str
++    text: str
++    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
++
++
++complaints: list[Complaint] = []
++SEED_COMPLAINTS = complaints

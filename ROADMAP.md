@@ -93,7 +93,7 @@ lands.
 | D2 | The learner's big picture | teach what actually happens when an AI coding agent works — agent, tools, inference server, model — in one lo-fi diagram and a short page placed after the first verdict, then map those pieces onto Evals' evidence loop in a second diagram; zero runtime JavaScript | animation; client-side rendering runtimes; theme-coupled SVG colors; serving ops detail; Satyrn boxes in diagram 1; more learner pages beyond the two — see the design spec's Out of scope | **complete** — learner page placed after the first verdict teaches what actually happens when an agent works (agent ↔ codebase + tools → inference server containing the model), then maps those pieces onto Evals' evidence loop (the attempt command as the opaque agent loop → patch + transcript → offline grade → receipt); two d2-rendered committed SVGs, zero runtime JavaScript — [design](docs/superpowers/specs/2026-09-04-d2-learner-big-picture-design.md), [plan](docs/superpowers/plans/2026-09-04-d2-learner-big-picture.md) |
 | V6 | Session eval | `session TASK -- ADAPTER...` sends ordered prompts to one conversation against one evolving checkout, snapshots a cumulative patch per checkpoint, and grades offline through a grader overlay the executor is never shown | `run --n 8` and admission, model-client integration, retries, a hostile-command sandbox, a persistent Engine daemon | **complete** |
 | V7 | Task visibility and leak detection | a manifest field declares each task visible- or hidden-oracle; contamination is detected by content and reported per arm, never absorbed into a denominator | OS-level containment — deferred in `BACKLOG.md`; V7 detects rather than prevents | **complete** — remains so; post-merge verification corrections recorded in the spec's close-out amendment ([design](docs/superpowers/specs/2026-09-04-v7-task-visibility-leak-detection-design.md)) and the V7 verification record (`docs/sdd.md`); phase not reopened |
-| V8 | AgentClinic through Evals | reproduce the repair fixtures on this repository's own `capture`/`attempt`/`grade` path, replacing the spike's scratchpad harness | Engine changes, including a `facts` field (satyrn-engine `BACKLOG.md`); an orchestrator | proposed |
+| V8 | AgentClinic through Evals | reproduce the repair fixtures on this repository's own `capture`/`attempt`/`grade` path, replacing the spike's scratchpad harness | Engine changes, including a `facts` field (satyrn-engine `BACKLOG.md`); an orchestrator | **complete** — six bundled `agentclinic-repair-*` tasks, two production changes, 24/24 gate, smoke passed; spec `docs/superpowers/specs/2026-09-04-v8-agentclinic-evals-design.md`, record `docs/sdd.md` |
 
 Full done-when criteria for V1–V5 are in `BRIEF.md`'s referenced roadmap
 research, not restated here to avoid drift between two copies. **V6–V8 are
@@ -113,8 +113,8 @@ confirmed by the maintainer, in
 task captured after `local-pings` must follow the practice; a captured
 task that reaches a budgeted run without its smoke, or a smoke that
 conceals a defect, reopens V5d).
-V8 has no spec yet and must gain one before implementation, per
-`docs/sdd.md`; V7's done-when lives in its design spec — now complete (Prior
+V8's done-when lives in its design spec — now complete (Prior work
+below); V7's done-when lives in its design spec — now complete (Prior
 work below); V5a's and V5b's done-when lived with their design specs, now
 complete (Prior work below).
 
@@ -145,6 +145,24 @@ entry there states what reopens it.
 
 Completed phases move here (or to `docs/superpowers/phase-history.md`)
 when the roadmap outgrows the front page.
+
+- **V8 — AgentClinic through Evals (2026-09-04).** Six bundled
+  `agentclinic-repair-*` tasks vendored from the `swiftstar` companion
+  repository (MIT, notice retained): reconstructed broken bases as locked
+  projects, the full 13-test acceptance suite as a hidden per-task overlay,
+  and failure-digest contracts that never name a grader file. Two
+  production changes: `grade` materializes a dependency-bearing task's own
+  locked environment and attests the executed distributions as
+  `resolved_versions` from `uv pip freeze` (stdlib tasks untouched, no key);
+  the contamination detector subtracts base-visible overlay windows
+  (additive). The 24/24 offline gate proves every task by fixture name
+  (base rows from hook records, six known-good 13/13, six known-broken
+  fails, six contamination pairs). The uncounted V5d smoke — one real-model
+  stock-engine attempt on `plausible-wrong-fix` — passed end to end after
+  the engine's pi-argv fix it surfaced (recorded, not fixed in V8). The
+  budgeted admission probe stays closed in `BACKLOG.md` until its reopen
+  condition is met. Spec and plan under `docs/superpowers/`; verification
+  record in `docs/sdd.md`.
 
 - **V7 — Task visibility and leak detection (2026-09-04).** A manifest
   field (`oracle_visibility`) declares each task visible- or hidden-oracle,

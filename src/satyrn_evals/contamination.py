@@ -88,11 +88,29 @@ def _added_files(patch_text: str) -> dict[str, str]:
     return added
 
 
+def _window_in_visible(
+    needle: list[str], visible_seqs: Sequence[tuple[tuple[int, str], ...]]
+) -> bool:
+    """True when the raw-line window appears verbatim in any visible text.
+
+    ``_match_block`` never calls this with an empty needle (it returns
+    early when the window is zero), so no empty-window guard is needed.
+    """
+    size = len(needle)
+    for seq in visible_seqs:
+        texts = [text for _, text in seq]
+        for pos in range(len(texts) - size + 1):
+            if texts[pos : pos + size] == needle:
+                return True
+    return False
+
+
 def _match_block(
     overlay_seq: tuple[tuple[int, str], ...],
     patch_seq: tuple[tuple[int, str], ...],
+    visible_seqs: Sequence[tuple[tuple[int, str], ...]] = (),
 ) -> tuple[str, int] | None:
-    """First verbatim window hit: (evidence kind, 1-based patch line)."""
+    """First verbatim window hit not present in any visible text."""
     window = min(GRADER_BLOCK_LINES, len(overlay_seq))
     if window == 0 or len(patch_seq) < window:
         return None
@@ -101,22 +119,37 @@ def _match_block(
     patch_texts = [text for _, text in patch_seq]
     for start in range(len(overlay_texts) - window + 1):
         needle = overlay_texts[start : start + window]
+        if _window_in_visible(needle, visible_seqs):
+            continue  # shown content: not evidence of seeing the overlay
         for pos in range(len(patch_texts) - window + 1):
             if patch_texts[pos : pos + window] == needle:
                 return kind, patch_seq[pos][0]
     return None
 
 
-def scan_patch(patch_text: str | None, spec: OverlaySpec) -> CheckResult:
-    """Check (b): grader content inside a retained patch."""
+def scan_patch(
+    patch_text: str | None,
+    spec: OverlaySpec,
+    visible_texts: Sequence[str] = (),
+) -> CheckResult:
+    """Check (b): grader content inside a retained patch.
+
+    ``visible_texts`` is model-visible content (the task's ``base/``
+    files). An overlay window occurring there is not evidence of having
+    seen the hidden overlay, so those needles are subtracted. Default
+    empty: pre-V8 behavior is byte-identical.
+    """
     if patch_text is None:
         return CheckResult("grader_content_in_patch", "unmeasured", ())
     evidence: list[Evidence] = []
     added = _added_files(patch_text)
+    visible_seqs = tuple(_nonblank(text) for text in visible_texts)
     for overlay_path, text in spec.texts.items():
         overlay_seq = _nonblank(text)
         for patch_path, patch_body in added.items():
-            if (hit := _match_block(overlay_seq, _nonblank(patch_body))) is not None:
+            if (
+                hit := _match_block(overlay_seq, _nonblank(patch_body), visible_seqs)
+            ) is not None:
                 kind, line = hit
                 evidence.append(Evidence(kind, overlay_path, patch_path, line))
     return CheckResult(

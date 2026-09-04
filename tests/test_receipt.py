@@ -63,3 +63,19 @@ def test_hidden_receipt_round_trips_contamination(tmp_path) -> None:
     path = tmp_path / "receipt.json"
     write_receipt(path, receipt)
     assert json.loads(path.read_text())["contamination"] == finding
+
+
+def test_receipt_omits_resolved_versions_when_none(tmp_path) -> None:
+    receipt = Receipt("t", "d", Verdict.PASS, "ok", None)  # defaults None
+    path = tmp_path / "receipt.json"
+    write_receipt(path, receipt)
+    assert "resolved_versions" not in json.loads(path.read_text())
+
+
+def test_receipt_serializes_resolved_versions_when_present(tmp_path) -> None:
+    receipt = Receipt("t", "d", Verdict.PASS, "ok", None,
+                      resolved_versions={"fastapi": "0.115.10"})
+    path = tmp_path / "receipt.json"
+    write_receipt(path, receipt)
+    data = json.loads(path.read_text())
+    assert data["resolved_versions"] == {"fastapi": "0.115.10"}

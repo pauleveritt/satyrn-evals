@@ -1,0 +1,26 @@
+diff --git a/app.py b/app.py
+index 4c613c5..04f8497 100644
+--- a/app.py
++++ b/app.py
+@@ -4,7 +4,7 @@ from fastapi import FastAPI, Form, Request
+ from fastapi.responses import RedirectResponse
+ from fastapi.templating import Jinja2Templates
+ 
+-from models import Complaint, SEED_COMPLAINTS as complaints
++from models import Complaint, complaints
+ 
+ app = FastAPI()
+ templates = Jinja2Templates(directory="templates")
+diff --git a/models.py b/models.py
+index 0e0e8ab..dfa4e46 100644
+--- a/models.py
++++ b/models.py
+@@ -9,7 +9,7 @@ class Complaint:
+     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+ 
+ 
+-SEED_COMPLAINTS: list[Complaint] = [
++complaints: list[Complaint] = [
+     Complaint(
+         agent_name="Claude",
+         text="The instructions said 'make it pop' with no acceptance criteria.",

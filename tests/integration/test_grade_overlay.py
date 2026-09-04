@@ -1,11 +1,12 @@
 """Overlay-aware grading: the evidence floor, named fixtures, real oracle."""
 
+import json
 from pathlib import Path
 
 import pytest
 
 from satyrn_evals.grade import grade
-from satyrn_evals.manifest import load_manifest
+from satyrn_evals.manifest import load_manifest, resolve_task
 from satyrn_evals.overlay import load_overlay, materialize_overlay
 from satyrn_evals.verdict import Verdict
 
@@ -76,3 +77,32 @@ def test_materialized_overlay_files_are_read_only(
         assert (work / rel).stat().st_mode & 0o222 == 0
         with pytest.raises(PermissionError):
             (work / rel).write_text("overwrite")
+
+
+def _grade_auto(task_dir: Path, patch_text: str, tmp_path: Path) -> dict:
+    """Bare grade on a hidden task (auto-overlay path), returning the receipt."""
+    patch_path = tmp_path / "patch.diff"
+    patch_path.write_text(patch_text)
+    receipt_path = tmp_path / "receipt.json"
+    grade(task_dir, patch_path, receipt_path)  # overlay=None -> auto-overlay
+    return json.loads(receipt_path.read_text())
+
+
+def test_grade_subtracts_visible_public_test_idiom(tmp_path: Path) -> None:
+    """A patch re-adding the shared redirect idiom (present in the task's own
+    vendored public test) grades clean on the contamination check: content in
+    base/ is not evidence of having seen the hidden overlay."""
+    task_dir = resolve_task("agentclinic-repair-plausible-wrong-fix")
+    public = (task_dir / "base" / "tests" / "test_app.py").read_text()
+    assert "follow_redirects=False" in public  # precondition: the idiom is visible
+    lines = public.splitlines()
+    start = next(i for i, ln in enumerate(lines) if "follow_redirects=False" in ln)
+    idiom = lines[start : start + 4]  # the shared 4-line window, verbatim
+    patch = (
+        "--- a/tests/test_new.py\n+++ b/tests/test_new.py\n@@ -0,0 +1,4 @@\n"
+        + "".join(f"+{line}\n" for line in idiom)
+    )
+    receipt = _grade_auto(task_dir, patch, tmp_path)
+    finding = receipt["contamination"]["checks"][0]
+    assert finding["check"] == "grader_content_in_patch"
+    assert finding["outcome"] == "clean"
