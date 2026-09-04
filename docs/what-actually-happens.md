@@ -53,8 +53,8 @@ the server returns the next tokens the model produces.
 
 This client/server split is standard: NVIDIA NIM and vLLM's architecture
 overview draw the same line between the engine that runs the model and the
-service that answers requests. (NVIDIA NIM, *Architecture at a Glance* —
-<https://docs.nvidia.com/nim/large-language-models/latest/introduction.html>;
+service that answers requests. (NVIDIA NIM, *Architecture* —
+<https://docs.nvidia.com/nim/large-language-models/latest/reference/architecture.html>;
 vLLM, *Architecture overview* —
 <https://docs.vllm.ai/en/stable/design/arch_overview>.)
 
