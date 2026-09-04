@@ -10,6 +10,12 @@ Backlog, not into the current phase.*
 
 ## Now
 
+**D1 — Documentation orientation — and D2 — The learner's big
+picture — are complete (2026-09-04).** The public docs were restructured
+under Diátaxis (front-door promise, concrete suite example, formats
+reference, goal-named guides) and the learner path gained the big-picture
+page and two diagrams.
+
 **V6 — session eval — is complete (2026-09-04).** The remediation plan
 (`docs/superpowers/plans/2026-09-04-v6-remediation.md`) closed all three
 tracks: integrity blockers fixed with failure-path tests, evidence
@@ -72,6 +78,8 @@ lands.
 | V5b | The diagnostic loop | `run --n 8` over admitted tasks, summarizing verdict reasons, repeated calls, churn, tool calls, context, and timeouts | The claims layer — pre-registration, intervals, void accounting (`BRIEF.md:33-36`) | **complete** |
 | V5c | Capture the admitted suite | reconstruct and `capture --revert` the corrected `local-pings` synthetic pair, then re-record the probe's three-row qualification table as the gate that the capture is faithful | `stringified-annotations` capture (reopens once the loop runs on `local-pings`); `magicmock-factory` (reopens with an Envelope/Engine probe); oracle improvement (its own proposal); running the loop; suite-headroom capture — see the spec's Out of scope | **complete** |
 | V5d | The pre-flight smoke check | run one real-model attempt (`run TASK --n 1`) against each materially distinct command/adapter/runtime path before that path's first budgeted diagnostic run, and read the attempt record — plus the receipt when grading ran — against a short pass/fail checklist; `NO_PATCH`/`COMMAND_TIMEOUT` pass only with positive evidence the model started | automated engine-contract content validation (`BACKLOG.md`); the `pi` argv incompatibility itself (satyrn-engine's backlog); running smoke in CI or any test tier; a manifest smoke-record field; `local-pings` re-admission or new prospective read/write Envelope decisions — see the spec's Out of scope | **complete** |
+| D1 | Documentation orientation | adopt a Diátaxis structure that reveals Satyrn Evals from a successful first verdict to task capture, attempts, diagnostics, and the design record; place a small concrete suite example—code, pseudocode, or drawing—immediately before the exact command that runs it on the top-level page | CLI or task behavior; V6 operational docs; model-quality/claims-layer guidance; rewriting historical evidence — see the design spec's Out of scope | **complete** — amended 2026-09-04 (review corrections and the suite example; spec amendment); [design](docs/superpowers/specs/2026-09-04-d1-diataxis-documentation-design.md), [plan](docs/superpowers/plans/2026-09-04-d1-diataxis-documentation.md) |
+| D2 | The learner's big picture | teach what actually happens when an AI coding agent works — agent, tools, inference server, model — in one lo-fi diagram and a short page placed after the first verdict, then map those pieces onto Evals' evidence loop in a second diagram; zero runtime JavaScript | animation; client-side rendering runtimes; theme-coupled SVG colors; serving ops detail; Satyrn boxes in diagram 1; more learner pages beyond the two — see the design spec's Out of scope | **complete** — learner page placed after the first verdict teaches what actually happens when an agent works (agent ↔ codebase + tools → inference server containing the model), then maps those pieces onto Evals' evidence loop (the attempt command as the opaque agent loop → patch + transcript → offline grade → receipt); two d2-rendered committed SVGs, zero runtime JavaScript — [design](docs/superpowers/specs/2026-09-04-d2-learner-big-picture-design.md), [plan](docs/superpowers/plans/2026-09-04-d2-learner-big-picture.md) |
 | V6 | Session eval | `session TASK -- ADAPTER...` sends ordered prompts to one conversation against one evolving checkout, snapshots a cumulative patch per checkpoint, and grades offline through a grader overlay the executor is never shown | `run --n 8` and admission, model-client integration, retries, a hostile-command sandbox, a persistent Engine daemon | **complete** |
 | V7 | Task visibility and leak detection | a manifest field declares each task visible- or hidden-oracle; contamination is detected by content and reported per arm, never absorbed into a denominator | OS-level containment — deferred in `BACKLOG.md`; V7 detects rather than prevents | proposed |
 | V8 | AgentClinic through Evals | reproduce the repair fixtures on this repository's own `capture`/`attempt`/`grade` path, replacing the spike's scratchpad harness | Engine changes, including a `facts` field (satyrn-engine `BACKLOG.md`); an orchestrator | proposed |
@@ -126,6 +134,21 @@ entry there states what reopens it.
 Completed phases move here (or to `docs/superpowers/phase-history.md`)
 when the roadmap outgrows the front page.
 
+- **D1 — Documentation orientation (2026-09-04, amended the same day).** The
+  public docs use a Diátaxis structure: a first-time reader sees the
+  actionable-evidence promise and a successful `format_number` receipt before
+  operational guides, explanatory topics, CLI reference, or development
+  history; capture, attempt, and diagnostic-batch instructions are organized
+  by desired outcome; the task/artifact formats have a reference page;
+  the architecture and glossary are current. Reopened 2026-09-04 for review
+  corrections, then amended: a deep review's nine findings (formats
+  reference, guide execution context and `--tasks-root`, capture-record
+  filename, refusal and smoke semantics, architecture/glossary currency, the
+  receipt example, EOF blank lines) plus the front-page suite example, all
+  recorded in the design spec's amendment. Design and plan:
+  `2026-09-04-d1-diataxis-documentation-design.md` and
+  `2026-09-04-d1-diataxis-documentation.md`.
+- **D2 — The learner's big picture (2026-09-04).** A dedicated learner page (`what-actually-happens`) wired into Start here after the first verdict — front page → tutorial → learner page → guides — teaches in ordinary words what actually happens when an AI coding agent works, then maps those pieces onto Evals' evidence loop. Diagram 1 (agent ↔ codebase + tools → inference server containing the model, with request/token edge labels) sits inside that page; diagram 2 (Evals evidence loop) redraws diagram 1's whole agent loop as the opaque attempt command whose patch + transcript are graded offline into a receipt. Zero runtime JavaScript; the sdd discipline bullet and the review template's Visual assets group hold both figures legible at documentation width in light and dark Furo. **Bake-off: PASS — d2 v0.8.2** (`--sketch --theme 0 --scale 0.5`) rendered both diagrams from committed `.d2` sources byte-for-byte; no hand-authored fallback. Design: `2026-09-04-d2-learner-big-picture-design.md`.
 - **V6 — Session eval (2026-09-04).** `session TASK -- ADAPTER...`:
   one conversation against one evolving checkout, cumulative checkpoints
   snapshotted and durably linked before the next prompt, offline grading

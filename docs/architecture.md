@@ -63,12 +63,14 @@ The defense is structural, not behavioral:
 
 | Module | Responsibility |
 |--------|----------------|
-| `cli.py` | argparse, `grade`, `capture`, and `attempt` commands, exit-code mapping |
+| `cli.py` | argparse, the `grade`, `capture`, `attempt`, and `run` commands, exit-code mapping |
 | `grade.py` | orchestration: materialize, apply, run oracle, write receipt |
 | `capture.py` | orchestration: pin, preflight, derive, worktree, materialize, verify, cleanup, record |
 | `capture_record.py` | the durable capture artifact (E3-shaped JSON) |
 | `attempt.py` | orchestration: invoke the workspace, preserve, refuse, grade, record |
 | `attempt_record.py` | the durable attempt artifact (E3-shaped JSON) |
+| `run.py` | orchestration: repeat the attempt seam `n` times, then write the counts-only summary |
+| `summary.py` | the durable run artifact: `summary.json` computed from attempt records |
 | `workspace.py` | reconstruct a private Git repository; own detached-worktree, process, and cleanup lifecycles |
 | `diff_filter.py` | parse NUL-safe Git change metadata; classify both rename paths with the test-path rule |
 | `discriminating.py` | the {term}`discriminating set` and the recorded oracle |
@@ -164,9 +166,11 @@ hygiene, not a security sandbox; Windows is outside the V4 proof.
 Every refusal test has a sibling success test, so rejection cannot pass
 vacuously.
 
-## What is not here yet
+## Current boundary
 
-- the diagnostic loop — V5
-- {term}`baseline probe` admission — V5
+The diagnostic loop and {term}`baseline probe` admission are available in V5.
+V6 session evaluation is proposed rather than a current interface. The claims
+layer—pre-registration, confidence intervals, condition enforcement, and A/B
+publication—remains deliberately deferred until a consumer needs it.
 
 One phase at a time; no machinery ahead of the contract it serves.

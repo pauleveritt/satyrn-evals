@@ -1,0 +1,54 @@
+vars: {
+  d2-config: { sketch: true }
+}
+direction: right
+
+"Developer's task": {
+  style: {
+    fill: "#fffdf5"
+    font-color: "#2b2b2b"
+    stroke: "#7a6a4a"
+    stroke-width: 1
+    border-radius: 8
+  }
+}
+"coding agent": {
+  style: {
+    fill: "#fffdf5"
+    font-color: "#2b2b2b"
+    stroke: "#7a6a4a"
+    stroke-width: 1
+    border-radius: 8
+  }
+}
+"codebase + tools": {
+  style: {
+    fill: "#fffdf5"
+    font-color: "#2b2b2b"
+    stroke: "#7a6a4a"
+    stroke-width: 1
+    border-radius: 8
+  }
+}
+"inference server": {
+  style: {
+    fill: "#fffdf5"
+    font-color: "#2b2b2b"
+    stroke: "#7a6a4a"
+    stroke-width: 1
+    border-radius: 8
+  }
+  "model": {
+    style: {
+      fill: "#ffffff"
+      font-color: "#2b2b2b"
+      stroke: "#7a6a4a"
+      stroke-width: 1
+      border-radius: 6
+    }
+  }
+}
+
+"Developer's task" -> "coding agent": prompt
+"coding agent" <-> "codebase + tools": "tool calls"
+"coding agent" -> "inference server": "request / response"

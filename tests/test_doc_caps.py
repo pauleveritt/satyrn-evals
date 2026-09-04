@@ -73,7 +73,7 @@ def test_backlog_entry_within_cap_is_accepted(tmp_path: Path) -> None:
     "backlog",
     [
         pytest.param(
-            "# Backlog\n\nProse with a **bold span** that is not an entry.\n" + "x " * 900,
+            "# Backlog\n\nProse with a **bold span** that is not an entry.\n" + "x" * 1300,
             id="bold-outside-entries-section",
         ),
         pytest.param(
@@ -134,3 +134,37 @@ def test_grandfathered_paths_all_exist() -> None:
     missing = [p for p in GRANDFATHERED if not (ROOT / p).exists()]
 
     assert missing == [], missing
+
+
+def test_trailing_whitespace_is_refused(tmp_path: Path) -> None:
+    (tmp_path / "docs").mkdir()
+    _write(tmp_path, "docs/index.md", "# Docs\n\ntrailing spaces   \n")
+
+    failures = check(tmp_path).failures
+
+    assert (
+        any("docs/index.md:3" in f and "trailing whitespace" in f for f in failures),
+        failures,
+    )
+
+
+def test_blank_line_at_eof_is_refused(tmp_path: Path) -> None:
+    """The D1 defect: the design and plan were committed with a trailing
+    blank line because the whitespace check ran on the working tree only."""
+    _write(tmp_path, "ROADMAP.md", "# Roadmap\n\ntext\n\n")
+
+    failures = check(tmp_path).failures
+
+    assert any("ROADMAP.md" in f and "blank line at EOF" in f for f in failures), failures
+
+
+def test_clean_documents_and_the_preserved_record_are_accepted(tmp_path: Path) -> None:
+    """The success sibling: clean files draw no complaint, and the preserved
+    research record is exempt rather than failing forever."""
+    (tmp_path / "docs" / "superpowers" / "research").mkdir(parents=True)
+    (tmp_path / "docs" / "guides").mkdir(parents=True)
+    _write(tmp_path, "README.md", "# Clean\n\nNo trailing spaces.\n")
+    _write(tmp_path, "docs/guides/x.md", "# Guides\n\nClean too.\n")
+    _write(tmp_path, "docs/superpowers/research/old.md", "History.   \n\n")
+
+    assert check(tmp_path).failures == []
