@@ -17,6 +17,14 @@ from satyrn_evals.attempt_record import AttemptCode, AttemptOutcome, AttemptReco
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
 from satyrn_evals.verdict import Verdict
 
+HIDDEN_TASK_NAME = "session-mechanics"
+# A grade-produced hidden receipt: the patch scanned clean against the overlay.
+_CLEAN_RECEIPT = (
+    '{"verdict": "pass", "contamination": {"visibility": "hidden", '
+    '"checks": [{"check": "grader_content_in_patch", "outcome": "clean", '
+    '"evidence": []}]}}'
+)
+
 
 def ok_record() -> AttemptRecord:
     return AttemptRecord(
@@ -118,6 +126,52 @@ def test_run_summary_names_created_attempt_dirs(
     )
     assert summary.oracle_visibility == "visible"
     assert summary.contamination is None
+
+
+def test_run_on_hidden_task_tallies_contamination(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Default-tier sibling: run() against a hidden manifest still tallies.
+
+    The hidden task's manifest marks the oracle hidden, so run() must produce
+    the contamination section even when the seam is faked in-process (the
+    non-spawning double writes graded, contamination-bearing receipts). The
+    spawning end-to-end twin lives in tests/integration/test_run.py.
+    """
+
+    def fake_attempt(
+        *,
+        task: str,
+        tasks_root: Path,
+        output: Path,
+        command: list[str],
+        timeout: float,
+    ) -> AttemptRecord:
+        output.mkdir(parents=True, exist_ok=True)
+        cell_dir = output / attempt_dir_name(task, datetime.now(UTC))
+        cell_dir.mkdir()
+        (cell_dir / "receipt.json").write_text(_CLEAN_RECEIPT, encoding="utf-8")
+        return ok_record()
+
+    monkeypatch.setattr(run_module, "attempt", fake_attempt)
+    summary = run_module.run(
+        task=HIDDEN_TASK_NAME,
+        tasks_root=DEFAULT_TASKS_ROOT,
+        output=tmp_path / "out",
+        command=["fake"],
+        n=2,
+    )
+    assert summary.oracle_visibility == "hidden"
+    assert summary.contamination is not None
+    assert summary.contamination == {
+        "graded": 2, "flagged": 0, "clean": 2, "unmeasured": 0
+    }
+    assert summary.contamination["graded"] == (
+        summary.contamination["flagged"]
+        + summary.contamination["clean"]
+        + summary.contamination["unmeasured"]
+    )
+    assert len(summary.cells) == 2
 
 
 def test_run_refuses_when_attempt_creates_no_directory(
