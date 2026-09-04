@@ -215,3 +215,15 @@ suite (hidden, overlaid), so `capture` is never exercised on them. **Reopens
 when a task must be captured from git history whose intended oracle is a full
 cumulative suite** — the task declares itself cumulative and `capture` records
 the whole suite, or the capture is documented as hand-authored.
+
+**AgentClinic repair admission probe** (V8 scope decision, 2026-09-04). V8
+qualifies the six bundled `agentclinic-repair-*` tasks as a
+dependency-bearing hidden-oracle path — offline rows plus one uncounted
+smoke — but runs no budgeted measurement. The mid-band claim that motivated
+the repair fixtures
+(`docs/superpowers/research/2026-09-02-overnight-packet-and-isolation-run.md` §5)
+must be re-tested on this repository's own path before any admission
+decision; the scratchpad numbers it rests on are unadmitted.
+**Reopens when the six tasks' offline qualification rows are green and the
+V8 smoke passes** — a budgeted, preregistered admission probe of the repair
+suite on the Evals path may then be proposed and confirmed separately.
