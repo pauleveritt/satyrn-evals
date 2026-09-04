@@ -18,6 +18,16 @@ FEATURES = {
     "add-a": 'def feature_a() -> str:\n    return "a"\n',
     "add-b": 'def feature_b() -> str:\n    return "b"\n',
 }
+# A verbatim copy of grader/overlay/test_hidden_a.py (the mini-session
+# hidden overlay): appending it to a retained source file trips the
+# per-checkpoint patch detector.
+_LEAK = (
+    "from solution import feature_a\n"
+    "\n"
+    "\n"
+    "def test_a():\n"
+    '    assert feature_a() == "a"\n'
+)
 
 
 def out(obj: dict) -> None:
@@ -70,9 +80,14 @@ def main() -> int:
         step = msg["step_id"]
         if marker is not None and step == "review":
             Path(marker).write_text("prompted")
-        if step in FEATURES and scenario in ("clean", "scope", "output-limit"):
+        if step in FEATURES and scenario in (
+            "clean", "scope", "output-limit", "leaky"
+        ):
             path = Path("solution.py")
-            path.write_text(path.read_text() + FEATURES[step])
+            text = path.read_text() + FEATURES[step]
+            if scenario == "leaky" and step == "add-a":
+                text += "\n\n" + _LEAK  # grader content leaked into a retained file
+            path.write_text(text)
         if scenario == "scope" and step == "add-b":
             Path("outside.txt").write_text("forbidden\n")
         event_cid = CID

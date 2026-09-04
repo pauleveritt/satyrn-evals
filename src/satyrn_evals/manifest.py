@@ -4,6 +4,7 @@ import json
 import stat
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 from satyrn_evals.errors import ManifestError
 
@@ -11,6 +12,7 @@ DEFAULT_TASKS_ROOT = Path(__file__).resolve().parent / "tasks"
 
 
 type Provenance = dict[str, str]
+type OracleVisibility = Literal["visible", "hidden"]
 
 
 @dataclass(frozen=True)
@@ -24,6 +26,7 @@ class TaskManifest:
     provenance: Provenance | None = None
     engine_contract: str | None = None
     grader_overlay: str | None = None
+    oracle_visibility: OracleVisibility = "visible"
 
 
 def _validate_grader_overlay(task_dir: Path, value: object) -> str | None:
@@ -83,6 +86,45 @@ def _validate_engine_contract(task_dir: Path, value: object) -> str | None:
         if not final and not stat.S_ISDIR(mode):
             raise ManifestError("engine_contract parent must be a directory")
     return value
+
+
+def _overlay_declared_names(task_dir: Path, overlay_root: str) -> tuple[str, ...]:
+    """Authoring-time names whose appearance in authored text leaks a hidden oracle.
+
+    Authored text is matched exactly, so the bare overlay root
+    (``grader/overlay``) plus every task-rooted form is enumerated here —
+    a mention can stop at the root with no file name attached. This is
+    intentionally NOT the same candidate set contamination.scan_texts
+    scans (overlay-root-relative rel paths only): the detector's payload
+    blobs are matched by rel-suffix containment, not exact authoring text.
+    """
+    names = [overlay_root]
+    root = task_dir / overlay_root
+    for path in sorted(root.rglob("*")):
+        if path.is_file():
+            rel = path.relative_to(root).as_posix()
+            names.append(rel)
+            names.append(f"{overlay_root}/{rel}")
+    return tuple(names)
+
+
+def _assert_contract_names_no_overlay(
+    task_dir: Path, contract: str, overlay_root: str | None
+) -> None:
+    """Refuse a hidden task whose contract names a grader-only path.
+
+    Limitation: this is an exact, case-sensitive substring match; a paraphrase
+    passes. The check walks the declared overlay root with plain ``Path.rglob``
+    (no overlay loading) and compares each candidate name against ``contract``.
+    """
+    if overlay_root is None:
+        return
+    for name in _overlay_declared_names(task_dir, overlay_root):
+        if name in contract:
+            raise ManifestError(
+                f"contract names grader-only path: {name} "
+                "(hidden oracle; the docstring limit is: a paraphrase passes)"
+            )
 
 
 def load_manifest(task_dir: Path) -> TaskManifest:
@@ -147,6 +189,22 @@ def load_manifest(task_dir: Path) -> TaskManifest:
             raise ManifestError(f"fixture file missing: {fixtures[key]}")
     engine_contract = _validate_engine_contract(task_dir, data.get("engine_contract"))
     grader_overlay = _validate_grader_overlay(task_dir, data.get("grader_overlay"))
+    visibility_raw = data.get("oracle_visibility", "visible")
+    if visibility_raw not in ("visible", "hidden"):
+        raise ManifestError(
+            f"oracle_visibility must be 'visible' or 'hidden', got {visibility_raw!r}"
+        )
+    visibility: OracleVisibility = visibility_raw
+    # grader_overlay was resolved earlier via _validate_grader_overlay into the
+    # local `grader_overlay`; match against that resolved value (the ⇔ rule).
+    match (visibility, grader_overlay):
+        case ("hidden", None):
+            raise ManifestError("hidden oracle requires grader_overlay")
+        case ("visible", str()):
+            raise ManifestError("grader_overlay requires a hidden oracle")
+        case _:
+            pass
+    _assert_contract_names_no_overlay(task_dir, contract, grader_overlay)
     return TaskManifest(
         name=name,
         contract=contract,
@@ -157,6 +215,7 @@ def load_manifest(task_dir: Path) -> TaskManifest:
         provenance=provenance,
         engine_contract=engine_contract,
         grader_overlay=grader_overlay,
+        oracle_visibility=visibility,
     )
 
 

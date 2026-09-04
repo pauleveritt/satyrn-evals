@@ -11,6 +11,9 @@ from pathlib import Path
 import pytest
 
 import satyrn_evals.workspace as workspace_module
+from satyrn_evals.errors import OverlayError
+from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, load_manifest
+from satyrn_evals.overlay import load_overlay
 from satyrn_evals.workspace import WorkspaceCode, run_workspace
 
 pytestmark = pytest.mark.integration
@@ -537,3 +540,30 @@ def test_interrupt_after_registration_preserves_primary_and_cleans(
     assert raised.value is primary
     assert len(observed) >= 2
     assert not observed[0].parent.exists()
+
+
+def test_run_workspace_refuses_overlay_content_in_base(tmp_path: Path) -> None:
+    """run_workspace's OverlayError-refusal branch (mirror of the
+    prepare_session_workspace refusal): a base that carries overlay bytes
+    is the authoring defect, and run_workspace must refuse it before any
+    command runs."""
+    task_dir = tmp_path / "session-mechanics"
+    shutil.copytree(DEFAULT_TASKS_ROOT / "session-mechanics", task_dir)
+    # an overlay file's bytes inside base are exactly the authoring defect
+    # (digest hit, whatever the path is named).
+    shutil.copy(
+        task_dir / "grader" / "overlay" / "tests" / "test_slugify.py",
+        task_dir / "base" / "test_slugify.py",
+    )
+    manifest = load_manifest(task_dir)
+    spec = load_overlay(task_dir, manifest)
+    # run_workspace propagates the OverlayError directly (exit-2 authoring
+    # signal) after cleaning up its fresh parent; the command must not run.
+    with pytest.raises(OverlayError, match="overlay"):
+        run_workspace(
+            base=task_dir / "base",
+            protected_paths=(task_dir, tmp_path),
+            command=("must-not-run",),
+            environment=os.environ,
+            overlay=spec,
+        )

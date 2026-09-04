@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Literal
 
 from satyrn_evals.errors import SessionSpecError
+from satyrn_evals.manifest import TaskManifest
 
 type StepKind = Literal["feature", "review"]
 
@@ -104,3 +105,31 @@ def load_session_spec(task_dir: Path) -> SessionSpec:
     return SessionSpec(
         steps=steps, base_preservation_selectors=tuple(pres)
     )
+
+
+def assert_no_overlay_names(
+    spec: SessionSpec, manifest: TaskManifest, task_dir: Path
+) -> None:
+    """Refuse a session whose prompts name a hidden overlay path.
+
+    Exact, case-sensitive substring check — a tripwire for the mistake
+    that actually happened (a prompt naming the grader), not a proof of
+    ignorance; a paraphrase passes. Visible tasks (no overlay) are skipped,
+    so the guard fires only for tasks that declared ``oracle_visibility``
+    ``hidden`` alongside a ``grader_overlay``.
+
+    ``_overlay_declared_names`` is imported lazily to keep
+    ``session_manifest`` free of a module-import cycle with
+    ``satyrn_evals.manifest``'s consumers; ``TaskManifest`` is annotation-only.
+    """
+    if manifest.oracle_visibility != "hidden" or manifest.grader_overlay is None:
+        return
+    from satyrn_evals.manifest import _overlay_declared_names
+
+    names = _overlay_declared_names(task_dir, manifest.grader_overlay)
+    for step in spec.steps:
+        for name in names:
+            if name in step.prompt:
+                raise SessionSpecError(
+                    f"prompt {step.id!r} names grader-only path: {name}"
+                )

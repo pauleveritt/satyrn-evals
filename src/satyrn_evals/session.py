@@ -27,11 +27,20 @@ from satyrn_evals.adapter_process import (
     AdapterProcess,
     AdapterTimeout,
 )
+from satyrn_evals.contamination import (
+    payload_strings,
+    scan_patch,
+    scan_texts,
+)
 from satyrn_evals.errors import ProtocolError, SatyrnError, UsageError
 from satyrn_evals.manifest import TaskManifest, load_manifest, resolve_task
 from satyrn_evals.overlay import OverlaySpec, load_overlay
 from satyrn_evals.patch import within_source
-from satyrn_evals.session_manifest import SessionSpec, load_session_spec
+from satyrn_evals.session_manifest import (
+    SessionSpec,
+    assert_no_overlay_names,
+    load_session_spec,
+)
 from satyrn_evals.session_patch import build_cumulative_patch
 from satyrn_evals.session_protocol import (
     EventLine,
@@ -120,6 +129,9 @@ def _capture_checkpoint(
     index: int, outcome: str, prompt_digest: str,
     turn_count: int, tool_count: int, context_events: int,
     source_paths: tuple[str, ...],
+    overlay: OverlaySpec | None = None,
+    visibility: str = "visible",
+    transcript_prior_len: int = 0,
 ) -> StepRecord:
     capture = build_cumulative_patch(
         workspace.worktree, workspace.base_sha, workspace._environment
@@ -142,6 +154,54 @@ def _capture_checkpoint(
         # the transcript may carry surrogateescape bytes (invalid UTF-8
         # adapter output, spooled verbatim); digest the raw bytes
         transcript_digest = hashlib.sha256(prefix).hexdigest()
+    contamination = None
+    if overlay is not None:
+        patch_result = scan_patch(capture.patch_text, overlay)
+        sources: list[tuple[str, str | None]] = []
+        if transcript_path.exists():
+            # Scan only the transcript delta since the previous checkpoint:
+            # events emitted during THIS step. Payload sources are labeled
+            # under the current step id, so resurfacing an earlier step's
+            # events here would misattribute them to this step (and rescan
+            # the whole prefix at every checkpoint, O(steps x transcript)).
+            data = transcript_path.read_bytes()
+            if transcript_prior_len > len(data):
+                raise AssertionError(
+                    "transcript prior cursor cannot exceed the transcript"
+                )
+            delta = data[transcript_prior_len:]
+            text = delta.decode(encoding="utf-8", errors="replace")
+            lines = text.splitlines()
+            # prior_len is normally a whole-line boundary (spool appends a
+            # trailing newline and the previous capture ended at a read
+            # boundary); if it is ever mid-line, drop that leading partial
+            # line rather than parse a fragment under the current step.
+            if (
+                transcript_prior_len
+                and data[transcript_prior_len - 1] != ord("\n")
+                and lines
+            ):
+                lines = lines[1:]
+            for line in lines:
+                try:
+                    message = parse_session_line(line)
+                except ProtocolError:
+                    continue  # malformed lines are not retained, not claimed
+                if isinstance(message, EventLine):
+                    text = "\n".join(payload_strings(message.payload))
+                    sources.append((f"{spec_step.id}/{message.kind}", text or None))
+        payload_result = scan_texts(sources, overlay)
+        contamination = {
+            "visibility": visibility,
+            "checks": [
+                {
+                    "check": result.check,
+                    "outcome": result.outcome,
+                    "evidence": [asdict(item) for item in result.evidence],
+                }
+                for result in (patch_result, payload_result)
+            ],
+        }
     return StepRecord(
         step_id=spec_step.id,
         prompt_digest=prompt_digest,
@@ -164,6 +224,7 @@ def _capture_checkpoint(
         turn_count=turn_count,
         tool_count=tool_count,
         context_events=context_events,
+        contamination=contamination,
     )
 
 
@@ -183,6 +244,9 @@ def run_session(
     manifest = load_manifest(task_dir)
     spec = load_session_spec(task_dir)
     overlay = load_overlay(task_dir, manifest)
+    # prompt-authoring guard: a hidden session task must not name an
+    # overlay path; refuse (exit 2) before any workspace is built.
+    assert_no_overlay_names(spec, manifest, task_dir)
     output = Path(output).absolute()
     output.mkdir(parents=True, exist_ok=True)
     session_dir = output / session_dir_name(manifest.name, datetime.now(UTC))
@@ -191,6 +255,7 @@ def run_session(
         workspace = prepare_session_workspace(
             base=task_dir / "base",
             protected_paths=(task_dir, output, Path.cwd()),
+            overlay=overlay,
         )
     except WorkspacePrepareError as exc:
         record = SessionRecord(
@@ -316,6 +381,11 @@ def _drive(
             conversation_id = first.conversation_id
 
             stopped = False
+            # Payload-contamination cursor: the transcript byte length as of
+            # the last capture. Each checkpoint scans only the delta since the
+            # prior capture so payload sources are attributed to the step that
+            # actually emitted them (see _capture_checkpoint).
+            transcript_consumed = 0
             for spec_step in spec.steps:
                 terminal_step = spec_step.id
                 adapter.send_line(serialize_prompt(spec_step.id, spec_step.prompt))
@@ -434,7 +504,16 @@ def _drive(
                         len(checkpoints) + 1, outcome, prompt_digest,
                         turn_count, tool_count, context_events,
                         manifest.source_paths,
+                        overlay=overlay, visibility=manifest.oracle_visibility,
+                        transcript_prior_len=transcript_consumed,
                     )
+                )
+                # the checkpoint captured the transcript as of now: advance the
+                # cursor so the next checkpoint scans only its own step's events.
+                transcript_consumed = (
+                    transcript_path.stat().st_size
+                    if transcript_path.exists()
+                    else 0
                 )
                 # Derive the code/message the record must carry NOW: a
                 # crash immediately after this checkpoint must leave the

@@ -58,6 +58,44 @@ sandbox: the command runs with the user's permissions.
 - [Development](docs/development/index.md) — architecture, contribution
   guidance, the roadmap, and preserved design history.
 
+## Task visibility and contamination
+
+Each task manifest declares `oracle_visibility` — `visible` (the default;
+absent means visible) or `hidden`. A visible task's oracle content lives in
+`base/` and may be read or run by the executor. A hidden task's oracle lives
+only in the bundled `grader_overlay`, outside `base/`, materialized only into
+a fresh grader workspace after the patch applies and before the oracle runs;
+the bundled `session-mechanics` task is hidden. The field and the overlay are
+two views of one declaration, enforced symmetrically: `hidden` requires a
+`grader_overlay`, and a `grader_overlay` requires `hidden` — a manifest
+violating either direction is a usage error. `local-pings` stays visible: its
+preservation oracle lives in `base/` by V5c design.
+
+Contamination is grader/oracle artifact content reaching executor-visible
+material on a hidden task. It is detected by content — a pure, verbatim
+tripwire over whole-file bytes and stable fragments, with evidence pointers —
+never by "a test file appeared". A hidden task's receipt carries an additive
+`contamination` block recording one outcome per graded artifact: `flagged`
+(the tripwire matched), `clean` (every applicable check ran over all its
+inputs and matched nothing), or `unmeasured` (a required input was absent or
+unparseable — recorded, never folded into `clean`, never reported as zero).
+Detection is a separate dimension: it never changes a verdict and never
+changes an exit code. A visible task's receipt has no `contamination` key.
+
+An ordinary (non-session) hidden attempt preserves only its patch and
+transcript, so its `clean` is evidence over the preserved patch and the
+workspace-absence invariant only — not a claim about the engine transcript.
+
+Every summary names the exact cell set it was computed over and its
+`oracle_visibility`; a hidden-task summary carries a `contamination` section
+beside the existing counts with the invariant
+`flagged + clean + unmeasured == graded`. Detection outcomes leave every
+existing count (`n`, `attempted`, `refused`, `code_counts`,
+`verdict_counts`, `timeouts`) and every denominator alone.
+
+None of this adds a CLI flag: visibility rides in the manifest, and
+contamination is reported on receipts and summaries, never on an exit code.
+
 ## Status
 
 `grade`, `capture`, `attempt`, and `run` are available. V6 session evaluation

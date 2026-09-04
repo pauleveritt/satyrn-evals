@@ -7,21 +7,43 @@ so ``grader/overlay/tests/test_hidden.py`` lands at ``tests/test_hidden.py``
 beside the base's public tests (2026-09-01 spec, Task layout).
 """
 
+import stat
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
 
+from satyrn_evals.contamination import overlay_absent_from_inventory
 from satyrn_evals.errors import OverlayError
 from satyrn_evals.manifest import TaskManifest
 
 
 @dataclass(frozen=True, slots=True)
 class OverlaySpec:
-    """A validated overlay: root dir, root-relative file paths, digests."""
+    """A validated overlay: root dir, root-relative file paths, digests, texts."""
 
     root: Path
     rel_paths: tuple[str, ...]
     digests: dict[str, str]
+    texts: dict[str, str]
+
+
+def assert_overlay_absent(tree: Path, spec: OverlaySpec) -> None:
+    """Refuse an executor tree that carries overlay paths or overlay bytes.
+
+    The real invariant behind V7's prevention requirement (spec §3 check
+    (a)): read-only modes are secondary; absence is primary.
+    """
+    inventory: dict[str, str] = {}
+    for path in sorted(tree.rglob("*")):
+        if path.is_file() and not path.is_symlink():
+            inventory[path.relative_to(tree).as_posix()] = sha256(
+                path.read_bytes()
+            ).hexdigest()
+    if not overlay_absent_from_inventory(inventory, spec):
+        raise OverlayError(
+            "executor workspace contains overlay content "
+            "(path or byte-identical file); base must never carry grader content"
+        )
 
 
 def load_overlay(task_dir: Path, manifest: TaskManifest) -> OverlaySpec:
@@ -36,6 +58,7 @@ def load_overlay(task_dir: Path, manifest: TaskManifest) -> OverlaySpec:
     source_paths = set(manifest.source_paths)
     rel_paths: list[str] = []
     digests: dict[str, str] = {}
+    texts: dict[str, str] = {}
     for path in sorted(root.rglob("*")):
         rel = path.relative_to(root).as_posix()
         if path.is_symlink():
@@ -48,11 +71,25 @@ def load_overlay(task_dir: Path, manifest: TaskManifest) -> OverlaySpec:
             rel == source or rel.startswith(f"{source}/") for source in source_paths
         ):
             raise OverlayError(f"grader overlay overlaps source_paths: {rel}")
+        if stat.S_IMODE(path.stat().st_mode) & 0o022:
+            raise OverlayError(
+                f"grader overlay file must not be group/other-writable: {rel} "
+                "(defense-in-depth only; the real invariant is that the overlay "
+                "is never materialized in executor-reachable paths)"
+            )
+        data = path.read_bytes()
+        try:
+            text = data.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise OverlayError(
+                f"grader overlay file must be UTF-8 text: {rel}"
+            ) from exc
         rel_paths.append(rel)
-        digests[rel] = sha256(path.read_bytes()).hexdigest()
+        digests[rel] = sha256(data).hexdigest()
+        texts[rel] = text
     if not rel_paths:
         raise OverlayError("grader overlay directory is empty")
-    return OverlaySpec(root=root, rel_paths=tuple(rel_paths), digests=digests)
+    return OverlaySpec(root=root, rel_paths=tuple(rel_paths), digests=digests, texts=texts)
 
 
 def materialize_overlay(spec: OverlaySpec, workspace: Path) -> None:
@@ -61,6 +98,10 @@ def materialize_overlay(spec: OverlaySpec, workspace: Path) -> None:
     The recorded digests are load-bearing: each written file is verified
     against its digest, so overlay drift between load and materialize is
     a refused error, not a silent change in what the grader ran.
+
+    Written files are chmod'ed 0o444. That is accidental-exposure prevention,
+    not security isolation: the real invariant is that overlays are never
+    materialized in executor-reachable paths (spec §5).
     """
     resolved_workspace = workspace.resolve()
     for rel in spec.rel_paths:
@@ -72,3 +113,4 @@ def materialize_overlay(spec: OverlaySpec, workspace: Path) -> None:
         target.write_bytes(data)
         if sha256(data).hexdigest() != spec.digests.get(rel):
             raise OverlayError(f"overlay file digest mismatch: {rel}")
+        target.chmod(0o444)

@@ -142,10 +142,9 @@ def test_trailing_whitespace_is_refused(tmp_path: Path) -> None:
 
     failures = check(tmp_path).failures
 
-    assert (
-        any("docs/index.md:3" in f and "trailing whitespace" in f for f in failures),
-        failures,
-    )
+    assert any(
+        "docs/index.md:3" in f and "trailing whitespace" in f for f in failures
+    ), failures
 
 
 def test_blank_line_at_eof_is_refused(tmp_path: Path) -> None:

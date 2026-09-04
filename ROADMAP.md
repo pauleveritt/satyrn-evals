@@ -10,6 +10,17 @@ Backlog, not into the current phase.*
 
 ## Now
 
+**V7 — task visibility and leak detection — is complete (2026-09-04).**
+A manifest field declares each task visible- or hidden-oracle; contamination
+is detected by content and reported per arm as `flagged`/`clean`/`unmeasured`
+beside every denominator, never absorbed into it. V7 shipped read-only modes
+with their stated limit (materialization `0o444` is accidental-exposure
+prevention, not security isolation) and every summary from V7 names the cell
+set it was computed over. Design and done-when:
+`docs/superpowers/specs/2026-09-04-v7-task-visibility-leak-detection-design.md`.
+OS-level containment stays deferred (`BACKLOG.md`) — V7 detects rather than
+prevents. Full record: Prior work below.
+
 **D1 — Documentation orientation — and D2 — The learner's big
 picture — are complete (2026-09-04).** The public docs were restructured
 under Diátaxis (front-door promise, concrete suite example, formats
@@ -81,7 +92,7 @@ lands.
 | D1 | Documentation orientation | adopt a Diátaxis structure that reveals Satyrn Evals from a successful first verdict to task capture, attempts, diagnostics, and the design record; place a small concrete suite example—code, pseudocode, or drawing—immediately before the exact command that runs it on the top-level page | CLI or task behavior; V6 operational docs; model-quality/claims-layer guidance; rewriting historical evidence — see the design spec's Out of scope | **complete** — amended 2026-09-04 (review corrections and the suite example; spec amendment); [design](docs/superpowers/specs/2026-09-04-d1-diataxis-documentation-design.md), [plan](docs/superpowers/plans/2026-09-04-d1-diataxis-documentation.md) |
 | D2 | The learner's big picture | teach what actually happens when an AI coding agent works — agent, tools, inference server, model — in one lo-fi diagram and a short page placed after the first verdict, then map those pieces onto Evals' evidence loop in a second diagram; zero runtime JavaScript | animation; client-side rendering runtimes; theme-coupled SVG colors; serving ops detail; Satyrn boxes in diagram 1; more learner pages beyond the two — see the design spec's Out of scope | **complete** — learner page placed after the first verdict teaches what actually happens when an agent works (agent ↔ codebase + tools → inference server containing the model), then maps those pieces onto Evals' evidence loop (the attempt command as the opaque agent loop → patch + transcript → offline grade → receipt); two d2-rendered committed SVGs, zero runtime JavaScript — [design](docs/superpowers/specs/2026-09-04-d2-learner-big-picture-design.md), [plan](docs/superpowers/plans/2026-09-04-d2-learner-big-picture.md) |
 | V6 | Session eval | `session TASK -- ADAPTER...` sends ordered prompts to one conversation against one evolving checkout, snapshots a cumulative patch per checkpoint, and grades offline through a grader overlay the executor is never shown | `run --n 8` and admission, model-client integration, retries, a hostile-command sandbox, a persistent Engine daemon | **complete** |
-| V7 | Task visibility and leak detection | a manifest field declares each task visible- or hidden-oracle; contamination is detected by content and reported per arm, never absorbed into a denominator | OS-level containment — deferred in `BACKLOG.md`; V7 detects rather than prevents | proposed |
+| V7 | Task visibility and leak detection | a manifest field declares each task visible- or hidden-oracle; contamination is detected by content and reported per arm, never absorbed into a denominator | OS-level containment — deferred in `BACKLOG.md`; V7 detects rather than prevents | **complete** |
 | V8 | AgentClinic through Evals | reproduce the repair fixtures on this repository's own `capture`/`attempt`/`grade` path, replacing the spike's scratchpad harness | Engine changes, including a `facts` field (satyrn-engine `BACKLOG.md`); an orchestrator | proposed |
 
 Full done-when criteria for V1–V5 are in `BRIEF.md`'s referenced roadmap
@@ -102,8 +113,9 @@ confirmed by the maintainer, in
 task captured after `local-pings` must follow the practice; a captured
 task that reaches a budgeted run without its smoke, or a smoke that
 conceals a defect, reopens V5d).
-V7 and V8 have no spec yet and must gain one before implementation, per
-`docs/sdd.md`; V5a's and V5b's done-when lived with their design specs, now
+V8 has no spec yet and must gain one before implementation, per
+`docs/sdd.md`; V7's done-when lives in its design spec — now complete (Prior
+work below); V5a's and V5b's done-when lived with their design specs, now
 complete (Prior work below).
 
 **Design work owed, not a phase:** a suite with headroom. See `BRIEF.md`'s
@@ -134,6 +146,22 @@ entry there states what reopens it.
 Completed phases move here (or to `docs/superpowers/phase-history.md`)
 when the roadmap outgrows the front page.
 
+- **V7 — Task visibility and leak detection (2026-09-04).** A manifest
+  field (`oracle_visibility`) declares each task visible- or hidden-oracle,
+  enforced by the ⇔ rule with `grader_overlay` and an authoring-time name
+  check. Contamination on hidden tasks is detected by content — a pure,
+  verbatim block-rule tripwire with evidence pointers — and reported per
+  graded artifact as `flagged`/`clean`/`unmeasured`, never changing a
+  verdict, an exit code, or a denominator; an ordinary attempt's `clean`
+  covers its preserved patch and the workspace-absence invariant only, not
+  the engine transcript. Read-only modes ship with their stated limit:
+  `0o444` at materialization is accidental-exposure prevention, not
+  security isolation, and a stored-file check refuses group/other-writable
+  overlay files. Every summary from V7 names its `cells` and
+  `oracle_visibility` (closing the V5 evidence-provenance correction);
+  hidden-task summaries carry the contamination tally with
+  `flagged + clean + unmeasured == graded`. Spec:
+  `2026-09-04-v7-task-visibility-leak-detection-design.md`.
 - **D1 — Documentation orientation (2026-09-04, amended the same day).** The
   public docs use a Diátaxis structure: a first-time reader sees the
   actionable-evidence promise and a successful `format_number` receipt before

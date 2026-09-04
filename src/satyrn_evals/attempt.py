@@ -23,6 +23,7 @@ from satyrn_evals.attempt_record import (
 from satyrn_evals.errors import PatchParseError, UsageError
 from satyrn_evals.grade import grade
 from satyrn_evals.manifest import TaskManifest, load_manifest, resolve_task
+from satyrn_evals.overlay import load_overlay
 from satyrn_evals.patch import parse_patch_paths
 from satyrn_evals.receipt import patch_digest
 from satyrn_evals.workspace import (
@@ -122,6 +123,11 @@ def attempt(
         command=effective_command,
         environment=env,
         timeout=timeout,
+        overlay=(
+            load_overlay(task_dir, manifest)
+            if manifest.oracle_visibility == "hidden"
+            else None
+        ),
     )
     if workspace.code is WorkspaceCode.COMMAND_UNAVAILABLE:
         attempt_dir.rmdir()  # usage writes nothing; artifacts cannot exist before start

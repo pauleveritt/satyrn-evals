@@ -22,7 +22,8 @@ from enum import Enum, StrEnum, auto
 from pathlib import Path
 from typing import BinaryIO
 
-from satyrn_evals.errors import SatyrnError
+from satyrn_evals.errors import OverlayError, SatyrnError
+from satyrn_evals.overlay import OverlaySpec, assert_overlay_absent
 
 DEFAULT_TIMEOUT = 30.0
 DEFAULT_TEARDOWN_GRACE = 0.25
@@ -905,6 +906,7 @@ def run_workspace(
     environment: Mapping[str, str],
     timeout: float = DEFAULT_TIMEOUT,
     teardown_grace: float = DEFAULT_TEARDOWN_GRACE,
+    overlay: OverlaySpec | None = None,
 ) -> WorkspaceResult:
     """Run ``command`` once in a reconstructed detached Git worktree."""
     if not command:
@@ -932,6 +934,8 @@ def run_workspace(
             worktree=parent / "worktree",
         )
         _prepare_repository(base, state, git_environment)
+        if overlay is not None:
+            assert_overlay_absent(state.worktree, overlay)
         pending = _run_command(
             command,
             state,
@@ -1077,6 +1081,7 @@ def prepare_session_workspace(
     *,
     base: Path,
     protected_paths: Sequence[Path],
+    overlay: OverlaySpec | None = None,
 ) -> SessionWorkspace:
     """Reconstruct the synthetic repository and detached worktree for a session."""
     environment = dict(os.environ)
@@ -1092,6 +1097,13 @@ def prepare_session_workspace(
     )
     try:
         _prepare_repository(base, state, git_environment)
+        if overlay is not None:
+            assert_overlay_absent(state.worktree, overlay)
+    except OverlayError:
+        # absence invariant refused (authoring defect): remove the fresh
+        # parent before propagating the OverlayError exit-2 authoring signal.
+        shutil.rmtree(parent, ignore_errors=True)
+        raise
     except _WorkspaceError as exc:
         shutil.rmtree(parent, ignore_errors=True)
         raise WorkspacePrepareError(str(exc)) from exc
