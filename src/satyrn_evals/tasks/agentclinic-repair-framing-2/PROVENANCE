@@ -1,0 +1,7 @@
+fixture: agentclinic repair state 'framing-2'
+source repo: https://github.com/pauleveritt/swiftstar.git
+source commit: ab1d83d06791432f031e55860961529a048d4d9c
+reconstruction: reference tree + repair/framing-2 deltas, .delete honored; tests/test_app.py vendored as public tests
+pins: fastapi[standard]==0.115.10 turbohtml==1.5.0 pytest==8.3.4
+digest re-derived: 2026-09-04
+note: superseded for its original purpose per repair/framing-2-edit/README.md; retained as the only author-from-scratch cell

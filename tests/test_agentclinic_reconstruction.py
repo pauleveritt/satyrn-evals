@@ -46,3 +46,12 @@ def test_no_junk_or_git_dirs_in_base(state: str) -> None:
     bad = [p.name for p in base.rglob("*")
            if p.name in (".git", "__pycache__", ".delete", "README.md")]
     assert not bad, f"{state} base contains: {bad}"
+
+
+@pytest.mark.parametrize("state", STATES)
+def test_base_has_exactly_the_locked_project_files(state: str) -> None:
+    base = _base(state)
+    project = sorted(p.name for p in base.iterdir()
+                     if p.name in ("pyproject.toml", "uv.lock"))
+    assert project == ["pyproject.toml", "uv.lock"], state
+    assert (base / "uv.lock").read_text().strip()
