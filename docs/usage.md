@@ -1,7 +1,10 @@
-# Usage
+# CLI reference
 
-The CLI ships four commands: `grade`, `capture`, `attempt`, and `run`. See the
-[glossary](glossary.md) for the vocabulary.
+The CLI ships four commands: `grade`, `capture`, `attempt`, and `run`. This
+page is the complete interface reference. For outcome-oriented instructions,
+use the [guides](guides/index.md); for a first successful result, use the
+[tutorial](tutorials/see-one-verdict.md). See the [glossary](glossary.md) for
+the vocabulary.
 
 ## grade
 

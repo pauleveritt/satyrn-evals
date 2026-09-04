@@ -1,193 +1,81 @@
 # Satyrn Evals
 
-**Captures a Python-development task, invokes an attempt command, preserves
-what happened, and grades the result offline.**
+**Turn a candidate code change into actionable evidence.**
 
-Satyrn is a two-repo effort: a developer's own AI partner works on their
-machine, in their repo, at their pace — and the engine delivers the change
-it produces as something they review and own. Evals is the measurement half
-of that effort. A contributor asks *"did my engine fix help, and if not,
-why"*; evals answers with what broke and where — not a confidence interval.
+Satyrn Evals helps an engine developer answer: *did this attempt help, and if
+not, where did it fail?* It turns a real Python change into a repeatable task,
+runs an attempt command, saves the patch and transcript it produced, and
+grades that saved change offline.
 
-Evals exists because small models — the ones that fit on your own machine —
-fail in predictable ways: they lose their place, edit the wrong file, drift
-from the task. Evals makes those failures observable. It captures a real
-Python-development workflow as a suite of tasks, runs an attempt command
-against each, and grades what happened offline — and the failure reasons
-and thrashing it summarizes are the evidence engine fixes are built on. The
-features built into the engine are the ones that evidence surfaces.
-
-Despite the name, it is not a benchmark: grading runs no model and no
-network, and the summary is diagnostic, not statistical — the claims layer
-(pre-registration, confidence intervals, A/B publication) is deferred until
-a consumer needs it. And evals is not an engine: it never imports engine
-internals. Its seam is an executable attempt command — a fake command in
-V3 and `satyrn-engine attempt` itself in V4, through the same slot.
-
-> More: [architecture](docs/architecture.md) ·
-> [glossary](docs/glossary.md)
-
-## What it owns — and doesn't
-
-Evals owns:
-
-- task capture and task manifests;
-- known-good and known-broken fixtures;
-- patch application, oracle execution, and grading;
-- transcript, patch, receipt, and conditions recording;
-- summaries of failure reasons and thrashing behavior.
-
-It does **not** own the engine: it never imports engine internals — the
-engine enters only as the attempt command, a subprocess through the seam,
-never a library. It does not yet own the claims layer either:
-pre-registration, confidence intervals, condition enforcement, A/B
-publication machinery — deferred until a consumer needs them. That split is
-deliberate: evals runs the measurements, and the features built into the
-engine are the ones that evidence surfaces — no machinery ahead of its
-contract.
-
-> More: [glossary](docs/glossary.md) — the terms used here (`task`,
-> `manifest`, `oracle`, `verdict`, …), defined in this repository's own
-> words.
-
-## The diagnostic loop
-
-Evals builds the engine one loop at a time:
-
-1. **Capture** — a real Python-development workflow becomes a task:
-   manifest, base state, and a known-good fixture patch. V2's
-   `capture --revert SHA` makes a task winnable by construction, in minutes.
-2. **Attempt** — the task's attempt command runs in an eval-owned
-   disposable worktree; its patch and transcript are preserved before
-   cleanup. V3 runs a fake command through the seam; V4 runs
-   `satyrn-engine attempt` in the same slot.
-3. **Grade** — grading reads only the preserved artifacts and records an
-   offline verdict — no model, no network. V1, done.
-4. **Diagnose** — a run of n=8 plus a summary: verdict reasons, repeated
-   calls, churn, tool calls, context, timeouts. V5b, after V5a settles which
-   arm the admission bar applies to.
-5. **Fix and re-measure** — the summary names what broke and where; the
-   engine gets fixed; the suite re-runs. Each task carries a baseline probe
-   — its baseline attempt at n=4–6, recorded once — so a later run shows
-   whether the fix moved it. Summaries use counts; they never compare
-   wall-clock time between adjacent runs.
-
-## Usage
-
-From a checkout, `uv sync` installs evals into the project environment.
-The CLI ships four commands:
-
-```console
-$ uv run satyrn-evals grade format_number src/satyrn_evals/tasks/format_number/fixtures/known-good.patch
-$ uv run satyrn-evals capture --revert <sha> --repo /src/app --output tasks
-$ uv run satyrn-evals attempt format_number -- command-that-writes-a-patch
-$ uv run satyrn-evals run local-pings --n 8 -- command-that-writes-a-patch
+```text
+task → attempt → saved patch + transcript → offline grade → receipt or summary
 ```
 
-An Engine-capable task declares an opaque Engine contract. Evals appends that
-contract to the command and runs it from a clean detached worktree:
+The resulting receipt or diagnostic summary records what happened so an engine
+can be improved from evidence, rather than from a plausible-looking patch or a
+process exit status.
+
+## Start here
+
+From a checkout, see a bundled known-good patch earn a `pass` receipt in a few
+minutes—no model, GPU, or research-history reading required:
 
 ```console
-$ uv run satyrn-evals attempt format_number --timeout 30 -- \
-    uv run --project /src/satyrn-engine satyrn-engine attempt \
-    --model=MODEL --
+$ uv sync
+$ RESULT_DIR="$(mktemp -d)"
+$ uv run satyrn-evals grade format_number \
+    src/satyrn_evals/tasks/format_number/fixtures/known-good.patch \
+    --receipt "$RESULT_DIR/receipt.json"
 ```
 
-Grading is silent over the CLI; the verdict — `pass`, `fail`, or
-`unavailable` — is written to a receipt, never read from stdout or an exit
-code. `run` repeats the `attempt` seam for one task (eight times by default)
-and writes a counts-only `summary.json`; its result is the summary, not its
-exit code. Grading and capture remain offline; the attempt command may invoke
-a local model. `capture` writes a task directory plus a capture record;
-pre-existing source files and the source repository's index, branch, and
-`HEAD` are never changed. Declared artifacts below `--output` are the sole
-write exception.
+Continue with the [See one verdict tutorial](docs/tutorials/see-one-verdict.md)
+to read the receipt's `pass` verdict.
 
-> More: [usage](docs/usage.md) — the receipt format, the exit-code table,
-> the capture record, and the bundled task.
+## What it does—and does not do
+
+Evals captures tasks, invokes an executable attempt command, preserves its
+artifacts, grades a patch through the task's oracle, and records diagnostic
+counts across repeated attempts.
+
+It is not an engine: its boundary is an executable command, never an import of
+engine internals. It is not a benchmark or statistical claims system either.
+Grading runs no model or network; an attempt command may use a local model.
+The summaries diagnose outcomes and failure reasons, but do not claim
+confidence intervals or publish A/B results.
+
+An attempt runs in an Evals-owned disposable worktree. That is not a security
+sandbox: the command runs with the user's permissions.
+
+## Documentation
+
+- [Why Satyrn Evals](docs/why.md) — the problem and the scope boundary.
+- [Use Evals](docs/guides/index.md) — capture a task, evaluate an attempt, or
+  run a diagnostic batch.
+- [Understand the evidence lifecycle](docs/topics/evidence-lifecycle.md) —
+  why Evals preserves artifacts and how it judges them.
+- [CLI reference](docs/usage.md) — complete commands, flags, records, and exit
+  codes.
+- [Development](docs/development/index.md) — architecture, contribution
+  guidance, the roadmap, and preserved design history.
 
 ## Status
 
-Phases completed, each with its design spec (and, for the code phases, an implementation plan):
-
-- **V5c — Capture the admitted suite.** `local-pings` is captured as a
-  bundled task with the `format_number` shape — a five-id oracle (three
-  upstream local-ping tests plus the two-order curator preservation
-  parametrization), known-good and known-broken fixtures, engine contract —
-  whose qualification gate was re-recorded at an N=6 fixture with a canary
-  after the recorded N=2 adversary proved machine-dependent. `local-pings`
-  is retained as a bundled grader/smoke/regression fixture; the
-  captured-task re-probe (Baseline 3/8, Engine 4/8, both middle) led the
-  maintainer to **de-admit it as a diagnostic workload** on 2026-09-03
-  ([record](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/research/2026-09-03-local-pings-deadmission.md)).
-  ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-09-02-v5c-capture-admitted-suite-design.md))
-- **V5a — The admission rule.** A documentation phase: it decided that the
-  middle-band bar applies to the arms under comparison, and indexed every
-  probed task with its band per arm — `local-pings` and
-  `stringified-annotations` admitted (the `local-pings` admission was later
-  superseded for the captured task by the 2026-09-03 de-admission),
-  `magicmock-factory` unadmitted on an evidence gap, the multi-prompt `svcs`
-  session deferred to V6. No command or test changed.
-  ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-09-02-v5a-admission-rule-design.md))
-- **V4 — A real engine attempt.** Evals reconstructs an isolated Git
-  workspace from the task base and runs `satyrn-engine attempt` through the
-  V3 executable seam. The Engine contract remains opaque to evals.
-  ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-08-23-v4-real-engine-attempt-design.md),
-  [_plan_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/plans/2026-08-23-v4-real-engine-attempt.md))
-- **V3 — Attempt persistence.** `attempt TASK -- COMMAND...` runs the seam,
-  preserves patch and transcript, and grades the preserved patch offline.
-  ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-08-18-v3-attempt-persistence-design.md),
-  [_plan_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/plans/2026-08-18-v3-attempt-persistence.md))
-- **V2 — Capture by revert.** `satyrn-evals capture --revert SHA` turns a fixing commit into a
-  task winnable by construction, in minutes, without changing pre-existing
-  source state outside its declared `--output` artifacts.
-  ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-08-18-v2-capture-by-revert-design.md),
-  [_plan_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/plans/2026-08-18-v2-capture-by-revert.md))
-- [_V1_](https://github.com/pauleveritt/satyrn-evals/tree/v1) — it
-  installs and grades. `satyrn-evals grade TASK PATCH [--receipt PATH]`
-  accepts a bundled task's known-good patch and rejects its known-broken
-  one, offline and deterministic.
-  ([_spec_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/specs/2026-08-16-v1-grade-design.md),
-  [_plan_](https://github.com/pauleveritt/satyrn-evals/blob/main/docs/superpowers/plans/2026-08-16-v1-grade.md))
-
-V5b — `run --n 8` over the tasks V5a admitted (`local-pings`,
-`stringified-annotations`) — shipped the diagnostic loop, which executed
-its first real arms in the 2026-09-03 `local-pings` re-probe; `local-pings`
-is captured (V5c) and retained as a fixture but de-admitted as a
-diagnostic workload. V6 — session eval — is proposed. A suite with
-headroom remains design work owed
-(`BRIEF.md`'s "The unsolved problem"). The roadmap of feature cycles lives in
-[`ROADMAP.md`](ROADMAP.md). The `e1` git tag holds the
-scaffolded starting state — toolchain, docs stack, CI, the brief, the
-roadmap, and the harvest index — for learners following along step by
-step.
-
-> More: [architecture](docs/architecture.md) — why the verdict comes from a
-> hook file, and the two test tiers.
+`grade`, `capture`, `attempt`, and `run` are available. V6 session evaluation
+is proposed. See [ROADMAP.md](ROADMAP.md) for phases and current design work.
 
 ## Development
 
-This repository presumes Git 2.36 or newer, plus `uv`, `ruff`, `pyrefly`, and
-`pytest`:
-
 ```bash
-uv sync                # install the project and the dev group
-uv run pytest          # default, hermetic suite: no model, no network, no subprocess
-uv run ruff check .    # lint
-uv run pyrefly check   # type-check
+uv sync
+uv run pytest
+uv run ruff check .
+uv run pyrefly check
+just docs
 ```
 
-Hermeticity is enforced, not promised: a tripwire audit hook in the test
-root raises on any subprocess spawn, and real Git, environment
-materialization, and oracle execution live in a marked integration tier
-(`uv run pytest -m integration`) that does not run in CI.
-
-Docs are Sphinx with MyST and Furo. `just docs` runs the same strict build
-CI runs; `just watch-docs` serves a live-rebuilding copy at
-http://127.0.0.1:8003.
-
-> More: [contributing](docs/contributing.md) — the integration tier, the
-> tripwire, and the repository conventions.
+The default test suite is hermetic: no model, network, or subprocess. Real Git,
+oracle, and engine behavior live in a marked integration tier. See
+[Contributing](docs/contributing.md) for details.
 
 ## License
 

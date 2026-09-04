@@ -164,9 +164,11 @@ hygiene, not a security sandbox; Windows is outside the V4 proof.
 Every refusal test has a sibling success test, so rejection cannot pass
 vacuously.
 
-## What is not here yet
+## Current boundary
 
-- the diagnostic loop — V5
-- {term}`baseline probe` admission — V5
+The diagnostic loop and {term}`baseline probe` admission are available in V5.
+V6 session evaluation is proposed rather than a current interface. The claims
+layer—pre-registration, confidence intervals, condition enforcement, and A/B
+publication—remains deliberately deferred until a consumer needs it.
 
 One phase at a time; no machinery ahead of the contract it serves.
