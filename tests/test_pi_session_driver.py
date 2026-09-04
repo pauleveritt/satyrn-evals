@@ -479,3 +479,29 @@ def test_malformed_session_input_line_is_skipped() -> None:
     driver.stdin.close_write()
     driver.thread.join(5.0)
     assert not driver.errors
+
+
+def test_pi_child_argv_and_runtime_env_carry_no_overlay_names():
+    """Pins what evals constructs: the pi argv and _SESSION_RUNTIME_ENV.
+
+    The inherited os.environ is the contributor's own environment, not
+    evals-constructed content, and is out of scope here (spec §4).
+    """
+    from satyrn_evals.adapters.pi_session import (
+        _SESSION_RUNTIME_ENV,
+        build_pi_argv,
+    )
+    from satyrn_evals.manifest import (
+        DEFAULT_TASKS_ROOT,
+        _overlay_declared_names,
+        load_manifest,
+    )
+
+    task_dir = DEFAULT_TASKS_ROOT / "session-mechanics"
+    manifest = load_manifest(task_dir)
+    names = _overlay_declared_names(task_dir, manifest.grader_overlay)
+    argv_text = " ".join(build_pi_argv(provider="p", model="m", pi_bin="pi"))
+    env_text = " ".join(f"{k}={v}" for k, v in _SESSION_RUNTIME_ENV.items())
+    for name in names:
+        assert name not in argv_text
+        assert name not in env_text
