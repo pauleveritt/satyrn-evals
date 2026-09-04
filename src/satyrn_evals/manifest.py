@@ -88,6 +88,37 @@ def _validate_engine_contract(task_dir: Path, value: object) -> str | None:
     return value
 
 
+def _overlay_declared_names(task_dir: Path, overlay_root: str) -> tuple[str, ...]:
+    """Names whose appearance in authored text leaks a hidden oracle."""
+    names = [overlay_root]
+    root = task_dir / overlay_root
+    for path in sorted(root.rglob("*")):
+        if path.is_file():
+            rel = path.relative_to(root).as_posix()
+            names.append(rel)
+            names.append(f"{overlay_root}/{rel}")
+    return tuple(names)
+
+
+def _assert_contract_names_no_overlay(
+    task_dir: Path, contract: str, overlay_root: str | None
+) -> None:
+    """Refuse a hidden task whose contract names a grader-only path.
+
+    Limitation: this is an exact, case-sensitive substring match; a paraphrase
+    passes. The check walks the declared overlay root with plain ``Path.rglob``
+    (no overlay loading) and compares each candidate name against ``contract``.
+    """
+    if overlay_root is None:
+        return
+    for name in _overlay_declared_names(task_dir, overlay_root):
+        if name in contract:
+            raise ManifestError(
+                f"contract names grader-only path: {name} "
+                "(hidden oracle; the docstring limit is: a paraphrase passes)"
+            )
+
+
 def load_manifest(task_dir: Path) -> TaskManifest:
     path = task_dir / "manifest.json"
     try:
@@ -165,6 +196,7 @@ def load_manifest(task_dir: Path) -> TaskManifest:
             raise ManifestError("grader_overlay requires a hidden oracle")
         case _:
             pass
+    _assert_contract_names_no_overlay(task_dir, contract, grader_overlay)
     return TaskManifest(
         name=name,
         contract=contract,

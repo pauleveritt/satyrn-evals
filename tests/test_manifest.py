@@ -450,3 +450,26 @@ def test_bundled_tasks_default_visible() -> None:
     for name in ("format_number", "local-pings"):
         manifest = load_manifest(DEFAULT_TASKS_ROOT / name)
         assert manifest.oracle_visibility == "visible"
+
+
+def test_hidden_contract_naming_overlay_path_refused(tmp_path: Path) -> None:
+    task = _write_task(tmp_path, visibility="hidden")
+    data = json.loads((task / "manifest.json").read_text())
+    data["contract"] = "make tests/t_hidden.py pass"
+    (task / "manifest.json").write_text(json.dumps(data))
+    with pytest.raises(ManifestError, match="contract names grader-only path"):
+        load_manifest(task)
+
+
+def test_hidden_contract_without_overlay_name_loads(tmp_path: Path) -> None:
+    task = _write_task(tmp_path, visibility="hidden")
+    manifest = load_manifest(task)
+    assert manifest.oracle_visibility == "hidden"
+
+
+def test_visible_task_may_name_any_path(tmp_path: Path) -> None:
+    task = _write_task(tmp_path, visibility=None, overlay=False)
+    data = json.loads((task / "manifest.json").read_text())
+    data["contract"] = "make tests/t_hidden.py pass"
+    (task / "manifest.json").write_text(json.dumps(data))
+    assert load_manifest(task).contract.startswith("make tests")
