@@ -17,11 +17,12 @@ from satyrn_evals.manifest import TaskManifest
 
 @dataclass(frozen=True, slots=True)
 class OverlaySpec:
-    """A validated overlay: root dir, root-relative file paths, digests."""
+    """A validated overlay: root dir, root-relative file paths, digests, texts."""
 
     root: Path
     rel_paths: tuple[str, ...]
     digests: dict[str, str]
+    texts: dict[str, str]
 
 
 def load_overlay(task_dir: Path, manifest: TaskManifest) -> OverlaySpec:
@@ -36,6 +37,7 @@ def load_overlay(task_dir: Path, manifest: TaskManifest) -> OverlaySpec:
     source_paths = set(manifest.source_paths)
     rel_paths: list[str] = []
     digests: dict[str, str] = {}
+    texts: dict[str, str] = {}
     for path in sorted(root.rglob("*")):
         rel = path.relative_to(root).as_posix()
         if path.is_symlink():
@@ -48,11 +50,19 @@ def load_overlay(task_dir: Path, manifest: TaskManifest) -> OverlaySpec:
             rel == source or rel.startswith(f"{source}/") for source in source_paths
         ):
             raise OverlayError(f"grader overlay overlaps source_paths: {rel}")
+        data = path.read_bytes()
+        try:
+            text = data.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise OverlayError(
+                f"grader overlay file must be UTF-8 text: {rel}"
+            ) from exc
         rel_paths.append(rel)
-        digests[rel] = sha256(path.read_bytes()).hexdigest()
+        digests[rel] = sha256(data).hexdigest()
+        texts[rel] = text
     if not rel_paths:
         raise OverlayError("grader overlay directory is empty")
-    return OverlaySpec(root=root, rel_paths=tuple(rel_paths), digests=digests)
+    return OverlaySpec(root=root, rel_paths=tuple(rel_paths), digests=digests, texts=texts)
 
 
 def materialize_overlay(spec: OverlaySpec, workspace: Path) -> None:

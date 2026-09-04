@@ -13,6 +13,14 @@ from satyrn_evals.manifest import TaskManifest, load_manifest
 from satyrn_evals.overlay import OverlaySpec, load_overlay, materialize_overlay
 
 
+@pytest.fixture
+def overlay_task(tmp_path: Path) -> Path:
+    return _make_task(
+        tmp_path,
+        {"tests/test_x.py": b"def test_x():\n    pass\n"},
+    )
+
+
 def _make_task(
     tmp_path: Path,
     files: dict[str, bytes],
@@ -124,6 +132,7 @@ def test_materialize_overlay_refuses_paths_outside_workspace(tmp_path: Path) -> 
         root=spec.root,
         rel_paths=("../escape.py",),
         digests={"../escape.py": "0" * 64},
+        texts={"../escape.py": ""},
     )
     with pytest.raises(OverlayError, match="escapes"):
         materialize_overlay(forged, workspace)
@@ -174,3 +183,18 @@ def test_materialize_verifies_the_recorded_digests(tmp_path: Path) -> None:
     fresh = load_overlay(task_dir, load_manifest(task_dir))
     materialize_overlay(fresh, workspace)
     assert (workspace / "tests" / "a.py").read_bytes() == b"tampered\n"
+
+
+def test_overlay_spec_carries_texts(overlay_task: Path) -> None:
+    manifest = load_manifest(overlay_task)
+    spec = load_overlay(overlay_task, manifest)
+    assert set(spec.texts) == set(spec.rel_paths)
+    assert "def test_x" in spec.texts[spec.rel_paths[0]]
+
+
+def test_overlay_spec_refuses_non_utf8_file(overlay_task: Path) -> None:
+    bad = overlay_task / "grader" / "overlay" / "tests" / "bad.py"
+    bad.write_bytes(b"\xff\xfe not utf-8")
+    manifest = load_manifest(overlay_task)
+    with pytest.raises(OverlayError, match="must be UTF-8 text"):
+        load_overlay(overlay_task, manifest)
