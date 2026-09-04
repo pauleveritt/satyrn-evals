@@ -444,8 +444,10 @@ def _drive(
             # checkpoint captured so far (review finding 4).
             code, message = SessionCode.ADAPTER_ERROR, str(exc)
     finally:
-        # adapter is None only under the start-refusal unwind; that arc is
-        # exercised there but cannot be attributed in merged subprocess runs
+        # the False arm (adapter None under the start-refusal unwind) is
+        # exercised by test_missing_adapter_is_a_start_refusal, but the
+        # merged subprocess run cannot attribute that arc — verified by
+        # the gate failing without this directive
         if adapter is not None:  # pragma: no branch
             with contextlib.suppress(OSError):
                 adapter.close_stdin()

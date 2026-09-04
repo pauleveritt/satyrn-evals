@@ -116,7 +116,6 @@ def _start(conversation: str = "conv-test"):
     driver_stdout = _PipePair()  # driver writes; test reads
     fake_pi = _FakePi()
     errors: list[BaseException] = []
-    import threading
 
     def run() -> None:
         try:
@@ -467,4 +466,16 @@ def test_pi_stdout_eof_while_idle_ends_the_loop() -> None:
     driver.thread.join(5.0)
     assert not driver.thread.is_alive()
     driver.stdin.close_write()
+    assert not driver.errors
+
+
+def test_malformed_session_input_line_is_skipped() -> None:
+    driver = _start()
+    driver.stdin.write("{not json\n")
+    driver.stdin.write(_prompt("add-a"))
+    driver.pi.say({"type": "agent_settled"})
+    lines = driver.stdout.drain()
+    assert [obj for obj in lines if obj["type"] == "step_finished"]
+    driver.stdin.close_write()
+    driver.thread.join(5.0)
     assert not driver.errors

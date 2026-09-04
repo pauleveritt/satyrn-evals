@@ -98,6 +98,7 @@ def test_broken_oracle_is_grade_unavailable(tmp_path: Path) -> None:
         next(p for p in tmp_path.iterdir() if p.is_dir()),
     )
     assert regressed.code is SessionCode.GRADE_UNAVAILABLE
+    assert regressed.steps  # grading failure must not drop the captured step
 
 
 def test_silent_oracle_is_unavailable_not_exception(tmp_path: Path) -> None:
@@ -121,6 +122,7 @@ def test_silent_oracle_is_unavailable_not_exception(tmp_path: Path) -> None:
         _session_dir(tmp_path),
     )
     assert regressed.code is SessionCode.GRADE_UNAVAILABLE
+    assert regressed.steps  # grading failure must not drop the captured step
     assert regressed.steps[0].feature_verdict == "unavailable"
 
 
@@ -155,3 +157,4 @@ def test_preservation_unavailable_maps_grade_unavailable(
     # receipt is unavailable and the code maps to GRADE_UNAVAILABLE
     regressed = grader.grade_record(record, spec, overlay, session_dir)
     assert regressed.code is SessionCode.GRADE_UNAVAILABLE
+    assert regressed.steps  # grading failure must not drop the captured step

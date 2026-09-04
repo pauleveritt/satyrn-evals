@@ -24,7 +24,7 @@ import select
 import subprocess
 import sys
 import uuid
-from typing import BinaryIO, Protocol
+from typing import BinaryIO, Protocol, TextIO
 
 from satyrn_evals.errors import ProtocolError
 
@@ -47,9 +47,10 @@ def terminal_outcome_from_agent_end(obj: dict[str, object]) -> str | None:
     """The step outcome Pi declared via agent_end, or None if not terminal.
 
     ``willRetry`` means an automatic retry follows — not terminal. The
-    last message's ``stopReason`` (rpc.md:1469) is Pi's own declaration:
-    "length" is the output limit, "error"/"aborted" are agent errors,
-    anything else settles normally. Evals never infers a limit from prose.
+    last message that declares a ``stopReason`` (rpc.md:1469) is Pi's own
+    declaration: "length" is the output limit, "error"/"aborted" are
+    agent errors, anything else settles normally. Evals never infers a
+    limit from prose.
     """
     if obj.get("willRetry"):
         return None
@@ -151,7 +152,8 @@ def _parse_args(args: list[str]) -> tuple[str, str, str]:
 
 
 def _serve(
-    stdin_file, stdout_file, proc, *, conversation_id: str
+    stdin_file: TextIO, stdout_file: TextIO, proc: _PiHandle,
+    *, conversation_id: str,
 ) -> None:
     """Drive one conversation between session stdin and the pi child.
 
@@ -207,7 +209,10 @@ def _serve(
 
     def handle_input(line: str) -> bool:
         """One decoded session line; returns True when the loop must close."""
-        message = json.loads(line)
+        try:
+            message = json.loads(line)
+        except json.JSONDecodeError:
+            return False  # malformed session line: skipped, like pi output
         match message.get("type"):
             case "prompt":
                 send_prompt(message)
@@ -288,7 +293,7 @@ def _serve(
                     current_step = None
 
 
-def reap(proc) -> None:
+def reap(proc: _PiHandle) -> None:
     """Stop and reap the pi child: close stdin, TERM, then KILL on refusal."""
     with contextlib.suppress(OSError):
         proc.stdin.close()

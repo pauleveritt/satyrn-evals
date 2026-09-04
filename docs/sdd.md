@@ -160,6 +160,11 @@ real-model claim.
 2908 statements, 938 branches, 100% coverage
 ```
 
+The statement count is recomputed by the gate command on this tree
+(coverage 7.15.4 in the worktree venv); a later coverage version can
+report a slightly different statement count (the branch count and the
+100% verdict are the invariant).
+
 Correction (2026-09-03, review-fix cycle): the earlier "655 passed / 100%"
 line was asserted without reading the gate's full output — the coverage
 gate had been failing under the tail-of-output habit. The numbers above
