@@ -4,6 +4,7 @@ import json
 import stat
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 from satyrn_evals.errors import ManifestError
 
@@ -11,6 +12,7 @@ DEFAULT_TASKS_ROOT = Path(__file__).resolve().parent / "tasks"
 
 
 type Provenance = dict[str, str]
+type OracleVisibility = Literal["visible", "hidden"]
 
 
 @dataclass(frozen=True)
@@ -24,6 +26,7 @@ class TaskManifest:
     provenance: Provenance | None = None
     engine_contract: str | None = None
     grader_overlay: str | None = None
+    oracle_visibility: OracleVisibility = "visible"
 
 
 def _validate_grader_overlay(task_dir: Path, value: object) -> str | None:
@@ -147,6 +150,21 @@ def load_manifest(task_dir: Path) -> TaskManifest:
             raise ManifestError(f"fixture file missing: {fixtures[key]}")
     engine_contract = _validate_engine_contract(task_dir, data.get("engine_contract"))
     grader_overlay = _validate_grader_overlay(task_dir, data.get("grader_overlay"))
+    visibility_raw = data.get("oracle_visibility", "visible")
+    if visibility_raw not in ("visible", "hidden"):
+        raise ManifestError(
+            f"oracle_visibility must be 'visible' or 'hidden', got {visibility_raw!r}"
+        )
+    visibility: OracleVisibility = visibility_raw
+    # grader_overlay was resolved earlier via _validate_grader_overlay into the
+    # local `grader_overlay`; match against that resolved value (the ⇔ rule).
+    match (visibility, grader_overlay):
+        case ("hidden", None):
+            raise ManifestError("hidden oracle requires grader_overlay")
+        case ("visible", str()):
+            raise ManifestError("grader_overlay requires a hidden oracle")
+        case _:
+            pass
     return TaskManifest(
         name=name,
         contract=contract,
@@ -157,6 +175,7 @@ def load_manifest(task_dir: Path) -> TaskManifest:
         provenance=provenance,
         engine_contract=engine_contract,
         grader_overlay=grader_overlay,
+        oracle_visibility=visibility,
     )
 
 

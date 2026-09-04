@@ -4,7 +4,12 @@ from pathlib import Path
 import pytest
 
 from satyrn_evals.errors import ManifestError
-from satyrn_evals.manifest import is_valid_task_name, load_manifest, resolve_task
+from satyrn_evals.manifest import (
+    DEFAULT_TASKS_ROOT,
+    is_valid_task_name,
+    load_manifest,
+    resolve_task,
+)
 
 
 def _valid_task(tmp_path: Path) -> Path:
@@ -351,6 +356,10 @@ def test_grader_overlay_refuses_empty_string(tmp_path: Path) -> None:
 def _write_manifest_with_overlay(task_dir: Path, value: str) -> None:
     data = json.loads((task_dir / "manifest.json").read_text())
     data["grader_overlay"] = value
+    # An overlay is only legal alongside a hidden oracle (the ⇔ rule), so the
+    # shared overlay builder declares hidden to keep its callers on the happy
+    # path; refusal tests still fail inside _validate_grader_overlay first.
+    data["oracle_visibility"] = "hidden"
     (task_dir / "manifest.json").write_text(json.dumps(data))
 
 
@@ -380,3 +389,64 @@ def test_grader_overlay_refuses_file_parent(tmp_path: Path) -> None:
     _write_manifest_with_overlay(task_dir, "grader/overlay/deeper")
     with pytest.raises(ManifestError, match="parent must be a directory"):
         load_manifest(task_dir)
+
+
+def _write_task(tmp_path: Path, *, visibility: str | None = None, overlay: bool = True) -> Path:
+    """Minimal hidden-oracle task dir; caller adds visibility/overlay as needed."""
+    task = tmp_path / "task"
+    (task / "base").mkdir(parents=True)
+    if overlay:
+        (task / "grader" / "overlay" / "tests").mkdir(parents=True)
+        (task / "grader" / "overlay" / "tests" / "t_hidden.py").write_text(
+            "def test_x():\n    assert True\n"
+        )
+    data = {
+        "name": "task",
+        "contract": "do the thing",
+        "oracle": ["python", "-m", "pytest"],
+        "expected_test_ids": ["tests/t_hidden.py::test_x"],
+        "source_paths": ["src"],
+        "fixtures": {"known_good": "fixtures/kg.patch"},
+    }
+    if overlay:
+        data["grader_overlay"] = "grader/overlay"
+    if visibility is not None:
+        data["oracle_visibility"] = visibility
+    (task / "manifest.json").write_text(json.dumps(data))
+    (task / "fixtures").mkdir()
+    (task / "fixtures" / "kg.patch").write_text("")
+    return task
+
+
+def test_hidden_without_overlay_refused(tmp_path: Path) -> None:
+    task = _write_task(tmp_path, visibility="hidden", overlay=False)
+    with pytest.raises(ManifestError, match="hidden oracle requires grader_overlay"):
+        load_manifest(task)
+
+
+def test_no_visibility_key_and_no_overlay_is_visible(tmp_path: Path) -> None:
+    task = _write_task(tmp_path, overlay=False)
+    assert load_manifest(task).oracle_visibility == "visible"  # key absent
+
+
+def test_overlay_without_hidden_refused(tmp_path: Path) -> None:
+    task = _write_task(tmp_path, visibility="visible")
+    with pytest.raises(ManifestError, match="grader_overlay requires a hidden oracle"):
+        load_manifest(task)
+
+
+def test_hidden_with_overlay_declares_hidden(tmp_path: Path) -> None:
+    task = _write_task(tmp_path, visibility="hidden")
+    assert load_manifest(task).oracle_visibility == "hidden"
+
+
+def test_invalid_visibility_value_refused(tmp_path: Path) -> None:
+    task = _write_task(tmp_path, visibility="secret")
+    with pytest.raises(ManifestError, match="oracle_visibility"):
+        load_manifest(task)
+
+
+def test_bundled_tasks_default_visible() -> None:
+    for name in ("format_number", "local-pings"):
+        manifest = load_manifest(DEFAULT_TASKS_ROOT / name)
+        assert manifest.oracle_visibility == "visible"

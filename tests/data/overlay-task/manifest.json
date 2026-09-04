@@ -8,5 +8,6 @@
     "known_good": "fixtures/known-good.patch",
     "known_broken": "fixtures/known-broken.patch"
   },
-  "grader_overlay": "grader/overlay"
+  "grader_overlay": "grader/overlay",
+  "oracle_visibility": "hidden"
 }

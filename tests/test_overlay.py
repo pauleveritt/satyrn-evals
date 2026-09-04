@@ -38,6 +38,7 @@ def _make_task(
                 "source_paths": list(source_paths),
                 "fixtures": {"known_good": "fixtures/known-good.patch"},
                 "grader_overlay": overlay_dir,
+                "oracle_visibility": "hidden",
             }
         )
     )
