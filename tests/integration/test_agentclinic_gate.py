@@ -61,12 +61,12 @@ def _cli() -> str:
     return os.fspath(Path(sys.executable).parent / "satyrn-evals")
 
 
-def _grade(task_dir: Path, patch_path: Path, tmp_path: Path) -> dict:
+def _grade(task_dir: Path, patch_path: Path, tmp_path: Path, *, check: bool = True) -> dict:
     receipt_path = tmp_path / "receipt.json"
     subprocess.run(
         [_cli(), "grade", task_dir.name, str(patch_path),
          "--receipt", str(receipt_path), "--tasks-root", str(task_dir.parent)],
-        check=True, capture_output=True)
+        check=check, capture_output=True)
     return json.loads(receipt_path.read_text())
 
 
@@ -129,3 +129,43 @@ def test_known_broken_fails(state: str, tmp_path: Path) -> None:
     failing = [tid for tid, out in receipt["evidence"]["outcomes"].items()
                if out != "passed"]
     assert failing, state  # the receipt names the failing ids
+
+
+@pytest.mark.parametrize("state", STATES)
+def test_contamination_pairs_fire_and_stay_silent(state: str, tmp_path: Path) -> None:
+    task_dir = _task(state)
+    overlay_text = (task_dir / "overlay" / "test_acceptance.py").read_text()
+    lines = [ln for ln in overlay_text.splitlines() if ln.strip()][:5]
+    # a NEW test file under an allowlisted path (tests/), valid git format:
+    # adding lines to an existing file with no context is malformed, so the
+    # leak is a new-file patch
+    leak = tmp_path / "leak.patch"
+    leak.write_text(
+        f"--- /dev/null\n+++ b/tests/test_leak.py\n@@ -0,0 +1,{len(lines)} @@\n"
+        + "".join(f"+{ln}\n" for ln in lines)
+    )
+    # eligibility first: the grade RAN and the contamination scan produced an
+    # annotation — never a silent oracle or a missing section. The two
+    # collection-abort rows exit 3 (unavailable) by design, so this row's
+    # grade tolerates it and reads the receipt it still writes.
+    firing = _grade(task_dir, leak, tmp_path,
+                    check=state not in COLLECTION_ABORT)
+    assert "contamination" in firing, state
+    # Verdict by state class: the four assertion-state bases collect and fail
+    # specific tests (fail). The two collection-abort bases cannot collect
+    # (models missing/renamed), so the hook's executed==expected rule yields
+    # unavailable (verdict.py compute_verdict) — the leak-only patch does not
+    # recreate the model module; that is why their known-broken fixtures add a
+    # collecting stub.
+    if state in ASSERTION_STATES:
+        assert firing["verdict"] == "fail", state
+    else:
+        assert firing["verdict"] == "unavailable", state
+        assert "executed tests mismatch expected" in firing["reason"], state
+    check = firing["contamination"]["checks"][0]
+    assert check["check"] == "grader_content_in_patch", state
+    assert check["outcome"] == "flagged", state  # overlay-only block, not in base
+
+    good = _grade(task_dir, task_dir / "fixtures" / "known-good.patch", tmp_path)
+    good_check = good["contamination"]["checks"][0]
+    assert good_check["outcome"] == "clean", state  # known-good stays silent
