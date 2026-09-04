@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
 
+from satyrn_evals.contamination import overlay_absent_from_inventory
 from satyrn_evals.errors import OverlayError
 from satyrn_evals.manifest import TaskManifest
 
@@ -24,6 +25,25 @@ class OverlaySpec:
     rel_paths: tuple[str, ...]
     digests: dict[str, str]
     texts: dict[str, str]
+
+
+def assert_overlay_absent(tree: Path, spec: OverlaySpec) -> None:
+    """Refuse an executor tree that carries overlay paths or overlay bytes.
+
+    The real invariant behind V7's prevention requirement (spec §3 check
+    (a)): read-only modes are secondary; absence is primary.
+    """
+    inventory: dict[str, str] = {}
+    for path in sorted(tree.rglob("*")):
+        if path.is_file() and not path.is_symlink():
+            inventory[path.relative_to(tree).as_posix()] = sha256(
+                path.read_bytes()
+            ).hexdigest()
+    if not overlay_absent_from_inventory(inventory, spec):
+        raise OverlayError(
+            "executor workspace contains overlay content "
+            "(path or byte-identical file); base must never carry grader content"
+        )
 
 
 def load_overlay(task_dir: Path, manifest: TaskManifest) -> OverlaySpec:

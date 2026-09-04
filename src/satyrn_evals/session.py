@@ -191,6 +191,7 @@ def run_session(
         workspace = prepare_session_workspace(
             base=task_dir / "base",
             protected_paths=(task_dir, output, Path.cwd()),
+            overlay=overlay,
         )
     except WorkspacePrepareError as exc:
         record = SessionRecord(

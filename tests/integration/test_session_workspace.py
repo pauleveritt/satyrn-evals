@@ -7,6 +7,9 @@ from pathlib import Path
 
 import pytest
 
+from satyrn_evals.errors import OverlayError
+from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, load_manifest
+from satyrn_evals.overlay import assert_overlay_absent, load_overlay
 from satyrn_evals.workspace import (
     prepare_session_workspace,
     release_session_workspace,
@@ -123,3 +126,39 @@ def test_release_skips_removal_when_cleanup_is_unsafe(tmp_path: Path) -> None:
     release_session_workspace(workspace)
     assert workspace.parent.exists()  # retained, not removed
     _shutil.rmtree(workspace.parent, ignore_errors=True)
+
+
+def test_hidden_overlay_absent_from_executor_worktree() -> None:
+    """A hidden task's reconstructed worktree must not carry overlay content."""
+    task_dir = DEFAULT_TASKS_ROOT / "session-mechanics"
+    manifest = load_manifest(task_dir)
+    spec = load_overlay(task_dir, manifest)
+    workspace = prepare_session_workspace(
+        base=task_dir / "base",
+        protected_paths=(task_dir,),
+        overlay=spec,
+    )
+    try:
+        assert_overlay_absent(workspace.worktree, spec)  # does not raise
+    finally:
+        release_session_workspace(workspace)
+
+
+def test_overlay_content_in_base_refuses_the_build(tmp_path: Path) -> None:
+    """An overlay file's bytes copied into base are the authoring defect caught."""
+    task_dir = tmp_path / "session-mechanics"
+    shutil.copytree(DEFAULT_TASKS_ROOT / "session-mechanics", task_dir)
+    # an overlay file's bytes inside base are exactly the authoring defect
+    # the invariant catches (digest hit, whatever the path is named)
+    shutil.copy(
+        task_dir / "grader" / "overlay" / "tests" / "test_slugify.py",
+        task_dir / "base" / "test_slugify.py",
+    )
+    manifest = load_manifest(task_dir)
+    spec = load_overlay(task_dir, manifest)
+    # prepare_session_workspace propagates the OverlayError directly (exit-2
+    # authoring signal) after removing its fresh parent; not WorkspacePrepareError.
+    with pytest.raises(OverlayError, match="overlay"):
+        prepare_session_workspace(
+            base=task_dir / "base", protected_paths=(task_dir,), overlay=spec
+        )
