@@ -86,3 +86,26 @@ point that same loop at your own tasks.
 Evals never looks inside the loop. It hands the loop a task, waits for it to
 finish, and grades the saved change afterward. The loop is a boundary, and
 everything in these docs sits on one side of it or the other.
+
+## What Evals records
+
+Evals treats that boundary as a fact and works entirely from what crosses it.
+From the task onward, five things matter, left to right in the figure below.
+
+First, the *task* you hand over — the same *Developer's task* card from the
+big picture. Second, the *attempt command*: this is diagram 1's whole loop —
+the coding agent driving its tools and talking to the serving layer — treated
+as one opaque executable that Evals runs and waits on but never inspects.
+Third, what that attempt leaves behind, the saved *patch* and *transcript*
+that record what it changed and why. Fourth, an *offline grade*: Evals scores
+the patch and transcript against the task without touching the loop that made
+them. Fifth, the *receipt*, the pass/fail verdict you get back.
+
+```{figure} diagrams/evals-evidence-loop.svg
+:alt: An attempt command — the agent loop treated as one opaque program — leaves a patch and transcript that Evals grades offline into a receipt.
+```
+
+The seam is the middle: the attempt command *is* diagram 1's whole loop, seen
+as one opaque program. Evals never peers inside it; it preserves what the loop
+delivers and grades that afterward. To point that whole loop at your own task
+and read the receipt it produces, see [evaluate an attempt](guides/evaluate-an-attempt.md).
