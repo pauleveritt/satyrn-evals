@@ -16,6 +16,7 @@ class Receipt:
     reason: str
     evidence: HookResultData | None
     contamination: dict | None = None
+    resolved_versions: dict[str, str] | None = None
 
 
 def patch_digest(data: bytes) -> str:
@@ -26,4 +27,6 @@ def write_receipt(path: Path, receipt: Receipt) -> None:
     data = asdict(receipt)
     if receipt.contamination is None:
         del data["contamination"]
+    if receipt.resolved_versions is None:
+        del data["resolved_versions"]
     path.write_text(json.dumps(data, indent=2) + "\n")
