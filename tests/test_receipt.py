@@ -79,4 +79,3 @@ def test_receipt_serializes_resolved_versions_when_present(tmp_path) -> None:
     write_receipt(path, receipt)
     data = json.loads(path.read_text())
     assert data["resolved_versions"] == {"fastapi": "0.115.10"}
-
