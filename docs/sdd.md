@@ -179,17 +179,56 @@ runtime's third-party imports (`pyproject.toml:39-44`).
 
 ### The real-model smoke (layer (b))
 
-The smoke is an explicit V6 done-when item and is deliberately manual
-(V5d's practice; see `docs/session-smoke.md`): one uncounted real-model
-session through the shipped adapter against the supported Pi executable,
-with a durable evidence directory and the five session-specific
-assertions evidenced individually in this section — Pi accepted the model
-configuration; genuine model-stream events; one conversation across the
-ordered prompts reached; parseable session/checkpoint artifacts; clean
-teardown — plus the no-shim outcome. Model behavior may pass or fail; the
-smoke makes no admission, difficulty, or quality claim.
+**Status: completed 2026-09-04, plumbing pass.**
 
-**Status: pending the maintainer's manual run** — it costs real
-wall-clock time and model money by design and is not automatable per the
-landed V5d practice. The phase's machinery done-when is met by the tiers
-above; the smoke completes V6's done-when when recorded here.
+One uncounted real-model session through the shipped adapter against the
+stock Pi executable (`pi` 0.84.4), local model only (no shim, no new
+network/auth variables): the omlx server was already running and served
+the probe-era `gemma-4-12B-it-MLX-8bit`, so the run preserved continuity
+with the V5a-era environment.
+
+Evidence directory (durable, uniquely named):
+`~/projects/satyrn-v6-scratch/sessions/smoke-session-mechanics-20260904-043457/`
+(record `session-mechanics-session-20260904-083458-191705/`).
+
+```
+satyrn-evals session session-mechanics --output $SMOKE_OUTPUT -- \
+  satyrn-evals-session-pi --provider omlx --model gemma-4-12B-it-MLX-8bit
+```
+
+The five assertions, evidenced individually from the retained artifacts:
+
+1. **Pi accepted the model configuration** — the session started, one
+   conversation id (`pi-dbc8defb6b40`), a 1,554,904-byte transcript.
+2. **Genuine model-stream events** — 243+ `message_update` events with
+   streamed content in the first ~500 transcript lines alone, plus
+   thinking deltas; the mapped events carry the original Pi payload.
+3. **One conversation across the ordered prompts reached** — one stable
+   conversation identity; the terminal came on the first prompt.
+4. **Parseable session/checkpoint artifacts** — the record, checkpoint
+   patch (3,298 bytes), snapshot, and the preservation receipt
+   (`preservation-add-slugify.json`, verdict `pass`) all parse; the
+   session exited 0 and `retained_path` is null.
+5. **Teardown clean** — exit 0, record written, workspace released.
+
+**No compatibility shim** — the shipped adapter passed against the
+supported Pi executable itself (stock `pi --mode rpc --no-session`).
+
+**Terminal state.** `agent-error` on `add-slugify` after 298 turns / 297
+bash executions, with Pi's own final `stopReason: "error"` — the adapter
+correctly derived the agent-error terminal from Pi's declaration (review
+finding 3 works end to end on a real model). Model behavior may pass or
+fail; the smoke makes no admission, difficulty, or quality claim. (The
+model never edited `src/textkit/__init__.py` across those 298 turns — its
+only tree changes were bytecode files; that is recorded as model
+behavior, not plumbing.)
+
+**Harness finding surfaced by the smoke (the purpose of the run).**
+Running the public tests writes `__pycache__/*.pyc` under `src/` and
+`tests/`; those land in the cumulative patch and become scope violations,
+so hidden feature grading is skipped for the checkpoint. A model that
+self-verifies — which any real diagnostic run requires — would have its
+checkpoints marked out-of-scope. Fix candidates for a maintainer
+decision before any budgeted run: `PYTHONDONTWRITEBYTECODE=1` in the
+adapter spawn environment, and/or excluding `__pycache__` via the task
+base's `.gitignore` (which `git add -N` already honors).

@@ -12,7 +12,12 @@ spec's Delta 3. Manual, deliberately not automated, never a counted cell.
 export SMOKE_OUTPUT="$HOME/projects/satyrn-v6-scratch/sessions/smoke-session-mechanics-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$SMOKE_OUTPUT"
 uv run satyrn-evals session session-mechanics --output "$SMOKE_OUTPUT" -- \
-    uv run satyrn-evals-session-pi --provider PROVIDER --model MODEL
+    satyrn-evals-session-pi --provider PROVIDER --model MODEL
+
+(The adapter is invoked as the bare console script, resolved through the
+PATH `uv run` provides. Prefixed `uv run satyrn-evals-session-pi` inside
+the session worktree would break: the worktree's own `pyproject.toml` is
+the fixture's, and `uv` would try to resolve the script in that project.)
 ```
 
 `SMOKE_OUTPUT` is durable and uniquely named — never `/tmp`. Its path is
