@@ -186,8 +186,8 @@ step.
 
 ## Development
 
-This repository presumes Git 2.36 or newer, plus `uv`, `ruff`, `pyrefly`, and
-`pytest`:
+This repository presumes Git 2.36 or newer, plus `uv`, `ruff`, `pyrefly`,
+`pytest`, and [D2](https://d2lang.com/):
 
 ```bash
 uv sync                # install the project and the dev group

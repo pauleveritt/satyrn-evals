@@ -4,6 +4,9 @@ Welcome. The most useful thing to know up front: **you can contribute here
 without a model server, a GPU, or any of the research history.** This is
 ordinary Python with hermetic tests.
 
+You need Git 2.36 or newer, `uv`, `ruff`, `pyrefly`, `pytest`, and
+[D2](https://d2lang.com/) installed.
+
 ## Test commands
 
 ```bash
