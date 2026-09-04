@@ -404,3 +404,56 @@ covered by `test_run_workspace_refuses_overlay_content_in_base`
 
 Ruff lint clean and `just lint-docs` within caps on the recorded tree.
 macOS-only evidence; Windows is not part of this record.
+
+## V8 verification record
+
+V8's default tier stays model-, network-, and subprocess-free. The six
+`agentclinic-repair-*` tasks' qualification rows, contamination pairs, and
+materialized-env grades are integration tier (uv + network on first sync).
+The bundled `local-pings` integration tests remain excluded from the coverage
+gate for the pre-existing external-receiver reason recorded in the V7 record.
+
+```text
+.venv/bin/pytest -q
+691 passed, 247 deselected
+
+uv run pytest tests/integration/test_agentclinic_gate.py -q -m integration
+24 passed   # 6 base rows (hook records), 6 known-good 13/13, 6 known-broken
+            # fail, 6 contamination pairs — asserted by fixture name
+
+uv run pytest -m '' --ignore=tests/integration/test_local_pings_bundled.py \
+  --cov=src/satyrn_evals --cov-branch --cov-fail-under=100
+933 passed, 3 skipped; 100% statement and branch coverage
+```
+
+The 100 % gate is the invariant; the statement count is recomputed by the
+gate command. Two production-code changes shipped: (1) grade materializes a
+dependency-bearing task's own locked project environment
+(`uv sync --locked`, relocated outside the graded tree) and attests the
+executed distributions as `resolved_versions` from `uv pip freeze` on the
+receipt; (2) the contamination detector subtracts base-visible overlay
+windows from its needles (additive — pre-V8 behavior byte-identical).
+
+**Fixture discrimination, both directions, by name** —
+`tests/integration/test_agentclinic_gate.py`: six known-good patches pass
+13/13 through the real CLI; six known-broken patches fail; base rows
+reproduce the recorded per-state failing sets (four assertion states, two
+collection aborts) from hook records; six contamination pairs fire on
+overlay-only content and stay silent on the shared public-test idiom
+(`tests/test_contamination.py` holds the pure fire/silent unit pair).
+
+**Resolved-version attestation:** the `plausible-wrong-fix` known-good
+receipt carries `resolved_versions` naming 47 installed distributions
+(`fastapi==0.115.10`, `pytest==8.3.4`); stdlib receipts carry no such key.
+
+**The smoke (uncounted, V5d):** one real-model single-shot attempt through
+the stock engine on `agentclinic-repair-plausible-wrong-fix` —
+`omlx/gemma-4-12B-it-MLX-8bit`, pi 0.84.4. Record:
+`docs/superpowers/research/2026-09-04-v8-agentclinic-smoke.md`. The first
+attempt failed on a recorded engine-side pi-argv incompatibility (equals-form
+`--model=` rejected by pi 0.84.4) and on evals' 30 s attempt default; the
+maintainer fixed the engine (separate-token `--model`, engine commit
+`d5d5d37`) and the re-run **passed**: verdict pass 13/13, contamination
+clean, 92,801-byte transcript of genuine model turns, patch preserved,
+`resolved_versions` attested. Evidence:
+`~/projects/satyrn-v8-scratch/smoke2-pwf-20260904-160143/`.
