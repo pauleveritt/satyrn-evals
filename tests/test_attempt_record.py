@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -466,3 +467,49 @@ def test_cleanup_record_invariants() -> None:
     values["retained_path"] = "/tmp/retained"
     with pytest.raises(ValueError, match="only CLEANUP_FAILED"):
         AttemptRecord(**values)  # type: ignore[arg-type]
+
+
+def test_v7_roundtrip_carries_attempt_dir(tmp_path) -> None:
+    """A V7-shape record round-trips with its recorded attempt identity."""
+    record = replace(_attempted(), attempt_dir="format_number-1725000000000000")
+    path = tmp_path / "attempt.json"
+    write_attempt_record(path, record)
+    data = json.loads(path.read_text())
+    assert data["attempt_dir"] == "format_number-1725000000000000"
+    loaded = load_attempt_record(path)
+    assert loaded == record
+    assert loaded.attempt_dir == "format_number-1725000000000000"
+
+
+def test_load_accepts_v4_shape_without_attempt_dir(tmp_path) -> None:
+    """V4-era records (no attempt_dir) still load; the field stays None."""
+    path = tmp_path / "attempt.json"
+    write_attempt_record(path, _attempted())  # V4 shape: attempt_dir is None
+    data = json.loads(path.read_text())
+    assert "attempt_dir" not in data
+    assert load_attempt_record(path).attempt_dir is None
+
+
+def test_legacy_marker_rejects_attempt_dir() -> None:
+    values = {
+        field: getattr(_refused(), field)
+        for field in (
+            "version", "outcome", "code", "message", "task", "command",
+            "command_exit", "patch_path", "transcript_path", "patch_digest",
+            "transcript_digest", "verdict", "receipt_path",
+        )
+    }
+    values["attempt_dir"] = "format_number-1"
+    with pytest.raises(ValueError, match="legacy.*attempt directory"):
+        AttemptRecord(**values, _legacy=True)  # type: ignore[arg-type]
+
+
+def test_load_rejects_bad_attempt_dir_shape(tmp_path) -> None:
+    path = tmp_path / "attempt.json"
+    record = replace(_refused(), attempt_dir="format_number-1")
+    write_attempt_record(path, record)
+    data = json.loads(path.read_text())
+    data["attempt_dir"] = ""
+    path.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match="attempt_dir"):
+        load_attempt_record(path)

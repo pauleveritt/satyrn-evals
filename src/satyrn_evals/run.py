@@ -1,9 +1,11 @@
 """Run the attempt seam n times and write a counts-only summary.
 
-Each attempt() call creates exactly one new <task>-<stamp> directory under
-``output``; run names cells by that directory delta and reads the receipt
-the grader wrote inside it. A hidden oracle produces a contamination tally
-beside the verdict counts; a visible oracle omits it.
+Each attempt() writes its own <task>-<stamp> directory under ``output`` and
+records the directory's name in the attempt record; run names cells from
+that recorded identity, never from a directory listing, so a sibling entry
+in the output directory cannot corrupt cell provenance. A hidden oracle
+produces a contamination tally beside the verdict counts; a visible oracle
+omits it.
 """
 
 import json
@@ -31,20 +33,17 @@ def run(
     manifest = load_manifest(resolve_task(task, tasks_root=tasks_root))
     cells: list[AttemptCell] = []
     for _ in range(n):
-        before = {p.name for p in output.iterdir()} if output.is_dir() else set()
         record = attempt(
             task=task, tasks_root=tasks_root, output=output, command=command,
             timeout=timeout,
         )
-        after = {p.name for p in output.iterdir()} if output.is_dir() else set()
-        if not (new := after - before):
-            raise RuntimeError("attempt created no attempt directory")
-        (cell_name,) = new  # exactly one directory per attempt call
+        if record.attempt_dir is None:
+            raise RuntimeError("attempt record does not name its attempt directory")
         receipt: dict | None = None
         if record.receipt_path is not None:
-            receipt_path = output / cell_name / record.receipt_path
+            receipt_path = output / record.attempt_dir / record.receipt_path
             receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
-        cells.append((cell_name, record, receipt))
+        cells.append((record.attempt_dir, record, receipt))
     summary = compute_summary(cells, oracle_visibility=manifest.oracle_visibility)
     output.mkdir(parents=True, exist_ok=True)
     write_summary(output / "summary.json", summary)

@@ -221,6 +221,7 @@ def _finish_attempt(
             receipt_path=None,
             workspace_base_sha=workspace.base_sha,
             retained_path=workspace.retained_path,
+            attempt_dir=attempt_dir.name,
         )
         write_attempt_record(attempt_dir / "attempt.json", record)
         return record
@@ -241,6 +242,7 @@ def _finish_attempt(
         verdict=receipt.verdict,
         receipt_path="receipt.json",
         workspace_base_sha=workspace.base_sha,
+        attempt_dir=attempt_dir.name,
     )
     write_attempt_record(attempt_dir / "attempt.json", record)
     return record

@@ -30,6 +30,7 @@ _LEGACY_FIELDS = frozenset(
     }
 )
 _V4_FIELDS = frozenset({"workspace_base_sha", "retained_path"})
+_V7_FIELDS = frozenset({"attempt_dir"})
 class AttemptOutcome(StrEnum):
     ATTEMPTED = "attempted"
     REFUSED = "refused"
@@ -157,6 +158,7 @@ class AttemptRecord:
     receipt_path: str | None
     workspace_base_sha: str | None = None
     retained_path: str | None = None
+    attempt_dir: str | None = None
     _legacy: bool = field(default=False, repr=False, compare=False, kw_only=True)
 
     def __post_init__(self) -> None:
@@ -210,11 +212,15 @@ class AttemptRecord:
                 raise ValueError("attempted record requires a verdict and receipt path")
         elif self.verdict is not None or self.receipt_path is not None:
             raise ValueError("refused record requires no verdict or receipt path")
+        if self.attempt_dir is not None and not _nonempty_text(self.attempt_dir):
+            raise ValueError("attempt record attempt_dir must be non-empty or null")
         if self._legacy:
             if self.code not in _LEGACY_CODES:
                 raise ValueError("legacy attempt record cannot contain an operational code")
             if self.workspace_base_sha is not None or self.retained_path is not None:
                 raise ValueError("legacy attempt record cannot contain V4 workspace values")
+            if self.attempt_dir is not None:
+                raise ValueError("legacy attempt record cannot contain an attempt directory")
         if policy.command_exit is _Presence.REQUIRED and self.command_exit is None:
             raise ValueError(f"{self.code} requires command_exit")
         if policy.command_exit is _Presence.FORBIDDEN and self.command_exit is not None:
@@ -260,6 +266,8 @@ def _hex_digest(value: object, length: int) -> bool:
 def write_attempt_record(path: Path, record: AttemptRecord) -> None:
     data = asdict(record)
     legacy = data.pop("_legacy")
+    if data.get("attempt_dir") is None:
+        data.pop("attempt_dir", None)
     if legacy:
         for name in _V4_FIELDS:
             data.pop(name)
@@ -274,8 +282,10 @@ def load_attempt_record(path: Path) -> AttemptRecord:
     if not isinstance(data, dict):
         raise ValueError("attempt record is not an object")
     fields = frozenset(data)
-    current_fields = _LEGACY_FIELDS | _V4_FIELDS
-    if fields not in {_LEGACY_FIELDS, current_fields}:
+    legacy_fields = _LEGACY_FIELDS
+    v4_fields = _LEGACY_FIELDS | _V4_FIELDS
+    current_fields = v4_fields | _V7_FIELDS
+    if fields not in {legacy_fields, v4_fields, current_fields}:
         if missing := _LEGACY_FIELDS - fields:
             raise ValueError(f"attempt record missing a field: {sorted(missing)}")
         if unexpected := fields - current_fields:
@@ -310,6 +320,7 @@ def load_attempt_record(path: Path) -> AttemptRecord:
             receipt_path=data.get("receipt_path"),
             workspace_base_sha=data.get("workspace_base_sha"),
             retained_path=data.get("retained_path"),
+            attempt_dir=data.get("attempt_dir"),
             _legacy=legacy,
         )
     except (KeyError, TypeError, ValueError) as e:
