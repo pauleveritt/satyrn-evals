@@ -348,13 +348,13 @@ git commit -m "docs: plan D2 — review-template visual-assets step (code-review
 
 **Interfaces:** Ends the cycle; every earlier task's deliverable is verified here as a whole.
 
-- [ ] **Step 1: Flip the D2 row to complete**
+- [x] **Step 1: Flip the D2 row to complete**
 
 The D2 row's Status went `proposed` → `active` when Task 2 committed diagram 1. Now set it to `complete` with a one-line summary of the delivered IA, and add a Prior work bullet (pattern: V5d, D1 entries) recording the bake-off outcome (PASS d2 `<version>`, or FAIL-hand-authored with the reason).
 
-- [ ] **Step 2: Record the bake-off outcome in the plan**
+- [x] **Step 2: Record the bake-off outcome in the plan**
 
-Add a short "Bake-off outcome" note at the top of Task 2 or in the close-out with the verdict and reason (one or two lines).
+**Bake-off outcome:** PASS — d2 v0.8.2 rendered both diagrams from committed `.d2` sources (`--sketch --theme 0 --scale 0.5`); no hand-authored fallback, so `just diagrams` reproducibility holds.
 
 - [ ] **Step 3: Full verification battery**
 
@@ -370,7 +370,9 @@ just diagrams && git diff --exit-code -- docs/diagrams/
 
 Expected: lint clean; strict build succeeds; diff check clean; tests pass. Reproducibility is verified per the declared state: each diagram with a committed `.d2` source regenerates byte-for-byte under `just diagrams`; a hand-authored fallback (no source) is verified by the strict build and the absence of a recipe line — not by pretending generator reproducibility applies. Navigate the built Start here section and confirm: front page → tutorial → learner page (both figures legible at documentation width in light and dark Furo modes) → guides.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 3: Full verification battery — all green** (lint, strict build, diff check, pytest, `just diagrams` reproducibility).
+
+- [x] **Step 4: Commit**
 
 ```bash
 git add ROADMAP.md docs/superpowers/plans/2026-09-04-d2-learner-big-picture.md
