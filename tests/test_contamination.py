@@ -160,3 +160,9 @@ def test_detector_silent_on_model_authored_restatement():
     )
     result = scan_patch(_patch_adding("tests/test_restatement.py", body), spec)
     assert result.outcome == "clean"
+
+
+def test_scan_texts_matches_task_relative_overlay_name_too():
+    spec = make_spec()
+    sources = [("step2/tool_end", "opened grader/overlay/tests/t_hidden.py")]
+    assert scan_texts(sources, spec).outcome == "flagged"
