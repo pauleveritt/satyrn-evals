@@ -39,6 +39,54 @@ def _record(**overrides: object) -> SessionRecord:
     return SessionRecord(**base)  # type: ignore[arg-type]
 
 
+def _record_with(contamination):
+    step = StepRecord(
+        step_id="s1",
+        prompt_digest="d",
+        outcome="settled",
+        patch_path="checkpoints/00-s1.patch",
+        patch_digest="p",
+        patch_bytes=10,
+        contamination=contamination,
+    )
+    return SessionRecord(
+        version=1,
+        task="session-mechanics",
+        adapter_command=("fake",),
+        base_commit="a" * 40,
+        code=SessionCode.COMPLETE,
+        steps=(step,),
+    )
+
+
+def test_step_record_contamination_round_trips(tmp_path: Path) -> None:
+    finding = {"visibility": "hidden", "checks": [
+        {"check": "grader_content_in_patch", "outcome": "clean", "evidence": []},
+        {"check": "grader_name_in_payload", "outcome": "unmeasured", "evidence": []},
+    ]}
+    path = tmp_path / "session-record.json"
+    write_session_record(path, _record_with(finding))
+    loaded = load_session_record(path)
+    assert loaded.steps[0].contamination == finding
+
+
+def test_legacy_step_record_without_contamination_loads(tmp_path: Path) -> None:
+    path = tmp_path / "session-record.json"
+    write_session_record(path, _record_with(None))
+    data = json.loads(path.read_text())
+    data["steps"][0].pop("contamination", None)  # pre-V7 records omit the key
+    path.write_text(json.dumps(data))
+    loaded = load_session_record(path)
+    assert loaded.steps[0].contamination is None
+
+
+def test_writer_omits_contamination_when_none(tmp_path: Path) -> None:
+    path = tmp_path / "session-record.json"
+    write_session_record(path, _record_with(None))
+    data = json.loads(path.read_text())
+    assert "contamination" not in data["steps"][0]
+
+
 def test_record_round_trip_durably(tmp_path: Path) -> None:
     record = _record(
         conversation_id="conv-1",

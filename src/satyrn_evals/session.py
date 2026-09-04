@@ -27,11 +27,20 @@ from satyrn_evals.adapter_process import (
     AdapterProcess,
     AdapterTimeout,
 )
+from satyrn_evals.contamination import (
+    payload_strings,
+    scan_patch,
+    scan_texts,
+)
 from satyrn_evals.errors import ProtocolError, SatyrnError, UsageError
 from satyrn_evals.manifest import TaskManifest, load_manifest, resolve_task
 from satyrn_evals.overlay import OverlaySpec, load_overlay
 from satyrn_evals.patch import within_source
-from satyrn_evals.session_manifest import SessionSpec, load_session_spec
+from satyrn_evals.session_manifest import (
+    SessionSpec,
+    assert_no_overlay_names,
+    load_session_spec,
+)
 from satyrn_evals.session_patch import build_cumulative_patch
 from satyrn_evals.session_protocol import (
     EventLine,
@@ -120,6 +129,8 @@ def _capture_checkpoint(
     index: int, outcome: str, prompt_digest: str,
     turn_count: int, tool_count: int, context_events: int,
     source_paths: tuple[str, ...],
+    overlay: OverlaySpec | None = None,
+    visibility: str = "visible",
 ) -> StepRecord:
     capture = build_cumulative_patch(
         workspace.worktree, workspace.base_sha, workspace._environment
@@ -142,6 +153,33 @@ def _capture_checkpoint(
         # the transcript may carry surrogateescape bytes (invalid UTF-8
         # adapter output, spooled verbatim); digest the raw bytes
         transcript_digest = hashlib.sha256(prefix).hexdigest()
+    contamination = None
+    if overlay is not None:
+        patch_result = scan_patch(capture.patch_text, overlay)
+        sources: list[tuple[str, str | None]] = []
+        if transcript_path.exists():
+            for line in transcript_path.read_text(
+                encoding="utf-8", errors="replace"
+            ).splitlines():
+                try:
+                    message = parse_session_line(line)
+                except ProtocolError:
+                    continue  # malformed lines are not retained, not claimed
+                if isinstance(message, EventLine):
+                    text = "\n".join(payload_strings(message.payload))
+                    sources.append((f"{spec_step.id}/{message.kind}", text or None))
+        payload_result = scan_texts(sources, overlay)
+        contamination = {
+            "visibility": visibility,
+            "checks": [
+                {
+                    "check": result.check,
+                    "outcome": result.outcome,
+                    "evidence": [asdict(item) for item in result.evidence],
+                }
+                for result in (patch_result, payload_result)
+            ],
+        }
     return StepRecord(
         step_id=spec_step.id,
         prompt_digest=prompt_digest,
@@ -164,6 +202,7 @@ def _capture_checkpoint(
         turn_count=turn_count,
         tool_count=tool_count,
         context_events=context_events,
+        contamination=contamination,
     )
 
 
@@ -183,6 +222,9 @@ def run_session(
     manifest = load_manifest(task_dir)
     spec = load_session_spec(task_dir)
     overlay = load_overlay(task_dir, manifest)
+    # prompt-authoring guard: a hidden session task must not name an
+    # overlay path; refuse (exit 2) before any workspace is built.
+    assert_no_overlay_names(spec, manifest, task_dir)
     output = Path(output).absolute()
     output.mkdir(parents=True, exist_ok=True)
     session_dir = output / session_dir_name(manifest.name, datetime.now(UTC))
@@ -435,6 +477,7 @@ def _drive(
                         len(checkpoints) + 1, outcome, prompt_digest,
                         turn_count, tool_count, context_events,
                         manifest.source_paths,
+                        overlay=overlay, visibility=manifest.oracle_visibility,
                     )
                 )
                 # Derive the code/message the record must carry NOW: a

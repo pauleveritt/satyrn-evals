@@ -62,6 +62,7 @@ class StepRecord:
     turn_count: int = 0
     tool_count: int = 0
     context_events: int = 0
+    contamination: dict | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -144,10 +145,19 @@ def session_outcomes(
 
 
 def write_session_record(path: Path, record: SessionRecord) -> None:
-    """Write the record durably: fsync the file, then replace atomically."""
+    """Write the record durably: fsync the file, then replace atomically.
+
+    Mirror write_receipt's shape rule: the per-step ``contamination`` key
+    is omitted when a step carries no finding (pre-V7 records and
+    non-hidden sessions), and loaded as None either way.
+    """
+    data = asdict(record)
+    for step in data["steps"]:
+        if step.get("contamination") is None:
+            del step["contamination"]
     tmp = path.with_name(path.name + ".tmp")
     with open(tmp, "w", encoding="utf-8") as f:
-        f.write(json.dumps(asdict(record), indent=2) + "\n")
+        f.write(json.dumps(data, indent=2) + "\n")
         f.flush()
         os.fsync(f.fileno())
     os.replace(tmp, path)
@@ -164,6 +174,7 @@ def load_session_record(path: Path) -> SessionRecord:
             **{
                 **step,
                 "scope_violations": tuple(step.get("scope_violations", ())),
+                "contamination": step.get("contamination"),
             }
         )
         for step in data.pop("steps", ())

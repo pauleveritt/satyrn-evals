@@ -1,5 +1,6 @@
 """The session executor against the deterministic fake adapter."""
 
+import json
 import sys
 import time
 from pathlib import Path
@@ -9,7 +10,7 @@ import pytest
 
 from satyrn_evals import session as session_module
 from satyrn_evals.adapter_process import AdapterCleanupError  # noqa: F401
-from satyrn_evals.errors import UsageError
+from satyrn_evals.errors import SessionSpecError, UsageError
 from satyrn_evals.session import run_session
 from satyrn_evals.session_record import SessionCode, SessionRecord, load_session_record
 from satyrn_evals.workspace import WorkspaceReleaseError
@@ -35,6 +36,117 @@ def _run(tmp_path: Path, scenario: str, marker: Path | None = None, **kw: float)
         adapter_command=_argv(scenario, marker),
         **kw,
     )
+
+
+@pytest.fixture()
+def fake_clean_session(tmp_path: Path) -> SessionRecord:
+    return _run(tmp_path, "clean")
+
+
+@pytest.fixture()
+def fake_leaky_session(tmp_path: Path) -> SessionRecord:
+    """Clean mechanics except step 1 leaks grader overlay content into a
+    retained source file, so the patch detector must flag it while the
+    session still captures every checkpoint."""
+    return _run(tmp_path, "leaky")
+
+
+def test_hidden_session_annotates_checkpoints(fake_clean_session: SessionRecord) -> None:
+    record = fake_clean_session  # run_session driven by the existing fake adapter
+    for step in record.steps:
+        if step.patch_path is None:
+            continue
+        assert step.contamination is not None
+        checks = {c["check"]: c["outcome"] for c in step.contamination["checks"]}
+        assert set(checks) == {"grader_content_in_patch", "grader_name_in_payload"}
+
+
+def test_contaminating_step_flags_and_session_still_captures(
+    fake_leaky_session: SessionRecord,
+) -> None:
+    record = fake_leaky_session
+    flagged = [s for s in record.steps if s.contamination and any(
+        c["outcome"] == "flagged" for c in s.contamination["checks"]
+    )]
+    assert flagged, "the leaky step must flag"
+    assert record.steps  # capture completed; detection never stops the session
+
+
+def _hidden_session_task(tmp_path: Path, *, prompt: str) -> Path:
+    """Minimal hidden session task for the assert_no_overlay_names wiring.
+    Only the loader phases run (the refusal fires before any workspace
+    build), so no base content or git repository is needed."""
+    task = tmp_path / "named-overlay-task"
+    (task / "base").mkdir(parents=True)
+    (task / "grader" / "overlay" / "tests").mkdir(parents=True)
+    (task / "grader" / "overlay" / "tests" / "t_hidden.py").write_text(
+        "def test_x():\n    assert True\n"
+    )
+    (task / "fixtures").mkdir()
+    (task / "fixtures" / "kg.patch").write_text("")
+    (task / "manifest.json").write_text(
+        json.dumps(
+            {
+                "name": "named-overlay-task",
+                "contract": "do the thing without naming the grader",
+                "oracle": ["python", "-m", "pytest"],
+                "expected_test_ids": ["tests/t_hidden.py::test_x"],
+                "source_paths": ["src"],
+                "fixtures": {"known_good": "fixtures/kg.patch"},
+                "grader_overlay": "grader/overlay",
+                "oracle_visibility": "hidden",
+            }
+        )
+    )
+    (task / "session.json").write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "steps": [
+                    {
+                        "id": "step-0",
+                        "kind": "feature",
+                        "prompt": prompt,
+                        "new_feature_selectors": ["tests/t_hidden.py::test_x"],
+                    },
+                    {
+                        "id": "step-1",
+                        "kind": "review",
+                        "prompt": "Review and run the public suite.",
+                        "new_feature_selectors": [],
+                    },
+                ],
+                "base_preservation_selectors": ["tests/t_hidden.py::test_base"],
+            }
+        )
+    )
+    return task
+
+
+def test_run_refuses_before_any_workspace_when_prompt_names_overlay(
+    tmp_path: Path,
+) -> None:
+    task_dir = _hidden_session_task(
+        tmp_path,
+        prompt="Wire grader/overlay/tests/t_hidden.py into the build.",
+    )
+    with pytest.raises(SessionSpecError, match="names grader-only path"):
+        run_session(
+            task=task_dir.name,
+            tasks_root=tmp_path,
+            output=tmp_path / "out",
+            adapter_command=[sys.executable, str(FAKE), "clean"],
+        )
+    assert not (tmp_path / "out").exists()  # refused before any artifact was built
+
+
+def test_run_accepts_clean_session_through_the_same_wiring(
+    fake_clean_session: SessionRecord,
+) -> None:
+    """The clean session-mechanics style prompt passes assert_no_overlay_names:
+    the wiring's success sibling to the refusal above."""
+    assert fake_clean_session.code is SessionCode.COMPLETE
+    assert all(s.outcome == "settled" for s in fake_clean_session.steps)
 
 
 def test_clean_session_captures_three_checkpoints(tmp_path: Path) -> None:
