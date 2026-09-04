@@ -304,3 +304,43 @@ adapter smoke (the adapter/runtime path is unchanged):
 The svcs proposal inherits both rules: its `source_paths` shape admits
 the package directory, its protected public tests are immutable, and a
 patch editing them yields preservation `invalid`, never a circular pass.
+
+### Third real-model smoke (2026-09-04, corrected runtime — final remediation smoke)
+
+One more uncounted smoke after the integrity and evidence fixes — the
+sanitized Git environment, prompt-wide deadline, per-checkpoint durable
+record, and the preservation-invalid rule are a materially revised
+execution path, so V5d requires a fresh smoke before any budgeted use.
+Same model and rule as the prior smokes (local
+`omlx/gemma-4-12B-it-MLX-8bit`, stock pi 0.84.4, no shim, durable
+evidence):
+
+Evidence directory:
+`~/projects/satyrn-v6-scratch/sessions/smoke3-session-mechanics-20260904-063108/`
+(record `session-mechanics-session-20260904-103108-289426/`).
+
+Plumbing pass. The five assertions:
+
+1. **Pi accepted the model configuration** — one conversation
+   (`pi-59b6f5f6a72a`), a 335,874-byte transcript.
+2. **Genuine model-stream events** — 528 `message_update` events in the
+   full transcript.
+3. **One conversation across the ordered prompts reached** — all four
+   prompts settled (turns 15/5/5/2), review reached, one identity.
+4. **Parseable session/checkpoint artifacts** — record, four checkpoint
+   patches, four snapshots (each `{"tree", "status"}`, the status now
+   load-bearing), transcript; exit 0, `retained_path` null.
+5. **Teardown clean.**
+
+**No compatibility shim.** **Preservation-invalid rule proven on a real
+model:** the model edited the protected public test
+(`tests/test_textkit.py`), so the record ends `SCOPE_VIOLATION` and the
+last checkpoint's `preservation_verdict` is `invalid` with no receipt —
+not a circular pass. Its source work (in-scope `src/textkit/__init__.py`
+and a new `src/textkit/utils.py`) is visible in the snapshot status.
+Model behavior may pass or fail; the smoke makes no admission or quality
+claim.
+
+Exit condition for remediation track 3 is met: the durable record
+proves the five smoke assertions on the corrected path. V6 may then be
+considered for merge/completion, subject to the maintainer.

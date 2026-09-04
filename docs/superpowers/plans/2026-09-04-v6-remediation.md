@@ -63,12 +63,12 @@ Scope:
 ### Track 3 — V6 final smoke (exit: durable record proves the five smoke assertions on the corrected path)
 
 Scope:
-- [ ] One new uncounted real-model smoke after the runtime/capture
-      fixes (sanitized environment and durable capture are a materially
-      revised execution path). Model and rule as the prior smokes
-      (local omlx model, stock pi, no shim, durable evidence dir).
-- [ ] Record the five assertions and the outcome in the V6 verification
-      record.
+- [x] One new uncounted real-model smoke after the runtime/capture
+      fixes (2026-09-04, evidence dir smoke3-session-mechanics-20260904-063108):
+      all four prompts settled, plumbing pass, preservation-invalid rule
+      proven on a real model.
+- [x] Record the five assertions and the outcome in the V6 verification
+      record (docs/sdd.md, third real-model smoke).
 - [ ] Only then consider merge/completion of V6.
 
 ### Not in this cycle
