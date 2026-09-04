@@ -41,15 +41,15 @@ class CheckResult:
 
 
 def _nonblank(text: str) -> tuple[tuple[int, str], ...]:
-    """(1-based raw line number, stripped text) for every non-blank line.
+    """(1-based raw line number, raw line) for every non-blank line.
 
-    Stripping makes a run survive indentation differences between the
-    overlay source and a copied patch — the test fixtures deliberately
-    exercise this. Matching is still verbatim on the stripped text, so a
-    paraphrase never fires (2026-09-04 V7 spec §3).
+    Matching is verbatim on raw lines: no whitespace, case, or encoding
+    normalization (2026-09-04 V7 spec §3). `line.strip()` is the blank
+    test only; the stored text stays raw so a re-indented copy does not
+    match.
     """
     return tuple(
-        (number, line.strip())
+        (number, line)
         for number, line in enumerate(text.splitlines(), start=1)
         if line.strip()
     )

@@ -52,7 +52,7 @@ def test_patch_with_one_idiomatic_line_stays_clean():
 def test_blank_lines_never_interrupt_a_run():
     # the overlay's interior blank line separates def from body; the patch
     # omits it — the non-blank sequences still align and the run matches
-    patch = "--- a/src/m.py\n+++ b/src/m.py\n@@ -0,0 +1,4 @@\n+x = 1\n+y = 2\n+z = 3\n+assert x + y == z\n"
+    patch = "--- a/src/m.py\n+++ b/src/m.py\n@@ -0,0 +1,4 @@\n+    x = 1\n+    y = 2\n+    z = 3\n+    assert x + y == z\n"
     assert scan_patch(patch, make_spec()).outcome == "flagged"
 
 
