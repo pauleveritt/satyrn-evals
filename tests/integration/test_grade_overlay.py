@@ -6,7 +6,7 @@ import pytest
 
 from satyrn_evals.grade import grade
 from satyrn_evals.manifest import load_manifest
-from satyrn_evals.overlay import load_overlay
+from satyrn_evals.overlay import load_overlay, materialize_overlay
 from satyrn_evals.verdict import Verdict
 
 pytestmark = pytest.mark.integration
@@ -51,3 +51,17 @@ def test_grading_without_overlay_is_unchanged(tmp_path: Path) -> None:
     )
     assert receipt.verdict is Verdict.PASS
     assert receipt.evidence["executed_test_ids"] == ["test_solution.py::test_normalize"]
+
+
+def test_materialized_overlay_files_are_read_only(
+    tmp_path: Path, tmp_hidden_task: Path
+) -> None:
+    manifest = load_manifest(tmp_hidden_task)
+    spec = load_overlay(tmp_hidden_task, manifest)
+    work = tmp_path / "work"
+    work.mkdir()
+    materialize_overlay(spec, work)
+    for rel in spec.rel_paths:
+        assert (work / rel).stat().st_mode & 0o222 == 0
+        with pytest.raises(PermissionError):
+            (work / rel).write_text("overwrite")

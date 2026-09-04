@@ -7,6 +7,7 @@ so ``grader/overlay/tests/test_hidden.py`` lands at ``tests/test_hidden.py``
 beside the base's public tests (2026-09-01 spec, Task layout).
 """
 
+import stat
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
@@ -50,6 +51,12 @@ def load_overlay(task_dir: Path, manifest: TaskManifest) -> OverlaySpec:
             rel == source or rel.startswith(f"{source}/") for source in source_paths
         ):
             raise OverlayError(f"grader overlay overlaps source_paths: {rel}")
+        if stat.S_IMODE(path.stat().st_mode) & 0o022:
+            raise OverlayError(
+                f"grader overlay file must not be group/other-writable: {rel} "
+                "(defense-in-depth only; the real invariant is that the overlay "
+                "is never materialized in executor-reachable paths)"
+            )
         data = path.read_bytes()
         try:
             text = data.decode("utf-8")
@@ -71,6 +78,10 @@ def materialize_overlay(spec: OverlaySpec, workspace: Path) -> None:
     The recorded digests are load-bearing: each written file is verified
     against its digest, so overlay drift between load and materialize is
     a refused error, not a silent change in what the grader ran.
+
+    Written files are chmod'ed 0o444. That is accidental-exposure prevention,
+    not security isolation: the real invariant is that overlays are never
+    materialized in executor-reachable paths (spec §5).
     """
     resolved_workspace = workspace.resolve()
     for rel in spec.rel_paths:
@@ -82,3 +93,4 @@ def materialize_overlay(spec: OverlaySpec, workspace: Path) -> None:
         target.write_bytes(data)
         if sha256(data).hexdigest() != spec.digests.get(rel):
             raise OverlayError(f"overlay file digest mismatch: {rel}")
+        target.chmod(0o444)

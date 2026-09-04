@@ -198,3 +198,17 @@ def test_overlay_spec_refuses_non_utf8_file(overlay_task: Path) -> None:
     manifest = load_manifest(overlay_task)
     with pytest.raises(OverlayError, match="must be UTF-8 text"):
         load_overlay(overlay_task, manifest)
+
+
+def test_load_overlay_refuses_group_or_other_writable_file(overlay_task: Path) -> None:
+    bad = overlay_task / "grader" / "overlay" / "tests" / "test_x.py"
+    bad.chmod(0o666)
+    manifest = load_manifest(overlay_task)
+    with pytest.raises(OverlayError, match="must not be group/other-writable"):
+        load_overlay(overlay_task, manifest)
+
+
+def test_load_overlay_accepts_git_default_modes(overlay_task: Path) -> None:
+    (overlay_task / "grader" / "overlay" / "tests" / "test_x.py").chmod(0o644)
+    manifest = load_manifest(overlay_task)
+    assert load_overlay(overlay_task, manifest).rel_paths  # does not raise
