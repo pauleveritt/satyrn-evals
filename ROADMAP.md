@@ -113,8 +113,8 @@ confirmed by the maintainer, in
 task captured after `local-pings` must follow the practice; a captured
 task that reaches a budgeted run without its smoke, or a smoke that
 conceals a defect, reopens V5d).
-V8 has no spec yet and must gain one before implementation, per
-`docs/sdd.md`; V7's done-when lives in its design spec — now complete (Prior
+V8's done-when lives in its design spec — now complete (Prior work
+below); V7's done-when lives in its design spec — now complete (Prior
 work below); V5a's and V5b's done-when lived with their design specs, now
 complete (Prior work below).
 
