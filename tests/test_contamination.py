@@ -10,7 +10,8 @@ from satyrn_evals.contamination import (
     scan_patch,
     scan_texts,
 )
-from satyrn_evals.overlay import OverlaySpec
+from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, load_manifest
+from satyrn_evals.overlay import OverlaySpec, load_overlay
 
 
 def make_spec() -> OverlaySpec:
@@ -112,3 +113,50 @@ def test_overall_precedence():
     ]) == "flagged"
     with pytest.raises(ValueError):
         overall([])
+
+
+TASK = "session-mechanics"
+
+
+def _bundled_spec():
+    task_dir = DEFAULT_TASKS_ROOT / TASK
+    return load_overlay(task_dir, load_manifest(task_dir))
+
+
+def _overlay_block(spec, count=5):
+    rel = next(rel for rel in spec.rel_paths if rel.endswith(".py"))
+    lines = [line for line in spec.texts[rel].splitlines() if line.strip()]
+    return rel, lines[:count]
+
+
+def _patch_adding(path, body):
+    return (
+        f"--- a/{path}\n+++ b/{path}\n@@ -0,0 +1,{len(body.splitlines())} @@\n"
+        + "".join(f"+{line}\n" for line in body.splitlines())
+    )
+
+
+def test_detector_fires_on_contaminated_patch_built_from_bundled_overlay():
+    spec = _bundled_spec()
+    rel, lines = _overlay_block(spec)
+    body = "from textkit import slugify\n\n" + "\n".join(lines) + "\n"
+    result = scan_patch(_patch_adding("src/textkit/_leak.py", body), spec)
+    assert result.outcome == "flagged"
+    assert result.evidence[0].overlay_path == rel
+    assert result.evidence[0].in_path == "src/textkit/_leak.py"
+
+
+def test_detector_silent_on_bundled_known_good():
+    spec = _bundled_spec()
+    good = (DEFAULT_TASKS_ROOT / TASK / "fixtures" / "known-good.patch").read_text()
+    assert scan_patch(good, spec).outcome == "clean"
+
+
+def test_detector_silent_on_model_authored_restatement():
+    spec = _bundled_spec()
+    body = (
+        "from textkit import slugify\n\n"
+        "def test_slug_lowercases():\n    assert slugify('A B') == 'a-b'\n"
+    )
+    result = scan_patch(_patch_adding("tests/test_restatement.py", body), spec)
+    assert result.outcome == "clean"
