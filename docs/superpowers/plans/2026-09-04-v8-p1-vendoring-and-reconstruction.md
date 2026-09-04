@@ -170,4 +170,3 @@ done
 - [ ] **Step 3: Capture the assertion-mismatch text** (re-derived 2026-09-04; reproduce): `plausible-wrong-fix` → "assert 307 == 303" (307 Temporary Redirect vs expected 303); `misleading-locus` → the posted agent name absent from the board response; `depth-2`/`depth-3` → `AttributeError: 'NoneType' object has no attribute 'casefold'` (missing `lang`) plus depth-3 `assert None is not None` (model contract). Copy the message text into Task 4's contracts, never the `test_acceptance.py` path prefix.
 
 - [ ] **Step 4: Append "digest re-derived 2026-09-04" to each task's `PROVENANCE`** (Task 3 creates them); nothing else commits here.
-
