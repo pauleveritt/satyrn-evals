@@ -99,12 +99,27 @@ discriminating set
   IDs. Non-empty proves the task is un-done at base; the four checks prove
   it is winnable.
 
+contract rung
+  One entry of the {term}`manifest`'s optional `contracts` map: a rung key
+  (`R1`, `R3`) and the exact contract text that rung exports as
+  `SATYRN_TASK_CONTRACT`. `--rung` selects one; the default is the
+  manifest's own `contract`. The map is **open** — no rung name is
+  enumerated in production code, so a new rung is authoring, not a code
+  change. Every new {term}`attempt record` and every run summary
+  names the rung (null for the default) and the sha256 of the exact text.
+  The labels are unverified authoring claims: only R1 and R3 ship, and no
+  run in this phase measures the ordering between them.
+
 engine contract
-  The optional opaque engine-owned artifact a {term}`task` ships
-  (`engine_contract` in the {term}`manifest`): evals validates only its
-  safe task-relative location, appends its absolute path to the
-  {term}`attempt command`, and never parses its contents — the engine owns
-  the format.
+  The engine-owned artifact appended to the {term}`attempt command` as its
+  final argument. A {term}`task` may ship one opaquely (`engine_contract`
+  in the {term}`manifest`), in which case evals validates only its safe
+  task-relative location and never parses its contents. A task without the
+  field gets one **generated** from its manifest plus the selected
+  {term}`contract rung` — `id`, `task`, and `writable_paths` derived from
+  `source_paths` — written once under the output root at a path keyed by
+  the sha256 of the rendered bytes, so every cell of a run records the same
+  command.
 
 engine seam
   The executable boundary between evals and an engine: evals drives one

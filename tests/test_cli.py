@@ -203,3 +203,38 @@ def test_regrade_cli_operational_error_exits_3(
         ),
     )
     assert cli_module.main(["regrade", str(tmp_path)]) == 3
+
+
+# --- V11a Task 4: --rung on the attempt and run subparsers ---
+
+
+def test_attempt_rung_defaults_to_none() -> None:
+    """Sibling success for the dispatch tests: no --rung is a null rung."""
+    assert parser.parse_args(["attempt", "task"]).rung is None
+
+
+def test_attempt_cli_passes_rung_through(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, object] = {}
+
+    def fake(**kw):
+        seen.update(kw)
+        raise UsageError("stop here; the dispatch is what is under test")
+
+    monkeypatch.setattr(cli_module, "attempt", fake)
+    assert cli_module.main(["attempt", "t", "--rung", "R1", "--", "cmd"]) == 2
+    assert seen["rung"] == "R1"
+    assert seen["command"] == ["cmd"]  # the adapter never sees --rung
+
+
+def test_run_cli_passes_rung_through(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, object] = {}
+    monkeypatch.setattr(cli_module, "run", lambda **kw: seen.update(kw))
+    assert cli_module.main(
+        ["run", "format_number", "--n", "2", "--rung", "R1", "--", "cmd"]
+    ) == 0
+    assert seen["rung"] == "R1"
+    assert seen["command"] == ["cmd"]
+
+
+def test_run_cli_rung_defaults_to_none() -> None:
+    assert parser.parse_args(["run", "task"]).rung is None

@@ -628,3 +628,92 @@ def test_int_timeout_normalizes_to_float() -> None:
     )
     assert record.timeout == 900.0
     assert type(record.timeout) is float
+
+
+# --- V11a Task 3: rung + contract_digest on the attempt record ---
+#
+# A new record generation, not a rewrite of history (spec §5): `version`
+# stays 1, the two fields are optional-on-read and required-on-write, and
+# every refusal below has the sibling success that proves it can be reached.
+
+_DIGEST = "d" * 64
+
+
+def _current() -> AttemptRecord:
+    """The V11 generation: a rung, its digest, a timeout, a cell name."""
+    return replace(
+        _attempted(),
+        timeout=900.0,
+        attempt_dir="t-1",
+        rung="R1",
+        contract_digest=_DIGEST,
+    )
+
+
+def test_record_round_trips_rung_and_digest(tmp_path: Path) -> None:
+    path = tmp_path / "attempt.json"
+    write_attempt_record(path, _current())
+    record = load_attempt_record(path)
+    assert record.rung == "R1"
+    assert record.contract_digest == _DIGEST
+
+
+def test_default_contract_record_carries_a_digest_with_a_null_rung(
+    tmp_path: Path,
+) -> None:
+    """No --rung: the rung is null and the digest still names the exact text."""
+    path = tmp_path / "attempt.json"
+    write_attempt_record(path, replace(_current(), rung=None))
+    data = json.loads(path.read_text())
+    assert data["rung"] is None
+    assert data["contract_digest"] == _DIGEST
+    assert load_attempt_record(path).rung is None
+
+
+def test_legacy_record_loads_with_both_fields_null(tmp_path: Path) -> None:
+    """The success sibling for every refusal below: a stored record from an
+    older generation (no rung/contract_digest keys) loads and does not raise."""
+    path = tmp_path / "attempt.json"
+    write_attempt_record(
+        path, replace(_attempted(), timeout=900.0, attempt_dir="t-1")
+    )
+    data = json.loads(path.read_text())
+    assert "rung" not in data and "contract_digest" not in data
+    record = load_attempt_record(path)
+    assert record.rung is None
+    assert record.contract_digest is None
+
+
+def test_v11_record_with_a_null_digest_is_refused(tmp_path: Path) -> None:
+    """A V11-generation file with a null digest is corrupt, not legacy --
+    the same rule the V9 timeout generation already carries."""
+    path = tmp_path / "attempt.json"
+    write_attempt_record(path, _current())
+    data = json.loads(path.read_text())
+    data["contract_digest"] = None
+    path.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match="requires a contract_digest"):
+        load_attempt_record(path)
+
+
+def test_contract_digest_must_be_a_sha256() -> None:
+    for bad in ("", "abc", "D" * 64, "g" * 64, 3):
+        with pytest.raises(ValueError, match="contract_digest"):
+            replace(_current(), contract_digest=bad)  # type: ignore[bad-argument-type]  # deliberately invalid digest types prove refusal
+
+
+def test_empty_rung_is_refused() -> None:
+    with pytest.raises(ValueError, match="rung"):
+        replace(_current(), rung="")
+
+
+def test_a_rung_without_a_digest_is_refused() -> None:
+    """A selected rung with no digest cannot say what text was exported."""
+    with pytest.raises(ValueError, match="rung requires a contract_digest"):
+        replace(_current(), contract_digest=None)
+
+
+def test_a_null_rung_without_a_digest_is_the_legacy_shape() -> None:
+    """Sibling success for the rule above: both null is the older generation."""
+    record = replace(_current(), rung=None, contract_digest=None)
+    assert record.rung is None and record.contract_digest is None

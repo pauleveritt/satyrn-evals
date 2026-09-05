@@ -39,5 +39,9 @@
     "repo": "https://github.com/pauleveritt/swiftstar.git",
     "base_sha": "ab1d83d06791432f031e55860961529a048d4d9c",
     "fix_sha": "unrecorded"
+  },
+  "contracts": {
+    "R1": "Repair the seeded bug in the AgentClinic complaints app. The suite aborts at collection: importing the app raises AttributeError: module 'models' has no attribute 'complaints'. Did you mean: 'Complaint'? Your workspace has a runnable public suite under tests/ (uv run pytest tests/); a fix must keep every existing behavior intact.",
+    "R3": "Repair the seeded bug in the AgentClinic complaints app. The suite aborts at collection: the app runs, but the model module no longer exposes its seed list under the name the app and the suite expect (the module has no 'complaints' attribute). Make the module contract hold and repair the app's import. Your workspace has a runnable public suite under tests/ (uv run pytest tests/); a fix must keep every existing behavior intact."
   }
 }

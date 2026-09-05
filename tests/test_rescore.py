@@ -727,3 +727,60 @@ def test_summarize_refuses_an_unreadable_overlay_as_operational(
     with pytest.raises(SatyrnError, match="overlay") as excinfo:
         summarize_output(out, tasks_root=tmp_path)
     assert excinfo.value.exit_code == 3
+
+
+# --- V11a Task 5: re-summarizing preserves rung provenance ---
+
+
+def test_summarize_rebuilds_the_rung_and_digest(tmp_path: Path) -> None:
+    out = tmp_path / "run"
+    digest = "1" * 64
+    write_cell(out, "format_number-1",
+               record(rung="R1", contract_digest=digest),
+               receipt=_CLEAN_RECEIPT)
+    write_cell(out, "format_number-2",
+               record(rung="R1", contract_digest=digest),
+               receipt=_CLEAN_RECEIPT)
+    write_anchor(out, "format_number-1", "format_number-2")
+    summary = summarize_output(out)
+    assert summary.rung == "R1"
+    assert summary.contract_digest == digest
+
+
+def test_summarize_of_a_rung_run_is_byte_identical_on_re_summarize(
+    tmp_path: Path,
+) -> None:
+    """BRIEF rule 3, executable: the rebuild carries the new fields and
+    reproduces the previous artifact byte for byte."""
+    out = tmp_path / "run"
+    digest = "1" * 64
+    write_cell(out, "format_number-1",
+               record(rung="R1", contract_digest=digest),
+               receipt=_CLEAN_RECEIPT)
+    write_anchor(out, "format_number-1")
+    summarize_output(out)
+    first = (out / SUMMARY_NAME).read_bytes()
+    summarize_output(out)
+    assert (out / SUMMARY_NAME).read_bytes() == first
+    assert b'"rung": "R1"' in first
+
+
+def test_summarize_of_legacy_cells_keeps_the_unknowns(tmp_path: Path) -> None:
+    """Sibling success: a pre-V11a run re-summarizes with both fields null."""
+    out = tmp_path / "run"
+    _two_cell_run(out)
+    summary = summarize_output(out)
+    assert summary.rung is None and summary.contract_digest is None
+
+
+def test_summarize_refuses_a_mixed_rung_batch(tmp_path: Path) -> None:
+    out = tmp_path / "run"
+    write_cell(out, "format_number-1",
+               record(rung="R1", contract_digest="1" * 64),
+               receipt=_CLEAN_RECEIPT)
+    write_cell(out, "format_number-2",
+               record(rung="R3", contract_digest="3" * 64),
+               receipt=_CLEAN_RECEIPT)
+    write_anchor(out, "format_number-1", "format_number-2")
+    with pytest.raises(SatyrnError, match="mixed rungs"):
+        summarize_output(out)

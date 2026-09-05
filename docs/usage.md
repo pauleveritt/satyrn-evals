@@ -105,7 +105,7 @@ worktree reconstructed from the task base, preserve the patch and transcript
 the command delivers, and grade the preserved patch offline.
 
 ```console
-satyrn-evals attempt TASK [--tasks-root DIR] [--output DIR] [--timeout SECONDS] -- COMMAND...
+satyrn-evals attempt TASK [--tasks-root DIR] [--output DIR] [--rung KEY] [--timeout SECONDS] -- COMMAND...
 ```
 
 - `TASK` — a {term}`task` name (bundled, or under `--tasks-root`), resolved
@@ -114,6 +114,11 @@ exactly as `grade`'s.
 ship in the wheel.
 - `--output DIR` — the directory under which the attempt directory is
 created; default `./attempts/`.
+- `--rung KEY` — which {term}`contract rung` from the manifest's `contracts`
+map to export as `SATYRN_TASK_CONTRACT`; default: the manifest's `contract`.
+An unknown key, or `--rung` against a task with no `contracts`, is a usage
+error naming the available keys. **The command never sees `--rung`** — the
+rung reaches it only as the exported contract text.
 - `--timeout SECONDS` — a positive finite command deadline; default `30`.
 - `-- COMMAND...` — the {term}`attempt command`: an executable plus its
 arguments. The `--` is required and separates evals' own flags from the
@@ -139,9 +144,24 @@ matter for them.
 
 If the task manifest declares `engine_contract`, evals validates its safe
 task-relative path without parsing the file, then appends its absolute path to
-the command. This is why an Engine command prefix ends with its own literal
-`--`; evals supplies the final contract argument. A V3/custom task without the
-field receives no extra argument.
+the command. A task **without** the field gets a contract generated from its
+own manifest plus the selected rung, written once under the output root at
+`engine-contracts/<sha256 of the rendered bytes>.yaml`, whose absolute path is
+appended the same way. Either way an Engine command prefix ends with its own
+literal `--`; evals supplies the final contract argument.
+
+The generated path is keyed by content, not by attempt, on purpose: a fresh
+path per attempt would change each cell's recorded command, and a summary
+refuses mixed commands, so the batch would not summarize. Two cells at the
+same rung therefore record the same command; two cells at different rungs
+record different ones and are correctly refused as one batch. The rendered
+shape and the `writable_paths` derivation are in
+[task and artifact formats](reference/formats.md#the-generated-engine-contract).
+
+The record names what the model was shown: `rung` (null for the default
+contract) and `contract_digest`, the sha256 of the exact exported text. A
+`run` carries the same two fields on its summary and refuses a batch whose
+cells disagree.
 
 On POSIX, timeout handling terminates and reaps the command process group
 before removing the worktree. Cleanup that cannot be confirmed becomes
@@ -188,7 +208,15 @@ $ satyrn-evals attempt format_number --timeout 30 -- \
 ```
 
 Evals appends `engine-contract.yaml`; Engine writes the patch and transcript
-through the same reserved artifact paths used by the fake command.
+through the same reserved artifact paths used by the fake command. For a task
+with no `engine_contract` field, evals appends the contract it generated for
+the selected rung instead:
+
+```console
+$ satyrn-evals attempt agentclinic-repair-plausible-wrong-fix --rung R1 \
+    --output "$ROOT/attempts" -- uv run --project /src/satyrn-engine \
+    satyrn-engine attempt --model=MODEL --
+```
 
 ## run
 
@@ -200,12 +228,15 @@ grading as `attempt`; it adds repetition and aggregation, not another engine
 integration.
 
 ```console
-satyrn-evals run TASK [--n N] [--tasks-root DIR] [--output DIR] [--timeout SECONDS] -- COMMAND...
+satyrn-evals run TASK [--n N] [--rung KEY] [--tasks-root DIR] [--output DIR] [--timeout SECONDS] -- COMMAND...
 ```
 
 - `TASK`, `--tasks-root`, `--timeout`, and `-- COMMAND...` have the same
   meaning as for `attempt`.
 - `--n N` — a positive number of attempts; default `8`.
+- `--rung KEY` — as for `attempt`, applied to every cell. An unknown rung is
+  refused **before the first attempt**, so the refusal preserves nothing and
+  is fixed by repairing the flag and re-running.
 - `--output DIR` — directory containing the individual attempt directories
   and the run's `summary.json`; default `./runs/`.
 

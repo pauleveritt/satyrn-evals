@@ -39,5 +39,9 @@
     "repo": "https://github.com/pauleveritt/swiftstar.git",
     "base_sha": "ab1d83d06791432f031e55860961529a048d4d9c",
     "fix_sha": "unrecorded"
+  },
+  "contracts": {
+    "R1": "Repair the seeded bug in the AgentClinic complaints app. The suite reports one failing check, test_post_complaint_redirects_to_complaints_board (assert 307 == 303). Your workspace has a runnable public suite under tests/ (uv run pytest tests/); a fix must keep every existing behavior intact.",
+    "R3": "Repair the seeded bug in the AgentClinic complaints app. The suite reports one failing check, test_post_complaint_redirects_to_complaints_board (assert 307 == 303: the POST response is a 307 Temporary Redirect, expected 303 See Other). The seeded defect is in app.py; fix it so the redirect is a 303 and the complaint is recorded. Your workspace has a runnable public suite under tests/ (uv run pytest tests/); a fix must keep every existing behavior intact."
   }
 }

@@ -11,72 +11,29 @@ Backlog, not into the current phase.*
 ## Now
 
 **The next direction is a reliable instrument, a fitted AgentClinic suite,
-and one preregistered Engine comparison.** V9's implementation and its
-verification record are ready for maintainer close-out; it remains the current
-phase until that review and commit occur. The next phases do not promise that
-Engine will win. They promise a durable placement profile, then a prospective
-three-arm result whose null outcome is recorded as prominently as a positive
-one. The detailed rationale and the retired evidence are in the
-[`2026-09-04 roadmap research record`](docs/superpowers/research/2026-09-04-roadmap-to-a-reliable-instrument-and-a-first-engine-result.md).
+and one preregistered Engine comparison.** V9 and V10 are complete. The
+current phases are **V11a-trim and V11b-trim** — confirmed 2026-09-05 and
+implemented and full-gate green in `main`'s working tree, awaiting
+maintainer-controlled landing — which ship the trimmed contract ladder and a
+two-arm substrate. Neither measures anything. The later phases do not promise
+that Engine will win. They promise a durable placement profile, then a
+prospective result whose null outcome is recorded as prominently as a
+positive one. Rationale: the [`2026-09-04 roadmap record`](docs/superpowers/research/2026-09-04-roadmap-to-a-reliable-instrument-and-a-first-engine-result.md), as amended
+by the [`2026-09-05 V11-trim amendment`](docs/superpowers/research/2026-09-05-roadmap-amendment-v11-trim.md); the argument of record is the
+[`trim and spike proposal`](docs/superpowers/research/2026-09-05-v11-trim-and-spike-proposal.md).
 
 No later phase starts before its own short design proposal is confirmed, as
-required by `CLAUDE.md`. In particular, no model cells run until the ladder,
-adapter, arm definitions, pins, and preflight record are fixed.
+required by `CLAUDE.md`. The spike protocol and V13 firewall were confirmed
+2026-09-05, so V11c's cells are authorized — but **not started**: precondition
+1 awaits V11 landing, 3's Engine smoke fails, and 5's clean-tree preflight is
+not attempted; 2 (Baseline smoke/pathology) and 4 (token floor) are met. The
+[V11 fix brief](docs/superpowers/research/2026-09-05-next-agent-brief-v11-fixes.md)
+records the corrections that must land before those gates are reconsidered.
 
-**V7 — task visibility and leak detection — is complete (2026-09-04).**
-A manifest field declares each task visible- or hidden-oracle; contamination
-is detected by content and reported per arm as `flagged`/`clean`/`unmeasured`
-beside every denominator, never absorbed into it. V7 shipped read-only modes
-with their stated limit (materialization `0o444` is accidental-exposure
-prevention, not security isolation) and every summary from V7 names the cell
-set it was computed over. Design and done-when:
-`docs/superpowers/specs/2026-09-04-v7-task-visibility-leak-detection-design.md`.
-OS-level containment stays deferred (`BACKLOG.md`) — V7 detects rather than
-prevents. Full record: Prior work below.
-
-**D1 — Documentation orientation — and D2 — The learner's big
-picture — are complete (2026-09-04).** The public docs were restructured
-under Diátaxis (front-door promise, concrete suite example, formats
-reference, goal-named guides) and the learner path gained the big-picture
-page and two diagrams.
-
-**V6 — session eval — is complete (2026-09-04).** The remediation plan
-(`docs/superpowers/plans/2026-09-04-v6-remediation.md`) closed all three
-tracks: integrity blockers fixed with failure-path tests, evidence
-reconciled, and a final uncounted real-model smoke on the corrected
-runtime passed (all four prompts settled; the preservation-invalid rule
-proven on a real model). Two independent reviews' findings are recorded
-as corrections, not edited away. svcs materialization and re-baselining
-remain a separate, deferred proposal.
-
-V5d landed the pre-flight smoke check as a confirmed, documented practice
-— one uncounted real-model smoke per materially distinct execution path,
-at that path's first real use. V6's delta design is
-`docs/superpowers/specs/2026-09-03-v6-session-eval-design.md`, amended
-by its recorded corrections; implementation followed
-`docs/superpowers/plans/2026-09-03-v6-p*.md`, annotated for staleness.
-
-V5c captured the admitted suite's first task: `local-pings` exists as a
-bundled task with the `format_number` shape (manifest, `base/`, known-good
-and known-broken fixtures, engine contract) whose oracle is the five ids —
-three upstream local-ping tests plus the two-order curator preservation
-parametrization (`[order0]`/`[order1]`). Row 3's adversary was re-specified
-mid-phase (maintainer-confirmed amendment): the recorded N=2 type-set does
-not reproduce on this machine, and the cross-machine investigation showed
-the set-order catch is a discrete function of hash stride versus table
-geometry and allocation phase, not a stateable probability — so the fixture
-scales to six registry services and the gate carries a canary with a third
-outcome (inconclusive) that stops capture rather than silently passing.
-**Close-out (2026-09-03).** The captured-task re-probe ran V5b's `run` at
-n=8 on the Baseline (bare Pi) and Engine arms and recorded both arms
-middle — Baseline 3/8, Engine 4/8
-([results](docs/superpowers/research/2026-09-03-local-pings-reprobe-protocol.md)) —
-so the task does not satisfy V5a's requirement that a compared pair occupy
-different bands and was **de-admitted as a diagnostic workload**
-([record](docs/superpowers/research/2026-09-03-local-pings-deadmission.md)).
-It remains a valid bundled grader/smoke/regression fixture.
-`stringified-annotations` capture is **reopened for proposal** — its
-trigger, the local-pings diagnostic run, has occurred (`BACKLOG.md`).
+**Complete, and recorded in Prior work below:** V10 and V9 (2026-09-04), V8,
+V7, D1, D2, V6, V5a–V5d, and V1–V4. `stringified-annotations` capture is
+reopened for proposal (`BACKLOG.md`); `local-pings` is de-admitted as a
+diagnostic workload and retained as a grader/smoke/regression fixture.
 
 ## Concept budget
 
@@ -96,10 +53,11 @@ lands.
 |---|-------|--------------------------|----------|--------|
 | V9 | Loop integrity and re-scoring | `run` survives a failing cell and writes every cell's record before grading; summaries name task/command/timeout; `regrade ATTEMPT_DIR` and `summarize OUTPUT_DIR` rebuild receipts and summaries from disk; T5–T8 fixed with refusal/success siblings; T9 stated; the 30 s attempt default raised | transcript metrics (V10); the ladder (V11a); model profiles (V12); probes (V13); weight (W1); session re-scoring; any model run — see the design spec's non-goals | **complete** — design spec `docs/superpowers/specs/2026-09-04-v9-loop-integrity-and-rescoring-design.md` confirmed 2026-09-04; implementation per plans p1–p6; post-implementation review closed B1–B3 (aborted runs write `aborted.json`, never `summary.json`; `summarize` rebuilds over the run’s own recorded cells; git-probe failures are one `UNAVAILABLE` cell); verification record `docs/sdd.md` |
 | V10 | Transcript-derived pathology counts | Offline-read the preserved Pi attempt transcript and report tool calls, repeat, churn, no-op edits, test_runner_commands (command-text evidence, never proof tests ran), tool_free_terminal_turns, workspace escapes, and overlay windows; absent or unparseable data is `unmeasured`, never zero | Wall-clock metrics; changes to the Engine telemetry seam; causal claims from counts alone; session transcripts (A1) | **complete** — design spec `docs/superpowers/specs/2026-09-04-v10-transcript-pathology-counts-design.md` accepted 2026-09-04 (maintainer adjustments A1–A4, schema tightenings S1–S2; self-review + GLM 5.3 review + close-out corrections in the spec companion `docs/superpowers/research/2026-09-04-v10-spec-evidence-and-reviews.md`); plans `2026-09-04-v10-p1/p2/p3a/p3b/p4`; verification record `docs/sdd.md` |
-| V11a | Evidence ladder | Add `R0`–`R3` contracts to the manifest, generate the model-visible contract, vendor each task's `specs/` into `base/`, and prove the widened hidden-id check and all fixture/contamination rows again | Model runs; an Engine change; changing a rung after placement data | **queued after V9** — every rung is a testable authoring claim |
-| V11b | Reproducible arm substrate | Ship the Pi attempt adapter and committed arm definitions with exact argv, tools, budgets, prompt/extension digests, and model identifiers; define a prospective Envelope rather than reconstructing the unrecoverable historical one | A budgeted probe; claiming an isolated mechanism effect; a historical Envelope reproduction | **queued after V11a** — each distinct path needs the V5d smoke before its first budgeted use |
-| V12 | Placement profile | Run the reference arm only for both named Gemma capability points, six tasks, and all four rungs at `n=6`; retain the three-way outcome split and classify every task-rung/model cell into a band | Comparing arms; admission claims; tuning a contract or sample size after reading the profile | **queued after V11b** — includes R2 and a well-formed-tool-call canary for each model |
-| V13 | Preregistered three-arm probe | Compare Baseline, prospective Envelope, and Engine on a predeclared eligible pure-edit cell, interleaved by a recorded schedule; publish counts, bands, pathology counts, and a positive or null result | Mechanism attribution; build/author tasks; escalating `n` or changing cells after the result | **queued after V10 and V12** — exactly one primary cell prevents a multiple-cell success hunt |
+| V11a | Evidence ladder (trimmed) | Ship an open `contracts: {rung: text}` manifest map carrying **R1 and R3 only**, generate the engine contract from manifest plus rung, add `--rung`, and record `rung` + `contract_digest` on the attempt record and summary | R0 and R2 — a V12 entry gate; vendoring `specs/` into `base/` — reversed; the widened hidden-id check — contradictory at R1, which carries bare hidden function names by design; model runs; Envelope | **implemented and full-gate green; awaiting maintainer-controlled landing (2026-09-05)** — scope confirmed with V11b in one sitting; design `docs/superpowers/specs/2026-09-05-v11a-trim-contract-rungs-design.md`, plan `docs/superpowers/plans/2026-09-05-v11a-trim.md`. **Rung labels are unverified authoring claims until V12** ([amendment](docs/superpowers/research/2026-09-05-roadmap-amendment-v11-trim.md)) |
+| V11b | Reproducible arm substrate (trimmed) | Ship the in-tree Pi attempt adapter and two arm definitions — Baseline and Engine — with exact argv, tools, model identifier, pins and `-nc`, plus preflight, interleave and strict-tally scripts that refuse a malformed batch rather than shrink a denominator | Envelope — deferred to V13 scoping, since nobody knows what `envelope-cap.ts` capped; a budgeted probe; claiming an isolated mechanism effect; creation-capable patch capture — a V12 entry gate | **implemented and full-gate green; awaiting maintainer-controlled landing (2026-09-05)** — design `docs/superpowers/specs/2026-09-05-v11b-trim-arm-substrate-design.md`, plan `docs/superpowers/plans/2026-09-05-v11b-trim.md`. The contract/runtime and observed-model-identity corrections in the V11 fix brief, plus a V5d smoke for each materially distinct path, gate budgeted use |
+| V11c | Baseline mini-probe and two-arm spike | Buy an early product-level signal for at most 36 cells: a Baseline-only mini-probe (R1, `n=4`, three candidate tasks) selects one cell by a rule frozen beforehand, then Baseline vs Engine at `n=12` per arm, interleaved on a seeded schedule | Preregistration and admission — it is **neither**; Envelope, so two arms not three; extending `n` after reading the result; pooling spike cells with V13's; any mechanism sentence | **confirmed 2026-09-05, not yet started** — protocol and V13 firewall `docs/superpowers/specs/2026-09-05-v11c-spike-protocol-and-v13-firewall.md`. Confirmation is not a start signal: landing, corrected-contract/runtime and observed-model-identity checks, the Engine V5d smoke, and clean-tree preflight still gate execution |
+| V12 | Placement profile | Run the reference arm only for both named Gemma capability points, six tasks, and all four rungs at `n=6`; retain the three-way outcome split and classify every task-rung/model cell into a band | Comparing arms; admission claims; tuning a contract or sample size after reading the profile | **queued after V11b** — scientific scope unchanged. **Entry gate:** author R0 and R2 and restore the four-point monotonicity check; ship creation-capable patch capture before `framing-2` runs; re-run the live one-word completion, never `/v1/models`; plus R2 and a well-formed-tool-call canary per model, observed transcript-model validation, and a resume-safe 288-cell driver |
+| V13 | Preregistered three-arm probe | Compare Baseline, prospective Envelope, and Engine on a predeclared eligible pure-edit cell, interleaved by a recorded schedule; publish counts, bands, pathology counts, and a positive or null result | Mechanism attribution; build/author tasks; escalating `n` or changing cells after the result | **queued after V10 and V12** — scientific scope unchanged; exactly one primary cell prevents a multiple-cell success hunt. V13 now also **defines and preregisters Envelope**, and its primary-cell and Envelope-budget algorithms are frozen from reference-arm data alone **before** the spike runs |
 | W1 | Weight | Simplify unsupported cleanup and git plumbing, remove legacy record/Windows branches and duplicate enums, freeze capture, and retain the 100% branch gate while recording the coverage reduction | New behavior; weaker verification; work that V9 did not first stabilize | **independent after V9** |
 | V14 | Build rungs on the same app | Author phase-missing, all-missing, and session build shapes over the same oracle, closing the cumulative-suite entry as hand-authored | Reusing V13's result; work before an Engine runner and file creation exist | **conditional** — starts only if V12 needs build headroom and Engine-side prerequisites land |
 | V15 | A second application | Package a larger multi-module dependency-bearing fixture | Starting before V14 has placed the 26B-A4B capability point at ceiling | **conditional** — only if every AgentClinic rung, including build, ceilings for that point |
@@ -142,20 +100,42 @@ complete (Prior work below).
 
 ## Next roadmap: gates and sequence
 
-The path to the first result is `V9 → V11a → V11b → V12 → V10 → V13`.
-W1 may run after V9 without delaying that path. V10 may be implemented while
-V12 is collecting, but it is applied retroactively to V12's preserved
-transcripts and its output is a gate before the V13 cell is chosen. This keeps
-the placement profile's verdict evidence separate from the diagnostic counts
-that explain a later arm difference.
+The path to the first result is
+`V9 → V11a → V11b → (V11c) → V12 → V10 → V13`. V9 and V10 are complete.
+W1 may run after V9 without delaying that path. V10's output is applied
+retroactively to V12's preserved transcripts and is a gate before the V13
+cell is chosen, keeping the placement profile's verdict evidence separate
+from the diagnostic counts that explain a later arm difference.
+
+**V11c is a detour, not a step.** It buys an early product-level signal for
+at most 36 cells and two unattended nights. It admits no workload and
+replaces no phase. What it changes is nearer-term engineering priority: a
+directional Engine advantage keeps the pure-edit path plausible; a valid null
+makes the missing Engine test runner the next Engine prerequisite before V13;
+an instrument failure repairs the substrate before another model cell runs.
+Its `n=12` is a fixed spending limit, not a powered design — under true rates
+0.50 versus 0.125, exact enumeration gives about **36% power** at
+`α = 0.025`, so the spike carries **no significance threshold** and Fisher's
+one-sided value is descriptive beside the counts. **No extension after
+reading the result.**
+
+**The firewall.** Before the spike runs, both V13 algorithms are frozen: the
+ordered primary-cell selection from V12 reference-arm data, and the rule
+mapping reference-arm budget evidence to Envelope's cap. Neither reads spike
+outcomes. If the resulting primary cell coincides with the spike cell, V13
+discloses the prior peek and labels the fresh comparison a replication.
+**Spike cells are never pooled with V13 cells.**
 
 V12 keeps all four rungs, including R2. Its `n=6` is for placement only, not
 confirmation. Before its first budgeted cell, each model must pass both a
-real completion preflight and a well-formed-tool-call canary; each materially
-different adapter/arm path also follows the existing V5d smoke practice. The
-two named Gemma points are capability points, not a parameter-size scale: the
-26B-A4B model has 4B active parameters, so profile tables name the complete
-model/quantization identifiers and make no "larger model" claim.
+real completion preflight and a well-formed-tool-call canary; every transcript
+must validate the observed `message.model`, not only the requested argv; each
+materially different adapter/arm path also follows the existing V5d smoke
+practice; and the 288 cells need a resume-safe driver that preserves the
+planned denominator across interrupted nights. The two named Gemma points are
+capability points, not a parameter-size scale: the 26B-A4B model has 4B active
+parameters, so profile tables name the complete model/quantization identifiers
+and make no "larger model" claim.
 
 V13 selects only pure-edit repair cells that V12 places below ceiling and
 above a capability wall. Its proposal must freeze an ordered selection rule
@@ -163,20 +143,23 @@ before any non-reference arm runs; that rule yields one primary
 `(model, task, rung)` cell. The comparison uses `n=12` per arm, an
 interleaved, seed-recorded schedule, and two predeclared one-sided Engine
 contrasts (against Envelope and Baseline), each at Bonferroni-adjusted
-`α = 0.025`. Any
-additional eligible cells are descriptive replications, not independent
-opportunities for a positive claim. If the primary comparison does not meet
-the criterion, the result is a null at that cell and `n` and the selected cell
-do not change; a later rung is a new proposal and preregistration.
+`α = 0.025`. Any additional eligible cells are descriptive replications, not
+independent opportunities for a positive claim. If the primary comparison
+does not meet the criterion, the result is a null at that cell and `n` and
+the selected cell do not change; a later rung is a new proposal and
+preregistration.
 
-Envelope is prospective: V11b records its budget, tool surface, extension
-digest, adapter argv, and model pin in the committed arm definition. It is
-not called a reproduction because the historical configuration cannot be
-recovered. The three arm surfaces are a product-level comparison, so an
-Engine advantage supports no claim that any single component (mutator, loop
-breaker, or handoff) caused it. The Engine's model-invocable test runner is
-therefore not a V13 blocker for the pure-edit probe; it is a blocker for V14
-and for any broader mechanism or build-task interpretation.
+Envelope is prospective and **is defined in V13, not V11b**: the 900 s /
+8192 tokens / 80k context in the de-admission record are pi and model
+settings, **not** what `envelope-cap.ts` capped, so the cap is a fresh choice
+that must be argued from a per-cell floor measured inside a materialized
+workspace. It is not called a reproduction because the historical
+configuration cannot be recovered. The three arm surfaces are a product-level
+comparison, so an Engine advantage supports no claim that any single
+component (mutator, loop breaker, or handoff) caused it. The Engine's
+model-invocable test runner is therefore not a V13 blocker for the pure-edit
+probe; it is a blocker for V14 and for any broader mechanism or build-task
+interpretation.
 
 **Design work owed, not a phase:** a suite with headroom. See `BRIEF.md`'s
 "The unsolved problem." The admission rule keeps the operative measurement
@@ -206,6 +189,20 @@ entry there states what reopens it.
 Completed phases move here (or to `docs/superpowers/phase-history.md`)
 when the roadmap outgrows the front page.
 
+- **V10 — Transcript-derived pathology counts (2026-09-04).** An offline
+  reader of the preserved Pi attempt transcript reports tool calls, repeat,
+  churn, no-op edits, `test_runner_commands` (command-text evidence, **never**
+  proof that tests ran), `tool_free_terminal_turns`, workspace escapes and
+  overlay windows. Absent or unparseable data is **`unmeasured`, never zero** —
+  the discipline four recorded silent-zero incidents paid for. No engine
+  telemetry seam changed and no causal claim follows from a count. A standing
+  limit the V11 smokes must clear: all eight preserved 2026-09-03 Baseline
+  reprobe transcripts read `unmeasured: unknown_event` because they carry
+  `tool_execution_update`, so **a non-empty transcript is not proof V10 can
+  measure it**. Design:
+  `2026-09-04-v10-transcript-pathology-counts-design.md` (adjustments A1–A4,
+  tightenings S1–S2, reviews in its research companion); plans
+  `2026-09-04-v10-p*`; verification record `docs/sdd.md`.
 - **V9 — Loop integrity and re-scoring (2026-09-04).** The batch loop
   survives a failing cell: every cell's record is written before grading
   (`GRADE_FAILED` when grading did not complete), summaries name

@@ -20,8 +20,10 @@ from satyrn_evals.attempt_record import (
     AttemptCode,
     AttemptOutcome,
     AttemptRecord,
+    load_attempt_record,
     write_attempt_record,
 )
+from satyrn_evals.errors import UsageError
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
 from satyrn_evals.verdict import Verdict
 
@@ -40,6 +42,8 @@ def ok_record(
     task: str = "format_number",
     command: tuple[str, ...] = ("fake",),
     timeout: float = 123.0,
+    rung: str | None = None,
+    contract_digest: str = "d" * 64,
 ) -> AttemptRecord:
     return AttemptRecord(
         version=1,
@@ -56,6 +60,8 @@ def ok_record(
         verdict=Verdict.PASS,
         receipt_path="receipt.json",
         timeout=timeout,
+        rung=rung,
+        contract_digest=contract_digest,
         workspace_base_sha="c" * 40,
         attempt_dir=cell_name,
     )
@@ -78,7 +84,7 @@ def _fake_attempt(
 
     def fake(
         *, task: str, tasks_root: Path, output: Path, command: list[str],
-        timeout: float,
+        timeout: float, rung: str | None = None,
     ) -> AttemptRecord:
         output.mkdir(parents=True, exist_ok=True)
         name = attempt_dir_name(task, datetime.now(UTC))
@@ -90,7 +96,7 @@ def _fake_attempt(
                 transcript, encoding="utf-8"
             )
         record = ok_record(name, task=task, command=tuple(command),
-                           timeout=timeout)
+                           timeout=timeout, rung=rung)
         write_attempt_record(cell_dir / "attempt.json", record)
         return record
 
@@ -707,3 +713,96 @@ def test_summarize_enriches_a_pre_v10_summary(tmp_path: Path, monkeypatch) -> No
     assert set(rebuilt["pathology"]) == set(rebuilt["cells"])
     assert all(b["measured"] is True for b in rebuilt["pathology"].values())
     assert path.read_bytes() == own
+
+
+# --- V11a Task 4: run passes --rung through to every attempt ---
+
+
+def _task_with_contracts(tmp_path: Path, contracts: dict[str, str]) -> Path:
+    """A minimal visible task root whose manifest declares a rung map."""
+    tasks_root = tmp_path / "tasks"
+    task_dir = tasks_root / "rungs"
+    (task_dir / "base").mkdir(parents=True)
+    (task_dir / "fixtures").mkdir()
+    (task_dir / "fixtures" / "known-good.patch").write_text("ok")
+    (task_dir / "manifest.json").write_text(
+        json.dumps(
+            {
+                "name": "rungs",
+                "contract": "Fix it.",
+                "contracts": contracts,
+                "oracle": ["python", "-m", "pytest"],
+                "expected_test_ids": ["test_solution.py::test_one"],
+                "source_paths": ["solution.py"],
+                "fixtures": {"known_good": "fixtures/known-good.patch"},
+            }
+        )
+    )
+    return tasks_root
+
+
+def test_run_passes_the_rung_to_every_attempt(
+    tmp_path: Path, monkeypatch
+) -> None:
+    tasks_root = _task_with_contracts(tmp_path, {"R1": "bare", "R3": "Fix it."})
+    monkeypatch.setattr(run_module, "attempt", _fake_attempt())
+    output = tmp_path / "out"
+    summary = run_module.run(
+        task="rungs", tasks_root=tasks_root, output=output,
+        command=["fake"], n=2, rung="R1",
+    )
+    assert len(summary.cells) == 2
+    rungs = [
+        load_attempt_record(output / name / "attempt.json").rung
+        for name in summary.cells
+    ]
+    assert rungs == ["R1", "R1"]
+
+
+def test_run_without_a_rung_records_the_default_contract(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Sibling success: the default path is unchanged by --rung existing."""
+    tasks_root = _task_with_contracts(tmp_path, {"R1": "bare", "R3": "Fix it."})
+    monkeypatch.setattr(run_module, "attempt", _fake_attempt())
+    output = tmp_path / "out"
+    summary = run_module.run(
+        task="rungs", tasks_root=tasks_root, output=output,
+        command=["fake"], n=2,
+    )
+    assert all(
+        load_attempt_record(output / name / "attempt.json").rung is None
+        for name in summary.cells
+    )
+
+
+def test_run_refuses_an_unknown_rung_before_the_first_attempt(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """The refusal costs no cells: nothing is preserved and nothing is run."""
+    tasks_root = _task_with_contracts(tmp_path, {"R1": "bare", "R3": "Fix it."})
+    calls: list[object] = []
+
+    def never(**kwargs: object) -> None:
+        calls.append(kwargs)
+
+    monkeypatch.setattr(run_module, "attempt", never)
+    output = tmp_path / "out"
+    with pytest.raises(UsageError, match="R1, R3"):
+        run_module.run(
+            task="rungs", tasks_root=tasks_root, output=output,
+            command=["fake"], n=2, rung="R9",
+        )
+    assert calls == []
+    assert not output.exists()
+
+
+def test_run_refuses_a_rung_on_a_task_with_no_contracts(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setattr(run_module, "attempt", _fake_attempt())
+    with pytest.raises(UsageError, match="declares no contracts"):
+        run_module.run(
+            task="format_number", tasks_root=DEFAULT_TASKS_ROOT,
+            output=tmp_path / "out", command=["fake"], n=1, rung="R1",
+        )

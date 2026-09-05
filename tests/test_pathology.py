@@ -768,3 +768,65 @@ def test_decoded_scan_text_ignores_malformed_payload_shapes() -> None:
         ]
     )
     assert decoded_scan_text(doc) == "ok"
+
+
+# --- V10 amendment 2026-09-05: tool_execution_update ----------------------
+#
+# Forced by the Baseline V5d smoke, which is a known-bad drawn from the
+# batch this amendment serves: agentclinic-repair-depth-2 at R1 emitted 23
+# tool_execution_start, 23 tool_execution_end and 49 tool_execution_update,
+# so the whole cell read `unmeasured: unknown_event` and V11c precondition 2
+# failed. Recompute the shape:
+#
+#   python3 -c "import json,collections;c=collections.Counter(
+#     json.loads(l)['type'] for l in open(T) if l.strip());print(c)"
+#
+# An update is a streaming partial of an execution its start/end pair already
+# brackets, so it must be RECOGNISED and counted as NOTHING.
+
+_UPDATE_DOC = "\n".join([
+    '{"type": "session", "version": 3, "cwd": "/w"}',
+    '{"type": "agent_start"}',
+    '{"type": "turn_start"}',
+    '{"type": "tool_execution_start", "toolCallId": "1", "toolName": "bash", "args": {"command": "uv run pytest tests/"}}',
+    '{"type": "tool_execution_update", "toolCallId": "1", "toolName": "bash", "args": {"command": "uv run pytest tests/"}, "partialResult": {"content": []}}',
+    '{"type": "tool_execution_update", "toolCallId": "1", "toolName": "bash", "args": {"command": "uv run pytest tests/"}, "partialResult": {"content": [{"type": "text", "text": "collecting"}]}}',
+    '{"type": "tool_execution_end", "toolCallId": "1", "toolName": "bash", "result": {}}',
+    '{"type": "turn_end", "message": {"role": "assistant", "content": [{"type": "text", "text": "done"}]}}',
+    '{"type": "agent_end"}',
+    '{"type": "agent_settled"}',
+])
+
+
+def test_tool_execution_update_is_measured_not_unknown() -> None:
+    """Success direction: the shape the real smoke emitted now measures."""
+    block = count_transcript(_UPDATE_DOC, had_patch=True)
+    assert (block.measured, block.reason) == (True, None)
+
+
+def test_tool_execution_update_does_not_inflate_tool_calls() -> None:
+    """The semantic claim: two updates on one call are still one bash call.
+
+    Counting updates would have roughly doubled every cell's tool_calls --
+    the smoke carried 49 updates against 23 real executions.
+    """
+    block = count_transcript(_UPDATE_DOC, had_patch=True)
+    assert block.tool_calls == {"bash": 1}
+    assert block.test_runner_commands == 1
+
+
+def test_an_update_with_an_unknown_tool_name_is_still_unknown() -> None:
+    """Refusal direction, same fixture: recognising the type did not stop
+    the vocabulary check from firing on its payload."""
+    bad = _UPDATE_DOC.replace('"toolName": "bash", "args": {"command": "uv run pytest tests/"}, "partialResult"',
+                              '"toolName": "telepathy", "args": {}, "partialResult"')
+    block = count_transcript(bad, had_patch=True)
+    assert (block.measured, block.reason) == (False, "unknown_event")
+
+
+def test_a_genuinely_unknown_event_type_is_still_unknown() -> None:
+    """Refusal direction: the amendment widened the vocabulary by exactly one
+    type, and a detector that now accepts anything would prove nothing."""
+    bad = _UPDATE_DOC.replace('"type": "tool_execution_update"', '"type": "tool_execution_sideways"', 1)
+    block = count_transcript(bad, had_patch=True)
+    assert (block.measured, block.reason) == (False, "unknown_event")

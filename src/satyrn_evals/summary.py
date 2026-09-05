@@ -46,6 +46,11 @@ class Summary:
     cells: list[str]
     contamination: dict[str, int] | None
     pathology: dict[str, dict]
+    # V11a rung provenance. Both are null for a pre-V11a batch, whose cells
+    # carry no rung identity; a new batch always carries a digest, and the
+    # rung is null only when the default `contract` was exported (spec §5).
+    rung: str | None = None
+    contract_digest: str | None = None
 
     def __post_init__(self) -> None:
         if self.n < 0 or self.attempted < 0 or self.refused < 0:
@@ -138,6 +143,8 @@ def compute_summary(
             f"cell {cells[0][0]} has no recorded timeout "
             "(pre-V9 record); cannot summarize"
         )
+    rung = cells[0][1].rung
+    digest = cells[0][1].contract_digest
     for name, record, _ in cells[1:]:
         if record.task != task:
             raise ValueError(f"mixed tasks in cells ({task!r} vs {record.task!r} at {name})")
@@ -147,6 +154,10 @@ def compute_summary(
             raise ValueError(f"cell {name} has no recorded timeout")
         if record.timeout != timeout:
             raise ValueError(f"mixed timeouts in cells ({name})")
+        if record.rung != rung:
+            raise ValueError(f"mixed rungs in cells ({name})")
+        if record.contract_digest != digest:
+            raise ValueError(f"mixed contract digests in cells ({name})")
     _validate_pathology(pathology, {name for name, _, _ in cells})
     n = len(cells)
     attempted = sum(
@@ -189,6 +200,8 @@ def compute_summary(
         contamination=contamination,
         # the field keys must follow the summary's cell order (spec §4)
         pathology={name: pathology[name] for name, _, _ in cells},
+        rung=rung,
+        contract_digest=digest,
     )
 
 

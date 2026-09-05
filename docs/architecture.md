@@ -145,7 +145,13 @@ re-scored without re-running the attempt.
 An Engine-capable manifest may name a task-relative `engine_contract`.
 Evals validates that it is a regular file reached without symlinks, then
 appends its absolute path to the executable argv. The file contents remain
-opaque: Engine owns their schema. When the command times out, evals terminates
+opaque: Engine owns their schema. A task without the field gets a contract
+**generated** from its own manifest plus the selected {term}`contract rung`,
+written once under the output root at a path keyed by the sha256 of the
+rendered bytes and appended the same way. Generating it keeps the text the
+model sees equal to the text on record; keying the path by content keeps
+every cell of a run recording one command, which is what lets the batch
+summarize. When the command times out, evals terminates
 and reaps its POSIX process group before Git cleanup. If cleanup cannot prove
 the worktree registration absent, the attempt is refused as `CLEANUP_FAILED`
 and the record names the retained recovery path. This is process and workspace

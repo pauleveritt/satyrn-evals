@@ -7,6 +7,7 @@ env-var paths: SATYRN_TASK_NAME/CONTRACT are inputs; SATYRN_ATTEMPT_PATCH/
 TRANSCRIPT are where the command writes its delivery.
 """
 
+import hashlib
 import os
 import stat
 import sys
@@ -20,6 +21,10 @@ from satyrn_evals.attempt_record import (
     AttemptOutcome,
     AttemptRecord,
     write_attempt_record,
+)
+from satyrn_evals.engine_contract import (
+    render_engine_contract,
+    write_engine_contract,
 )
 from satyrn_evals.errors import PatchParseError, SatyrnError, UsageError
 from satyrn_evals.grade import grade
@@ -39,11 +44,44 @@ TASK_CONTRACT_ENV = "SATYRN_TASK_CONTRACT"
 PATCH_ENV = "SATYRN_ATTEMPT_PATCH"
 TRANSCRIPT_ENV = "SATYRN_ATTEMPT_TRANSCRIPT"
 
+type SelectedContract = tuple[str | None, str]
+
 _WORKSPACE_ATTEMPT_CODES: dict[WorkspaceCode, AttemptCode] = {
     WorkspaceCode.WORKSPACE_FAILED: AttemptCode.WORKSPACE_FAILED,
     WorkspaceCode.COMMAND_TIMEOUT: AttemptCode.COMMAND_TIMEOUT,
     WorkspaceCode.CLEANUP_FAILED: AttemptCode.CLEANUP_FAILED,
 }
+
+
+def resolve_contract(manifest: TaskManifest, rung: str | None) -> SelectedContract:
+    """The (rung key, exact contract text) an attempt exports (V11a spec §4).
+
+    ``None`` selects the manifest's default ``contract`` and records a null
+    rung. A rung against a task with no ``contracts`` map, or a key the map
+    does not hold, is a usage error naming the task and the available keys —
+    never a silent fallback to the default text.
+    """
+    if rung is None:
+        return None, manifest.contract
+    match manifest.contracts.get(rung):
+        case str() as text:
+            return rung, text
+        case _ if not manifest.contracts:
+            raise UsageError(
+                f"task {manifest.name} declares no contracts; "
+                f"--rung {rung} is not available"
+            )
+        case _:
+            available = ", ".join(sorted(manifest.contracts))
+            raise UsageError(
+                f"unknown rung {rung} for task {manifest.name}; "
+                f"available rungs: {available}"
+            )
+
+
+def contract_digest(text: str) -> str:
+    """SHA-256 of the exact selected contract text, UTF-8 (spec §5)."""
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def _add_exception_note(error: BaseException, note: str) -> None:
@@ -86,6 +124,7 @@ def attempt(
     output: Path,
     command: list[str],
     timeout: float = DEFAULT_TIMEOUT,
+    rung: str | None = None,
 ) -> AttemptRecord:
     """Run COMMAND against TASK, preserve patch + transcript, grade, and record.
 
@@ -96,6 +135,8 @@ def attempt(
     """
     task_dir = resolve_task(task, tasks_root)
     manifest = load_manifest(task_dir)
+    selected_rung, contract_text = resolve_contract(manifest, rung)
+    digest = contract_digest(contract_text)
     if not command:
         raise UsageError("attempt command is empty")
     output = Path(os.path.abspath(output))
@@ -107,15 +148,33 @@ def attempt(
 
     env = dict(os.environ)
     env[TASK_NAME_ENV] = manifest.name
-    env[TASK_CONTRACT_ENV] = manifest.contract
+    env[TASK_CONTRACT_ENV] = contract_text
     env[PATCH_ENV] = str(patch_path)
     env[TRANSCRIPT_ENV] = str(transcript_path)
     env["PATH"] = str(Path(sys.executable).parent) + os.pathsep + env.get("PATH", "")
 
     effective_command = list(command)
     if manifest.engine_contract is not None:
+        # A hand-authored contract keeps today's behaviour exactly.
         effective_command.append(
             os.fspath(Path(os.path.abspath(task_dir / manifest.engine_contract)))
+        )
+    else:
+        # Generated from manifest + selected rung, written once at a path
+        # keyed by the SHA-256 of its own bytes so every cell of a run
+        # records the same command (proposal correction 8).
+        effective_command.append(
+            os.fspath(
+                write_engine_contract(
+                    output,
+                    render_engine_contract(
+                        task_dir,
+                        manifest,
+                        rung=selected_rung,
+                        contract_text=contract_text,
+                    ),
+                )
+            )
         )
 
     workspace = run_workspace(
@@ -143,6 +202,8 @@ def attempt(
             manifest=manifest,
             effective_command=effective_command,
             timeout=timeout,
+            rung=selected_rung,
+            digest=digest,
         )
     except BaseException as exc:
         if workspace.code is WorkspaceCode.CLEANUP_FAILED:
@@ -163,6 +224,8 @@ def _finish_attempt(
     manifest: TaskManifest,
     effective_command: list[str],
     timeout: float,
+    rung: str | None,
+    digest: str,
 ) -> AttemptRecord:
     """Preserve, grade, and record artifacts after the workspace is settled."""
     command_exit = workspace.command_exit
@@ -223,6 +286,8 @@ def _finish_attempt(
             verdict=None,
             receipt_path=None,
             timeout=timeout,
+            rung=rung,
+            contract_digest=digest,
             workspace_base_sha=workspace.base_sha,
             retained_path=workspace.retained_path,
             attempt_dir=attempt_dir.name,
@@ -249,6 +314,8 @@ def _finish_attempt(
         verdict=None,
         receipt_path=None,
         timeout=timeout,
+        rung=rung,
+        contract_digest=digest,
         workspace_base_sha=workspace.base_sha,
         attempt_dir=attempt_dir.name,
     )

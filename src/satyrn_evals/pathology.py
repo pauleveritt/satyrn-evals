@@ -21,9 +21,16 @@ EVENT_TYPES = frozenset(
     {
         "session", "agent_start", "turn_start", "turn_end", "message_start",
         "message_update", "message_end", "tool_execution_start",
-        "tool_execution_end", "agent_end", "agent_settled",
+        "tool_execution_update", "tool_execution_end", "agent_end",
+        "agent_settled",
     }
 )
+# `tool_execution_update` added by the V10 amendment of 2026-09-05, forced by
+# the Baseline V5d smoke: that transcript carried 23 starts, 23 ends and 49
+# updates, so the whole cell read `unmeasured: unknown_event` and V11c's
+# precondition 2 failed. An update is a STREAMING PARTIAL of an execution
+# already bracketed by its start/end pair, so it is recognised and counted as
+# NOTHING -- counting it would inflate tool_calls by roughly 2x per call.
 TOOL_NAMES = frozenset({"read", "bash", "edit", "write"})
 FILE_TOOLS = frozenset({"read", "edit", "write"})
 WRITE_TOOLS = frozenset({"edit", "write"})
@@ -159,7 +166,11 @@ def _vocabulary_ok(events: list[dict]) -> PathologyReason | None:
     for event in events:
         if event.get("type") not in EVENT_TYPES:
             return "unknown_event"
-        if event.get("type") in ("tool_execution_start", "tool_execution_end"):
+        if event.get("type") in (
+            "tool_execution_start",
+            "tool_execution_update",
+            "tool_execution_end",
+        ):
             if not isinstance(event.get("toolName"), str) or not event["toolName"]:
                 return "malformed"
             if event["toolName"] not in TOOL_NAMES:

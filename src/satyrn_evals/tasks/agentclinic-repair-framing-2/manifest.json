@@ -39,5 +39,9 @@
     "repo": "https://github.com/pauleveritt/swiftstar.git",
     "base_sha": "ab1d83d06791432f031e55860961529a048d4d9c",
     "fix_sha": "unrecorded"
+  },
+  "contracts": {
+    "R1": "Repair the seeded bug in the AgentClinic complaints app. The suite aborts at collection: importing the app raises ModuleNotFoundError: No module named 'models'. Your workspace has a runnable public suite under tests/ (uv run pytest tests/); a fix must keep every existing behavior intact.",
+    "R3": "Repair the seeded bug in the AgentClinic complaints app. The suite aborts at collection: the app cannot import because the model module is missing entirely (importing the app raises ModuleNotFoundError for the model module). Recreate the model module so the app imports and the suite collects, then repair app.py. Your workspace has a runnable public suite under tests/ (uv run pytest tests/); a fix must keep every existing behavior intact."
   }
 }

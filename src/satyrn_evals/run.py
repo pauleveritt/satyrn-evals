@@ -18,7 +18,7 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from satyrn_evals.attempt import DEFAULT_TIMEOUT, attempt
+from satyrn_evals.attempt import DEFAULT_TIMEOUT, attempt, resolve_contract
 from satyrn_evals.errors import OverlayError, SatyrnError, UsageError
 from satyrn_evals.manifest import load_manifest, resolve_task
 from satyrn_evals.rescore import compute_pathology, pathology_context
@@ -84,6 +84,7 @@ def run(
     command: list[str],
     n: int,
     timeout: float = DEFAULT_TIMEOUT,
+    rung: str | None = None,
 ) -> Summary:
     if n < 1:
         raise UsageError("run requires a positive --n")
@@ -91,6 +92,9 @@ def run(
         raise UsageError("run command is required: run TASK [flags] -- COMMAND...")
     task_dir = resolve_task(task, tasks_root=tasks_root)
     manifest = load_manifest(task_dir)
+    # An unknown rung must cost no cells: resolve it here, before the first
+    # attempt, so the refusal preserves nothing and is fixed by re-running.
+    resolve_contract(manifest, rung)
     # Shared pathology context is validated BEFORE the first attempt
     # (V10 spec §4, close-out correction 2026-09-05): a broken overlay
     # refuses the run pre-cell (exit 3, nothing preserved, recoverable by
@@ -107,7 +111,7 @@ def run(
         for _ in range(n):
             record = attempt(
                 task=task, tasks_root=tasks_root, output=output, command=command,
-                timeout=timeout,
+                timeout=timeout, rung=rung,
             )
             if record.attempt_dir is None:
                 raise RuntimeError("attempt record does not name its attempt directory")

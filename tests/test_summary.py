@@ -450,3 +450,76 @@ def test_summary_pathology_follows_cell_order_not_input_order() -> None:
     assert list(summary.pathology) == summary.cells
     assert summary.pathology["t-1"] == blocks["t-1"]
     assert summary.pathology["t-2"] == blocks["t-2"]
+
+
+# --- V11a Task 5: the summary names the rung and the digest ---
+#
+# Two runs at R1 and R3 with the same command otherwise differ only by the
+# prompt echoed in the transcript (spec §5). The summary refuses a mixed
+# batch exactly as it refuses mixed tasks, commands and timeouts.
+
+_R1_DIGEST = "1" * 64
+_R3_DIGEST = "3" * 64
+
+
+def _rung_cell(
+    name: str, *, rung: str | None, digest: str | None
+) -> AttemptCell:
+    record = dataclasses.replace(
+        make_record(AttemptCode.OK, Verdict.PASS),
+        rung=rung,
+        contract_digest=digest,
+    )
+    return (name, record, None)
+
+
+def test_summary_carries_the_rung_and_digest_of_its_cells() -> None:
+    summary = _compute(
+        [
+            _rung_cell("t-1", rung="R1", digest=_R1_DIGEST),
+            _rung_cell("t-2", rung="R1", digest=_R1_DIGEST),
+        ]
+    )
+    assert summary.rung == "R1"
+    assert summary.contract_digest == _R1_DIGEST
+
+
+def test_summary_over_legacy_cells_carries_explicit_unknowns() -> None:
+    """Sibling success: a pre-V11a batch summarizes with both fields null."""
+    summary = _compute(
+        [
+            _rung_cell("t-1", rung=None, digest=None),
+            _rung_cell("t-2", rung=None, digest=None),
+        ]
+    )
+    assert summary.rung is None
+    assert summary.contract_digest is None
+
+
+def test_compute_summary_refuses_mixed_rungs() -> None:
+    with pytest.raises(ValueError, match="mixed rungs"):
+        _compute(
+            [
+                _rung_cell("t-1", rung="R1", digest=_R1_DIGEST),
+                _rung_cell("t-2", rung="R3", digest=_R3_DIGEST),
+            ]
+        )
+
+
+def test_compute_summary_refuses_mixed_digests_at_the_same_rung() -> None:
+    """The rung label is an authoring claim; the digest is the text itself.
+    Equal labels over different bytes is exactly the confusion to refuse."""
+    with pytest.raises(ValueError, match="mixed contract digests"):
+        _compute(
+            [
+                _rung_cell("t-1", rung="R1", digest=_R1_DIGEST),
+                _rung_cell("t-2", rung="R1", digest=_R3_DIGEST),
+            ]
+        )
+
+
+def test_summary_json_carries_both_new_fields() -> None:
+    summary = _compute([_rung_cell("t-1", rung="R1", digest=_R1_DIGEST)])
+    data = dataclasses.asdict(summary)
+    assert data["rung"] == "R1"
+    assert data["contract_digest"] == _R1_DIGEST

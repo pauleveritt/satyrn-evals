@@ -1,0 +1,12 @@
+{
+  "arm": "baseline",
+  "argv": ["satyrn-evals-attempt-pi"],
+  "tools": ["read", "bash", "edit", "write"],
+  "model": "omlx/gemma-4-12B-it-MLX-8bit",
+  "server_model": "gemma-4-12B-it-MLX-8bit",
+  "pins": {
+    "pi": "0.84.4",
+    "engine_commit": null,
+    "digests": {}
+  }
+}

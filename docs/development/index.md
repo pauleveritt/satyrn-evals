@@ -10,6 +10,7 @@ being prerequisite reading for a first evaluation.
 
 ../architecture
 ../contributing
+arm-substrate
 ../sdd
 ../superpowers/index
 ```

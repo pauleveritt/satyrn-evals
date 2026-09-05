@@ -15,6 +15,7 @@ from test_agentclinic_reconstruction import (  # type: ignore[missing-import]  #
     STATES,
 )
 
+from satyrn_evals.engine_contract import render_engine_contract
 from satyrn_evals.errors import ManifestError
 from satyrn_evals.manifest import load_manifest, resolve_task
 from satyrn_evals.patch import parse_patch_paths, within_source
@@ -101,3 +102,124 @@ def test_all_manifests_share_identical_expected_test_ids() -> None:
         for state in STATES
     ]
     assert all(id_sets[0] == other for other in id_sets[1:])
+
+
+# --- V11a Task 8: R1 authored from this repository's own base rows ---
+#
+# The rows below are DERIVED, not recalled: each was produced by running the
+# task's hidden overlay against that task's own base/ and reading the failing
+# set from the oracle hook's record. The derivation, and the command that
+# recomputes it, are in
+# docs/superpowers/research/2026-09-05-v11a-r1-derivation.md.
+
+DERIVED_FAILING_NAMES: dict[str, tuple[str, ...]] = {
+    "depth-2": (
+        "test_home_html_element_declares_english_language",
+        "test_complaints_board_preserves_the_shared_layout",
+        "test_post_complaint_redirects_to_complaints_board",
+    ),
+    "depth-3": (
+        "test_home_html_element_declares_english_language",
+        "test_complaints_board_preserves_the_shared_layout",
+        "test_complaint_model_contract_is_preserved",
+        "test_post_complaint_redirects_to_complaints_board",
+    ),
+    # The two collection-abort states collect nothing, so they have no
+    # failing function names; their derived evidence is the abort message.
+    "framing-2": (),
+    "framing-2-edit": (),
+    "misleading-locus": ("test_posted_complaint_appears_on_complaints_board",),
+    "plausible-wrong-fix": ("test_post_complaint_redirects_to_complaints_board",),
+}
+
+DERIVED_ASSERTION_TEXT: dict[str, tuple[str, ...]] = {
+    "depth-2": ("'NoneType' object has no attribute 'casefold'", "assert 307 == 303"),
+    "depth-3": (
+        "'NoneType' object has no attribute 'casefold'",
+        "assert None is not None",
+        "assert 307 == 303",
+    ),
+    "framing-2": ("ModuleNotFoundError: No module named 'models'",),
+    "framing-2-edit": ("module 'models' has no attribute 'complaints'",),
+    "misleading-locus": ("Codex acceptance test",),
+    "plausible-wrong-fix": ("assert 307 == 303",),
+}
+
+
+@pytest.mark.parametrize("state", STATES)
+def test_manifest_ships_exactly_r1_and_r3(state: str) -> None:
+    manifest = load_manifest(resolve_task(f"agentclinic-repair-{state}"))
+    assert set(manifest.contracts) == {"R1", "R3"}, state
+
+
+@pytest.mark.parametrize("state", STATES)
+def test_r3_is_the_default_contract_verbatim(state: str) -> None:
+    """`contract` stays the default and stays equal to R3 (spec §3)."""
+    manifest = load_manifest(resolve_task(f"agentclinic-repair-{state}"))
+    assert manifest.contracts["R3"] == manifest.contract, state
+
+
+@pytest.mark.parametrize("state", STATES)
+def test_r1_names_no_source_file_and_no_grader_path(state: str) -> None:
+    """What separates R1 from R3: no file name, no fix sentence.
+
+    The file entries of source_paths are the seeded-defect locations
+    (app.py, models.py); the bare directory entries are not localization.
+    """
+    manifest = load_manifest(resolve_task(f"agentclinic-repair-{state}"))
+    r1 = manifest.contracts["R1"]
+    files = [entry for entry in manifest.source_paths if Path(entry).suffix]
+    assert files, state  # not a vacuous check
+    for entry in files:
+        assert entry not in r1, (state, entry)
+    for name in FORBIDDEN:
+        assert name not in r1, (state, name)
+
+
+@pytest.mark.parametrize("state", STATES)
+def test_r1_carries_the_derived_failing_names(state: str) -> None:
+    manifest = load_manifest(resolve_task(f"agentclinic-repair-{state}"))
+    r1 = manifest.contracts["R1"]
+    for name in DERIVED_FAILING_NAMES[state]:
+        assert name in r1, (state, name)
+
+
+@pytest.mark.parametrize("state", STATES)
+def test_r1_carries_the_derived_assertion_text(state: str) -> None:
+    """The two collection-abort states have no failing names, so this row is
+    the only one that can discriminate for them."""
+    manifest = load_manifest(resolve_task(f"agentclinic-repair-{state}"))
+    r1 = manifest.contracts["R1"]
+    for fragment in DERIVED_ASSERTION_TEXT[state]:
+        assert fragment in r1, (state, fragment)
+
+
+@pytest.mark.parametrize("state", STATES)
+def test_r1_is_shorter_than_r3(state: str) -> None:
+    """The two-point authoring gate the trim collapses R0->R3 to (spec §8).
+    It is an authoring claim, not a measurement -- unverified until V12."""
+    manifest = load_manifest(resolve_task(f"agentclinic-repair-{state}"))
+    assert len(manifest.contracts["R1"]) < len(manifest.contracts["R3"]), state
+
+
+@pytest.mark.parametrize("state", STATES)
+def test_both_rungs_generate_an_engine_contract(state: str) -> None:
+    """Every shipped rung renders; the two differ in id and task and agree
+    on writable_paths."""
+    task_dir = resolve_task(f"agentclinic-repair-{state}")
+    manifest = load_manifest(task_dir)
+    rendered = {
+        rung: render_engine_contract(task_dir, manifest, rung=rung, contract_text=text)
+        for rung, text in manifest.contracts.items()
+    }
+    r1, r3 = rendered["R1"].decode(), rendered["R3"].decode()
+    assert r1 != r3, state
+    assert r1.startswith(f'id: "agentclinic-repair-{state}@R1+'), state
+    paths = [line for line in r1.splitlines() if line.startswith("  - ")]
+    assert paths == [line for line in r3.splitlines() if line.startswith("  - ")]
+    assert paths == [
+        '  - "app.py"',
+        '  - "models.py"',
+        '  - "templates/*"',
+        '  - "tests/*"',
+    ], state

@@ -15,7 +15,7 @@ from satyrn_evals.attempt_record import (
     load_attempt_record,
 )
 from satyrn_evals.errors import HookError, UsageError
-from satyrn_evals.receipt import Receipt
+from satyrn_evals.receipt import Receipt, write_receipt
 from satyrn_evals.verdict import Verdict
 from satyrn_evals.workspace import WorkspaceCode, WorkspaceResult
 
@@ -29,6 +29,19 @@ GOOD_PATCH = (
     "+    return n * 2\n"
 )
 TRANSCRIPT = "read the task; wrote the fix\n"
+
+
+def _cells(output: Path) -> list[Path]:
+    """The attempt directories under `output`.
+
+    V11a Task 7: a task with no hand-authored engine_contract renders one at
+    a deterministic, content-addressed path under the output root. That
+    directory is a run INPUT, not an attempt artifact, so cell-identity
+    assertions skip it.
+    """
+    from satyrn_evals.engine_contract import CONTRACTS_DIRNAME
+
+    return [p for p in output.iterdir() if p.name != CONTRACTS_DIRNAME]
 
 
 def _task(tasks_root: Path) -> Path:
@@ -65,7 +78,9 @@ def _run_attempt(
     def fake_run_workspace(**kwargs: Any) -> WorkspaceResult:
         command = kwargs["command"]
         env = kwargs["environment"]
-        assert command == ["fake-agent"]
+        # the generated contract path is appended (V11a Task 7)
+        assert command[0] == "fake-agent"
+        assert Path(command[-1]).is_file()
         assert kwargs["base"] == tasks_root / "t" / "base"
         assert env[attempt_module.TASK_NAME_ENV] == "t"
         assert env[attempt_module.TASK_CONTRACT_ENV] == "Fix it."
@@ -86,7 +101,7 @@ def _run_attempt(
         task="t", tasks_root=tasks_root, output=output, command=["fake-agent"],
         timeout=timeout,
     )
-    return record, next(output.iterdir())
+    return record, _cells(output)[0]
 
 
 def test_valid_artifacts_proceed() -> None:
@@ -167,7 +182,10 @@ def test_attempt_start_failure_removes_fresh_attempt_dir(
         attempt_module.attempt(
             task="t", tasks_root=tasks_root, output=output, command=["missing-agent"]
         )
-    assert list(output.iterdir()) == []
+    # usage writes nothing: no attempt directory, no record. The
+    # content-addressed contract directory is an input, not an artifact.
+    assert _cells(output) == []
+    assert list(output.rglob("attempt.json")) == []
 
 
 @pytest.mark.parametrize(
@@ -306,7 +324,7 @@ def test_artifact_read_failure_cannot_hide_workspace_result(
     assert record.code is expected_code
     assert record.retained_path == retained
     assert "not a regular file" in record.message
-    attempt_dir = next(output.iterdir())
+    attempt_dir = _cells(output)[0]
     assert json.loads((attempt_dir / "attempt.json").read_text())["code"] == expected_code
 
 
@@ -488,7 +506,7 @@ def test_patch_absence_precedes_transcript_read_failure(
     )
 
     assert record.code is AttemptCode.NO_PATCH
-    attempt_dir = next(output.iterdir())
+    attempt_dir = _cells(output)[0]
     assert json.loads((attempt_dir / "attempt.json").read_text())["code"] == "NO_PATCH"
 
 
@@ -595,3 +613,250 @@ def test_default_attempt_timeout_is_900_seconds() -> None:
     from satyrn_evals.workspace import DEFAULT_TIMEOUT
 
     assert DEFAULT_TIMEOUT == 900.0
+
+
+# --- V11a Task 4: --rung selects the exported contract ---
+#
+# The rung reaches the executable ONLY as SATYRN_TASK_CONTRACT (spec §4);
+# the adapter never sees --rung, which is what keeps V11a and V11b
+# independent. These tests read the env the seam is handed.
+
+R1_TEXT = "test_one fails: assert 307 == 303"
+R3_TEXT = "Fix it."
+
+
+def _rung_task(tasks_root: Path, *, contracts: dict[str, str] | None) -> Path:
+    """The `_task` fixture above, plus an optional rung map."""
+    task_dir = _task(tasks_root)
+    data = json.loads((task_dir / "manifest.json").read_text())
+    if contracts is not None:
+        data["contracts"] = contracts
+    (task_dir / "manifest.json").write_text(json.dumps(data))
+    return task_dir
+
+
+def _attempt_with_rung(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    contracts: dict[str, str] | None,
+    rung: str | None,
+) -> tuple[AttemptRecord, str]:
+    """Run one attempt and return (record, the exported contract text)."""
+    tasks_root = tmp_path / "tasks"
+    _rung_task(tasks_root, contracts=contracts)
+    exported: dict[str, str] = {}
+
+    def fake_run_workspace(**kwargs: Any) -> WorkspaceResult:
+        env = kwargs["environment"]
+        exported["contract"] = env[attempt_module.TASK_CONTRACT_ENV]
+        Path(env[attempt_module.PATCH_ENV]).write_bytes(GOOD_PATCH.encode())
+        Path(env[attempt_module.TRANSCRIPT_ENV]).write_bytes(TRANSCRIPT.encode())
+        return WorkspaceResult(WorkspaceCode.OK, "done", 0, "b" * 40)
+
+    monkeypatch.setattr(attempt_module, "run_workspace", fake_run_workspace)
+    monkeypatch.setattr(
+        attempt_module,
+        "grade",
+        lambda *a, **k: Receipt(
+            task="t", patch_digest="a" * 64, verdict=Verdict.PASS,
+            reason="ok", evidence=None,
+        ),
+    )
+    record = attempt_module.attempt(
+        task="t", tasks_root=tasks_root, output=tmp_path / "attempts",
+        command=["fake-agent"], timeout=123.0, rung=rung,
+    )
+    return record, exported["contract"]
+
+
+def _sha256(text: str) -> str:
+    import hashlib
+
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def test_rung_exports_that_rungs_text_and_records_the_rung(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    record, exported = _attempt_with_rung(
+        tmp_path, monkeypatch,
+        contracts={"R1": R1_TEXT, "R3": R3_TEXT}, rung="R1",
+    )
+    assert exported == R1_TEXT
+    assert record.rung == "R1"
+    assert record.contract_digest == _sha256(R1_TEXT)
+
+
+def test_no_rung_exports_the_default_contract_and_still_records_a_digest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Sibling success: the default path records rung=None and a real digest."""
+    record, exported = _attempt_with_rung(
+        tmp_path, monkeypatch,
+        contracts={"R1": R1_TEXT, "R3": R3_TEXT}, rung=None,
+    )
+    assert exported == "Fix it."
+    assert record.rung is None
+    assert record.contract_digest == _sha256("Fix it.")
+
+
+def test_no_rung_on_a_task_with_no_contracts_is_the_default_contract(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Sibling success for the refusal below: no rungs is not an error."""
+    record, exported = _attempt_with_rung(
+        tmp_path, monkeypatch, contracts=None, rung=None
+    )
+    assert exported == "Fix it."
+    assert record.rung is None
+
+
+def test_unknown_rung_is_a_usage_error_naming_the_available_keys(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with pytest.raises(UsageError, match="R1, R3"):
+        _attempt_with_rung(
+            tmp_path, monkeypatch,
+            contracts={"R1": R1_TEXT, "R3": R3_TEXT}, rung="R9",
+        )
+
+
+def test_rung_on_a_task_with_no_contracts_is_a_usage_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with pytest.raises(UsageError, match="declares no contracts"):
+        _attempt_with_rung(tmp_path, monkeypatch, contracts=None, rung="R1")
+
+
+# --- V11a Task 7: the generated contract lives at a digest-keyed path ---
+#
+# Proposal correction 8: a fresh per-attempt path changes the recorded
+# command, and compute_summary refuses mixed commands, so a batch would not
+# summarize. The path is keyed by the SHA-256 of the rendered bytes, so it is
+# stable across the cells of a run and pins the exact bytes.
+
+
+def _fake_grade(task_dir: Path, patch_path: Path, receipt_path: Path) -> Receipt:
+    """A non-spawning grade that writes the receipt summarize later reads."""
+    receipt = Receipt(
+        task="t", patch_digest="a" * 64, verdict=Verdict.PASS,
+        reason="ok", evidence=None,
+    )
+    write_receipt(receipt_path, receipt)
+    return receipt
+
+
+def _two_attempts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    rungs: tuple[str | None, str | None],
+) -> tuple[list[AttemptRecord], Path]:
+    tasks_root = tmp_path / "tasks"
+    _rung_task(tasks_root, contracts={"R1": R1_TEXT, "R3": R3_TEXT})
+
+    def fake_run_workspace(**kwargs: Any) -> WorkspaceResult:
+        env = kwargs["environment"]
+        Path(env[attempt_module.PATCH_ENV]).write_bytes(GOOD_PATCH.encode())
+        Path(env[attempt_module.TRANSCRIPT_ENV]).write_bytes(TRANSCRIPT.encode())
+        return WorkspaceResult(WorkspaceCode.OK, "done", 0, "b" * 40)
+
+    monkeypatch.setattr(attempt_module, "run_workspace", fake_run_workspace)
+    monkeypatch.setattr(attempt_module, "grade", _fake_grade)
+    output = tmp_path / "attempts"
+    records = [
+        attempt_module.attempt(
+            task="t", tasks_root=tasks_root, output=output,
+            command=["fake-agent"], timeout=123.0, rung=rung,
+        )
+        for rung in rungs
+    ]
+    return records, output
+
+
+def test_two_attempts_at_one_rung_record_the_same_command(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    records, output = _two_attempts(tmp_path, monkeypatch, rungs=("R1", "R1"))
+    first, second = records
+    assert first.command == second.command
+    appended = Path(first.command[-1])
+    assert appended.is_file()
+    assert appended.parent == output / "engine-contracts"
+    assert appended.name.endswith(".yaml")
+
+
+def test_two_attempts_at_one_rung_summarize_and_re_summarize(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The whole point of the digest-keyed path: the batch summarizes."""
+    from satyrn_evals.rescore import summarize_output
+    from satyrn_evals.summary import (
+        SUMMARY_NAME,
+        absent_pathology,
+        compute_summary,
+        write_summary,
+    )
+
+    records, output = _two_attempts(tmp_path, monkeypatch, rungs=("R1", "R1"))
+    cells = [(r.attempt_dir, r, None) for r in records]
+    summary = compute_summary(
+        cells, oracle_visibility="visible", pathology=absent_pathology(cells)  # type: ignore[bad-argument-type]  # the doubles' attempt_dir is always set
+    )
+    assert summary.n == 2 and summary.rung == "R1"
+    # the anchor names the run's own cells; summarize rebuilds over it
+    write_summary(output / SUMMARY_NAME, summary)
+    rebuilt = summarize_output(output, tasks_root=tmp_path / "tasks")
+    assert rebuilt.rung == "R1" and rebuilt.command == summary.command
+    first = (output / SUMMARY_NAME).read_bytes()
+    summarize_output(output, tasks_root=tmp_path / "tasks")
+    assert (output / SUMMARY_NAME).read_bytes() == first
+
+
+def test_two_attempts_at_different_rungs_are_refused_by_the_summary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Sibling refusal: different rungs render different bytes, so the
+    digest-keyed paths differ and the batch is not one batch."""
+    from satyrn_evals.summary import absent_pathology, compute_summary
+
+    records, _ = _two_attempts(tmp_path, monkeypatch, rungs=("R1", "R3"))
+    first, second = records
+    assert first.command[-1] != second.command[-1]
+    cells = [(r.attempt_dir, r, None) for r in records]
+    with pytest.raises(ValueError, match="mixed commands"):
+        compute_summary(
+            cells, oracle_visibility="visible", pathology=absent_pathology(cells)  # type: ignore[bad-argument-type]  # the doubles' attempt_dir is always set
+        )
+
+
+def test_hand_authored_engine_contract_keeps_todays_behaviour(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """format_number declares engine_contract: its own file is appended and
+    nothing is generated under the output root."""
+    from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
+
+    def fake_run_workspace(**kwargs: Any) -> WorkspaceResult:
+        env = kwargs["environment"]
+        Path(env[attempt_module.PATCH_ENV]).write_bytes(GOOD_PATCH.encode())
+        Path(env[attempt_module.TRANSCRIPT_ENV]).write_bytes(TRANSCRIPT.encode())
+        return WorkspaceResult(WorkspaceCode.OK, "done", 0, "b" * 40)
+
+    monkeypatch.setattr(attempt_module, "run_workspace", fake_run_workspace)
+    monkeypatch.setattr(
+        attempt_module,
+        "grade",
+        lambda *a, **k: Receipt(
+            task="format_number", patch_digest="a" * 64, verdict=Verdict.PASS,
+            reason="ok", evidence=None,
+        ),
+    )
+    output = tmp_path / "attempts"
+    record = attempt_module.attempt(
+        task="format_number", tasks_root=DEFAULT_TASKS_ROOT, output=output,
+        command=["fake-agent"], timeout=123.0,
+    )
+    assert record.command[-1].endswith("format_number/engine-contract.yaml")
+    assert not (output / "engine-contracts").exists()

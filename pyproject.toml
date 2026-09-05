@@ -11,6 +11,8 @@ dependencies = []
 [project.scripts]
 satyrn-evals = "satyrn_evals.cli:main"
 satyrn-evals-session-pi = "satyrn_evals.adapters.pi_session:main"
+# The Baseline arm's attempt adapter (arms/baseline.json names this).
+satyrn-evals-attempt-pi = "satyrn_evals.attempt_pi:main"
 
 [build-system]
 requires = ["hatchling"]

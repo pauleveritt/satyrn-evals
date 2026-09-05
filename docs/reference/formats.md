@@ -23,12 +23,74 @@ reference](../usage.md); goal-oriented instructions live in the
 |------|---------|
 | `name` | the {term}`task` name; must match its directory |
 | `contract` | the task statement, handed to the {term}`attempt command` as `SATYRN_TASK_CONTRACT` |
+| `contracts` | optional {term}`contract rung` map, `{rung key: text}`; an open map with no enum of rung names in code |
 | `oracle` | the {term}`oracle` command; its {term}`hook result` — never its stdout or exit code — decides the {term}`verdict` |
 | `expected_test_ids` | the test IDs the {term}`oracle` must execute, no more and no fewer |
 | `source_paths` | the {term}`allowlist`: the only paths a {term}`patch` may touch |
 | `fixtures` | `known_good` (required) and `known_broken` (optional) patch paths |
 | `provenance` | captured tasks only: `repo`, `base_sha`, `fix_sha` |
-| `engine_contract` | optional and engine-owned: Evals validates only its safe task-relative path and never parses its contents |
+| `engine_contract` | optional and engine-owned: Evals validates only its safe task-relative path and never parses its contents. A task without it gets a **generated** contract instead (below) |
+
+### Contract rungs
+
+`contracts` is an **open** map from a rung key to the contract text that rung
+exports:
+
+```json
+"contracts": {
+  "R1": "… the failing check names and the assertion text …",
+  "R3": "… plus the file the defect sits in, and what to change …"
+}
+```
+
+- Absent means the task has no rungs; `--rung` against it is a usage error
+  naming the task.
+- Keys and values are non-empty strings. No rung name is enumerated in
+  production code, so a new rung is an authoring change, not a code change.
+- `contract` stays the default and is what an attempt without `--rung`
+  exports. On the six `agentclinic-repair-*` tasks it is equal to `R3`.
+- For a hidden-{term}`oracle` task, the grader-only path check runs over
+  `contract` **and every rung value**: a rung naming the overlay directory or
+  one of its files is refused at load, with the message naming the rung. This
+  is why an R1 digest carries **bare** hidden function names
+  (`test_post_complaint_redirects_to_complaints_board`) and never the
+  `<file>::<test>` node-id form `expected_test_ids` uses.
+
+**A stated limit.** The rung labels are *unverified authoring claims*. Only
+R1 and R3 ship, so the R0→R3 monotonicity gate collapses to a two-point
+`R1 ≤ R3` check, and no run in this phase measures it. R0 and R2, and the
+restored four-point check, are a V12 entry gate.
+
+### The generated Engine contract
+
+A task that does **not** declare `engine_contract` gets one rendered from its
+own manifest plus the selected rung, so the text the model sees is the text
+on record:
+
+```yaml
+id: "agentclinic-repair-plausible-wrong-fix@R1+…"
+task: "… the selected contract text …"
+writable_paths:
+  - "app.py"
+  - "templates/*"
+```
+
+- Both `id` and `task` are required — Engine requires `id` as well as `task`.
+- `id` is stable for the same (task, rung, contract digest) and changes when
+  the rung text changes.
+- `writable_paths` derives from `source_paths`: a **file** entry stays exact;
+  a **directory** entry becomes an fnmatch pattern over its descendants. An
+  entry with nothing at that path in `base/` is a creation target and stays
+  exact.
+- The rendered bytes are written once under the run's output root at
+  `engine-contracts/<sha256 of the bytes>.yaml`, and that absolute path is
+  appended to the command. The path is deterministic on purpose: a fresh
+  per-attempt path would change the recorded command, and a summary refuses
+  mixed commands, so the batch would not summarize.
+
+Engine's acceptance of the generated shape is proven by an integration-tier
+row that runs the real `satyrn-engine check` over all six tasks at both
+rungs; `id` stability is a claim about this generator, not about Engine.
 
 Tasks resolve from a tasks root: the bundled tasks that ship in the wheel by
 default, or a directory of captured tasks via `--tasks-root`. A captured task
@@ -122,6 +184,8 @@ attempt.json      # always
   "transcript_digest": "68b680be59b044860a88a04d273ef8df0a3482539ba133c8154d2c4880a56c17",
   "verdict": "pass",
   "receipt_path": "receipt.json",
+  "rung": "R1",
+  "contract_digest": "c4ca…",
   "workspace_base_sha": "…",
   "retained_path": null
 }
@@ -134,7 +198,12 @@ no normal child exit was observed. `patch_digest` is the sha256 of the
 persisted `patch.diff`, the same value the {term}`receipt` records — one
 source, no drift. `timeout` is the attempt command's timeout in seconds;
 records written by V9 always carry it, and older generations load without
-it.
+it. `rung` is the selected {term}`contract rung` key, null when the default
+`contract` was exported; `contract_digest` is the sha256 of the exact
+selected text and is **always** present on a new record, including the
+default contract. Records from before V11a load with both null and
+re-summarize preserving those explicit unknowns — a new record generation,
+not a rewrite of history (`version` stays `1`).
 
 A refusal keeps the same shape with `outcome: refused`, a precise `code`,
 `verdict` and `receipt_path` null, and `patch_path`/`transcript_path` null
@@ -180,7 +249,14 @@ paths, no trustworthy {term}`hook result`) — the receipt names the cause.
 | `task` | the task name from the attempt records |
 | `command` | the effective attempt command from the records (including any engine-contract suffix) |
 | `timeout` | the attempt timeout in seconds |
+| `rung` | the {term}`contract rung` every cell ran at, null for the default contract or a pre-V11a batch |
+| `contract_digest` | the sha256 of the exact contract text every cell exported, null for a pre-V11a batch |
 | `pathology` | per-cell block keyed by the cell names in `cells` order: each a measured count set or `{"measured": false, "reason": …}`; absent or unparseable/unknown-vocabulary/structurally-unsound transcripts are `unmeasured`, never zero. Hidden-oracle runs add `overlay_windows` to measured cells; visible-oracle runs carry no overlay key. Count definitions and the reason set: the V10 spec (`docs/superpowers/specs/2026-09-04-v10-transcript-pathology-counts-design.md` §3) |
+
+A summary refuses a mixed batch: cells at different rungs, or cells at the
+same rung whose contract digests differ, are refused exactly as mixed tasks,
+commands and timeouts are. The rung label is an authoring claim; the digest
+is the text itself.
 
 The summary is counts-only by design: outcome tallies, never wall-clock
 times, confidence intervals, or publication claims. It is the authoritative

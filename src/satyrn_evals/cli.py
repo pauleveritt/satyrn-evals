@@ -78,6 +78,7 @@ def main(argv: list[str] | None = None) -> int:
                 output=Path(args.output),
                 command=command,
                 timeout=args.timeout,
+                rung=args.rung,
             )
             if record.code is AttemptCode.GRADE_FAILED:
                 print(f"satyrn-evals: {record.message}", file=sys.stderr)
@@ -98,6 +99,7 @@ def main(argv: list[str] | None = None) -> int:
                 command=command,
                 n=args.n,
                 timeout=args.timeout,
+                rung=args.rung,
             )
             return 0
         if argv[:1] == ["session"]:
@@ -197,6 +199,11 @@ attempt_p.add_argument(
     "--output", default="attempts", help="attempt output directory (default: ./attempts)"
 )
 attempt_p.add_argument(
+    "--rung",
+    default=None,
+    help="contract rung key from the task manifest (default: the task contract)",
+)
+attempt_p.add_argument(
     "--timeout",
     type=positive_finite_timeout,
     default=DEFAULT_TIMEOUT,
@@ -217,6 +224,11 @@ run_p.add_argument(
 )
 run_p.add_argument(
     "--output", default="runs", help="run output directory (default: ./runs)"
+)
+run_p.add_argument(
+    "--rung",
+    default=None,
+    help="contract rung key from the task manifest (default: the task contract)",
 )
 run_p.add_argument(
     "--timeout",

@@ -2,7 +2,8 @@
 
 import json
 import stat
-from dataclasses import dataclass
+from collections.abc import Iterator
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
@@ -13,6 +14,10 @@ DEFAULT_TASKS_ROOT = Path(__file__).resolve().parent / "tasks"
 
 type Provenance = dict[str, str]
 type OracleVisibility = Literal["visible", "hidden"]
+# The rung ladder: an OPEN map from rung key to the contract text that rung
+# exports. Production code carries no enum of rung names (V11a spec §3), so
+# R0 and R2 arrive by authoring a key, never by a code change.
+type ContractRungs = dict[str, str]
 
 
 @dataclass(frozen=True)
@@ -27,6 +32,7 @@ class TaskManifest:
     engine_contract: str | None = None
     grader_overlay: str | None = None
     oracle_visibility: OracleVisibility = "visible"
+    contracts: ContractRungs = field(default_factory=dict)
 
 
 def _validate_grader_overlay(task_dir: Path, value: object) -> str | None:
@@ -108,23 +114,65 @@ def _overlay_declared_names(task_dir: Path, overlay_root: str) -> tuple[str, ...
     return tuple(names)
 
 
+def _validate_contracts(value: object) -> ContractRungs:
+    """Validate the optional rung map generically: {rung key: contract text}.
+
+    Open by construction (V11a spec §3): no rung name is enumerated here, so
+    an unknown key such as ``R7`` loads. Absent means the task has no rungs.
+
+    A JSON object cannot carry a non-string key, so the key type check is
+    only reachable from a programmatic caller; it is exercised directly by
+    ``test_contracts_non_string_key_refused_by_the_validator``.
+    """
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ManifestError("contracts must be an object mapping rung key to text")
+    for key, text in value.items():
+        if not isinstance(key, str) or not key.strip():
+            raise ManifestError("contracts keys must be non-empty rung strings")
+        if not isinstance(text, str) or not text.strip():
+            raise ManifestError(f"contracts[{key!r}] must be a non-empty string")
+    return dict(value)
+
+
+def _authored_texts(
+    contract: str, contracts: ContractRungs
+) -> Iterator[tuple[str, str]]:
+    """Every model-visible authored text, each with the label that names it.
+
+    The default ``contract`` plus every rung value. V11a spec §3: this is the
+    one check the trim makes *wider*, and it is not optional.
+    """
+    yield "contract", contract
+    for rung, text in contracts.items():
+        yield f"contracts[{rung!r}]", text
+
+
 def _assert_contract_names_no_overlay(
-    task_dir: Path, contract: str, overlay_root: str | None
+    task_dir: Path,
+    contract: str,
+    overlay_root: str | None,
+    contracts: ContractRungs,
 ) -> None:
-    """Refuse a hidden task whose contract names a grader-only path.
+    """Refuse a hidden task whose contract or any rung names a grader-only path.
 
     Limitation: this is an exact, case-sensitive substring match; a paraphrase
     passes. The check walks the declared overlay root with plain ``Path.rglob``
-    (no overlay loading) and compares each candidate name against ``contract``.
+    (no overlay loading) once, and compares each candidate name against the
+    default contract and every rung text. The raised message names the text it
+    refused, so an R1 authoring mistake is attributable.
     """
     if overlay_root is None:
         return
-    for name in _overlay_declared_names(task_dir, overlay_root):
-        if name in contract:
-            raise ManifestError(
-                f"contract names grader-only path: {name} "
-                "(hidden oracle; the docstring limit is: a paraphrase passes)"
-            )
+    names = _overlay_declared_names(task_dir, overlay_root)
+    for label, text in _authored_texts(contract, contracts):
+        for name in names:
+            if name in text:
+                raise ManifestError(
+                    f"{label} names grader-only path: {name} "
+                    "(hidden oracle; the docstring limit is: a paraphrase passes)"
+                )
 
 
 def load_manifest(task_dir: Path) -> TaskManifest:
@@ -204,7 +252,8 @@ def load_manifest(task_dir: Path) -> TaskManifest:
             raise ManifestError("grader_overlay requires a hidden oracle")
         case _:
             pass
-    _assert_contract_names_no_overlay(task_dir, contract, grader_overlay)
+    contracts = _validate_contracts(data.get("contracts"))
+    _assert_contract_names_no_overlay(task_dir, contract, grader_overlay, contracts)
     return TaskManifest(
         name=name,
         contract=contract,
@@ -216,6 +265,7 @@ def load_manifest(task_dir: Path) -> TaskManifest:
         engine_contract=engine_contract,
         grader_overlay=grader_overlay,
         oracle_visibility=visibility,
+        contracts=contracts,
     )
 
 

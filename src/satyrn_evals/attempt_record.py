@@ -33,6 +33,9 @@ _LEGACY_FIELDS = frozenset(
 _V4_FIELDS = frozenset({"workspace_base_sha", "retained_path"})
 _V7_FIELDS = frozenset({"attempt_dir"})
 _V9_FIELDS = frozenset({"timeout"})
+# V11a: rung provenance. `rung` is null when the default `contract` was
+# exported; `contract_digest` names the exact text either way.
+_V11_FIELDS = frozenset({"rung", "contract_digest"})
 class AttemptOutcome(StrEnum):
     ATTEMPTED = "attempted"
     REFUSED = "refused"
@@ -171,6 +174,8 @@ class AttemptRecord:
     verdict: Verdict | None
     receipt_path: str | None
     timeout: float | None = None
+    rung: str | None = None
+    contract_digest: str | None = None
     workspace_base_sha: str | None = None
     retained_path: str | None = None
     attempt_dir: str | None = None
@@ -231,6 +236,16 @@ class AttemptRecord:
                 )
             if type(self.timeout) is not float:
                 object.__setattr__(self, "timeout", float(self.timeout))
+        if self.rung is not None and not _nonempty_text(self.rung):
+            raise ValueError("attempt record rung must be non-empty or null")
+        if self.contract_digest is not None and not _hex_digest(
+            self.contract_digest, 64
+        ):
+            raise ValueError(
+                "attempt record contract_digest must be a SHA-256 digest"
+            )
+        if self.rung is not None and self.contract_digest is None:
+            raise ValueError("attempt record rung requires a contract_digest")
         if self.outcome is not policy.outcome:
             raise ValueError(f"{self.code} requires outcome {policy.outcome}")
         if policy.verdict is _Presence.REQUIRED and self.verdict is None:
@@ -299,6 +314,11 @@ def write_attempt_record(path: Path, record: AttemptRecord) -> None:
         data.pop("attempt_dir", None)
     if data.get("timeout") is None:
         data.pop("timeout", None)
+    if data.get("contract_digest") is None:
+        # The timeout precedent: an older-generation record writes the older
+        # field set exactly. A null rung with a digest still writes both.
+        for name in _V11_FIELDS:
+            data.pop(name, None)
     if legacy:
         for name in _V4_FIELDS:
             data.pop(name)
@@ -316,15 +336,18 @@ def load_attempt_record(path: Path) -> AttemptRecord:
     legacy_fields = _LEGACY_FIELDS
     v4_fields = _LEGACY_FIELDS | _V4_FIELDS
     v7_fields = v4_fields | _V7_FIELDS
-    current_fields = v7_fields | _V9_FIELDS
-    if fields not in {legacy_fields, v4_fields, v7_fields, current_fields}:
+    v9_fields = v7_fields | _V9_FIELDS
+    current_fields = v9_fields | _V11_FIELDS
+    if fields not in {legacy_fields, v4_fields, v7_fields, v9_fields, current_fields}:
         if missing := _LEGACY_FIELDS - fields:
             raise ValueError(f"attempt record missing a field: {sorted(missing)}")
         if unexpected := fields - current_fields:
             raise ValueError(f"attempt record has unexpected fields: {sorted(unexpected)}")
         raise ValueError("attempt record must contain both V4 workspace fields or neither")
-    if fields == current_fields and data.get("timeout") is None:
+    if "timeout" in fields and data.get("timeout") is None:
         raise ValueError("current attempt record requires a timeout")
+    if "contract_digest" in fields and data.get("contract_digest") is None:
+        raise ValueError("current attempt record requires a contract_digest")
     legacy = fields == _LEGACY_FIELDS
     command = data["command"]
     if not isinstance(command, list):
@@ -353,6 +376,8 @@ def load_attempt_record(path: Path) -> AttemptRecord:
             verdict=verdict,
             receipt_path=data.get("receipt_path"),
             timeout=data.get("timeout"),
+            rung=data.get("rung"),
+            contract_digest=data.get("contract_digest"),
             workspace_base_sha=data.get("workspace_base_sha"),
             retained_path=data.get("retained_path"),
             attempt_dir=data.get("attempt_dir"),

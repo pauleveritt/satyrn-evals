@@ -18,6 +18,28 @@ This file exists because a predecessor project's `ROADMAP.md` reached roughly
 
 ## Entries
 
+**Instruction-file contamination has no detector** (V11b, 2026-09-05). A
+stray `AGENTS.md` or `CLAUDE.md` in a task's `base/` would silently inject
+instructions into the model's context: the V7/V8 contamination detector scans
+for **grader overlay text**, not instruction files, so the surface is
+undetected rather than reported. V11b-trim closes it *by construction* — both
+arms pin pi's `--no-context-files` (`arms/baseline.json`; `satyrn-engine`
+already passes it at `attempt.py:240-264`) — which is cheaper than a second
+detector. Evidence and the arm-parity finding:
+[`2026-09-05-pi-context-file-loading-and-arm-parity.md`](docs/superpowers/research/2026-09-05-pi-context-file-loading-and-arm-parity.md).
+**Reopens** if any arm is ever run without `-nc`, or if a captured task ships
+an instruction file in `base/` — at which point construction no longer closes
+the surface and a detector is owed.
+
+**Where pi's ~9,000 unexplained repo-root tokens come from** (V11b,
+2026-09-05). `CLAUDE.md` (~1,260 tokens) plus ~3 KB of home files does not
+account for the 9,753-token repo-root measurement, and the same directory
+gave 13,645 on one call and 9,753 on another. Both need a stream capture that
+was not obtained. Unresolved, and no number from that record may be used as a
+budget input until it is. **Reopens** when the Envelope cap is argued (V13,
+proposal §2.4) — that argument needs a measured per-cell floor from inside a
+materialized workspace, which the V5d smokes are tasked to capture.
+
 **`stringified-annotations` capture** (V5c, 2026-09-03). Deferred from V5c,
 which captures `local-pings` only: its Engine arm is pinned at ceiling (6/6,
 `docs/superpowers/specs/2026-09-02-v5a-admission-rule-design.md:78`), so it

@@ -6,6 +6,7 @@ import pytest
 from satyrn_evals.errors import ManifestError
 from satyrn_evals.manifest import (
     DEFAULT_TASKS_ROOT,
+    _validate_contracts,
     is_valid_task_name,
     load_manifest,
     resolve_task,
@@ -473,3 +474,121 @@ def test_visible_task_may_name_any_path(tmp_path: Path) -> None:
     data["contract"] = "make tests/t_hidden.py pass"
     (task / "manifest.json").write_text(json.dumps(data))
     assert load_manifest(task).contract.startswith("make tests")
+
+
+# --- V11a Task 1/2: the open `contracts` rung map ---
+#
+# The map is deliberately OPEN (spec §3): production code carries no enum of
+# rung names, so R0 and R2 are later authoring additions rather than a code
+# change. These tests pin that openness in both directions -- a key the code
+# has never heard of loads, and a malformed entry is refused.
+
+
+def _write_task_with_contracts(tmp_path: Path, contracts: object) -> Path:
+    """A hidden task whose manifest carries the given `contracts` value."""
+    task = _write_task(tmp_path, visibility="hidden")
+    data = json.loads((task / "manifest.json").read_text())
+    data["contracts"] = contracts
+    (task / "manifest.json").write_text(json.dumps(data))
+    return task
+
+
+def test_contracts_absent_loads_as_empty_map(tmp_path: Path) -> None:
+    """Success sibling: a task with no rungs is not an error."""
+    assert load_manifest(_write_task(tmp_path, visibility="hidden")).contracts == {}
+
+
+def test_contracts_two_rungs_load_with_both_texts(tmp_path: Path) -> None:
+    task = _write_task_with_contracts(
+        tmp_path, {"R1": "bare test_x fails", "R3": "do the thing"}
+    )
+    assert load_manifest(task).contracts == {
+        "R1": "bare test_x fails",
+        "R3": "do the thing",
+    }
+
+
+def test_contracts_key_unknown_to_the_code_loads(tmp_path: Path) -> None:
+    """The map is open: `R7` is authoring, not a code change (spec §3)."""
+    task = _write_task_with_contracts(tmp_path, {"R7": "a rung nobody declared"})
+    assert load_manifest(task).contracts == {"R7": "a rung nobody declared"}
+
+
+def test_contracts_not_an_object_refused(tmp_path: Path) -> None:
+    task = _write_task_with_contracts(tmp_path, ["R1", "R3"])
+    with pytest.raises(ManifestError, match="contracts must be an object"):
+        load_manifest(task)
+
+
+def test_contracts_empty_key_refused(tmp_path: Path) -> None:
+    task = _write_task_with_contracts(tmp_path, {"": "text"})
+    with pytest.raises(ManifestError, match="contracts keys must be non-empty"):
+        load_manifest(task)
+
+
+def test_contracts_non_string_value_refused(tmp_path: Path) -> None:
+    task = _write_task_with_contracts(tmp_path, {"R1": 3})
+    with pytest.raises(ManifestError, match="contracts\\['R1'\\] must be a non-empty"):
+        load_manifest(task)
+
+
+def test_contracts_whitespace_value_refused(tmp_path: Path) -> None:
+    task = _write_task_with_contracts(tmp_path, {"R1": "   \n"})
+    with pytest.raises(ManifestError, match="contracts\\['R1'\\] must be a non-empty"):
+        load_manifest(task)
+
+
+def test_contracts_non_string_key_refused_by_the_validator() -> None:
+    """A JSON object cannot carry a non-string key, so this refusal is only
+    reachable through the validator itself -- exercised here so the guard is
+    not dead code. Its success sibling is the two-rung load above."""
+    with pytest.raises(ManifestError, match="contracts keys must be non-empty"):
+        _validate_contracts({1: "text"})
+
+
+def test_rung_text_naming_overlay_file_refused(tmp_path: Path) -> None:
+    """Task 2: the name check widens to every rung, and names the rung."""
+    task = _write_task_with_contracts(
+        tmp_path, {"R1": "make tests/t_hidden.py pass", "R3": "do the thing"}
+    )
+    with pytest.raises(
+        ManifestError, match=r"contracts\['R1'\] names grader-only path"
+    ):
+        load_manifest(task)
+
+
+def test_rung_text_naming_overlay_root_refused(tmp_path: Path) -> None:
+    task = _write_task_with_contracts(tmp_path, {"R1": "look in grader/overlay"})
+    with pytest.raises(
+        ManifestError, match=r"contracts\['R1'\] names grader-only path"
+    ):
+        load_manifest(task)
+
+
+def test_rung_text_with_bare_function_names_loads(tmp_path: Path) -> None:
+    """Success sibling: the same digest carrying BARE hidden function names is
+    exactly what R1 is authored from (spec §3), and must load."""
+    task = _write_task_with_contracts(
+        tmp_path, {"R1": "test_x fails: assert 307 == 303", "R3": "do the thing"}
+    )
+    assert load_manifest(task).contracts["R1"].startswith("test_x fails")
+
+
+def test_default_contract_still_refuses_when_rungs_are_present(tmp_path: Path) -> None:
+    """The widening must not regress the existing check: a clean rung map does
+    not excuse a default `contract` that names a grader-only path."""
+    task = _write_task_with_contracts(tmp_path, {"R1": "test_x fails"})
+    data = json.loads((task / "manifest.json").read_text())
+    data["contract"] = "make tests/t_hidden.py pass"
+    (task / "manifest.json").write_text(json.dumps(data))
+    with pytest.raises(ManifestError, match="contract names grader-only path"):
+        load_manifest(task)
+
+
+def test_visible_task_rung_may_name_any_path(tmp_path: Path) -> None:
+    """No overlay, no hidden oracle, no check -- the visible sibling."""
+    task = _write_task(tmp_path, visibility=None, overlay=False)
+    data = json.loads((task / "manifest.json").read_text())
+    data["contracts"] = {"R1": "make tests/t_hidden.py pass"}
+    (task / "manifest.json").write_text(json.dumps(data))
+    assert load_manifest(task).contracts["R1"].startswith("make tests")
