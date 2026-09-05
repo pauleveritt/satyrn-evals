@@ -235,3 +235,52 @@ suite on the Evals path may then be proposed and confirmed separately.
 suite proceeds through V11a's evidence ladder and V12's reference placement
 profile before V13 can propose an arm comparison. This records a queued
 successor, not admission or a result.
+
+**An infrastructure error is scored as a model refusal** (found 2026-09-05,
+voided V11c mini-probe, `~/satyrn-smokes/2026-09-05-v11c-miniprobe/`). A GPU
+out-of-memory turn — zero `usage`, `stopReason: "error"` — leaves `pi` exiting
+0 with a clean tree, so `decide_refusal` checks the empty patch first and
+returns `NO_PATCH` (`src/satyrn_evals/attempt.py:102`), never reading the
+transcript fields saying the model never ran. The record is shape-identical to
+a genuine no-edit cell. **The OOM's cause was environmental and is not the
+finding** — the finding is that any model-side hard failure (server restart,
+unloaded model, provider error) is indistinguishable from "worked and declined
+to edit." Symptom family:
+`docs/superpowers/research/2026-08-16-harvest-index.md:97-111`; this mechanism
+is absent there. The session adapter already discriminates it
+(`src/satyrn_evals/adapters/pi_session.py:60-84`); the attempt path does not.
+**Reopens as a design proposal** — a non-scoring `MODEL_ERROR` read from the
+preserved transcript before `decide_refusal`, so `regrade` re-derives it
+without a model; never from the exit code (`BRIEF.md` rule 4). Until then,
+**screen every batch**:
+`grep -l '"stopReason":"error"' RUNS_ROOT/*/*/transcript.txt`.
+
+**`tool_free_terminal_turns` is dead on every pi-adapter cell** (found
+2026-09-05, same investigation; independent of the OOM above). The counter is
+gated on `not had_patch` (`src/satyrn_evals/pathology.py:321`), but `rescore`
+passes `had_patch=record.patch_path is not None`
+(`src/satyrn_evals/rescore.py:214`) while `attempt_pi` writes `patch.diff`
+unconditionally, empty or not (`src/satyrn_evals/attempt_pi.py:231`) and
+`attempt.py:289` sets `patch_path` whenever the file exists. So `had_patch` is
+always true and the counter can never fire. Demonstrated on a cell from the
+voided batch: the published summary for
+`plausible-wrong-fix/…-200622-258836` records `tool_free_terminal_turns: 0`;
+recomputed from that same preserved transcript with the repo's own
+`count_transcript`, it is **1**. The code matches the V10 spec's letter
+(`record.patch_path is None`) and defeats its intent (§3.6: the floored model
+that stops after a text turn without ever editing). This silently understates
+every pi-adapter cell already collected, including the green post-landing
+smokes. **Reopens with the fix** — `had_patch` must mean a non-empty patch —
+**plus a refusal/success test pair** per `BRIEF.md` rule 6, since a counter
+stuck at zero is precisely the defect that passes silently.
+
+**A signal-killed run writes no `aborted.json`** (observed 2026-09-05, same
+batch, lowest confidence of the three). `run.py:123-153` writes `aborted.json`
+on any `BaseException`, but stopping the mini-probe mid-cell left
+`misleading-locus/` with three cell directories, no `summary.json`, and no
+`aborted.json`; the interrupted cell
+(`…-200931-612268`, 191 KB of transcript, 17 tool calls) has no `attempt.json`
+at all. Inferred, not verified: the process was ended by a signal that raises
+no Python exception. **Reopens when someone can reproduce a SIGTERM against a
+live `run`** — this is a V9 loop-integrity gap if it holds, and a
+misattribution if it does not.
