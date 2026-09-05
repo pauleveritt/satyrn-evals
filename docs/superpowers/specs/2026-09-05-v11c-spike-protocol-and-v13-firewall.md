@@ -79,6 +79,45 @@ may **not** generalize that R1 has no headroom.
 Selecting from the reference arm alone keeps arm comparison out of the cell
 choice.
 
+### Result — recorded 2026-09-05, rule applied as frozen
+
+Ran as specified: 12/12 cells, Baseline, R1, `n=4`, 900 s, sequential. Evals
+`391b27a`, engine `25ca0be`, pi `0.84.4`, preflight green immediately before
+the batch. Record and recompute commands:
+`~/satyrn-smokes/2026-09-05-v11c-miniprobe-2/RESULT.md`.
+
+| task | successful attempts | retained patches | conditional quality |
+|---|---|---|---|
+| `plausible-wrong-fix` | 4/4 | 4/4 | 4/4 pass |
+| `misleading-locus` | **3/4** | 3/4 | 3/3 pass |
+| `depth-3` | 0/4 | 4/4 | 0/4 pass |
+
+No candidate is operationally invalid; no timeouts; no GPU out-of-memory in
+any transcript. Under rule 2 the only interior candidate is
+**`misleading-locus`** (`min(3, 1) = 1`), so it is selected with no tie-break.
+Rules 3–5 do not engage.
+
+**Selected: `agentclinic-repair-misleading-locus`, R1.** The spike (§3) is
+authorized by this selection but **has not been run** — the maintainer held
+it 2026-09-05.
+
+Two readings that are *not* licensed by this table. `depth-3`'s `0/4` is a
+**quality floor, not a completion floor**: all four cells produced patches and
+all four failed the same seeded defect (`timestamp.tzinfo is not None`), none
+of them touching timezone awareness. That is unlike `local-pings`, whose
+floored cells retained patches that *passed*, and it is not a capability-wall
+claim. And `misleading-locus`'s single failure is a 282-read, 280-repeat,
+zero-edit loop that ended at the server's 80,000-token wall — model behavior,
+kept in the denominator, though the instrument carries a recorded config
+mismatch (pi believed the context window was 262,144, so its compaction could
+never fire first).
+
+**A first attempt on 2026-09-05 is void** and is not pooled with the above:
+GPU out-of-memory scored as `NO_PATCH`, evidence and reasoning preserved at
+`~/satyrn-smokes/2026-09-05-v11c-miniprobe/VOID.md`. Under memory pressure
+`plausible-wrong-fix` read `1/4`; re-run clean it is `4/4`, so the voided
+counts would have selected a ceiling task for the spike.
+
 ## 3. Spike — frozen before it runs
 
 Baseline vs Engine, the selected task at R1, **`n=12` per arm**, 24 cells,
