@@ -12,9 +12,9 @@
   "server_model": "gemma-4-12B-it-MLX-8bit",
   "pins": {
     "pi": "0.84.4",
-    "engine_commit": "75d486327c513d8e686d5e346c59092548d88a15",
+    "engine_commit": "25ca0be741f3c305b6d24f6dbd04880fa79f10e9",
     "digests": {
-      "engine.ts": "41ed48c386d9359b199121dec15b50f8b05bb46662a6816f407f6e60d7509c5a",
+      "engine.ts": "2e4fc0644d807c625831147708173b830250127ed393a37e0d6172ed24ed9f9b",
       "mutator.ts": "a08d6dea63fdd382532259a26d178dabc0a8ba499b7c6adcdb56d6ba07e06168"
     }
   }

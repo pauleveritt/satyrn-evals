@@ -72,7 +72,7 @@ def test_engine_file_loads_with_read_edit_and_the_pinned_commit() -> None:
     assert arm.model == load_arm(BASELINE).model
     commit = arm.pins.engine_commit
     assert commit is not None
-    assert commit.startswith("75d4863")  # the spec's pinned engine commit
+    assert commit.startswith("25ca0be")  # the repaired Engine commit
     assert len(commit) == 40
     assert set(arm.pins.digests) == {"engine.ts", "mutator.ts"}
     assert all(len(value) == 64 for value in arm.pins.digests.values())
