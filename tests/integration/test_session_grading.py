@@ -35,6 +35,7 @@ def test_clean_session_grades_every_checkpoint(tmp_path: Path) -> None:
     assert [s.feature_verdict for s in record.steps] == ["pass", "pass", "pass"]
     assert record.steps[-1].preservation_verdict == "pass"
     assert record.steps[-1].feature_receipt_path is not None
+    assert record.steps[0].feature_receipt_path is not None
     receipt = json.loads(
         (next(tmp_path.iterdir()) / record.steps[0].feature_receipt_path).read_text()
     )
@@ -87,6 +88,7 @@ def test_scope_checkpoint_skips_hidden_but_keeps_evidence(tmp_path: Path) -> Non
     assert violating.scope_violations
     assert violating.feature_verdict is None  # hidden grading skipped
     assert violating.feature_receipt_path is None
+    assert violating.patch_path is not None
     assert (next(tmp_path.iterdir()) / violating.patch_path).exists()  # evidence kept
     assert record.steps[0].feature_verdict == "pass"  # clean checkpoint graded
     # review's tree still holds outside.txt: its hidden grading is skipped
@@ -101,7 +103,7 @@ def _graded(tmp_path: Path, scenario: str, **kw: float):
         tasks_root=DATA,
         output=tmp_path,
         adapter_command=[sys.executable, str(FAKE), scenario],
-        **kw,
+        **kw,  # type: ignore[bad-argument-type]  # kw are run_session's float timeouts; pyrefly cannot route dynamic keys
     )
     session_dir = next(p for p in tmp_path.iterdir() if p.is_dir())
     grader = SessionGrader(task_dir=TASK)

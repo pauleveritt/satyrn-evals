@@ -195,5 +195,5 @@ def compute_summary(
 def write_summary(path: Path, summary: Summary) -> None:
     data = asdict(summary)
     if summary.contamination is None:
-        del data["contamination"]
+        data.pop("contamination")
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")

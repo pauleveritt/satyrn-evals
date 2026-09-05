@@ -22,7 +22,9 @@ def test_mapped_kinds_and_payload_retention() -> None:
         assert obj["type"] == "event"
         assert obj["step_id"] == "add-a"
         assert obj["payload"] == event  # the original event, unmodified
-    assert json.loads(map_rpc_event(EVENTS["compaction_end"], step_id="add-a", conversation_id="c-1"))["kind"] == "context_compacted"
+    compacted = map_rpc_event(EVENTS["compaction_end"], step_id="add-a", conversation_id="c-1")
+    assert compacted is not None
+    assert json.loads(compacted)["kind"] == "context_compacted"
 
 
 def test_terminal_outcome_from_agent_end_stop_reasons() -> None:

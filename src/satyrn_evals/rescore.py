@@ -337,7 +337,9 @@ def regrade_attempt(
     if not _gradeable(record):
         return None  # nothing was graded, so nothing re-scores (no-op).
     # OK and GRADE_FAILED policies both require patch + transcript, so the
-    # record's patch_path is guaranteed present here.
+    # record's patch_path is guaranteed present here (a None is a logic
+    # bug, not a runtime case).
+    assert record.patch_path is not None
     root = _root(tasks_root)
     task_dir = resolve_task(record.task, tasks_root=root)
     receipt = grade(

@@ -602,12 +602,12 @@ def test_timeout_must_be_a_positive_finite_float() -> None:
     for bad in (0.0, -1.0, float("nan"), float("inf"), True, "9"):
         with pytest.raises(ValueError, match="timeout"):
             AttemptRecord(
-                **{
+                **{  # type: ignore[bad-argument-type]  # pyrefly cannot narrow a computed asdict-filtered **dict; the unpack is the test's subject
                     k: v
                     for k, v in asdict(_refused()).items()
                     if k not in ("_legacy", "timeout")
                 },
-                timeout=bad,
+                timeout=bad,  # type: ignore[bad-argument-type]  # deliberately invalid timeout types (bool/str/NaN/inf) prove refusal
             )
 
 
@@ -619,7 +619,7 @@ def test_int_timeout_normalizes_to_float() -> None:
     the same validation without breaking.
     """
     record = AttemptRecord(
-        **{
+        **{  # type: ignore[bad-argument-type]  # pyrefly cannot narrow a computed asdict-filtered **dict; the unpack is the test's subject
             k: v
             for k, v in asdict(_refused()).items()
             if k not in ("_legacy", "timeout")

@@ -13,6 +13,7 @@ import select
 import threading
 import time
 from types import SimpleNamespace
+from typing import BinaryIO, Literal, TextIO, overload
 
 import pytest
 
@@ -31,7 +32,13 @@ class _PipePair:
     def reader(self):
         return os.fdopen(self._r, "r", encoding="utf-8")
 
-    def writer(self, binary: bool = False):
+    @overload
+    def writer(self, binary: Literal[True]) -> BinaryIO: ...
+
+    @overload
+    def writer(self, binary: Literal[False] = False) -> TextIO: ...
+
+    def writer(self, binary: bool = False) -> TextIO | BinaryIO:
         if binary:
             return os.fdopen(self._w, "wb")
         return os.fdopen(self._w, "w", encoding="utf-8")
@@ -121,7 +128,8 @@ def _start(conversation: str = "conv-test"):
         try:
             with driver_stdin.reader() as stdin, driver_stdout.writer() as stdout:
                 pi_session._serve(
-                    stdin, stdout, fake_pi, conversation_id="conv-test"
+                    stdin, stdout, fake_pi,  # type: ignore[bad-argument-type]  # _FakePi duck-types the _PiHandle seam in-process
+                    conversation_id="conv-test",
                 )
         except BaseException as exc:  # surfaced to the test on join
             errors.append(exc)
@@ -397,7 +405,7 @@ def test_reap_escalates_to_kill_on_a_term_refusing_child() -> None:
             pass
 
     stub = _Stub()
-    pi_session.reap(stub)
+    pi_session.reap(stub)  # type: ignore[bad-argument-type]  # _Stub duck-types the _PiHandle seam
     assert stub.terminated and stub.killed and stub.calls == 2
 
 
@@ -417,7 +425,7 @@ def test_reap_skips_a_child_that_already_exited() -> None:
         def terminate(self) -> None:
             raise AssertionError("must not terminate a reaped child")
 
-    pi_session.reap(_Done())
+    pi_session.reap(_Done())  # type: ignore[bad-argument-type]  # _Done duck-types the _PiHandle seam
 
 
 def test_unknown_typed_input_line_is_ignored() -> None:
@@ -499,6 +507,7 @@ def test_pi_child_argv_and_runtime_env_carry_no_overlay_names():
 
     task_dir = DEFAULT_TASKS_ROOT / "session-mechanics"
     manifest = load_manifest(task_dir)
+    assert manifest.grader_overlay is not None
     names = _overlay_declared_names(task_dir, manifest.grader_overlay)
     argv_text = " ".join(build_pi_argv(provider="p", model="m", pi_bin="pi"))
     env_text = " ".join(f"{k}={v}" for k, v in _SESSION_RUNTIME_ENV.items())

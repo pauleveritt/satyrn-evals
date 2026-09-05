@@ -86,10 +86,10 @@ class AdapterProcess:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise AdapterTimeout("adapter line deadline passed")
+            assert self._proc.stdout is not None
             ready, _, _ = select.select([self._proc.stdout], [], [], remaining)
             if not ready:
                 continue
-            assert self._proc.stdout is not None
             chunk = os.read(self._proc.stdout.fileno(), 65536)
             if not chunk:
                 if not self._buf:

@@ -82,6 +82,7 @@ def test_four_prompt_session_through_the_shipped_adapter(
         grader=SessionGrader(task_dir=TASK),
     )
     assert record.code.value in ("COMPLETE",)
+    assert record.conversation_id is not None
     assert record.conversation_id.startswith("pi-")
     assert [s.step_id for s in record.steps] == [
         "add-slugify",
@@ -213,6 +214,7 @@ def test_python_test_run_leaves_no_bytecode_in_the_workspace(
         assert not any("__pycache__" in v for v in step.scope_violations)
         assert step.scope_violations == ()
     session_dir = _session_dir(tmp_path)
+    assert record.steps[-1].patch_path is not None
     patch = (session_dir / record.steps[-1].patch_path).read_text()
     assert "__pycache__" not in patch
 

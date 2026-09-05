@@ -650,10 +650,27 @@ transitions in the split plan files initially failed the strict build;
 fixed in the follow-up docs commit.) Pyrefly: V10's five
 changed modules add zero new errors (module-scoped pyrefly reports three
 errors, all on pre-existing lines — the `del dict[key]` unsupported-delete
-family and the regrade `Path | None` union); the full tree carries ~110
-pre-existing pyrefly errors on committed, untouched files — a toolchain
-drift since V9's verification, recorded here as a known pre-existing
-condition, not a V10 regression.
+family and the regrade `Path | None` union); the full tree carried ~110
+pre-existing pyrefly errors on committed, untouched files (recorded here
+as known pre-existing, not a V10 regression). Corrected attribution
+(2026-09-05): this was NOT toolchain drift — pyrefly 1.2.0 is pinned
+throughout, and V9's verification never ran pyrefly tree-wide (its
+done-when required it; its gate evidence omitted it). The errors are
+accumulated pyrefly violations in V6-V9-era code (`**dict` unpacking into
+typed constructors, `del dict[key]`, fixture-data trees under tests/
+missing the tasks-dir project-exclusion) plus a config gap. Fixed as a
+maintenance wave (Pyrefly-drift correction, 2026-09-05): one config gap
+and ~110 accumulated violations in V6-V9-era code were resolved —
+`[tool.pyrefly] project-excludes` gained the fixture-data trees
+(`tests/data`, `tests/integration/data`); `del dict[key]` became
+`pop()`; `**dict` unpacking into typed constructors was rewritten to
+explicit construction in `src/` (session_record.py) and given
+rationale'd per-line ignores in tests where the unpack is the test's
+subject; a small set of src invariants became asserts and deliberate
+test seams gained `cast`/ignores with rationale. Tree-wide
+`uv run pyrefly check` now reports 0 errors (was 110). No behavior
+change intended; the full gate (1096 passed, 1 skipped, 100% coverage)
+is unchanged.
 
 **Fixture discrimination, both directions, by name** — the V10 evidence
 floor:

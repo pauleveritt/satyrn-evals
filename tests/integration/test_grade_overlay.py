@@ -30,6 +30,7 @@ def test_known_good_passes_with_overlay(tmp_path: Path) -> None:
         expected=SELECTORS,
     )
     assert receipt.verdict is Verdict.PASS
+    assert receipt.evidence is not None
     assert set(receipt.evidence["executed_test_ids"]) == set(SELECTORS)
 
 
@@ -60,6 +61,7 @@ def test_bare_grade_on_hidden_task_narrows_to_expected_ids(tmp_path: Path) -> No
         TASK, TASK / "fixtures" / "known-good.patch", tmp_path / "receipt.json"
     )
     assert receipt.verdict is Verdict.PASS
+    assert receipt.evidence is not None
     assert receipt.evidence["executed_test_ids"] == ["test_solution.py::test_normalize"]
     assert receipt.contamination is not None
     assert receipt.contamination["visibility"] == "hidden"

@@ -42,6 +42,7 @@ def test_patch_copying_overlay_block_flags():
     assert result.outcome == "flagged"
     assert result.evidence[0].overlay_path == "tests/t_hidden.py"
     assert result.evidence[0].in_path == "src/m.py"
+    assert result.evidence[0].line is not None
     assert result.evidence[0].line >= 1
     assert result.evidence[0].kind == "block"
 

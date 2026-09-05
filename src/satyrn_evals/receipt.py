@@ -26,7 +26,7 @@ def patch_digest(data: bytes) -> str:
 def write_receipt(path: Path, receipt: Receipt) -> None:
     data = asdict(receipt)
     if receipt.contamination is None:
-        del data["contamination"]
+        data.pop("contamination")
     if receipt.resolved_versions is None:
-        del data["resolved_versions"]
+        data.pop("resolved_versions")
     path.write_text(json.dumps(data, indent=2) + "\n")

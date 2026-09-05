@@ -16,7 +16,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
 
-from lint_docs import (  # noqa: E402
+from lint_docs import (  # noqa: E402  # type: ignore[missing-import]  # tools/ added via sys.path above
     BACKLOG_ENTRY_CAP,
     DIRECTION_CAP,
     GRANDFATHERED,

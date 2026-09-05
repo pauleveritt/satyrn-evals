@@ -11,7 +11,9 @@ import subprocess
 from pathlib import Path
 
 import pytest
-from test_agentclinic_reconstruction import STATES
+from test_agentclinic_reconstruction import (  # type: ignore[missing-import]  # pytest sibling resolution (tests/ on sys.path); pyrefly's src root cannot see it
+    STATES,
+)
 
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
 

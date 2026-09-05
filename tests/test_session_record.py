@@ -241,7 +241,7 @@ def test_grader_keeps_a_zero_step_record_unchanged(tmp_path: Path) -> None:
     graded = grader.grade_record(
         record,
         SPEC,
-        _OverlayShim(),
+        _OverlayShim(),  # type: ignore[bad-argument-type]  # trap shim: overlay must never be touched for zero-step records
         tmp_path,
     )
     assert graded.code is record.code
@@ -264,7 +264,9 @@ def test_grader_skips_preservation_for_a_patchless_last_step(
 
     record = _record(steps=(StepRecord("add-a", "p1", "agent-error"),))
     graded = SessionGrader(task_dir=tmp_path).grade_record(
-        record, SPEC, _OverlayShim(), tmp_path
+        record, SPEC,
+        _OverlayShim(),  # type: ignore[bad-argument-type]  # trap shim: overlay must never be touched for zero-step records
+        tmp_path,
     )
     assert graded.code is record.code
     assert graded.steps[0].feature_verdict is None
@@ -297,7 +299,9 @@ def test_preservation_is_invalid_when_the_patch_edits_a_protected_public_test(
         )
     )
     graded = SessionGrader(task_dir=tmp_path).grade_record(
-        record, spec, _OverlayShim(), tmp_path
+        record, spec,
+        _OverlayShim(),  # type: ignore[bad-argument-type]  # trap shim: overlay must never be touched for zero-step records
+        tmp_path,
     )
     step = graded.steps[0]
     assert step.preservation_verdict == PRESERVATION_INVALID

@@ -171,11 +171,26 @@ def load_session_record(path: Path) -> SessionRecord:
         raise ValueError("session record version must be 1")
     steps = tuple(
         StepRecord(
-            **{
-                **step,
-                "scope_violations": tuple(step.get("scope_violations", ())),
-                "contamination": step.get("contamination"),
-            }
+            step_id=str(step["step_id"]),
+            prompt_digest=str(step["prompt_digest"]),
+            outcome=str(step["outcome"]),
+            patch_path=step.get("patch_path"),
+            patch_digest=step.get("patch_digest"),
+            patch_bytes=step.get("patch_bytes"),
+            snapshot_path=step.get("snapshot_path"),
+            snapshot_digest=step.get("snapshot_digest"),
+            transcript_prefix_path=step.get("transcript_prefix_path"),
+            transcript_prefix_digest=step.get("transcript_prefix_digest"),
+            transcript_prefix_bytes=step.get("transcript_prefix_bytes"),
+            feature_receipt_path=step.get("feature_receipt_path"),
+            preservation_receipt_path=step.get("preservation_receipt_path"),
+            scope_violations=tuple(step.get("scope_violations", ())),
+            feature_verdict=step.get("feature_verdict"),
+            preservation_verdict=step.get("preservation_verdict"),
+            turn_count=step.get("turn_count", 0),
+            tool_count=step.get("tool_count", 0),
+            context_events=step.get("context_events", 0),
+            contamination=step.get("contamination"),
         )
         for step in data.pop("steps", ())
     )

@@ -18,6 +18,7 @@ from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, load_manifest
 from satyrn_evals.overlay import load_overlay
 from satyrn_evals.session import _capture_checkpoint
 from satyrn_evals.session_manifest import SessionStep
+from satyrn_evals.session_record import StepRecord
 from satyrn_evals.workspace import (
     prepare_session_workspace,
     release_session_workspace,
@@ -51,7 +52,7 @@ def _capture(
     tmp_path: Path,
     transcript_bytes: bytes | None,
     transcript_prior_len: int,
-) -> object:
+) -> StepRecord:
     manifest = load_manifest(TASK_DIR)
     spec = load_overlay(TASK_DIR, manifest)
     session_dir = tmp_path / "session"
@@ -85,7 +86,7 @@ def _capture(
     finally:
         release_session_workspace(workspace)
 
-def _c_outcome(record: object) -> str | None:
+def _c_outcome(record: StepRecord) -> str | None:
     if record.contamination is None:
         return None
     for check in record.contamination["checks"]:

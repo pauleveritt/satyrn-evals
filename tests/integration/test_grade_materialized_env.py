@@ -74,7 +74,8 @@ def test_missing_uv_yields_unavailable_not_ambient_pass(
         (bundled_task_dir / "fixtures" / "known-good.patch").read_text())
     nobin = tmp_path / "nobin"
     nobin.mkdir()
-    git_bin = Path(shutil.which("git")).parent if shutil.which("git") else Path("/usr/bin")
+    which_git = shutil.which("git")
+    git_bin = Path(which_git).parent if which_git else Path("/usr/bin")
     monkeypatch.setenv("PATH", os.fspath(nobin) + os.pathsep + os.fspath(git_bin))
     receipt_path = tmp_path / "receipt.json"
     receipt = grade(bundled_task_dir, patch_path, receipt_path)
@@ -101,7 +102,8 @@ def test_freeze_failure_is_unavailable_not_a_silent_drop(
         argv = list(args) if isinstance(args, (list, tuple)) else [str(args)]
         if argv[:1] == ["uv"] and any("freeze" in a for a in argv):
             raise _subprocess.CalledProcessError(3, args)
-        return real_run(args, **kwargs)
+        # spy forwards whatever subprocess.run accepts; pyrefly cannot route heterogeneous **kwargs
+        return real_run(args, **kwargs)  # type: ignore[no-matching-overload]
 
     monkeypatch.setattr(grade_mod.subprocess, "run", failing_freeze)
     patch_path = tmp_path / "p.patch"

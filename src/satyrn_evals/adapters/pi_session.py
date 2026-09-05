@@ -24,7 +24,8 @@ import select
 import subprocess
 import sys
 import uuid
-from typing import BinaryIO, Protocol, TextIO
+from collections.abc import Mapping
+from typing import BinaryIO, Protocol, TextIO, cast
 
 from satyrn_evals.errors import ProtocolError
 
@@ -102,7 +103,7 @@ def _session_line(obj: dict[str, object]) -> str:
 
 
 def map_rpc_event(
-    obj: dict[str, object], *, step_id: str, conversation_id: str
+    obj: Mapping[str, object], *, step_id: str, conversation_id: str
 ) -> str | None:
     """Map one Pi RPC message to a session line, or None when unmapped.
 
@@ -334,6 +335,10 @@ def main(argv: list[str] | None = None) -> int:
         env={**os.environ, **_SESSION_RUNTIME_ENV},
     )
     assert proc.stdin is not None and proc.stdout is not None
+    # Popen satisfies the _PiHandle seam at runtime; pyrefly's structural
+    # protocol check cannot match typeshed's `IO[Any] | None` members, so
+    # the real handle is cast to the seam once, at its construction.
+    handle = cast(_PiHandle, proc)
     sys.stdout.write(
         _session_line(
             {
@@ -344,8 +349,8 @@ def main(argv: list[str] | None = None) -> int:
         )
     )
     sys.stdout.flush()
-    _serve(sys.stdin, sys.stdout, proc, conversation_id=conversation_id)
-    reap(proc)
+    _serve(sys.stdin, sys.stdout, handle, conversation_id=conversation_id)
+    reap(handle)
     return 0
 
 

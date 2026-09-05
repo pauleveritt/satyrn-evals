@@ -114,6 +114,10 @@ def grade(
 
     contamination: dict | None = None
     if auto_overlay:
+        # auto_overlay True at this point implies the overlay was loaded
+        # above (auto_overlay required overlay is None at entry), so the
+        # detector always has a spec here.
+        assert overlay is not None
         base_root = task_dir / "base"
         visible_texts = (
             [

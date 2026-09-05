@@ -31,7 +31,7 @@ TASK = "format_number"
 
 
 def record(**overrides: object) -> AttemptRecord:
-    base = dict(
+    base: dict[str, object] = dict(
         version=1, outcome=AttemptOutcome.ATTEMPTED, code=AttemptCode.OK,
         message="ok", task=TASK, command=("fake",), command_exit=0,
         patch_path="patch.diff", transcript_path="transcript.txt",
@@ -40,7 +40,7 @@ def record(**overrides: object) -> AttemptRecord:
         timeout=123.0, workspace_base_sha="c" * 40, attempt_dir="cell-1",
     )
     base.update(overrides)
-    return AttemptRecord(**base)
+    return AttemptRecord(**base)  # type: ignore[bad-argument-type]  # pyrefly cannot narrow the computed **dict; construction rules are this helper's subject
 
 
 def write_cell(

@@ -18,5 +18,5 @@ def test_close_stdin_tolerates_a_missing_descriptor() -> None:
 
     proc = object.__new__(AdapterProcess)
     proc._buf = b""
-    proc._proc = SimpleNamespace(stdin=None, stdout=None)
+    proc._proc = SimpleNamespace(stdin=None, stdout=None)  # type: ignore[bad-assignment]  # deliberate None-guard subject
     proc.close_stdin()  # the None guard: no descriptor to close

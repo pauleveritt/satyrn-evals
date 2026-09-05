@@ -88,7 +88,9 @@ ignore = ["E501"]
 project-includes = ["src", "tests"]
 # src/satyrn_evals/tasks is oracle fixture data, not project code: its
 # base tests import a bare module name the type checker cannot resolve.
-project-excludes = ["src/satyrn_evals/tasks"]
+# The tests/**/data trees are the same shape: vendored fixture bases and
+# grader overlays importing bare module names, not project code.
+project-excludes = ["src/satyrn_evals/tasks", "tests/data", "tests/integration/data"]
 
 [tool.coverage.run]
 branch = true

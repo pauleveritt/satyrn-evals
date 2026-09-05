@@ -535,11 +535,11 @@ def test_attempt_appends_opaque_engine_contract_once(
     assert record.command == ("engine", "attempt", "--", expected)
 
 
-def _grade_boom(*_args: object, **_kwargs: object) -> Receipt:
+def _grade_boom(*_args: Path, **_kwargs: object) -> Receipt:
     raise HookError("oracle exploded")
 
 
-def _grade_pass(*_args: object, **_kwargs: object) -> Receipt:
+def _grade_pass(*_args: Path, **_kwargs: object) -> Receipt:
     """Return PASS only after proving the pre-grade record exists on disk.
 
     Pins T2's ORDERING: when grading runs, attempt.json must already exist

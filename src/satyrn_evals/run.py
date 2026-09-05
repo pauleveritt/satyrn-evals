@@ -66,7 +66,7 @@ def _write_aborted(
             cells, oracle_visibility=oracle_visibility, pathology=blocks,
         ))
         if payload["contamination"] is None:
-            del payload["contamination"]
+            payload.pop("contamination")
         if pathology is None:
             payload.pop("pathology")  # binder failed: error names it
         data.update(payload)

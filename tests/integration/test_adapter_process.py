@@ -143,7 +143,7 @@ def test_reap_raises_when_sigkill_cannot_reap(
 
     proc = object.__new__(AdapterProcess)
     proc._buf = b""
-    proc._proc = _Unreapable()
+    proc._proc = _Unreapable()  # type: ignore[bad-assignment]  # deliberate reap-refusal fake
     monkeypatch.setattr(proc, "_signal_group", lambda sig: None)
     with pytest.raises(AdapterCleanupError, match="did not reap"):
         proc.terminate_and_reap(0.1)

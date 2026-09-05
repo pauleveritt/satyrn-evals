@@ -34,7 +34,7 @@ def _run(tmp_path: Path, scenario: str, marker: Path | None = None, **kw: float)
         tasks_root=DATA,
         output=tmp_path,
         adapter_command=_argv(scenario, marker),
-        **kw,
+        **kw,  # type: ignore[bad-argument-type]  # kw are run_session's float timeouts; pyrefly cannot route dynamic keys past the grader param
     )
 
 
@@ -262,7 +262,7 @@ def test_release_failure_becomes_cleanup_failed(
     _run(tmp_path, "clean")  # proves the healthy path before the fault
     session_dir = _session_dir(tmp_path)
 
-    def failing_release(workspace: object) -> None:
+    def failing_release(workspace: Path) -> None:
         raise WorkspaceReleaseError(
             "cleanup unconfirmed", retained_path=str(workspace.parent)
         )
@@ -287,6 +287,9 @@ def test_record_carries_artifact_digests_and_provenance(tmp_path: Path) -> None:
     record = _run(tmp_path, "clean")
     session_dir = _session_dir(tmp_path)
     for step in record.steps:
+        # a clean run's graded steps carry their snapshot and prefix
+        assert step.snapshot_path is not None
+        assert step.transcript_prefix_path is not None
         assert step.snapshot_digest == __import__("hashlib").sha256(
             (session_dir / step.snapshot_path).read_bytes()
         ).hexdigest()
@@ -618,7 +621,7 @@ def _provisional_codes(
     record = run_session(
         task="mini-session", tasks_root=DATA, output=tmp_path,
         adapter_command=[sys.executable, str(FAKE), scenario],
-        **kw,
+        **kw,  # type: ignore[bad-argument-type]  # kw are run_session's float timeouts; pyrefly cannot route dynamic keys
     )
     return codes, record.code
 

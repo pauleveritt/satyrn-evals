@@ -15,7 +15,8 @@ def test_apply_patch_passes_env_through_and_leads_with_safety_config(
     calls: list[tuple[list[str], dict[str, object]]] = []
 
     def fake_run(argv: list[str], **kwargs: object) -> object:
-        calls.append((argv, kwargs.get("env", {})))
+        env = kwargs.get("env")
+        calls.append((argv, env if isinstance(env, dict) else {}))
         return type("R", (), {"returncode": 0, "stderr": b""})()
 
     monkeypatch.setattr(grade_module.subprocess, "run", fake_run)

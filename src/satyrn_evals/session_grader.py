@@ -119,6 +119,7 @@ class SessionGrader:
                 # preservation grades the patch as captured — the full
                 # evidence patch — so a scope violation is a candidate
                 # failure, never infrastructure unavailability.
+                assert last.patch_path is not None  # a graded step carried a patch
                 receipt = self._grade(
                     session_dir / last.patch_path,
                     preservation_receipt,
