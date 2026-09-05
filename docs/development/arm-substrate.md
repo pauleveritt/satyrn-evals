@@ -90,14 +90,16 @@ not evidence that a cell can run; only text coming back is.
 `summarize` needs a `summary.json` anchor in the directory it reads, so
 repeated `run --n 1` calls into a single directory would overwrite that
 anchor. The seed is recorded beside the order so the order can be rebuilt,
-and the whole schedule — task, rung, contract digest, model, and each
-cell's exact argv — is written before the first cell.
+and the whole schedule — task, rung, contract digest, requested `model`,
+agreed bare `server_model`, and each cell's exact argv — is written before
+the first cell.
 
 **`tally.py`** — reads exactly the scheduled `summary.json` set and reports
 counts per arm. It **refuses** rather than shrinking a denominator: a
 missing cell, an aborted cell (`aborted.json`), an unreadable summary, a
 duplicated attempt cell, a stray unscheduled directory, or a cell recorded
-at the wrong task, rung, contract digest, model, or arm. All discrepancies
+at the wrong task, rung, contract digest, model, observed server model, or
+arm. All discrepancies
 are reported together, and a refused batch produces no counts at all.
 
 Contamination is not a refusal. A flagged cell stays **in** the denominator

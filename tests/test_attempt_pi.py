@@ -22,6 +22,7 @@ from satyrn_evals import attempt, attempt_pi
 from satyrn_evals.attempt_pi import (
     AdapterError,
     build_pi_argv,
+    clean_pi_environment,
     harvest_patch,
     main,
     parse_args,
@@ -40,9 +41,13 @@ class _FakeRun:
         self.diff = diff
         self.diff_exit = diff_exit
         self.calls: list[list[str]] = []
+        self.environments: list[dict[str, str]] = []
 
     def __call__(self, argv: list[str], **kwargs: object) -> object:
         self.calls.append(list(argv))
+        if environment := kwargs.get("env"):
+            assert isinstance(environment, dict)
+            self.environments.append(environment)
         if argv[0] == "git":
             return subprocess.CompletedProcess(argv, self.diff_exit, self.diff, "")
         stdout = kwargs["stdout"]
@@ -188,6 +193,24 @@ def test_artifact_paths_come_from_the_environment(seam: dict[str, Path]) -> None
     assert transcript_path == seam["transcript"]
 
 
+def test_clean_pi_environment_removes_only_the_active_venv() -> None:
+    environment = {
+        "VIRTUAL_ENV": "/opt/evals/.venv",
+        "PATH": "/opt/evals/.venv/bin:/usr/local/bin:/opt/other/.venv/bin",
+        "UV_PROJECT_ENVIRONMENT": "/tmp/satyrn-evals-uv-unique",
+    }
+    cleaned = clean_pi_environment(environment)
+    assert "VIRTUAL_ENV" not in cleaned
+    assert cleaned["PATH"] == "/usr/local/bin:/opt/other/.venv/bin"
+    assert cleaned["UV_PROJECT_ENVIRONMENT"] == "/tmp/satyrn-evals-uv-unique"
+    assert environment["VIRTUAL_ENV"] == "/opt/evals/.venv"
+
+
+def test_clean_pi_environment_keeps_path_without_an_active_venv() -> None:
+    environment = {"PATH": "/usr/local/bin:/opt/other/.venv/bin"}
+    assert clean_pi_environment(environment) == environment
+
+
 def test_a_missing_patch_path_is_refused(
     seam: dict[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -237,6 +260,18 @@ def test_main_preserves_transcript_and_patch_and_returns_pi_exit(
     assert fake.calls[0][0] == "pi"
     assert fake.calls[0][-1] == "Make the failing test pass."
     assert fake.calls[1] == ["git", "diff", "HEAD"]
+
+
+def test_main_starts_pi_without_the_evals_virtual_environment(
+    seam: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake = _FakeRun(pi_exit=0, diff="")
+    monkeypatch.setattr(attempt_pi.subprocess, "run", fake)
+    monkeypatch.setenv("VIRTUAL_ENV", "/opt/evals/.venv")
+    monkeypatch.setenv("PATH", "/opt/evals/.venv/bin:/usr/local/bin")
+    assert main(["--model", MODEL]) == 0
+    assert "VIRTUAL_ENV" not in fake.environments[0]
+    assert fake.environments[0]["PATH"] == "/usr/local/bin"
 
 
 def test_main_preserves_artifacts_even_when_pi_exits_non_zero(

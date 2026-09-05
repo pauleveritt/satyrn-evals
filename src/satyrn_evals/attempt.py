@@ -15,6 +15,7 @@ from contextlib import suppress
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from satyrn_evals.attempt_record import (
     AttemptCode,
@@ -151,6 +152,10 @@ def attempt(
     env[TASK_CONTRACT_ENV] = contract_text
     env[PATCH_ENV] = str(patch_path)
     env[TRANSCRIPT_ENV] = str(transcript_path)
+    # Keep uv's project environment and Python bytecode out of the model
+    # workspace. Pi inherits this temporary location for any ``uv run`` it
+    # invokes, but its active evaluator venv is removed separately.
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
     env["PATH"] = str(Path(sys.executable).parent) + os.pathsep + env.get("PATH", "")
 
     effective_command = list(command)
@@ -177,18 +182,20 @@ def attempt(
             )
         )
 
-    workspace = run_workspace(
-        base=task_dir / "base",
-        protected_paths=(task_dir, output, Path.cwd()),
-        command=effective_command,
-        environment=env,
-        timeout=timeout,
-        overlay=(
-            load_overlay(task_dir, manifest)
-            if manifest.oracle_visibility == "hidden"
-            else None
-        ),
-    )
+    with TemporaryDirectory(prefix="satyrn-evals-uv-") as environment_root:
+        env["UV_PROJECT_ENVIRONMENT"] = environment_root
+        workspace = run_workspace(
+            base=task_dir / "base",
+            protected_paths=(task_dir, output, Path.cwd()),
+            command=effective_command,
+            environment=env,
+            timeout=timeout,
+            overlay=(
+                load_overlay(task_dir, manifest)
+                if manifest.oracle_visibility == "hidden"
+                else None
+            ),
+        )
     if workspace.code is WorkspaceCode.COMMAND_UNAVAILABLE:
         attempt_dir.rmdir()  # usage writes nothing; artifacts cannot exist before start
         raise UsageError(workspace.message)

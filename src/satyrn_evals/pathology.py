@@ -22,7 +22,7 @@ EVENT_TYPES = frozenset(
         "session", "agent_start", "turn_start", "turn_end", "message_start",
         "message_update", "message_end", "tool_execution_start",
         "tool_execution_update", "tool_execution_end", "agent_end",
-        "agent_settled",
+        "agent_settled", "entry_appended",
     }
 )
 # `tool_execution_update` added by the V10 amendment of 2026-09-05, forced by
@@ -56,6 +56,7 @@ class CellPathology:
     test_runner_commands: int = 0
     tool_free_terminal_turns: int = 0
     workspace_escapes: int = 0
+    loop_broken: int = 0
 
     def to_block(self) -> dict[str, object]:
         if not self.measured:
@@ -69,6 +70,7 @@ class CellPathology:
             "test_runner_commands": self.test_runner_commands,
             "tool_free_terminal_turns": self.tool_free_terminal_turns,
             "workspace_escapes": self.workspace_escapes,
+            "loop_broken": self.loop_broken,
         }
 
 
@@ -175,6 +177,12 @@ def _vocabulary_ok(events: list[dict]) -> PathologyReason | None:
                 return "malformed"
             if event["toolName"] not in TOOL_NAMES:
                 return "unknown_event"
+        if event.get("type") == "entry_appended":
+            entry = event.get("entry")
+            if not isinstance(entry, dict) or not isinstance(entry.get("customType"), str):
+                return "malformed"
+            if entry["customType"] != "loop_broken":
+                return "unknown_event"
     return None
 
 
@@ -255,7 +263,7 @@ def _structure_ok(events: list[dict]) -> PathologyReason | None:
 
 
 def _count(events: list[dict], *, had_patch: bool) -> CellPathology:
-    """Seven count axes over a well-formed document (spec §3.1-3.7).
+    """Eight count axes over a well-formed document (spec §3.1-3.8).
 
     Called only on documents that passed R1-R6, so structural guarantees
     hold here: starts pair uniquely with ends, and every file-tool
@@ -319,6 +327,12 @@ def _count(events: list[dict], *, had_patch: bool) -> CellPathology:
         if event["toolName"] in FILE_TOOLS
         and _escapes(events[0]["cwd"], (event.get("args") or {})["path"])
     )
+    loop_broken = sum(
+        1
+        for event in events
+        if event.get("type") == "entry_appended"
+        and event["entry"]["customType"] == "loop_broken"
+    )
     return CellPathology(
         measured=True,
         tool_calls=tool_calls,
@@ -328,6 +342,7 @@ def _count(events: list[dict], *, had_patch: bool) -> CellPathology:
         test_runner_commands=test_runner_commands,
         tool_free_terminal_turns=tool_free,
         workspace_escapes=escapes,
+        loop_broken=loop_broken,
     )
 
 

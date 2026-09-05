@@ -169,6 +169,26 @@ def read_artifact_paths(environment: Mapping[str, str]) -> tuple[Path, Path]:
     return Path(patch), Path(transcript)
 
 
+def clean_pi_environment(environment: Mapping[str, str]) -> dict[str, str]:
+    """Copy ENV for Pi without exposing Evals' active virtual environment.
+
+    The attempt command still needs Evals' executable directory on ``PATH``
+    so its console script can start. Only the Pi child is detached: otherwise
+    bare ``python`` and imports point back to the evaluator, not the task.
+    """
+    cleaned = dict(environment)
+    virtual_environment = cleaned.pop("VIRTUAL_ENV", None)
+    if not virtual_environment:
+        return cleaned
+    root = Path(virtual_environment)
+    cleaned["PATH"] = os.pathsep.join(
+        entry
+        for entry in cleaned.get("PATH", "").split(os.pathsep)
+        if entry and not Path(entry).is_relative_to(root)
+    )
+    return cleaned
+
+
 def harvest_patch() -> str:
     """The tracked diff of the workspace, as a unified patch.
 
@@ -206,6 +226,7 @@ def main(argv: list[str] | None = None) -> int:
             stdout=transcript,
             stderr=subprocess.DEVNULL,
             check=False,
+            env=clean_pi_environment(os.environ),
         )
     patch_path.write_text(harvest_patch(), encoding="utf-8")
     return completed.returncode

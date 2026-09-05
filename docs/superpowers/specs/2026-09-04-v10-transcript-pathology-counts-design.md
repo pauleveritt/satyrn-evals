@@ -150,7 +150,8 @@ it verbatim and cites it.
 | 3.5 | `test_runner_commands` | int | Shell-tool (`bash`) executions whose `command` text contains a whole-token match to a runner name in a documented finite set. The set ships as `{"pytest"}`. Whole token = whitespace-delimited equality after splitting the command (no quoting, alias, or wrapper resolution): `uv run pytest tests/` and `python -m pytest` match; `pt`, `make test`, `./run_tests.sh` do not (A2). The count is command-text evidence that the runner was invoked, never proof that tests executed; aliases/wrappers/indirect invocations are intentionally out of scope and simply not matched. |
 | 3.6 | `tool_free_terminal_turns` | int (0/1) | The session's final turn (closed by the last `turn_end`, immediately before the document terminal) contains assistant text — a `text` part with non-whitespace content in its `turn_end` message, per §1's documented `turn_end` shape — and no tool execution within that turn (no `tool_execution_start` between that turn's `turn_start` and `turn_end`), and the cell has **no retained patch** (`record.patch_path is None`, A3). A `turn_end` with no message or no `text` part contributes no assistant text under the per-metric-key rule (§2) — never `malformed`. Structural only: no prose classifier decides what the text "announces". A floored model that stops after a text turn without ever editing counts 1; a model that completes in a final text turn after its edits counts 0 because a patch was retained. |
 | 3.7 | `workspace_escapes` | int | File-tool (`read`/`edit`/`write`) executions whose `path` resolves **lexically** outside the transcript `cwd` (A4): the candidate is `cwd / path` when relative, else `path`, `posixpath.normpath`'d, then compared with `PurePath.is_relative_to(cwd)`. No symlink resolution, no home expansion, no shell interpretation; `bash` command paths are not scanned. Both root and candidate come from the same document, so machine-level root aliasing is never resolved: in a session whose `cwd` is `/private/var/...`, a read of `/var/...` counts as an escape even where the OS aliases the two, and symlink-equivalent roots and shell-command paths count only by lexical shape — both failure directions are accepted and documented, never resolved. |
-| 3.8 | `overlay_windows` | int, hidden-oracle cells only | Number of overlay **files evidenced** in a hidden cell's *decoded payload text* — never per sliding window, mirroring `scan_patch`'s per-file first-hit semantics: an overlay file whose non-blank lines fit one window (≤ `GRADER_BLOCK_LINES`) matches as a whole (`whole_file`); a longer file on its first ≥4-line window in overlay line order (`block`), with the model-visible subtraction V7 uses (`contamination.py:20,58,108-130`). The scanned body is the transcript's **decoded** text — the content of `tool_execution_end` result text parts and of message content text parts, newline-joined (amendment 2026-09-05, recorded §13: raw-line matching over the JSON-escaped transcript alone cannot fire on any measured cell, and shipping a dead detector would violate BRIEF rule 8; decoding is part of the definition; the payload scope is the maintainer's to rescope). One `cat` of a hidden file therefore counts once. This closes the deep review's "scan the transcript bytes for overlay windows" option (`…ladder…md:303-305`) for the artifact V7 does not cover (`ROADMAP.md:251-252`). Visible-oracle tasks carry no key (§4). |
+| 3.8 | `loop_broken` | int | Engine `entry_appended` events whose `entry.customType` is exactly `loop_broken`. This counts the loop breaker's explicit refusal telemetry; it is not a tool call and does not affect tool-derived axes. Other `entry_appended` custom types remain unknown vocabulary rather than being silently accepted. |
+| 3.9 | `overlay_windows` | int, hidden-oracle cells only | Number of overlay **files evidenced** in a hidden cell's *decoded payload text* — never per sliding window, mirroring `scan_patch`'s per-file first-hit semantics: an overlay file whose non-blank lines fit one window (≤ `GRADER_BLOCK_LINES`) matches as a whole (`whole_file`); a longer file on its first ≥4-line window in overlay line order (`block`), with the model-visible subtraction V7 uses (`contamination.py:20,58,108-130`). The scanned body is the transcript's **decoded** text — the content of `tool_execution_end` result text parts and of message content text parts, newline-joined (amendment 2026-09-05, recorded §13: raw-line matching over the JSON-escaped transcript alone cannot fire on any measured cell, and shipping a dead detector would violate BRIEF rule 8; decoding is part of the definition; the payload scope is the maintainer's to rescope). One `cat` of a hidden file therefore counts once. This closes the deep review's "scan the transcript bytes for overlay windows" option (`…ladder…md:303-305`) for the artifact V7 does not cover (`ROADMAP.md:251-252`). Visible-oracle tasks carry no key (§4). |
 
 **Validation table (spec-time, from the real document).** Counting the
 preserved V8 smoke transcript (a successful 12B repair) reproduces the
@@ -161,7 +162,7 @@ pathologies the audit did not count:
 ```
 tool_calls: {read: 6, edit: 2}   repeats: 4   churn: 0   noop_edits: 0
 test_runner_commands: 0          tool_free_terminal_turns: 0
-workspace_escapes: 0             overlay_windows: 0
+workspace_escapes: 0             loop_broken: 0             overlay_windows: 0
 ```
 
 `repeats: 4` counts every identical execution beyond the first:
@@ -253,7 +254,7 @@ reporting state, never an error.
       "tool_calls": { "read": 6, "edit": 2 },
       "repeats": 4, "churn": 0, "noop_edits": 0,
       "test_runner_commands": 0, "tool_free_terminal_turns": 0,
-      "workspace_escapes": 0, "overlay_windows": 0 },
+      "workspace_escapes": 0, "loop_broken": 0, "overlay_windows": 0 },
     "<cell-b>": { "measured": false, "reason": "partial" },
     "<cell-c>": { "measured": false, "reason": "absent" }
   } }
@@ -270,9 +271,9 @@ branch with no model, network, or subprocess.
 - **`src/satyrn_evals/pathology.py`** — the parser and counters: the
   vocabulary and tool-name constants, R1–R6 well-formedness,
   `count_transcript(text, *, had_patch) -> CellPathology` returning the
-  **seven transcript-local axes** (`tool_calls`, `repeats`, `churn`,
+  **eight transcript-local axes** (`tool_calls`, `repeats`, `churn`,
   `noop_edits`, `test_runner_commands`, `tool_free_terminal_turns`,
-  `workspace_escapes`), and per-metric helpers. Pure; no I/O.
+  `workspace_escapes`, `loop_broken`), and per-metric helpers. Pure; no I/O.
 - **`contamination.py`** — one added scan entry (`scan_transcript`,
   transcript as the scanned body, reusing `_nonblank`/`_match_block`/
   `GRADER_BLOCK_LINES` + visible subtraction) returning matched windows;
@@ -353,7 +354,7 @@ branch with no model, network, or subprocess.
 ## 10. Reviewable slices (plan files)
 
 1. **Parser** (P1) — `pathology.py`: vocabulary + tool-name sets,
-   R1–R6, the seven transcript-local axes, fixtures, tests, validation
+   R1–R6, the eight transcript-local axes, fixtures, tests, validation
    row. (`overlay_windows` is not a P1 deliverable — the scan is P2,
    the binder joins it in P3.)
 2. **Overlay scan** (P2) — `contamination.py` `scan_transcript`,

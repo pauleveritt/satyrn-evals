@@ -22,6 +22,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
+import interleave as interleave_module  # noqa: E402, I001
 from interleave import (  # noqa: E402  # type: ignore[missing-import]  # scripts/ added via sys.path above
     ScheduleError,
     build_order,
@@ -30,6 +31,7 @@ from interleave import (  # noqa: E402  # type: ignore[missing-import]  # script
     materialize,
 )
 from tally import TallyRefused, tally  # noqa: E402  # type: ignore[missing-import]
+from satyrn_evals.arms import Arm, ArmPins  # noqa: E402
 
 ARMS_ROOT = Path(__file__).resolve().parents[1] / "arms"
 BASELINE = ARMS_ROOT / "baseline.json"
@@ -105,6 +107,47 @@ def test_arms_that_do_not_agree_on_the_model_are_refused(tmp_path: Path) -> None
         )
 
 
+def test_arms_with_disagreeing_server_models_are_refused(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The schedule records server identity separately from requested argv.
+
+    Both server names are valid suffixes of the same provider-qualified
+    requested model; only their agreement is under test here.
+    """
+    model = "provider/model-a/model-b"
+    baseline = Arm(
+        arm="baseline",
+        argv=("pi",),
+        tools=("read",),
+        model=model,
+        server_model="model-b",
+        pins=ArmPins(pi="0.84.4", engine_commit=None, digests={}),
+    )
+    engine = Arm(
+        arm="engine",
+        argv=("satyrn-engine", "attempt"),
+        tools=("read",),
+        model=model,
+        server_model="model-a/model-b",
+        pins=ArmPins(pi="0.84.4", engine_commit=None, digests={}),
+    )
+    monkeypatch.setattr(
+        interleave_module,
+        "load_arm",
+        lambda path: baseline if Path(path).name == "baseline.json" else engine,
+    )
+    with pytest.raises(ScheduleError, match="server model"):
+        build_schedule(
+            seed=1,
+            arm_paths=[Path("baseline.json"), Path("engine.json")],
+            per_arm={"baseline": 2, "engine": 2},
+            task=TASK,
+            rung="R1",
+            contract_digest=DIGEST,
+        )
+
+
 def test_materialize_refuses_a_directory_that_already_holds_a_cell(
     tmp_path: Path,
 ) -> None:
@@ -138,7 +181,9 @@ def test_the_schedule_names_one_directory_per_cell_with_that_arms_argv(
         rung="R1",
         contract_digest=DIGEST,
     )
-    assert schedule["version"] == 1
+    assert schedule["version"] == 2
+    assert schedule["model"] == "omlx/gemma-4-12B-it-MLX-8bit"
+    assert schedule["server_model"] == "gemma-4-12B-it-MLX-8bit"
     assert schedule["seed"] == 20260905
     assert len(schedule["cells"]) == 24
     assert len({cell["dir"] for cell in schedule["cells"]}) == 24

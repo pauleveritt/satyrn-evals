@@ -94,6 +94,16 @@ ENGINE_ARM_MODEL="$(pin "$ENGINE_ARM" model)"
   || fail "the arm files name different models: $PI_MODEL vs $ENGINE_ARM_MODEL"
 ok "both arms address $PI_MODEL (server id $SERVER_MODEL)"
 
+# --- 0. no orphaned measurement-shaped process ---------------------------
+# Interactive Pi processes started by IDE integrations are legitimate and
+# long-lived. Refuse only a batch-shaped Pi (--print --mode json with the
+# pinned model), an Engine attempt, or a Pi descended from that Engine.
+MEASUREMENT_PROCESSES="$(ps -axo pid=,ppid=,command= | \
+  python3 "$EVALS_ROOT/scripts/preflight_processes.py" --model "$PI_MODEL")"
+[ -z "$MEASUREMENT_PROCESSES" ] \
+  || fail "measurement-shaped process already running:\n$MEASUREMENT_PROCESSES"
+ok "no measurement-shaped Pi or Engine process is running"
+
 # --- 1. the engine checkout is exactly the pinned commit, and clean -------
 
 HEAD_SHA="$(git -C "$ENGINE_REPO" rev-parse HEAD)"

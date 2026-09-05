@@ -34,7 +34,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from satyrn_evals.arms import Arm, build_argv, load_arm  # noqa: E402
 
-SCHEDULE_VERSION = 1
+SCHEDULE_VERSION = 2
 SCHEDULE_NAME = "schedule.json"
 
 
@@ -86,6 +86,13 @@ def build_schedule(
             "the arms do not agree on the model: "
             + ", ".join(f"{name}={arm.model}" for name, arm in sorted(arms.items()))
         )
+    if len({arm.server_model for arm in arms.values()}) != 1:
+        raise ScheduleError(
+            "the arms do not agree on the server model: "
+            + ", ".join(
+                f"{name}={arm.server_model}" for name, arm in sorted(arms.items())
+            )
+        )
     order = build_order(seed=seed, per_arm=per_arm)
     return {
         "version": SCHEDULE_VERSION,
@@ -94,6 +101,7 @@ def build_schedule(
         "rung": rung,
         "contract_digest": contract_digest,
         "model": next(iter(arms.values())).model,
+        "server_model": next(iter(arms.values())).server_model,
         "cells": [
             {
                 "index": index,

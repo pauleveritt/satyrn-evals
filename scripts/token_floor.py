@@ -22,11 +22,11 @@ The discipline this file is built around
 ----------------------------------------
 **Absent is not zero.** Four silent-zero incidents are recorded in the
 harvest index, and ``BRIEF.md`` rule 8 asks a detector to discriminate in
-both directions. pi's usage-event shape is **not currently known to this
-repository** — ``pathology.py`` parses event *types* and never reads usage —
-so rather than guess a key and silently report ``0``, this reader **refuses
-and names every event type and numeric-looking key it actually saw**. The
-first smoke therefore *teaches* us the shape instead of fabricating a floor.
+both directions. ``pathology.py`` parses event *types* and never reads usage,
+so this reader records pi's observed ``usage.input`` spelling, refuses
+negative values, and treats zero as an unpopulated placeholder. For an
+unrecognised future shape it still **refuses and names every event type and
+numeric-looking key it actually saw** rather than fabricating a floor.
 
 When that refusal fires, record the observed keys, add the real one to
 ``USAGE_KEYS``, and re-run against the same preserved transcript. Re-reading
@@ -126,6 +126,11 @@ def read_floor(text: str) -> FloorResult:
     for event in events:
         if (found := _from_event(event)) is not None:
             count, key = found
+            if count < 0:
+                raise FloorError(
+                    f"{key} reported negative input tokens ({count}); "
+                    "the floor is invalid"
+                )
             if count <= 0:
                 saw_placeholder = True
                 continue

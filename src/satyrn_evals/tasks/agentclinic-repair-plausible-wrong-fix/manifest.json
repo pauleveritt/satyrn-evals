@@ -1,6 +1,6 @@
 {
   "name": "agentclinic-repair-plausible-wrong-fix",
-  "contract": "Repair the seeded bug in the AgentClinic complaints app. The suite reports one failing check, test_post_complaint_redirects_to_complaints_board (assert 307 == 303: the POST response is a 307 Temporary Redirect, expected 303 See Other). The seeded defect is in app.py; fix it so the redirect is a 303 and the complaint is recorded. Your workspace has a runnable public suite under tests/ (uv run pytest tests/); a fix must keep every existing behavior intact.",
+  "contract": "Repair the seeded bug in the AgentClinic complaints app. A separate acceptance suite, not present in this workspace, reports one failing check, test_post_complaint_redirects_to_complaints_board (assert 307 == 303: the POST response is a 307 Temporary Redirect, expected 303 See Other). The seeded defect is in app.py; fix it so the redirect is a 303. Your workspace has a runnable public suite under tests/ (uv run python -m pytest tests/); a fix must keep every existing behavior intact.",
   "oracle": [
     "python",
     "-m",
@@ -41,7 +41,7 @@
     "fix_sha": "unrecorded"
   },
   "contracts": {
-    "R1": "Repair the seeded bug in the AgentClinic complaints app. The suite reports one failing check, test_post_complaint_redirects_to_complaints_board (assert 307 == 303). Your workspace has a runnable public suite under tests/ (uv run pytest tests/); a fix must keep every existing behavior intact.",
-    "R3": "Repair the seeded bug in the AgentClinic complaints app. The suite reports one failing check, test_post_complaint_redirects_to_complaints_board (assert 307 == 303: the POST response is a 307 Temporary Redirect, expected 303 See Other). The seeded defect is in app.py; fix it so the redirect is a 303 and the complaint is recorded. Your workspace has a runnable public suite under tests/ (uv run pytest tests/); a fix must keep every existing behavior intact."
+    "R1": "Repair the seeded bug in the AgentClinic complaints app. A separate acceptance suite, not present in this workspace, reports one failing check, test_post_complaint_redirects_to_complaints_board (assert 307 == 303). Your workspace has a runnable public suite under tests/ (uv run python -m pytest tests/); a fix must keep every existing behavior intact.",
+    "R3": "Repair the seeded bug in the AgentClinic complaints app. A separate acceptance suite, not present in this workspace, reports one failing check, test_post_complaint_redirects_to_complaints_board (assert 307 == 303: the POST response is a 307 Temporary Redirect, expected 303 See Other). The seeded defect is in app.py; fix it so the redirect is a 303. Your workspace has a runnable public suite under tests/ (uv run python -m pytest tests/); a fix must keep every existing behavior intact."
   }
 }

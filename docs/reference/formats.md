@@ -251,7 +251,7 @@ paths, no trustworthy {term}`hook result`) — the receipt names the cause.
 | `timeout` | the attempt timeout in seconds |
 | `rung` | the {term}`contract rung` every cell ran at, null for the default contract or a pre-V11a batch |
 | `contract_digest` | the sha256 of the exact contract text every cell exported, null for a pre-V11a batch |
-| `pathology` | per-cell block keyed by the cell names in `cells` order: each a measured count set or `{"measured": false, "reason": …}`; absent or unparseable/unknown-vocabulary/structurally-unsound transcripts are `unmeasured`, never zero. Hidden-oracle runs add `overlay_windows` to measured cells; visible-oracle runs carry no overlay key. Count definitions and the reason set: the V10 spec (`docs/superpowers/specs/2026-09-04-v10-transcript-pathology-counts-design.md` §3) |
+| `pathology` | per-cell block keyed by the cell names in `cells` order: each a measured count set or `{"measured": false, "reason": …}`; absent or unparseable/unknown-vocabulary/structurally-unsound transcripts are `unmeasured`, never zero. Measured cells include `loop_broken`, the number of Engine `entry_appended` events whose `entry.customType` is `loop_broken`. Hidden-oracle runs add `overlay_windows` to measured cells; visible-oracle runs carry no overlay key. Count definitions and the reason set: the V10 spec (`docs/superpowers/specs/2026-09-04-v10-transcript-pathology-counts-design.md` §3) |
 
 A summary refuses a mixed batch: cells at different rungs, or cells at the
 same rung whose contract digests differ, are refused exactly as mixed tasks,

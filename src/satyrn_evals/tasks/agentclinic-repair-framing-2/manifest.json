@@ -1,6 +1,6 @@
 {
   "name": "agentclinic-repair-framing-2",
-  "contract": "Repair the seeded bug in the AgentClinic complaints app. The suite aborts at collection: the app cannot import because the model module is missing entirely (importing the app raises ModuleNotFoundError for the model module). Recreate the model module so the app imports and the suite collects, then repair app.py. Your workspace has a runnable public suite under tests/ (uv run pytest tests/); a fix must keep every existing behavior intact.",
+  "contract": "Repair the seeded bug in the AgentClinic complaints app. A separate acceptance suite, not present in this workspace, aborts at collection because the model module is missing entirely (importing the app raises ModuleNotFoundError for the model module). Recreate the model module so the app imports and the suite collects, then repair app.py. Your workspace has a runnable public suite under tests/ (uv run python -m pytest tests/); a fix must keep every existing behavior intact.",
   "oracle": [
     "python",
     "-m",
@@ -41,7 +41,7 @@
     "fix_sha": "unrecorded"
   },
   "contracts": {
-    "R1": "Repair the seeded bug in the AgentClinic complaints app. The suite aborts at collection: importing the app raises ModuleNotFoundError: No module named 'models'. Your workspace has a runnable public suite under tests/ (uv run pytest tests/); a fix must keep every existing behavior intact.",
-    "R3": "Repair the seeded bug in the AgentClinic complaints app. The suite aborts at collection: the app cannot import because the model module is missing entirely (importing the app raises ModuleNotFoundError for the model module). Recreate the model module so the app imports and the suite collects, then repair app.py. Your workspace has a runnable public suite under tests/ (uv run pytest tests/); a fix must keep every existing behavior intact."
+    "R1": "Repair the seeded bug in the AgentClinic complaints app. A separate acceptance suite, not present in this workspace, aborts at collection: importing the app raises ModuleNotFoundError: No module named 'models'. Your workspace has a runnable public suite under tests/ (uv run python -m pytest tests/); a fix must keep every existing behavior intact.",
+    "R3": "Repair the seeded bug in the AgentClinic complaints app. A separate acceptance suite, not present in this workspace, aborts at collection because the model module is missing entirely (importing the app raises ModuleNotFoundError for the model module). Recreate the model module so the app imports and the suite collects, then repair app.py. Your workspace has a runnable public suite under tests/ (uv run python -m pytest tests/); a fix must keep every existing behavior intact."
   }
 }

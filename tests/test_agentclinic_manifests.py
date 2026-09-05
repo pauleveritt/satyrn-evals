@@ -160,6 +160,33 @@ def test_r3_is_the_default_contract_verbatim(state: str) -> None:
 
 
 @pytest.mark.parametrize("state", STATES)
+def test_every_contract_distinguishes_public_and_absent_acceptance_suites(
+    state: str,
+) -> None:
+    """The public command is runnable; acceptance failures are not local tests."""
+    manifest = load_manifest(resolve_task(f"agentclinic-repair-{state}"))
+    for label, text in {"default": manifest.contract, **manifest.contracts}.items():
+        assert "uv run python -m pytest tests/" in text, (state, label)
+        assert "acceptance suite" in text, (state, label)
+        assert "not present in this workspace" in text, (state, label)
+
+
+def test_framing_2_edit_contracts_do_not_falsely_blame_app_import() -> None:
+    """Only the absent acceptance suite observes the legacy module attribute."""
+    manifest = load_manifest(resolve_task("agentclinic-repair-framing-2-edit"))
+    for label, text in {"default": manifest.contract, **manifest.contracts}.items():
+        assert "models.complaints" in text, label
+        assert "importing the app raises" not in text, label
+        assert "repair the app's import" not in text, label
+
+
+def test_plausible_wrong_fix_contracts_do_not_claim_recording_is_broken() -> None:
+    manifest = load_manifest(resolve_task("agentclinic-repair-plausible-wrong-fix"))
+    for label, text in {"default": manifest.contract, **manifest.contracts}.items():
+        assert "complaint is recorded" not in text, label
+
+
+@pytest.mark.parametrize("state", STATES)
 def test_r1_names_no_source_file_and_no_grader_path(state: str) -> None:
     """What separates R1 from R3: no file name, no fix sentence.
 

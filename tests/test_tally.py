@@ -36,6 +36,7 @@ TASK = "agentclinic-repair-plausible-wrong-fix"
 RUNG = "R1"
 DIGEST = "a" * 64
 MODEL = "omlx/gemma-4-12B-it-MLX-8bit"
+SERVER_MODEL = "gemma-4-12B-it-MLX-8bit"
 BASELINE_CMD = [
     "satyrn-evals-attempt-pi",
     "--model",
@@ -96,6 +97,13 @@ def _summary(
     }
 
 
+def _write_transcript(directory: Path, model: str = SERVER_MODEL) -> None:
+    """Write the smallest preserved Pi stream proving the observed model."""
+    (directory / "transcript.txt").write_text(
+        json.dumps({"type": "message", "message": {"model": model}}) + "\n"
+    )
+
+
 type Mutate = Callable[[int, str, dict[str, object]], dict[str, object] | None]
 
 
@@ -126,16 +134,21 @@ def batch(tmp_path: Path) -> Callable[..., tuple[Path, Path]]:
                     continue
                 summary = replaced
             (directory / "summary.json").write_text(json.dumps(summary))
+            for attempt_cell in summary["cells"]:
+                attempt_dir = directory / str(attempt_cell)
+                attempt_dir.mkdir(exist_ok=True)
+                _write_transcript(attempt_dir)
         schedule = tmp_path / "schedule.json"
         schedule.write_text(
             json.dumps(
                 {
-                    "version": 1,
+                    "version": 2,
                     "seed": 20260905,
                     "task": TASK,
                     "rung": RUNG,
                     "contract_digest": DIGEST,
                     "model": MODEL,
+                    "server_model": SERVER_MODEL,
                     "cells": cells,
                 }
             )
@@ -305,6 +318,61 @@ def test_a_wrong_model_is_refused(batch: Callable[..., tuple[Path, Path]]) -> No
     assert "omlx/other-model" in refusals[0].detail
 
 
+def test_a_consistent_observed_model_is_required_and_counted(
+    batch: Callable[..., tuple[Path, Path]],
+) -> None:
+    schedule, runs = batch()
+    result = tally(schedule, runs)
+    assert result.cells == 24
+    assert result.model == MODEL  # requested argv remains configuration evidence
+
+
+def test_a_mismatching_observed_model_is_refused(
+    batch: Callable[..., tuple[Path, Path]],
+) -> None:
+    schedule, runs = batch()
+    _write_transcript(
+        runs / "cell-000-baseline" / f"{TASK}-20260905120000", "other-model"
+    )
+    with pytest.raises(TallyRefused) as caught:
+        tally(schedule, runs)
+    assert [r.kind for r in caught.value.refusals] == ["wrong_observed_model"]
+    assert "other-model" in caught.value.refusals[0].detail
+
+
+def test_response_model_keepalive_does_not_prove_observed_identity(
+    batch: Callable[..., tuple[Path, Path]],
+) -> None:
+    schedule, runs = batch()
+    (runs / "cell-000-baseline" / f"{TASK}-20260905120000" / "transcript.txt").write_text(
+        json.dumps({"type": "response", "responseModel": "keepalive"}) + "\n"
+    )
+    with pytest.raises(TallyRefused) as caught:
+        tally(schedule, runs)
+    assert [r.kind for r in caught.value.refusals] == ["missing_observed_model"]
+
+
+def test_absent_or_inconsistent_observed_identity_is_refused(
+    batch: Callable[..., tuple[Path, Path]],
+) -> None:
+    schedule, runs = batch()
+    transcript = runs / "cell-000-baseline" / f"{TASK}-20260905120000" / "transcript.txt"
+    transcript.write_text(
+        "\n".join(
+            [
+                json.dumps({"type": "message", "message": {"model": SERVER_MODEL}}),
+                json.dumps(
+                    {"type": "message", "message": {"model": "other-model"}}
+                ),
+            ]
+        )
+        + "\n"
+    )
+    with pytest.raises(TallyRefused) as caught:
+        tally(schedule, runs)
+    assert [r.kind for r in caught.value.refusals] == ["inconsistent_observed_model"]
+
+
 def test_a_command_naming_no_model_is_refused(
     batch: Callable[..., tuple[Path, Path]],
 ) -> None:
@@ -366,9 +434,9 @@ def test_every_refusal_is_reported_not_just_the_first(
 
 
 def test_a_schedule_that_is_not_this_version_is_refused(tmp_path: Path) -> None:
-    """Sibling success: every row above reads a version-1 schedule."""
+    """Sibling success: every row above reads a version-2 schedule."""
     schedule = tmp_path / "schedule.json"
-    schedule.write_text(json.dumps({"version": 2, "cells": []}))
+    schedule.write_text(json.dumps({"version": 1, "cells": []}))
     with pytest.raises(TallyRefused, match="version"):
         tally(schedule, tmp_path)
 

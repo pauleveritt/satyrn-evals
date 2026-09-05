@@ -10,6 +10,7 @@ preserved V8 smoke transcript (the deep review's §11 sample).
   `count_transcript(text, had_patch=True)` reproduces the spec's §3
   validation row exactly (`tool_calls {read: 6, edit: 2}`, `repeats: 4`,
   `churn: 0`, `noop_edits: 0`, `test_runner_commands: 0`,
-  `tool_free_terminal_turns: 0`, `workspace_escapes: 0`); the spec's §12
+  `tool_free_terminal_turns: 0`, `workspace_escapes: 0`, `loop_broken: 0`);
+  the spec's §12
   breaks the row down (`read tests/test_app.py` ×3 +2, `read app.py` ×2
   +1, identical `edit app.py` ×2 +1).

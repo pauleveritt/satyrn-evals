@@ -63,6 +63,15 @@ def test_an_all_placeholder_transcript_is_refused_rather_than_reported() -> None
         read_floor(text)
 
 
+def test_a_negative_usage_value_is_refused_immediately() -> None:
+    text = _lines(
+        {"type": "message_update", "usage": {"input": -1}},
+        {"type": "message_update", "usage": {"input": 1546}},
+    )
+    with pytest.raises(FloorError, match="negative input tokens"):
+        read_floor(text)
+
+
 # --- successes -----------------------------------------------------------
 
 

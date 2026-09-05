@@ -1,4 +1,4 @@
-"""V10 pathology parser: well-formedness and the seven count axes."""
+"""V10 pathology parser: well-formedness and the eight count axes."""
 
 import json
 from pathlib import Path
@@ -545,6 +545,7 @@ def test_measured_cell_to_block_wire_shape() -> None:
         "test_runner_commands": 0,
         "tool_free_terminal_turns": 0,
         "workspace_escapes": 0,
+        "loop_broken": 0,
     }
 
 
@@ -656,6 +657,7 @@ def test_validation_row_reproduces_the_spec_table() -> None:
         "test_runner_commands": 0,
         "tool_free_terminal_turns": 0,
         "workspace_escapes": 0,
+        "loop_broken": 0,
     }
 
 
@@ -828,5 +830,28 @@ def test_a_genuinely_unknown_event_type_is_still_unknown() -> None:
     """Refusal direction: the amendment widened the vocabulary by exactly one
     type, and a detector that now accepts anything would prove nothing."""
     bad = _UPDATE_DOC.replace('"type": "tool_execution_update"', '"type": "tool_execution_sideways"', 1)
+    block = count_transcript(bad, had_patch=True)
+    assert (block.measured, block.reason) == (False, "unknown_event")
+
+
+# --- V11 correction: Engine loop-break telemetry --------------------------
+
+_LOOP_BROKEN_DOC = _UPDATE_DOC.replace(
+    '{"type": "tool_execution_update", "toolCallId": "1", "toolName": "bash", "args": {"command": "uv run pytest tests/"}, "partialResult": {"content": []}}',
+    '{"type": "entry_appended", "entry": {"customType": "loop_broken"}}',
+    1,
+)
+
+
+def test_engine_loop_break_entry_is_measured_and_counted() -> None:
+    """Engine's refusal telemetry is a count, not an unknown transcript."""
+    block = count_transcript(_LOOP_BROKEN_DOC, had_patch=True)
+    assert (block.measured, block.reason, block.loop_broken) == (True, None, 1)
+    assert block.tool_calls == {"bash": 1}
+
+
+def test_unknown_engine_entry_custom_type_is_not_silently_accepted() -> None:
+    """The vocabulary extension is specific to Engine's observed telemetry."""
+    bad = _LOOP_BROKEN_DOC.replace('"loop_broken"', '"future_telemetry"')
     block = count_transcript(bad, had_patch=True)
     assert (block.measured, block.reason) == (False, "unknown_event")

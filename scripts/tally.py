@@ -26,7 +26,11 @@ Usage::
 
 ``SCHEDULE.json`` is what ``scripts/interleave.py`` wrote before the first
 cell ran; ``RUNS_ROOT`` is the directory holding one subdirectory per
-scheduled cell.
+scheduled cell, plus the preserved attempt directories named by each
+summary's ``cells``. Every counted attempt must have a JSONL
+``transcript.txt`` containing a consistent ``message.model`` identity
+matching its scheduled arm. The requested ``--model`` in ``command`` remains
+configuration evidence only.
 """
 
 import argparse
@@ -37,7 +41,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
-SCHEDULE_VERSION = 1
+SCHEDULE_VERSION = 2
 SUMMARY_NAME = "summary.json"
 ABORTED_NAME = "aborted.json"
 
@@ -51,6 +55,9 @@ type RefusalKind = Literal[
     "wrong_rung",
     "wrong_digest",
     "wrong_model",
+    "missing_observed_model",
+    "inconsistent_observed_model",
+    "wrong_observed_model",
     "wrong_arm",
 ]
 
@@ -112,6 +119,7 @@ class Tally:
     rung: str
     contract_digest: str
     model: str
+    server_model: str
     seed: int
     cells: int
     per_arm: dict[str, dict[str, object]]
@@ -122,6 +130,7 @@ class Tally:
             "rung": self.rung,
             "contract_digest": self.contract_digest,
             "model": self.model,
+            "server_model": self.server_model,
             "seed": self.seed,
             "cells": self.cells,
             "per_arm": self.per_arm,
@@ -143,7 +152,31 @@ def _without_model(command: list[str]) -> list[str]:
     return [*command[:index], *command[index + 2 :]]
 
 
-def _check_cell(cell: dict, summary: dict, schedule: dict) -> list[Refusal]:
+def _observed_models(transcript: Path) -> list[str]:
+    """Return model ids from the preserved Pi ``message.model`` events.
+
+    ``responseModel`` is intentionally not considered: Pi uses that field
+    for the ``keepalive`` response, which is transport metadata rather than
+    the model that handled the attempt.
+    """
+    models: list[str] = []
+    for line in transcript.read_text(encoding="utf-8").splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        message = event.get("message") if isinstance(event, dict) else None
+        if not isinstance(message, dict):
+            continue
+        model = message.get("model")
+        if isinstance(model, str) and model:
+            models.append(model)
+    return models
+
+
+def _check_cell(
+    cell: dict, summary: dict, schedule: dict, cell_directory: Path
+) -> list[Refusal]:
     """Every way this cell can fail to be the cell that was scheduled."""
     name = cell["dir"]
     refusals: list[Refusal] = []
@@ -166,7 +199,44 @@ def _check_cell(cell: dict, summary: dict, schedule: dict) -> list[Refusal]:
                 name,
                 f"recorded command does not start with the {cell['arm']!r} argv",
             )
-        )
+    )
+    for attempt_cell in summary.get("cells", []):
+        transcript = cell_directory / attempt_cell / "transcript.txt"
+        try:
+            observed = _observed_models(transcript)
+        except (OSError, UnicodeError) as error:
+            refusals.append(
+                Refusal(
+                    "missing_observed_model",
+                    name,
+                    f"{attempt_cell!r} transcript unreadable: {error}",
+                )
+            )
+            continue
+        if not observed:
+            refusals.append(
+                Refusal(
+                    "missing_observed_model",
+                    name,
+                    f"{attempt_cell!r} has no message.model",
+                )
+            )
+        elif len(set(observed)) != 1:
+            refusals.append(
+                Refusal(
+                    "inconsistent_observed_model",
+                    name,
+                    f"{attempt_cell!r} observed models {sorted(set(observed))!r}",
+                )
+            )
+        elif observed[0] != schedule["server_model"]:
+            refusals.append(
+                Refusal(
+                    "wrong_observed_model",
+                    name,
+                    f"{attempt_cell!r} observed model {observed[0]!r}",
+                )
+            )
     return refusals
 
 
@@ -223,7 +293,7 @@ def tally(schedule_path: Path, runs_root: Path) -> Tally:
         except json.JSONDecodeError as error:
             refusals.append(Refusal("unreadable", name, f"{SUMMARY_NAME}: {error}"))
             continue
-        if faults := _check_cell(cell, summary, schedule):
+        if faults := _check_cell(cell, summary, schedule, directory):
             refusals.extend(faults)
             continue
         duplicated = [
@@ -262,6 +332,7 @@ def tally(schedule_path: Path, runs_root: Path) -> Tally:
         rung=schedule["rung"],
         contract_digest=schedule["contract_digest"],
         model=schedule["model"],
+        server_model=schedule["server_model"],
         seed=schedule["seed"],
         cells=sum(arm.cells for arm in arms.values()),
         per_arm={name: arm.to_wire() for name, arm in sorted(arms.items())},

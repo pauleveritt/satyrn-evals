@@ -188,6 +188,31 @@ def test_attempt_start_failure_removes_fresh_attempt_dir(
     assert list(output.rglob("attempt.json")) == []
 
 
+def test_attempt_uses_an_external_temporary_uv_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The model workspace gets no project venv or bytecode residue."""
+    tasks_root = tmp_path / "tasks"
+    task_dir = _task(tasks_root)
+    observed: dict[str, str] = {}
+
+    def fake_workspace(**kwargs: Any) -> WorkspaceResult:
+        environment = kwargs["environment"]
+        observed.update(environment)
+        environment_root = Path(environment["UV_PROJECT_ENVIRONMENT"])
+        assert environment_root.is_dir()
+        assert not environment_root.is_relative_to(task_dir)
+        return WorkspaceResult(WorkspaceCode.OK, "ok", 0, "b" * 40)
+
+    monkeypatch.setattr(attempt_module, "run_workspace", fake_workspace)
+    attempt_module.attempt(
+        task="t", tasks_root=tasks_root, output=tmp_path / "attempts", command=["fake-agent"]
+    )
+
+    assert observed["PYTHONDONTWRITEBYTECODE"] == "1"
+    assert not Path(observed["UV_PROJECT_ENVIRONMENT"]).exists()
+
+
 @pytest.mark.parametrize(
     ("patch", "transcript", "code"),
     [
