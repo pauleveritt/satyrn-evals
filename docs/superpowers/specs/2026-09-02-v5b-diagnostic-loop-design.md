@@ -89,6 +89,15 @@ Counts only: never wall-clock (`BRIEF.md:39-40`). The loop persists all n
 attempts even if conditions drift mid-run (`BRIEF.md:38`); it does not abort
 a batch.
 
+> **Recorded amendment (V9, 2026-09-04):** the summary now also names its
+> arm. `summary.json` gains `task`, `command`, and `timeout`, derived from
+> the attempt records; the attempt record gains a `timeout` field; a new
+> code `GRADE_FAILED` (outcome attempted, no verdict) represents an
+> admitted cell whose grading did not complete, counted in `code_counts`
+> beside the verdict tallies. `regrade ATTEMPT_DIR` and `summarize
+> OUTPUT_DIR` make rule 3 executable. See
+> `2026-09-04-v9-loop-integrity-and-rescoring-design.md`.
+
 ## Test layout
 
 - Default tier stays model/network/subprocess-free (`BRIEF.md:80-83`, the

@@ -465,3 +465,133 @@ maintainer fixed the engine (separate-token `--model`, engine commit
 clean, 92,801-byte transcript of genuine model turns, patch preserved,
 `resolved_versions` attested. Evidence:
 `~/projects/satyrn-v8-scratch/smoke2-pwf-20260904-160143/`.
+## V9 verification record
+
+V9's default tier stays model-, network-, and subprocess-free; the loop-
+integrity fixes are proven default-tier with doubles, and every real
+subprocess proof (T5's preservation pair, T7's shim, T8's hostile git,
+the regrade/summarize round trip, the wheel demonstration) is integration
+tier, excluded from CI. Evidence collected 2026-09-04 on macOS.
+
+```text
+uv run pytest -q
+742 passed, 253 deselected
+
+uv run pytest -q -m integration tests/integration \
+  --ignore=tests/integration/test_local_pings_bundled.py
+245 passed, 1 skipped        # bundled local-pings excluded (V7 precedent)
+
+uv run pytest -q -m '' --ignore=tests/integration/test_local_pings_bundled.py \
+  --cov=src/satyrn_evals --cov-branch --cov-report=term-missing --cov-fail-under=100
+992 passed, 1 skipped
+3415 statements, 1168 branches, 100% coverage
+```
+
+The 100% gate is the invariant; the statement count is recomputed by the
+gate command. Ruff lint clean, `just lint-docs` within caps, strict Sphinx
+(`sphinx-build -W -b html`) clean, and `git diff --check` clean on the
+recorded tree.
+
+**Fixture discrimination, both directions, by name** — the V9 evidence
+floor:
+
+- **T5** (`tests/integration/test_grade_preservation_auto_overlay.py`,
+  3 passed, names `mini-session-divergent`): the preservation grade under
+  the *old* call shape (auto-overlay default) returns `UNAVAILABLE` — the
+  hazard pin; under `auto_overlay=False` it returns `PASS` with no
+  contamination key; a bare grade on the same fixture still auto-overlays
+  and annotates `visibility: hidden`.
+- **T6**: an overlay tree chmod'd `0o664`/`0o666` (umask-002 checkouts)
+  loads and materializes copies `0o444`
+  (`tests/test_overlay.py`), while the genuine stored-file refusals —
+  symlink, non-regular, non-UTF-8, source-path overlap, digest mismatch —
+  still fire.
+- **T8**: hostile ambient `GIT_DIR`/`GIT_WORK_TREE`/`GIT_INDEX_FILE` leave
+  grading correct and never materialize the redirected work tree
+  (`tests/integration/test_grade_git_env.py`).
+- **Record-before-grade**: the `GRADE_FAILED`/`OK` pair in
+  `tests/test_attempt.py` proves a grading `SatyrnError` leaves a durable,
+  loadable `GRADE_FAILED` record (no receipt) and a successful grade
+  rewrites `OK` with verdict + receipt.
+- **The re-score round trip**: real fake-seam `run`, then
+  `regrade_attempt` per cell, then `summarize_output` — the rebuilt
+  `summary.json` is byte-identical to the run's own
+  (`tests/integration/test_rescore.py`, 1 passed).
+
+**The T7 wheel demonstration (recorded verification, run once):** built a
+real wheel (`uv build`) into a scratch venv that also carries
+`fastapi==0.116.0` (a version that conflicts with the task lock), then
+graded the bundled `agentclinic-repair-plausible-wrong-fix` known-good
+from that venv:
+
+```bash
+SCRATCH=$(mktemp -d)
+uv build --out-dir "$SCRATCH/dist"
+uv venv "$SCRATCH/venv" --python 3.14
+uv pip install --python "$SCRATCH/venv/bin/python" "$SCRATCH"/dist/*.whl \
+    "fastapi==0.116.0"
+"$SCRATCH/venv/bin/satyrn-evals" grade \
+    --tasks-root src/satyrn_evals/tasks \
+    agentclinic-repair-plausible-wrong-fix \
+    src/satyrn_evals/tasks/agentclinic-repair-plausible-wrong-fix/fixtures/known-good.patch \
+    --receipt "$SCRATCH/receipt.json"
+python -c "import json;r=json.load(open('$SCRATCH/receipt.json'));print(r['verdict']);print(r['resolved_versions'].get('fastapi'))"
+```
+
+Output: verdict `pass`, evidence `{"passed": 13, "failed": 0, "error": 0,
+"skipped": 0}`, and `resolved_versions["fastapi"] == "0.115.10"` — the
+task lock's version. What this demo proves is scoped: a wheel install
+grades end to end (the oracle hook resolves through the shim symlink to
+the wheel-installed `satyrn_evals`), and the receipt's attestation is
+consistent with the locked environment the oracle ran against
+(`resolved_versions` is `uv pip freeze` of the materialized env, so it
+reports the lock regardless of `PYTHONPATH`). Import-provenance
+discrimination — a dependency shadowed beside evals losing to the locked
+env — is not this demo's claim; that is the `python -S` two-env test's
+job (`tests/integration/test_grade_shim.py`).
+
+### Post-implementation review corrections (2026-09-04)
+
+A maintainer review of the V9 worktree found three blockers; each was
+fixed and is recorded here:
+
+- **B1 — an aborted batch is never presented as complete.** `run` writes
+  `summary.json` only when all n attempts complete. On an abort (an
+  exception or Ctrl-C) it writes `aborted.json` instead —
+  requested/completed counts, the error, and the tallies over the
+  completed cells — then re-raises; a later completed run in the same
+  directory replaces the marker. Tests:
+  `test_run_writes_an_aborted_marker_and_reraises`,
+  `test_run_aborts_before_any_cell_writes_a_zero_completed_marker`, and
+  `test_run_completion_replaces_a_stale_aborted_marker`.
+- **B2 — summarize is anchored on the run's own cells.** `summarize
+  OUTPUT_DIR` rebuilds exactly the cells the run's `summary.json` names —
+  never a directory scan — so a stray sibling or an un-appended crash cell
+  cannot change the rebuilt artifact, and a directory whose run aborted is
+  refused (exit 3, message pointing at `aborted.json`). A named cell
+  missing from disk is an operational error, never a silent shrink.
+  Byte-identity now holds by construction for any completed run.
+- **B3 — a git-environment probe failure is one UNAVAILABLE cell, not a
+  batch abort.** `clean_git_environment` wraps its routing-variable probe
+  and raises `OracleError`, which `grade`'s exception handling turns into a
+  single `UNAVAILABLE` receipt; the batch continues.
+- **T5 wiring test** added: the preservation opt-out is proven through the
+  production `SessionGrader` path on the divergent session fixture, not
+  only through direct `grade()` calls.
+
+Re-run gates after the fixes:
+
+```text
+uv run pytest -q
+748 passed, 255 deselected
+
+uv run pytest -q -m integration tests/integration/test_rescore.py
+1 passed
+
+uv run pytest -q -m '' --ignore=tests/integration/test_local_pings_bundled.py \
+  --cov=src/satyrn_evals --cov-branch --cov-report=term-missing \
+  --cov-fail-under=100
+1000 passed, 1 skipped; TOTAL 3454 statements, 1182 branches, 100%
+```
+
+Ruff and `git diff --check` clean; `just lint-docs` within caps.

@@ -34,8 +34,14 @@ the same target rewritten with differing content (`:74`), kept separate
 counts must report **unmeasured**, never zero, where a transcript yields no
 parseable events
 (`docs/superpowers/research/2026-09-02-overnight-packet-and-isolation-run.md:160-162`).
-**Reopens when the engine exposes these counts across the seam** — not when a
-transcript sample becomes available.
+**Reopened for V10 planning (2026-09-04).** The prior condition required the
+engine to expose telemetry across its seam. The new, narrower ground is that
+the preserved transcript is already a durable attempt artifact and V10 reads
+it offline, as `grade` reads `patch.diff`; it does not require Engine to emit
+a new telemetry field. V10 must retain the definitions above, report
+`unmeasured` for absent or unparseable artifacts, and make no wall-clock or
+causal claim. This is a recorded change of grounds, not a deletion of the
+prior condition.
 
 **`stringified-annotations` capture** (V5c, 2026-09-03). Deferred from V5c,
 which captures `local-pings` only: its Engine arm is pinned at ceiling (6/6,
@@ -227,3 +233,8 @@ decision; the scratchpad numbers it rests on are unadmitted.
 **Reopens when the six tasks' offline qualification rows are green and the
 V8 smoke passes** — a budgeted, preregistered admission probe of the repair
 suite on the Evals path may then be proposed and confirmed separately.
+
+**Roadmap update (2026-09-04).** Both conditions are now met; the repair
+suite proceeds through V11a's evidence ladder and V12's reference placement
+profile before V13 can propose an arm comparison. This records a queued
+successor, not admission or a result.

@@ -10,6 +10,19 @@ Backlog, not into the current phase.*
 
 ## Now
 
+**The next direction is a reliable instrument, a fitted AgentClinic suite,
+and one preregistered Engine comparison.** V9's implementation and its
+verification record are ready for maintainer close-out; it remains the current
+phase until that review and commit occur. The next phases do not promise that
+Engine will win. They promise a durable placement profile, then a prospective
+three-arm result whose null outcome is recorded as prominently as a positive
+one. The detailed rationale and the retired evidence are in the
+[`2026-09-04 roadmap research record`](docs/superpowers/research/2026-09-04-roadmap-to-a-reliable-instrument-and-a-first-engine-result.md).
+
+No later phase starts before its own short design proposal is confirmed, as
+required by `CLAUDE.md`. In particular, no model cells run until the ladder,
+adapter, arm definitions, pins, and preflight record are fixed.
+
 **V7 — task visibility and leak detection — is complete (2026-09-04).**
 A manifest field declares each task visible- or hidden-oracle; contamination
 is detected by content and reported per arm as `flagged`/`clean`/`unmeasured`
@@ -81,6 +94,15 @@ lands.
 
 | # | Phase | Direction (one sentence) | Excludes | Status |
 |---|-------|--------------------------|----------|--------|
+| V9 | Loop integrity and re-scoring | `run` survives a failing cell and writes every cell's record before grading; summaries name task/command/timeout; `regrade ATTEMPT_DIR` and `summarize OUTPUT_DIR` rebuild receipts and summaries from disk; T5–T8 fixed with refusal/success siblings; T9 stated; the 30 s attempt default raised | transcript metrics (V10); the ladder (V11a); model profiles (V12); probes (V13); weight (W1); session re-scoring; any model run — see the design spec's non-goals | **complete** — design spec `docs/superpowers/specs/2026-09-04-v9-loop-integrity-and-rescoring-design.md` confirmed 2026-09-04; implementation per plans p1–p6; post-implementation review closed B1–B3 (aborted runs write `aborted.json`, never `summary.json`; `summarize` rebuilds over the run’s own recorded cells; git-probe failures are one `UNAVAILABLE` cell); verification record `docs/sdd.md` |
+| V10 | Transcript-derived pathology counts | Offline-read the preserved Pi transcript and report tool calls, repeat, churn, no-op edits, test runs, announce-and-stop, workspace escapes, and overlay windows; absent or unparseable data is `unmeasured`, never zero | Wall-clock metrics; changes to the Engine telemetry seam; causal claims from counts alone | **queued after V9** — implementation may proceed without model work; its output must enrich the V12 artifacts before V13 selection |
+| V11a | Evidence ladder | Add `R0`–`R3` contracts to the manifest, generate the model-visible contract, vendor each task's `specs/` into `base/`, and prove the widened hidden-id check and all fixture/contamination rows again | Model runs; an Engine change; changing a rung after placement data | **queued after V9** — every rung is a testable authoring claim |
+| V11b | Reproducible arm substrate | Ship the Pi attempt adapter and committed arm definitions with exact argv, tools, budgets, prompt/extension digests, and model identifiers; define a prospective Envelope rather than reconstructing the unrecoverable historical one | A budgeted probe; claiming an isolated mechanism effect; a historical Envelope reproduction | **queued after V11a** — each distinct path needs the V5d smoke before its first budgeted use |
+| V12 | Placement profile | Run the reference arm only for both named Gemma capability points, six tasks, and all four rungs at `n=6`; retain the three-way outcome split and classify every task-rung/model cell into a band | Comparing arms; admission claims; tuning a contract or sample size after reading the profile | **queued after V11b** — includes R2 and a well-formed-tool-call canary for each model |
+| V13 | Preregistered three-arm probe | Compare Baseline, prospective Envelope, and Engine on a predeclared eligible pure-edit cell, interleaved by a recorded schedule; publish counts, bands, pathology counts, and a positive or null result | Mechanism attribution; build/author tasks; escalating `n` or changing cells after the result | **queued after V10 and V12** — exactly one primary cell prevents a multiple-cell success hunt |
+| W1 | Weight | Simplify unsupported cleanup and git plumbing, remove legacy record/Windows branches and duplicate enums, freeze capture, and retain the 100% branch gate while recording the coverage reduction | New behavior; weaker verification; work that V9 did not first stabilize | **independent after V9** |
+| V14 | Build rungs on the same app | Author phase-missing, all-missing, and session build shapes over the same oracle, closing the cumulative-suite entry as hand-authored | Reusing V13's result; work before an Engine runner and file creation exist | **conditional** — starts only if V12 needs build headroom and Engine-side prerequisites land |
+| V15 | A second application | Package a larger multi-module dependency-bearing fixture | Starting before V14 has placed the 26B-A4B capability point at ceiling | **conditional** — only if every AgentClinic rung, including build, ceilings for that point |
 | V1 | It installs and grades | `grade` accepts a bundled task's known-good patch and rejects its known-broken one, offline and deterministic | Capture, attempt, the claims layer | **complete** |
 | V2 | Capture by revert | `capture --revert SHA` makes a task winnable by construction, in minutes | Environment materialization, baseline probes, commit mining, a sandbox, Windows | **complete** |
 | V3 | Attempt persistence | `attempt TASK -- COMMAND...` runs a fake command, persists patch and transcript, regrades offline | The real engine seam (V4), the diagnostic loop, transcript format, retry, repair | **complete** |
@@ -118,6 +140,44 @@ below); V7's done-when lives in its design spec — now complete (Prior
 work below); V5a's and V5b's done-when lived with their design specs, now
 complete (Prior work below).
 
+## Next roadmap: gates and sequence
+
+The path to the first result is `V9 → V11a → V11b → V12 → V10 → V13`.
+W1 may run after V9 without delaying that path. V10 may be implemented while
+V12 is collecting, but it is applied retroactively to V12's preserved
+transcripts and its output is a gate before the V13 cell is chosen. This keeps
+the placement profile's verdict evidence separate from the diagnostic counts
+that explain a later arm difference.
+
+V12 keeps all four rungs, including R2. Its `n=6` is for placement only, not
+confirmation. Before its first budgeted cell, each model must pass both a
+real completion preflight and a well-formed-tool-call canary; each materially
+different adapter/arm path also follows the existing V5d smoke practice. The
+two named Gemma points are capability points, not a parameter-size scale: the
+26B-A4B model has 4B active parameters, so profile tables name the complete
+model/quantization identifiers and make no "larger model" claim.
+
+V13 selects only pure-edit repair cells that V12 places below ceiling and
+above a capability wall. Its proposal must freeze an ordered selection rule
+before any non-reference arm runs; that rule yields one primary
+`(model, task, rung)` cell. The comparison uses `n=12` per arm, an
+interleaved, seed-recorded schedule, and two predeclared one-sided Engine
+contrasts (against Envelope and Baseline), each at Bonferroni-adjusted
+`α = 0.025`. Any
+additional eligible cells are descriptive replications, not independent
+opportunities for a positive claim. If the primary comparison does not meet
+the criterion, the result is a null at that cell and `n` and the selected cell
+do not change; a later rung is a new proposal and preregistration.
+
+Envelope is prospective: V11b records its budget, tool surface, extension
+digest, adapter argv, and model pin in the committed arm definition. It is
+not called a reproduction because the historical configuration cannot be
+recovered. The three arm surfaces are a product-level comparison, so an
+Engine advantage supports no claim that any single component (mutator, loop
+breaker, or handoff) caused it. The Engine's model-invocable test runner is
+therefore not a V13 blocker for the pure-edit probe; it is a blocker for V14
+and for any broader mechanism or build-task interpretation.
+
 **Design work owed, not a phase:** a suite with headroom. See `BRIEF.md`'s
 "The unsolved problem." The admission rule keeps the operative measurement
 discipline: a qualifying baseline probe must show that the task has room to
@@ -146,6 +206,23 @@ entry there states what reopens it.
 Completed phases move here (or to `docs/superpowers/phase-history.md`)
 when the roadmap outgrows the front page.
 
+- **V9 — Loop integrity and re-scoring (2026-09-04).** The batch loop
+  survives a failing cell: every cell's record is written before grading
+  (`GRADE_FAILED` when grading did not complete), summaries name
+  task/command/timeout, and `regrade ATTEMPT_DIR` + `summarize OUTPUT_DIR`
+  make BRIEF rule 3 executable — the rebuilt summary is byte-identical to
+  the run's own. T5 preservation grading stops auto-overlaying; T6's
+  umask-002 stored-file refusal is removed (recorded correction); T7's
+  oracle-hook shim keeps the locked env authoritative; T8's grading git
+  runs in the cleaned environment; T9 is stated as a limit beside BRIEF
+  rule 4; the 30 s attempt default is 900 s. A post-implementation review
+  closed three structural blockers: aborted runs write `aborted.json`
+  (requested/completed/error, never `summary.json`), `summarize` rebuilds
+  over the run's own recorded cells (strays cannot change it), and a
+  git-environment probe failure is one `UNAVAILABLE` cell, not a batch
+  abort. Default tier 748; full gate 1000 passed, 100% statement +
+  branch. Design: `2026-09-04-v9-loop-integrity-and-rescoring-design.md`;
+  plans `2026-09-04-v9-p*.md`; verification record `docs/sdd.md`.
 - **V8 — AgentClinic through Evals (2026-09-04).** Six bundled
   `agentclinic-repair-*` tasks vendored from the `swiftstar` companion
   repository (MIT, notice retained): reconstructed broken bases as locked

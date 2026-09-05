@@ -11,6 +11,7 @@ import os
 import stat
 import sys
 from contextlib import suppress
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -20,7 +21,7 @@ from satyrn_evals.attempt_record import (
     AttemptRecord,
     write_attempt_record,
 )
-from satyrn_evals.errors import PatchParseError, UsageError
+from satyrn_evals.errors import PatchParseError, SatyrnError, UsageError
 from satyrn_evals.grade import grade
 from satyrn_evals.manifest import TaskManifest, load_manifest, resolve_task
 from satyrn_evals.overlay import load_overlay
@@ -141,6 +142,7 @@ def attempt(
             transcript_path=transcript_path,
             manifest=manifest,
             effective_command=effective_command,
+            timeout=timeout,
         )
     except BaseException as exc:
         if workspace.code is WorkspaceCode.CLEANUP_FAILED:
@@ -160,6 +162,7 @@ def _finish_attempt(
     transcript_path: Path,
     manifest: TaskManifest,
     effective_command: list[str],
+    timeout: float,
 ) -> AttemptRecord:
     """Preserve, grade, and record artifacts after the workspace is settled."""
     command_exit = workspace.command_exit
@@ -219,6 +222,7 @@ def _finish_attempt(
             transcript_digest=transcript_hash,
             verdict=None,
             receipt_path=None,
+            timeout=timeout,
             workspace_base_sha=workspace.base_sha,
             retained_path=workspace.retained_path,
             attempt_dir=attempt_dir.name,
@@ -226,12 +230,15 @@ def _finish_attempt(
         write_attempt_record(attempt_dir / "attempt.json", record)
         return record
 
-    receipt = grade(task_dir, patch_path, attempt_dir / "receipt.json")
-    record = AttemptRecord(
+    # The durable record is written BEFORE grading (T2): a grading
+    # exception must never leave the cell invisible. The pre-grade record
+    # is code GRADE_FAILED — "preserved and admitted, grading did not
+    # complete"; a successful grade rewrites it OK with verdict + receipt.
+    base_record = AttemptRecord(
         version=1,
         outcome=AttemptOutcome.ATTEMPTED,
-        code=AttemptCode.OK,
-        message="attempt recorded and graded",
+        code=AttemptCode.GRADE_FAILED,
+        message="attempt preserved and admitted; grading did not complete",
         task=manifest.name,
         command=tuple(effective_command),
         command_exit=command_exit,
@@ -239,10 +246,25 @@ def _finish_attempt(
         transcript_path="transcript.txt",
         patch_digest=patch_hash,
         transcript_digest=transcript_hash,
-        verdict=receipt.verdict,
-        receipt_path="receipt.json",
+        verdict=None,
+        receipt_path=None,
+        timeout=timeout,
         workspace_base_sha=workspace.base_sha,
         attempt_dir=attempt_dir.name,
+    )
+    write_attempt_record(attempt_dir / "attempt.json", base_record)
+    try:
+        receipt = grade(task_dir, patch_path, attempt_dir / "receipt.json")
+    except SatyrnError as exc:
+        record = replace(base_record, message=f"{base_record.message}: {exc}")
+        write_attempt_record(attempt_dir / "attempt.json", record)
+        return record
+    record = replace(
+        base_record,
+        code=AttemptCode.OK,
+        message="attempt recorded and graded",
+        verdict=receipt.verdict,
+        receipt_path="receipt.json",
     )
     write_attempt_record(attempt_dir / "attempt.json", record)
     return record

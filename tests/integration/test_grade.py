@@ -184,9 +184,12 @@ def test_git_init_failure_is_an_apply_error(
     monkeypatch: pytest.MonkeyPatch,
     failure: OSError | subprocess.CalledProcessError,
 ) -> None:
-    def fail_init(
-        *_args: object, **_kwargs: object
-    ) -> subprocess.CompletedProcess[bytes]:
+    def fail_init(argv: list[str], **_kwargs: object) -> object:
+        if "--local-env-vars" in argv:
+            # the T8 routing probe is a real git subprocess now: let it
+            # succeed so the failure lands on grading's git init, which is
+            # what this test exercises
+            return subprocess.CompletedProcess(argv, 0, b"", b"")
         raise failure
 
     monkeypatch.setattr(grade_module.subprocess, "run", fail_init)
@@ -202,8 +205,10 @@ def test_git_init_failure_is_an_apply_error(
 def test_git_apply_error_preserves_filesystem_bytes(
     tmp_task: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    # the real sequence is now: routing probe -> git init -> git apply
     calls = iter(
         (
+            subprocess.CompletedProcess(["git", "rev-parse"], 0, b"", b""),
             subprocess.CompletedProcess(["git", "init", "-q"], 0, b"", b""),
             subprocess.CompletedProcess(["git", "apply", "-"], 1, b"", b"bad \xff"),
         )
@@ -214,6 +219,31 @@ def test_git_apply_error_preserves_filesystem_bytes(
         grade_module._run_oracle(load_manifest(tmp_task), tmp_task, GOOD_PATCH)
 
     assert b"bad \xff" in os.fsencode(str(raised.value))
+
+
+def test_git_env_probe_failure_is_an_unavailable_cell(
+    tmp_task: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """B3: a failing routing probe is one UNAVAILABLE cell, never an abort.
+
+    The probe failure must surface through grade()'s UNAVAILABLE path (the
+    receipt names the cause), so a git-absent environment costs one cell
+    instead of aborting the whole batch.
+    """
+
+    def fail_probe(argv: list[str], **_kwargs: object) -> object:
+        if "--local-env-vars" in argv:
+            raise OSError("git missing")
+        return subprocess.CompletedProcess(argv, 0, b"", b"")
+
+    monkeypatch.setattr(grade_module.subprocess, "run", fail_probe)
+    receipt = grade(
+        tmp_task,
+        tmp_task / "fixtures" / "known-good.patch",
+        tmp_path / "r.json",
+    )
+    assert receipt.verdict is Verdict.UNAVAILABLE
+    assert "cannot inspect Git environment variables" in receipt.reason
 
 
 # --- V7 P3 Task 1: hidden-task receipts carry contamination findings ---

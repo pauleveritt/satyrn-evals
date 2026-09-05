@@ -25,6 +25,21 @@ The command completes all eight attempts, including refusals, and writes
 `verdict_counts`, and `timeouts` fields. Individual attempt directories remain
 available for inspection.
 
+## Re-score without re-running
+
+If a grader defect is found after a run, fix the grader and re-score the
+preserved patches — no model re-run:
+
+```console
+$ satyrn-evals regrade runs/engine/agentclinic-repair-plausible-wrong-fix-20260904-160143
+$ satyrn-evals summarize runs/engine
+```
+
+`regrade` re-runs the grader over the preserved patch and rewrites the
+attempt's receipt and record; `summarize` rebuilds `summary.json` from the
+records on disk. A cell whose grading failed mid-run is recorded with code
+`GRADE_FAILED` and is exactly what `regrade` is for.
+
 ## Interpret it as diagnosis
 
 The summary tells you what outcomes occurred and how often. It is not a

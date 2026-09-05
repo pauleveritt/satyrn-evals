@@ -5,9 +5,19 @@ files are stored below the manifest's ``grader_overlay`` directory and are
 copied into a *fresh grader workspace* at paths relative to that directory,
 so ``grader/overlay/tests/test_hidden.py`` lands at ``tests/test_hidden.py``
 beside the base's public tests (2026-09-01 spec, Task layout).
+
+Correction (V9, 2026-09-04): load no longer refuses group/other-writable
+stored files. Git's index stores regular files as 100644/100755
+regardless of the working-tree mode, so the on-disk mode at load is a
+property of the checkout umask, not of the store: umask 002 (Debian/
+Ubuntu default) yields 664 (group-writable), umask 000 yields 666
+(other-writable) for the same clean 100644 store. The old check refused
+clean checkouts on both systems and could catch nothing git would not
+normalize. Materialization chmods 0o444 after digest verification, and the
+real invariant -- overlays never materialize in executor-reachable paths
+-- is unchanged (assert_overlay_absent).
 """
 
-import stat
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
@@ -71,12 +81,6 @@ def load_overlay(task_dir: Path, manifest: TaskManifest) -> OverlaySpec:
             rel == source or rel.startswith(f"{source}/") for source in source_paths
         ):
             raise OverlayError(f"grader overlay overlaps source_paths: {rel}")
-        if stat.S_IMODE(path.stat().st_mode) & 0o022:
-            raise OverlayError(
-                f"grader overlay file must not be group/other-writable: {rel} "
-                "(defense-in-depth only; the real invariant is that the overlay "
-                "is never materialized in executor-reachable paths)"
-            )
         data = path.read_bytes()
         try:
             text = data.decode("utf-8")

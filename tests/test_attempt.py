@@ -8,8 +8,15 @@ import pytest
 
 import satyrn_evals.attempt as attempt_module
 from satyrn_evals.attempt import attempt_dir_name, decide_refusal
-from satyrn_evals.attempt_record import AttemptCode, AttemptOutcome, AttemptRecord
-from satyrn_evals.errors import UsageError
+from satyrn_evals.attempt_record import (
+    AttemptCode,
+    AttemptOutcome,
+    AttemptRecord,
+    load_attempt_record,
+)
+from satyrn_evals.errors import HookError, UsageError
+from satyrn_evals.receipt import Receipt
+from satyrn_evals.verdict import Verdict
 from satyrn_evals.workspace import WorkspaceCode, WorkspaceResult
 
 GOOD_PATCH = (
@@ -50,6 +57,7 @@ def _run_attempt(
     monkeypatch: pytest.MonkeyPatch,
     patch: bytes | None,
     transcript: bytes | None,
+    timeout: float = 123.0,
 ) -> tuple[AttemptRecord, Path]:
     tasks_root = tmp_path / "tasks"
     _task(tasks_root)
@@ -75,7 +83,8 @@ def _run_attempt(
     monkeypatch.setattr(attempt_module, "run_workspace", fake_run_workspace)
     output = tmp_path / "attempts"
     record = attempt_module.attempt(
-        task="t", tasks_root=tasks_root, output=output, command=["fake-agent"]
+        task="t", tasks_root=tasks_root, output=output, command=["fake-agent"],
+        timeout=timeout,
     )
     return record, next(output.iterdir())
 
@@ -189,6 +198,17 @@ def test_attempt_records_refusal(
         "transcript.txt" if transcript is not None else None
     )
     assert json.loads((attempt_dir / "attempt.json").read_text())["code"] == code
+
+
+def test_refusal_record_carries_the_timeout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The timeout is durable on refused cells too — summarize needs it."""
+    record, _attempt_dir = _run_attempt(
+        tmp_path, monkeypatch, None, TRANSCRIPT.encode(), timeout=123.0
+    )
+    assert record.code is AttemptCode.NO_PATCH
+    assert record.timeout == 123.0
 
 
 @pytest.mark.parametrize(
@@ -513,3 +533,65 @@ def test_attempt_appends_opaque_engine_contract_once(
     expected = os.fspath(contract.resolve())
     assert observed == ["engine", "attempt", "--", expected]
     assert record.command == ("engine", "attempt", "--", expected)
+
+
+def _grade_boom(*_args: object, **_kwargs: object) -> Receipt:
+    raise HookError("oracle exploded")
+
+
+def _grade_pass(*_args: object, **_kwargs: object) -> Receipt:
+    """Return PASS only after proving the pre-grade record exists on disk.
+
+    Pins T2's ORDERING: when grading runs, attempt.json must already exist
+    as a GRADE_FAILED record. The old code wrote nothing until after
+    grading returned, so this double's load fails pre-fix and the success
+    sibling is genuinely red.
+    """
+    receipt_path = Path(_args[2])  # grade(task_dir, patch_path, receipt_path)
+    record = load_attempt_record(receipt_path.parent / "attempt.json")
+    assert record.code is AttemptCode.GRADE_FAILED
+    return Receipt(
+        task="t",
+        patch_digest="a" * 64,
+        verdict=Verdict.PASS,
+        reason="",
+        evidence=None,
+    )
+
+
+def test_record_is_written_before_grade_runs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """T2: a grading crash must leave a durable, loadable record."""
+    monkeypatch.setattr(attempt_module, "grade", _grade_boom)
+    record, attempt_dir = _run_attempt(
+        tmp_path, monkeypatch, GOOD_PATCH.encode(), TRANSCRIPT.encode()
+    )
+    assert record.code is AttemptCode.GRADE_FAILED
+    assert record.outcome is AttemptOutcome.ATTEMPTED
+    assert record.verdict is None and record.receipt_path is None
+    assert "oracle exploded" in record.message
+    loaded = load_attempt_record(attempt_dir / "attempt.json")
+    assert loaded.code is AttemptCode.GRADE_FAILED
+    assert (attempt_dir / "patch.diff").exists()
+
+
+def test_successful_grade_rewrites_the_record_ok(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A successful grade leaves the record OK with verdict + receipt."""
+    monkeypatch.setattr(attempt_module, "grade", _grade_pass)
+    record, attempt_dir = _run_attempt(
+        tmp_path, monkeypatch, GOOD_PATCH.encode(), TRANSCRIPT.encode()
+    )
+    assert record.code is AttemptCode.OK
+    assert record.verdict is Verdict.PASS
+    assert record.receipt_path == "receipt.json"
+    loaded = load_attempt_record(attempt_dir / "attempt.json")
+    assert loaded.code is AttemptCode.OK and loaded.verdict is Verdict.PASS
+
+
+def test_default_attempt_timeout_is_900_seconds() -> None:
+    from satyrn_evals.workspace import DEFAULT_TIMEOUT
+
+    assert DEFAULT_TIMEOUT == 900.0

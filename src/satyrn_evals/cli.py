@@ -6,12 +6,13 @@ import sys
 from pathlib import Path
 
 from satyrn_evals.attempt import attempt
-from satyrn_evals.attempt_record import AttemptOutcome
+from satyrn_evals.attempt_record import AttemptCode, AttemptOutcome
 from satyrn_evals.capture import capture
 from satyrn_evals.capture_record import CaptureOutcome
 from satyrn_evals.errors import SatyrnError, UsageError
 from satyrn_evals.grade import grade
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, resolve_task
+from satyrn_evals.rescore import regrade_attempt, summarize_output
 from satyrn_evals.run import run
 from satyrn_evals.session import run_session
 from satyrn_evals.session_grader import SessionGrader
@@ -78,6 +79,8 @@ def main(argv: list[str] | None = None) -> int:
                 command=command,
                 timeout=args.timeout,
             )
+            if record.code is AttemptCode.GRADE_FAILED:
+                print(f"satyrn-evals: {record.message}", file=sys.stderr)
             if record.outcome is AttemptOutcome.REFUSED:
                 return 3
             return 0 if record.verdict in (Verdict.PASS, Verdict.FAIL) else 3
@@ -130,6 +133,21 @@ def main(argv: list[str] | None = None) -> int:
             task_dir = resolve_task(args.task, tasks_root=Path(args.tasks_root))
             receipt = grade(task_dir, Path(args.patch), Path(args.receipt))
             return _EXIT_CODES[receipt.verdict]
+        if args.command == "summarize":
+            summarize_output(
+                Path(args.output), tasks_root=Path(args.tasks_root)
+            )
+            return 0
+        if args.command == "regrade":
+            if regrade_attempt(
+                Path(args.attempt_dir), tasks_root=Path(args.tasks_root)
+            ) is None:
+                print(
+                    "satyrn-evals: regrade: nothing to grade "
+                    "(refusal record)",
+                    file=sys.stderr,
+                )
+            return 0
         record = capture(
             repo=Path(args.repo),
             fix_sha=args.revert,
@@ -205,6 +223,28 @@ run_p.add_argument(
     type=positive_finite_timeout,
     default=DEFAULT_TIMEOUT,
     help=f"command timeout in seconds (default: {DEFAULT_TIMEOUT:g})",
+)
+
+summarize_p = sub.add_parser(
+    "summarize", help="rebuild summary.json for a run output directory"
+)
+summarize_p.add_argument("output", help="run output directory")
+summarize_p.add_argument(
+    "--tasks-root",
+    default=str(DEFAULT_TASKS_ROOT),
+    help="task root (default: bundled tasks)",
+)
+
+regrade_p = sub.add_parser(
+    "regrade", help="re-grade a preserved attempt and rewrite its record"
+)
+regrade_p.add_argument(
+    "attempt_dir", help="attempt directory (holds attempt.json)"
+)
+regrade_p.add_argument(
+    "--tasks-root",
+    default=str(DEFAULT_TASKS_ROOT),
+    help="task root (default: bundled tasks)",
 )
 
 session_p = sub.add_parser(

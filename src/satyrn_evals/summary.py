@@ -18,6 +18,13 @@ from satyrn_evals.verdict import Verdict
 _ATTEMPT_CODES = frozenset(code.value for code in AttemptCode)
 _VERDICTS = frozenset(verdict.value for verdict in Verdict)
 
+# Artifact names. summary.json is written ONLY by a completed run; an
+# aborted run (exception or Ctrl-C after at least one cell) writes
+# aborted.json instead, so a partial batch is never mistaken for a
+# complete short run.
+SUMMARY_NAME = "summary.json"
+ABORTED_NAME = "aborted.json"
+
 type AttemptCell = tuple[str, AttemptRecord, dict | None]
 
 
@@ -29,6 +36,9 @@ class Summary:
     code_counts: dict[str, int]
     verdict_counts: dict[str, int]
     timeouts: int
+    task: str
+    command: list[str]
+    timeout: float
     oracle_visibility: str
     cells: list[str]
     contamination: dict[str, int] | None
@@ -74,6 +84,25 @@ def _cell_outcome(receipt: dict) -> str:
 def compute_summary(
     cells: Sequence[AttemptCell], *, oracle_visibility: str
 ) -> Summary:
+    if not cells:
+        raise ValueError("compute_summary requires at least one cell")
+    task = cells[0][1].task
+    command = cells[0][1].command
+    timeout = cells[0][1].timeout
+    if timeout is None:
+        raise ValueError(
+            f"cell {cells[0][0]} has no recorded timeout "
+            "(pre-V9 record); cannot summarize"
+        )
+    for name, record, _ in cells[1:]:
+        if record.task != task:
+            raise ValueError(f"mixed tasks in cells ({task!r} vs {record.task!r} at {name})")
+        if record.command != command:
+            raise ValueError(f"mixed commands in cells ({name})")
+        if record.timeout is None:
+            raise ValueError(f"cell {name} has no recorded timeout")
+        if record.timeout != timeout:
+            raise ValueError(f"mixed timeouts in cells ({name})")
     n = len(cells)
     attempted = sum(
         1 for _, record, _ in cells if record.outcome is AttemptOutcome.ATTEMPTED
@@ -107,6 +136,9 @@ def compute_summary(
         code_counts=code_counts,
         verdict_counts=verdict_counts,
         timeouts=code_counts[AttemptCode.COMMAND_TIMEOUT.value],
+        task=task,
+        command=list(command),
+        timeout=timeout,
         oracle_visibility=oracle_visibility,
         cells=[name for name, _, _ in cells],
         contamination=contamination,

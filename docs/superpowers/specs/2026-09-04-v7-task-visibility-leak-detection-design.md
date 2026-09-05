@@ -213,13 +213,14 @@ plainly:
   end-to-end): `materialize_overlay` chmods each grader-workspace copy
   `0o444` after digest verification. Test-proven both ways: materialized
   files are read-only; a grader run that tries to write one fails.
-- **At load, bounded by git's mode vocabulary.** Git stores only
-  `100644`/`100755` — the bundled overlay is `100644` — so a committed
-  file cannot carry `0o444` and a fresh clone always lands
-  owner-writable. The only honest stored-file check refuses group/other
-  write bits (`mode & 0o022`), which `100644` satisfies and sloppy
-  storage (`666`) fails; refusal + success siblings required. The spec
-  records this limitation rather than pretending a stronger check.
+- **At load, bounded by git's mode vocabulary — superseded by V9.** Git
+  stores only `100644`/`100755`, so a committed file cannot carry `0o444`
+  and a fresh clone always lands owner-writable. V7's stored-file check
+  refused group/other write bits (`mode & 0o022`).
+  > **Superseded by V9 (2026-09-04):** removed — the checkout umask
+  > makes a clean `100644` store land `664` (umask 002) or `666` (umask
+  > 000), so the check refused clean checkouts; materialization `0o444` +
+  > the absence invariant remain. V9 spec §4 T6 records the correction.
 - **A separate run user** stays recorded in `BACKLOG.md` as the
   alternative, not adopted: not default-tier testable on this repo's
   CI, and an operational system the concept budget cannot carry now.
@@ -341,9 +342,9 @@ correction — closed by V7).
    inventory predicate, and an integration-tier scan of real ordinary
    and session executor worktrees finding no overlay path and no
    overlay-digest file.
-5. Materialized grader files are `0o444` (test-proven), the stored-file
-   check refuses group/other-writable overlay files with a success
-   sibling, and the §5 limit is in the docstrings and this spec.
+5. Materialized grader files are `0o444` (test-proven). **Superseded
+   (V9, 2026-09-04):** the stored-file group/other-writable refusal was
+   removed — checkout umask makes it unsound (§5; V9 spec §4 T6).
 6. Summaries name `cells` and `oracle_visibility`; hidden-task summaries
    carry the contamination section with the invariant held; a property
    test proves every existing count is unchanged by detection outcomes.

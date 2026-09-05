@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from contextlib import suppress
 from pathlib import Path
 
 import satyrn_evals
@@ -31,6 +32,7 @@ from satyrn_evals.verdict import (
     describe_unavailable,
     load_hook_result,
 )
+from satyrn_evals.workspace import GIT_SAFETY_CONFIG, clean_git_environment
 
 
 def grade(
@@ -42,6 +44,7 @@ def grade(
     selectors: tuple[str, ...] = (),
     expected: tuple[str, ...] | None = None,
     enforce_allowlist: bool = True,
+    auto_overlay: bool = True,
 ) -> Receipt:
     """Grade PATCH against TASK, write the receipt, return it.
 
@@ -61,10 +64,17 @@ def grade(
     (hidden overlay tests do not leak into a bare grade). ``expected`` still
     defaults to ``manifest.expected_test_ids``. Explicit-overlay callers (the
     session grader) get no annotation here — session findings land on the
-    session record (P4). Detection never changes a verdict or an exit code.
+    session record (P4). ``auto_overlay=False`` suppresses the auto-load for
+    callers (the session preservation grader) that grade a hidden task
+    against explicitly declared selectors with no overlay.
+    Detection never changes a verdict or an exit code.
     """
     manifest = load_manifest(task_dir)
-    auto_overlay = overlay is None and manifest.oracle_visibility == "hidden"
+    auto_overlay = (
+        auto_overlay
+        and overlay is None
+        and manifest.oracle_visibility == "hidden"
+    )
     if auto_overlay:
         overlay = load_overlay(task_dir, manifest)
         selectors = manifest.expected_test_ids
@@ -139,6 +149,24 @@ def grade(
     return receipt
 
 
+def _hook_import_path(work: Path, package_dir: Path) -> Path:
+    """``<work.parent>/hookpath`` holding one symlink to the evals package.
+
+    Nothing else is on PYTHONPATH, so a dependency-bearing oracle resolves
+    every task dependency from its own locked environment instead of from
+    evals' install location (T7).
+    """
+    package_dir = package_dir.resolve()
+    if not (package_dir / "__init__.py").is_file():
+        raise ValueError(f"not the satyrn_evals package dir: {package_dir}")
+    shim = (work.parent / "hookpath").resolve()
+    shim.mkdir(exist_ok=True)
+    link = shim / "satyrn_evals"
+    with suppress(FileExistsError):
+        link.symlink_to(package_dir, target_is_directory=True)
+    return shim
+
+
 def _materialize_project_env(work: Path, tmp: Path, base: Path) -> Path | None:
     """Relocated project env at tmp/project-env, uv sync --locked in work.
 
@@ -162,6 +190,28 @@ def _materialize_project_env(work: Path, tmp: Path, base: Path) -> Path | None:
     return env_root
 
 
+def _apply_patch(work: Path, patch_text: str, git_env: dict[str, str]) -> None:
+    """git init + apply under grading's cleaned environment (T8)."""
+    try:
+        subprocess.run(
+            ["git", *GIT_SAFETY_CONFIG, "init", "-q"],
+            cwd=work, env=git_env, check=True, capture_output=True,
+        )
+    except (OSError, subprocess.CalledProcessError) as e:
+        raise ApplyError(f"cannot run git: {e}") from e
+    applied = subprocess.run(
+        ["git", *GIT_SAFETY_CONFIG, "apply", "-"],
+        input=os.fsencode(patch_text),
+        cwd=work,
+        env=git_env,
+        capture_output=True,
+    )
+    if applied.returncode != 0:
+        raise ApplyError(
+            "patch did not apply: " + os.fsdecode(applied.stderr).strip()
+        )
+
+
 def _run_oracle(
     manifest: TaskManifest,
     task_dir: Path,
@@ -180,22 +230,8 @@ def _run_oracle(
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp) / "work"
         shutil.copytree(task_dir / "base", work, symlinks=True)
-        try:
-            subprocess.run(
-                ["git", "init", "-q"], cwd=work, check=True, capture_output=True
-            )
-        except (OSError, subprocess.CalledProcessError) as e:
-            raise ApplyError(f"cannot run git: {e}") from e
-        applied = subprocess.run(
-            ["git", "apply", "-"],
-            input=os.fsencode(patch_text),
-            cwd=work,
-            capture_output=True,
-        )
-        if applied.returncode != 0:
-            raise ApplyError(
-                "patch did not apply: " + os.fsdecode(applied.stderr).strip()
-            )
+        git_env = clean_git_environment(dict(os.environ))
+        _apply_patch(work, patch_text, git_env)
         if overlay is not None:
             materialize_overlay(overlay, work)
         fd, hook_path = tempfile.mkstemp(
@@ -209,7 +245,10 @@ def _run_oracle(
         if env_root is not None:
             env["PATH"] = os.fspath(env_root / "bin") + os.pathsep + env.get("PATH", "")
             env["PYTHONPATH"] = os.fspath(
-                Path(satyrn_evals.__file__).resolve().parent.parent
+                _hook_import_path(
+                    work,
+                    Path(satyrn_evals.__file__).resolve().parent,
+                )
             )
             env["PYTHONDONTWRITEBYTECODE"] = "1"
         else:

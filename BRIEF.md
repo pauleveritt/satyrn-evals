@@ -77,6 +77,18 @@ serves; a concept budget and a repository-weight budget from phase one.
    graders were defeated by `addopts = --collect-only` and an import-time
    `os._exit(0)`. Results are written by a test hook, outside model-controlled
    output.
+
+   > **Recorded amendment (V9, 2026-09-04).** A stated limit beside this rule:
+   > the result file's path is in the oracle's environment, and the loader
+   > checks shape, internal consistency, and freshness only. Model code
+   > imported at collection time — which runs in the oracle's process — can
+   > write a shape-valid, fresh result file and exit 0 without running the
+   > tests, forging a pass. Standing mitigations: the path is reserved and
+   > unlinked before the run, the graded tree is grading's private copy, and
+   > the oracle's stdout/exit code are never read. There is no binding of the
+   > result to the process that produced it; that is the seam's stated limit,
+   > not a fixed property. See the V9 design spec §9 and the trust-boundaries
+   > topic.
 5. **Default tests use no model, no network, no subprocess**, enforced
    mechanically by a planted-spawn tripwire that fails the build. Real Git,
    environment materialization, model invocation and oracle execution live in

@@ -115,6 +115,7 @@ attempt.json      # always
   "task": "format_number",
   "command": ["python", "…/tests/integration/fake_attempt.py", "--patch", "…/src/satyrn_evals/tasks/format_number/fixtures/known-good.patch"],
   "command_exit": 0,
+  "timeout": 900.0,
   "patch_path": "patch.diff",
   "transcript_path": "transcript.txt",
   "patch_digest": "251a3d81e289f932d69bb1d93116fda757f47b9dcbdb11e9bc68aab7dd687ebc",
@@ -131,12 +132,29 @@ recorded as diagnostic context and never trusted — a command that exits
 nonzero with complete artifacts is still attempted and graded. It is null if
 no normal child exit was observed. `patch_digest` is the sha256 of the
 persisted `patch.diff`, the same value the {term}`receipt` records — one
-source, no drift.
+source, no drift. `timeout` is the attempt command's timeout in seconds;
+records written by V9 always carry it, and older generations load without
+it.
 
 A refusal keeps the same shape with `outcome: refused`, a precise `code`,
 `verdict` and `receipt_path` null, and `patch_path`/`transcript_path` null
 for an artifact that never existed; artifacts that do exist are persisted
 even on refusal, so the record names exactly what was preserved.
+
+An admitted attempt whose grading did not complete is recorded with code
+`GRADE_FAILED`: outcome `attempted`, no verdict, no receipt — the patch and
+transcript are preserved and the cell is visible to `regrade`. The record is
+written before grading starts, so a grading failure never leaves an invisible
+cell:
+
+```json
+{
+  "version": 1, "outcome": "attempted", "code": "GRADE_FAILED",
+  "message": "attempt preserved and admitted; grading did not complete: <exception>",
+  "patch_path": "patch.diff", "transcript_path": "transcript.txt",
+  "verdict": null, "receipt_path": null
+}
+```
 
 Refusal is a preservation failure; `unavailable` is a grading failure.
 Refusal = the artifacts were incomplete (`NO_PATCH`, `PATCH_INVALID`,
@@ -148,21 +166,40 @@ paths, no trustworthy {term}`hook result`) — the receipt names the cause.
 
 ## Run summary
 
-`run` writes `<output>/summary.json` after all `n` attempts complete,
-including refusals:
+`run` writes `<output>/summary.json` only when all `n` attempts complete
+(including refusals):
 
 | Field | Meaning |
 |------|---------|
 | `n` | the requested attempt count; `attempted + refused = n` |
-| `attempted` | attempts that delivered a complete, gradeable patch — each has a verdict |
+| `attempted` | attempts whose command ran and delivered a complete, gradeable patch (an admitted cell, whether grading completed or was recorded as `GRADE_FAILED`) |
 | `refused` | attempts refused (artifact, workspace, timeout, or cleanup) |
-| `code_counts` | one key per attempt code (`OK` plus every refusal code), counting outcomes |
+| `code_counts` | one key per attempt code (`OK` plus every refusal code, counting outcomes) |
 | `verdict_counts` | one key per verdict (`pass`, `fail`, `unavailable`) |
 | `timeouts` | equals `code_counts["COMMAND_TIMEOUT"]` |
+| `task` | the task name from the attempt records |
+| `command` | the effective attempt command from the records (including any engine-contract suffix) |
+| `timeout` | the attempt timeout in seconds |
 
 The summary is counts-only by design: outcome tallies, never wall-clock
 times, confidence intervals, or publication claims. It is the authoritative
-result of a run.
+result of a completed run.
+
+An aborted run is never presented as complete. If the loop stops early — an
+exception or Ctrl-C — `run` writes `<output>/aborted.json` instead of
+`summary.json`, carrying the requested attempt count, the completed count,
+the error, and the tallies over the completed cells; a later completed run
+in the same directory replaces the marker with its `summary.json`.
+
+A summary can be rebuilt from disk: `satyrn-evals summarize OUTPUT_DIR`
+recomputes `summary.json` from the preserved attempt records through the
+same tally `run` uses, so a rebuilt summary is byte-identical to the run's
+own. The rebuild is anchored on the exact cells the run's `summary.json`
+names — a stray sibling directory or an un-appended crash cell can never
+change it — and it refuses a directory whose run aborted (exit `3`, message
+pointing at `aborted.json`). `satyrn-evals regrade ATTEMPT_DIR` re-runs the
+grader over a preserved patch and rewrites its receipt and record — the
+executable form of re-scoring without re-running an attempt.
 
 ## Hook result
 

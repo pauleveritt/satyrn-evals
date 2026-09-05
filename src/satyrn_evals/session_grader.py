@@ -125,6 +125,7 @@ class SessionGrader:
                     None,
                     spec.base_preservation_selectors,
                     enforce_allowlist=False,
+                    auto_overlay=False,
                 )
                 if receipt is not None:
                     graded[-1] = dataclasses.replace(
@@ -148,6 +149,7 @@ class SessionGrader:
         overlay: OverlaySpec | None,
         selectors: tuple[str, ...],
         enforce_allowlist: bool = True,
+        auto_overlay: bool = True,
     ) -> Receipt | None:
         try:
             return grade(
@@ -158,6 +160,7 @@ class SessionGrader:
                 selectors=selectors,
                 expected=selectors,
                 enforce_allowlist=enforce_allowlist,
+                auto_overlay=auto_overlay,
             )
         except SatyrnError:
             return None

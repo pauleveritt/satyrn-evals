@@ -22,10 +22,12 @@ from enum import Enum, StrEnum, auto
 from pathlib import Path
 from typing import BinaryIO
 
-from satyrn_evals.errors import OverlayError, SatyrnError
+from satyrn_evals.errors import OracleError, OverlayError, SatyrnError
 from satyrn_evals.overlay import OverlaySpec, assert_overlay_absent
 
-DEFAULT_TIMEOUT = 30.0
+DEFAULT_TIMEOUT = 900.0
+# 900 s = the corrected probes' observed per-cell ceiling (2-15 min).
+# Longer paths pass --timeout explicitly.
 DEFAULT_TEARDOWN_GRACE = 0.25
 
 _GIT_SAFETY_CONFIG = (
@@ -37,6 +39,7 @@ _GIT_SAFETY_CONFIG = (
     "-c",
     "core.symlinks=true",
 )
+GIT_SAFETY_CONFIG = _GIT_SAFETY_CONFIG  # V9: grade.py reuses the workspace git discipline
 _FIXED_GIT_ENV = {
     "GIT_AUTHOR_NAME": "satyrn-evals",
     "GIT_AUTHOR_EMAIL": "satyrn-evals@localhost",
@@ -222,6 +225,26 @@ def clean_environment(
     cleaned["GIT_NO_REPLACE_OBJECTS"] = "1"
     cleaned["GIT_GRAFT_FILE"] = os.devnull
     return cleaned
+
+
+def clean_git_environment(environment: Mapping[str, str]) -> dict[str, str]:
+    """Copy an environment minus Git's repository-routing state (T8).
+
+    Probes the routing variables exactly as the workspace runner does
+    (`git rev-parse --local-env-vars` under a GIT_-stripped environment)
+    and removes them, pinning GIT_TERMINAL_PROMPT/GIT_NO_REPLACE_OBJECTS/
+    GIT_GRAFT_FILE. Ambient GIT_DIR/GIT_INDEX_FILE/GIT_WORK_TREE must not
+    redirect where evals' own git commands run.
+    """
+    try:
+        routing_names = _local_env_vars(environment)
+    except _WorkspaceError as exc:
+        # A probe failure (git absent or misbehaving) is an operational
+        # grading failure, not a workspace setup failure: grade()'s except
+        # tuple turns OracleError into one UNAVAILABLE cell, so the batch
+        # continues instead of aborting (B3).
+        raise OracleError(str(exc)) from exc
+    return clean_environment(environment, routing_names)
 
 
 def snapshot_tree(root: Path) -> tuple[TreeEntry, ...]:

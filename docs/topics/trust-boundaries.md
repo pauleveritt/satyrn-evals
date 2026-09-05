@@ -14,6 +14,18 @@ before running them.
 The receipt records both the verdict and the evidence behind it. A missing or
 inconsistent hook result becomes `unavailable`, not a pass.
 
+## A result file is checked for shape, not for authorship
+
+The oracle result path is reserved by grading, unlinked before the run, and
+validated for shape, internal consistency, and freshness against the run's
+start. What the loader cannot check is *who wrote it*: the path is in the
+oracle's environment, and code the oracle imports at collection time runs in
+the same process. Model code could write a shape-valid result and exit
+without running the tests. Evals does not claim to bind a result to its
+producer; the verdict never comes from stdout or an exit code, and the
+result file is not signed. This is a limit of the seam, stated here and in
+the brief.
+
 ## Preserving first makes re-grading possible
 
 The patch and transcript are persisted before the attempt workspace is cleaned

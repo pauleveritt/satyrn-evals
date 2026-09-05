@@ -200,12 +200,39 @@ def test_overlay_spec_refuses_non_utf8_file(overlay_task: Path) -> None:
         load_overlay(overlay_task, manifest)
 
 
-def test_load_overlay_refuses_group_or_other_writable_file(overlay_task: Path) -> None:
+def test_load_overlay_accepts_writable_checkout_modes(overlay_task: Path) -> None:
+    """T6 correction: group/other-writable stored files are no longer refused.
+
+    Supersedes the V7 stored-file refusal (V9 spec §4 T6, V7 spec §5
+    note): git stores regular files as 100644/100755, so the on-disk mode
+    at load is a property of the checkout umask (002 on Debian/Ubuntu
+    yields 664/666 for a clean store), not of the store. Materialization
+    still chmods 0o444, and the genuine stored-file refusals (symlink,
+    non-regular, non-UTF-8, source-path overlap) still fire.
+    """
     bad = overlay_task / "grader" / "overlay" / "tests" / "test_x.py"
     bad.chmod(0o666)
-    manifest = load_manifest(overlay_task)
-    with pytest.raises(OverlayError, match="must not be group/other-writable"):
-        load_overlay(overlay_task, manifest)
+    assert load_overlay(overlay_task, load_manifest(overlay_task)).rel_paths
+
+
+def test_overlay_load_accepts_umask_002_checkout_modes(overlay_task: Path) -> None:
+    """T6: a 664 tree (Debian/Ubuntu checkout) loads and digests."""
+    for path in (overlay_task / "grader" / "overlay").rglob("*"):
+        if path.is_file():
+            path.chmod(0o664)
+    spec = load_overlay(overlay_task, load_manifest(overlay_task))
+    assert spec.rel_paths  # loaded, digests recorded
+
+
+def test_overlay_materialization_still_read_only(
+    overlay_task: Path, tmp_path: Path,
+) -> None:
+    """The 0o444 materialization is unchanged: defense in depth remains."""
+    spec = load_overlay(overlay_task, load_manifest(overlay_task))
+    materialize_overlay(spec, tmp_path / "work")
+    for rel in spec.rel_paths:
+        mode = (tmp_path / "work" / rel).stat().st_mode & 0o777
+        assert mode == 0o444
 
 
 def test_load_overlay_accepts_git_default_modes(overlay_task: Path) -> None:

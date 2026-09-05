@@ -6,6 +6,7 @@ level.
 """
 
 import json
+import math
 from dataclasses import asdict, dataclass, field
 from enum import Enum, StrEnum, auto
 from pathlib import Path
@@ -31,6 +32,7 @@ _LEGACY_FIELDS = frozenset(
 )
 _V4_FIELDS = frozenset({"workspace_base_sha", "retained_path"})
 _V7_FIELDS = frozenset({"attempt_dir"})
+_V9_FIELDS = frozenset({"timeout"})
 class AttemptOutcome(StrEnum):
     ATTEMPTED = "attempted"
     REFUSED = "refused"
@@ -47,6 +49,7 @@ class AttemptCode(StrEnum):
     WORKSPACE_FAILED = "WORKSPACE_FAILED"
     COMMAND_TIMEOUT = "COMMAND_TIMEOUT"
     CLEANUP_FAILED = "CLEANUP_FAILED"
+    GRADE_FAILED = "GRADE_FAILED"
 
 
 class _Presence(Enum):
@@ -69,6 +72,8 @@ class _AttemptPolicy:
     base_sha: _Presence
     retained_path: _Presence
     artifacts: _ArtifactPolicy
+    verdict: _Presence = _Presence.FORBIDDEN
+    receipt: _Presence = _Presence.FORBIDDEN
 
 
 _ATTEMPT_POLICIES: dict[AttemptCode, _AttemptPolicy] = {
@@ -78,6 +83,8 @@ _ATTEMPT_POLICIES: dict[AttemptCode, _AttemptPolicy] = {
         _Presence.REQUIRED,
         _Presence.FORBIDDEN,
         _ArtifactPolicy.BOTH,
+        _Presence.REQUIRED,
+        _Presence.REQUIRED,
     ),
     AttemptCode.NO_PATCH: _AttemptPolicy(
         AttemptOutcome.REFUSED,
@@ -128,6 +135,13 @@ _ATTEMPT_POLICIES: dict[AttemptCode, _AttemptPolicy] = {
         _Presence.REQUIRED,
         _ArtifactPolicy.ANY,
     ),
+    AttemptCode.GRADE_FAILED: _AttemptPolicy(
+        AttemptOutcome.ATTEMPTED,
+        _Presence.REQUIRED,
+        _Presence.REQUIRED,
+        _Presence.FORBIDDEN,
+        _ArtifactPolicy.BOTH,
+    ),
 }
 
 _LEGACY_CODES = frozenset(
@@ -156,6 +170,7 @@ class AttemptRecord:
     transcript_digest: str | None
     verdict: Verdict | None
     receipt_path: str | None
+    timeout: float | None = None
     workspace_base_sha: str | None = None
     retained_path: str | None = None
     attempt_dir: str | None = None
@@ -205,13 +220,27 @@ class AttemptRecord:
             or _hex_digest(self.workspace_base_sha, 64)
         ):
             raise ValueError("attempt record workspace_base_sha must be a Git object ID")
+        if self.timeout is not None and type(self.timeout) not in (int, float):
+            raise ValueError(
+                "attempt record timeout must be a positive finite number"
+            )
+        if self.timeout is not None:
+            if not math.isfinite(self.timeout) or self.timeout <= 0:
+                raise ValueError(
+                    "attempt record timeout must be a positive finite number"
+                )
+            if type(self.timeout) is not float:
+                object.__setattr__(self, "timeout", float(self.timeout))
         if self.outcome is not policy.outcome:
             raise ValueError(f"{self.code} requires outcome {policy.outcome}")
-        if policy.outcome is AttemptOutcome.ATTEMPTED:
-            if self.verdict is None or self.receipt_path is None:
-                raise ValueError("attempted record requires a verdict and receipt path")
-        elif self.verdict is not None or self.receipt_path is not None:
-            raise ValueError("refused record requires no verdict or receipt path")
+        if policy.verdict is _Presence.REQUIRED and self.verdict is None:
+            raise ValueError(f"{self.code} requires a verdict")
+        if policy.verdict is _Presence.FORBIDDEN and self.verdict is not None:
+            raise ValueError(f"{self.code} requires no verdict")
+        if policy.receipt is _Presence.REQUIRED and self.receipt_path is None:
+            raise ValueError(f"{self.code} requires a receipt path")
+        if policy.receipt is _Presence.FORBIDDEN and self.receipt_path is not None:
+            raise ValueError(f"{self.code} requires no receipt path")
         if self.attempt_dir is not None and not _nonempty_text(self.attempt_dir):
             raise ValueError("attempt record attempt_dir must be non-empty or null")
         if self._legacy:
@@ -268,6 +297,8 @@ def write_attempt_record(path: Path, record: AttemptRecord) -> None:
     legacy = data.pop("_legacy")
     if data.get("attempt_dir") is None:
         data.pop("attempt_dir", None)
+    if data.get("timeout") is None:
+        data.pop("timeout", None)
     if legacy:
         for name in _V4_FIELDS:
             data.pop(name)
@@ -284,13 +315,16 @@ def load_attempt_record(path: Path) -> AttemptRecord:
     fields = frozenset(data)
     legacy_fields = _LEGACY_FIELDS
     v4_fields = _LEGACY_FIELDS | _V4_FIELDS
-    current_fields = v4_fields | _V7_FIELDS
-    if fields not in {legacy_fields, v4_fields, current_fields}:
+    v7_fields = v4_fields | _V7_FIELDS
+    current_fields = v7_fields | _V9_FIELDS
+    if fields not in {legacy_fields, v4_fields, v7_fields, current_fields}:
         if missing := _LEGACY_FIELDS - fields:
             raise ValueError(f"attempt record missing a field: {sorted(missing)}")
         if unexpected := fields - current_fields:
             raise ValueError(f"attempt record has unexpected fields: {sorted(unexpected)}")
         raise ValueError("attempt record must contain both V4 workspace fields or neither")
+    if fields == current_fields and data.get("timeout") is None:
+        raise ValueError("current attempt record requires a timeout")
     legacy = fields == _LEGACY_FIELDS
     command = data["command"]
     if not isinstance(command, list):
@@ -318,6 +352,7 @@ def load_attempt_record(path: Path) -> AttemptRecord:
             transcript_digest=data.get("transcript_digest"),
             verdict=verdict,
             receipt_path=data.get("receipt_path"),
+            timeout=data.get("timeout"),
             workspace_base_sha=data.get("workspace_base_sha"),
             retained_path=data.get("retained_path"),
             attempt_dir=data.get("attempt_dir"),

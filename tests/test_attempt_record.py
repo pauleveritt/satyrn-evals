@@ -1,5 +1,5 @@
 import json
-from dataclasses import replace
+from dataclasses import asdict, replace
 from pathlib import Path
 
 import pytest
@@ -305,6 +305,16 @@ def _valid_v4_record(code: AttemptCode) -> AttemptRecord:
             values["workspace_base_sha"] = "c" * 40
         case AttemptCode.CLEANUP_FAILED:
             values["retained_path"] = "/tmp/retained"
+        case AttemptCode.GRADE_FAILED:
+            values.update(
+                outcome=AttemptOutcome.ATTEMPTED,
+                command_exit=0,
+                patch_path="patch.diff",
+                transcript_path="transcript.txt",
+                patch_digest="a" * 64,
+                transcript_digest="b" * 64,
+                workspace_base_sha="c" * 40,
+            )
     return AttemptRecord(**values)  # type: ignore[arg-type]
 
 
@@ -313,7 +323,9 @@ def test_v4_code_matrix_accepts_each_code(code: AttemptCode) -> None:
     record = _valid_v4_record(code)
     assert record.code is code
     assert record.outcome is (
-        AttemptOutcome.ATTEMPTED if code is AttemptCode.OK else AttemptOutcome.REFUSED
+        AttemptOutcome.ATTEMPTED
+        if code in (AttemptCode.OK, AttemptCode.GRADE_FAILED)
+        else AttemptOutcome.REFUSED
     )
 
 
@@ -439,7 +451,7 @@ def test_refused_record_invariants() -> None:
         AttemptRecord(**values)  # type: ignore[arg-type]
     values["verdict"] = None
     values["receipt_path"] = "receipt.json"
-    with pytest.raises(ValueError, match="no verdict or receipt"):
+    with pytest.raises(ValueError, match="no receipt path"):
         AttemptRecord(**values)  # type: ignore[arg-type]
 
 
@@ -513,3 +525,106 @@ def test_load_rejects_bad_attempt_dir_shape(tmp_path) -> None:
     path.write_text(json.dumps(data))
     with pytest.raises(ValueError, match="attempt_dir"):
         load_attempt_record(path)
+
+
+def test_grade_failed_policy_allows_no_verdict_or_receipt() -> None:
+    """An admitted-but-ungraded cell is attempted, never refused."""
+    record = AttemptRecord(
+        version=1,
+        outcome=AttemptOutcome.ATTEMPTED,
+        code=AttemptCode.GRADE_FAILED,
+        message="attempt preserved and admitted; grading did not complete",
+        task="t",
+        command=("fake",),
+        command_exit=0,
+        patch_path="patch.diff",
+        transcript_path="transcript.txt",
+        patch_digest="a" * 64,
+        transcript_digest="b" * 64,
+        verdict=None,
+        receipt_path=None,
+        workspace_base_sha="c" * 40,
+        attempt_dir="t-1",
+    )
+    assert record.outcome is AttemptOutcome.ATTEMPTED
+
+
+def test_grade_failed_refuses_a_verdict_or_receipt() -> None:
+    """A GRADE_FAILED record carrying verdict/receipt is a contradiction."""
+    kwargs = dict(
+        version=1, outcome=AttemptOutcome.ATTEMPTED,
+        code=AttemptCode.GRADE_FAILED, message="m", task="t",
+        command=("fake",), command_exit=0,
+        patch_path="patch.diff", transcript_path="transcript.txt",
+        patch_digest="a" * 64, transcript_digest="b" * 64,
+        verdict=None, receipt_path=None,
+        workspace_base_sha="c" * 40, attempt_dir="t-1",
+    )
+    with pytest.raises(ValueError, match="verdict"):
+        AttemptRecord(**{**kwargs, "verdict": Verdict.PASS})
+    with pytest.raises(ValueError, match="receipt"):
+        AttemptRecord(**{**kwargs, "receipt_path": "receipt.json"})
+
+
+def test_record_round_trips_timeout(tmp_path: Path) -> None:
+    path = tmp_path / "attempt.json"
+    write_attempt_record(
+        path, replace(_attempted(), timeout=900.0, attempt_dir="t-1")
+    )
+    assert load_attempt_record(path).timeout == 900.0
+
+
+def test_v9_record_requires_a_timeout_value(tmp_path: Path) -> None:
+    """A V9-generation file with a null timeout is corrupt, not legacy."""
+    path = tmp_path / "attempt.json"
+    write_attempt_record(
+        path, replace(_attempted(), timeout=900.0, attempt_dir="t-1")
+    )
+    data = json.loads(path.read_text())
+    data["timeout"] = None
+    path.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match="timeout"):
+        load_attempt_record(path)
+
+
+def test_legacy_set_without_timeout_still_loads(tmp_path: Path) -> None:
+    """An older-generation file (no timeout key) loads with timeout None."""
+    path = tmp_path / "attempt.json"
+    write_attempt_record(path, replace(_attempted(), timeout=None))
+    data = json.loads(path.read_text())
+    assert "timeout" not in data  # None-timeout writes stay exact
+    assert load_attempt_record(path).timeout is None
+
+
+def test_timeout_must_be_a_positive_finite_float() -> None:
+    # bool is rejected (type(True) is not int/float-as-number) and so are
+    # strings; int is VALID and normalized to float at construction.
+    for bad in (0.0, -1.0, float("nan"), float("inf"), True, "9"):
+        with pytest.raises(ValueError, match="timeout"):
+            AttemptRecord(
+                **{
+                    k: v
+                    for k, v in asdict(_refused()).items()
+                    if k not in ("_legacy", "timeout")
+                },
+                timeout=bad,
+            )
+
+
+def test_int_timeout_normalizes_to_float() -> None:
+    """An integral timeout is a real number: stored and reloaded as float.
+
+    Two integration callers pass ``attempt(..., timeout=30)``; the record
+    must accept int and normalize so a written JSON value reloads through
+    the same validation without breaking.
+    """
+    record = AttemptRecord(
+        **{
+            k: v
+            for k, v in asdict(_refused()).items()
+            if k not in ("_legacy", "timeout")
+        },
+        timeout=900,
+    )
+    assert record.timeout == 900.0
+    assert type(record.timeout) is float

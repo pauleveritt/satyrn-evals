@@ -6,6 +6,7 @@ section; hidden-task summaries additionally tally contamination outcomes
 beside the verdict counts, with graded = flagged + clean + unmeasured.
 """
 
+import dataclasses
 import json
 from pathlib import Path
 
@@ -20,7 +21,11 @@ _VERDICTS = frozenset(v.value for v in Verdict)
 
 
 def make_record(
-    code: AttemptCode, verdict: Verdict | None, *, command_exit: int | None = 0
+    code: AttemptCode,
+    verdict: Verdict | None,
+    *,
+    command_exit: int | None = 0,
+    timeout: float = 123.0,
 ) -> AttemptRecord:
     outcome = AttemptOutcome.ATTEMPTED if verdict is not None else AttemptOutcome.REFUSED
     attempted = verdict is not None
@@ -38,6 +43,7 @@ def make_record(
         transcript_digest="b" * 64 if attempted else None,
         verdict=verdict,
         receipt_path="receipt.json" if attempted else None,
+        timeout=timeout,
         workspace_base_sha="c" * 40,
     )
 
@@ -184,6 +190,9 @@ def test_summary_invariant_refuses_bad_tally() -> None:
             code_counts={c.value: 0 for c in AttemptCode},
             verdict_counts={v.value: 0 for v in Verdict},
             timeouts=0,
+            task="format_number",
+            command=["fake"],
+            timeout=123.0,
             oracle_visibility="hidden",
             cells=["t-1"],
             contamination={"graded": 2, "flagged": 1, "clean": 1, "unmeasured": 1},
@@ -199,6 +208,9 @@ def test_summary_invariant_refuses_bad_key_set() -> None:
             code_counts={c.value: 0 for c in AttemptCode},
             verdict_counts={v.value: 0 for v in Verdict},
             timeouts=0,
+            task="format_number",
+            command=["fake"],
+            timeout=123.0,
             oracle_visibility="hidden",
             cells=["t-1"],
             contamination={"graded": 1, "flagged": 1, "clean": 0, "bogus": 0},
@@ -207,8 +219,12 @@ def test_summary_invariant_refuses_bad_key_set() -> None:
 
 def test_write_summary_omits_contamination_when_visible(tmp_path: Path) -> None:
     path = tmp_path / "summary.json"
-    write_summary(path, compute_summary([], oracle_visibility="visible"))
-    assert "contamination" not in json.loads(path.read_text())
+    write_summary(path, compute_summary([_cell("task-1")], oracle_visibility="visible"))
+    data = json.loads(path.read_text())
+    assert "contamination" not in data
+    assert data["task"] == "format_number"
+    assert data["command"] == ["fake"]
+    assert data["timeout"] == 123.0
 
 
 def test_write_summary_includes_contamination_when_hidden(tmp_path: Path) -> None:
@@ -235,6 +251,9 @@ def test_summary_rejects_invalid_counts() -> None:
             code_counts={c: 0 for c in _CODES},
             verdict_counts={v: 0 for v in _VERDICTS},
             timeouts=0,
+            task="format_number",
+            command=["fake"],
+            timeout=123.0,
             oracle_visibility="visible",
             cells=[],
             contamination=None,
@@ -247,6 +266,9 @@ def test_summary_rejects_invalid_counts() -> None:
             code_counts={c: 0 for c in _CODES},
             verdict_counts={v: 0 for v in _VERDICTS},
             timeouts=0,
+            task="format_number",
+            command=["fake"],
+            timeout=123.0,
             oracle_visibility="visible",
             cells=[],
             contamination=None,
@@ -259,6 +281,9 @@ def test_summary_rejects_invalid_counts() -> None:
             code_counts={"NOPE": 0},
             verdict_counts={v: 0 for v in _VERDICTS},
             timeouts=0,
+            task="format_number",
+            command=["fake"],
+            timeout=123.0,
             oracle_visibility="visible",
             cells=[],
             contamination=None,
@@ -271,7 +296,63 @@ def test_summary_rejects_invalid_counts() -> None:
             code_counts={c: 0 for c in _CODES},
             verdict_counts={v: 0 for v in _VERDICTS},
             timeouts=1,
+            task="format_number",
+            command=["fake"],
+            timeout=123.0,
             oracle_visibility="visible",
             cells=[],
             contamination=None,
         )
+
+
+def test_summary_names_its_arm_from_the_records() -> None:
+    cells = [
+        ("t-1", make_record(AttemptCode.OK, Verdict.PASS), None),
+        ("t-2", make_record(AttemptCode.OK, Verdict.FAIL), None),
+    ]
+    summary = compute_summary(cells, oracle_visibility="visible")
+    assert summary.task == "format_number"
+    assert summary.command == ["fake"]
+    assert summary.timeout == 123.0
+
+
+def test_compute_summary_refuses_cells_without_a_timeout() -> None:
+    record = dataclasses.replace(make_record(AttemptCode.OK, Verdict.PASS), timeout=None)
+    with pytest.raises(ValueError, match="timeout"):
+        compute_summary([("t-1", record, None)], oracle_visibility="visible")
+
+
+def test_compute_summary_refuses_empty_cells() -> None:
+    with pytest.raises(ValueError, match="at least one cell"):
+        compute_summary([], oracle_visibility="visible")
+
+
+def test_compute_summary_refuses_mixed_identity() -> None:
+    a = make_record(AttemptCode.OK, Verdict.PASS)
+    b = dataclasses.replace(a, command=("other",))
+    with pytest.raises(ValueError, match="command"):
+        compute_summary([("t-1", a, None), ("t-2", b, None)], oracle_visibility="visible")
+
+
+def test_compute_summary_refuses_mixed_task_on_a_later_cell() -> None:
+    a = make_record(AttemptCode.OK, Verdict.PASS)
+    b = dataclasses.replace(a, task="other-task")
+    with pytest.raises(ValueError, match="mixed tasks"):
+        compute_summary([("t-1", a, None), ("t-2", b, None)],
+                        oracle_visibility="visible")
+
+
+def test_compute_summary_refuses_a_later_cell_without_a_timeout() -> None:
+    a = make_record(AttemptCode.OK, Verdict.PASS)
+    b = dataclasses.replace(a, timeout=None)
+    with pytest.raises(ValueError, match="has no recorded timeout"):
+        compute_summary([("t-1", a, None), ("t-2", b, None)],
+                        oracle_visibility="visible")
+
+
+def test_compute_summary_refuses_mixed_timeouts() -> None:
+    a = make_record(AttemptCode.OK, Verdict.PASS)
+    b = dataclasses.replace(a, timeout=456.0)
+    with pytest.raises(ValueError, match="mixed timeouts"):
+        compute_summary([("t-1", a, None), ("t-2", b, None)],
+                        oracle_visibility="visible")

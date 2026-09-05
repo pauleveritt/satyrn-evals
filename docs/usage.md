@@ -216,6 +216,12 @@ result: exit code `0` means the loop and summary write completed, regardless
 of individual verdicts or refusals; `2` is a usage error and `3` means the
 loop could not complete.
 
+`summary.json` is written only by a completed run. If the loop stops early
+— an exception or Ctrl-C — `run` writes `<output>/aborted.json` instead
+(requested/completed counts, the error, and the partial tallies) and never
+writes `summary.json`, so a partial batch cannot be mistaken for a
+completed short run.
+
 For example:
 
 ```console
@@ -230,3 +236,49 @@ admission, so the example stands for smoke or regression use.
 Transcript-derived telemetry such as tool calls, repeat, churn, and context
 is not yet included: it requires an engine-side emitter so evals does not
 parse the engine's private transcript format.
+
+## summarize
+
+Rebuild `summary.json` for a completed run output directory from the
+preserved attempt records. Uses the same tally as `run`, so the rebuilt
+file matches the run's own byte-for-byte.
+
+```console
+satyrn-evals summarize OUTPUT_DIR [--tasks-root DIR]
+```
+
+- `OUTPUT_DIR` — a run output directory: `<task>-<stamp>` attempt
+  directories, each with an `attempt.json`, plus the run's `summary.json`.
+- `--tasks-root DIR` — task root; default the bundled tasks.
+
+The rebuild is anchored on the exact cells the run's `summary.json` names:
+a stray sibling directory or an un-appended crash cell never changes the
+rebuilt artifact. A directory whose run aborted is refused — an aborted
+run writes `aborted.json` (requested/completed/error plus the partial
+tallies), never `summary.json`.
+
+Exit codes: `0` — summary written; `2` — not a directory, not a run output
+directory (no `summary.json`), unknown task, or a moved cell; `3` — the
+batch aborted (see `aborted.json`), an anchor, record, or receipt that
+exists but cannot be read, a named cell missing from disk, or inconsistent
+identity across cells.
+
+## regrade
+
+Re-run the grader over one preserved attempt's patch and rewrite its
+receipt and record — re-scoring without re-running the attempt.
+
+```console
+satyrn-evals regrade ATTEMPT_DIR [--tasks-root DIR]
+```
+
+- `ATTEMPT_DIR` — an attempt directory holding `attempt.json`,
+  `patch.diff`, and the preserved transcript.
+- `--tasks-root DIR` — task root; default the bundled tasks.
+
+A `GRADE_FAILED` or `OK` record is re-graded and its record updated to
+`OK` with the new verdict. A refusal record has nothing to grade — a note
+is printed and the command exits `0`. Exit codes: `0` — graded pass or
+fail (or nothing to grade); `2` — not an attempt directory, identity
+mismatch, or unknown task; `3` — verdict unavailable or an unreadable
+record.

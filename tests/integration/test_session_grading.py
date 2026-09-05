@@ -26,6 +26,7 @@ pytestmark = pytest.mark.integration
 DATA = Path(__file__).resolve().parent / "data"
 FAKE = Path(__file__).resolve().parent / "fake_session_adapter.py"
 TASK = DATA / "mini-session"
+TASK_DIVERGENT = DATA / "mini-session-divergent"
 
 
 def test_clean_session_grades_every_checkpoint(tmp_path: Path) -> None:
@@ -44,6 +45,39 @@ def test_clean_session_grades_every_checkpoint(tmp_path: Path) -> None:
     assert outcomes["deepest_milestone"] == 2
     assert outcomes["last_preservation_verdict"] == "pass"
     assert outcomes["grading_available"] is True
+
+
+def test_divergent_preservation_grades_via_the_session_path(
+    tmp_path: Path,
+) -> None:
+    """T5 wiring: the preservation opt-out works through the real
+    SessionGrader call site (session_grader.py:122-128), not only through
+    direct grade() calls.
+
+    mini-session-divergent's manifest expected_test_ids include a hidden
+    id that is NOT among session.json's base_preservation_selectors, so
+    V7's auto-overlay would swap the preservation selectors and yield
+    UNAVAILABLE. The opt-out must keep the preservation verdict PASS.
+    """
+    spec = load_session_spec(TASK_DIVERGENT)
+    manifest = load_manifest(TASK_DIVERGENT)
+    # non-vacuity guard: the fixture must actually diverge, or this test
+    # silently passes whether or not the opt-out exists
+    assert set(manifest.expected_test_ids) != set(spec.base_preservation_selectors)
+
+    record = run_session(
+        task="mini-session-divergent",
+        tasks_root=DATA,
+        output=tmp_path,
+        adapter_command=[sys.executable, str(FAKE), "clean"],
+    )
+    session_dir = next(p for p in tmp_path.iterdir() if p.is_dir())
+    graded = SessionGrader(task_dir=TASK_DIVERGENT).grade_record(
+        record, spec, load_overlay(TASK_DIVERGENT, manifest), session_dir
+    )
+    assert graded.code is SessionCode.COMPLETE
+    assert [s.feature_verdict for s in graded.steps] == ["pass", "pass", "pass"]
+    assert graded.steps[-1].preservation_verdict == "pass"
 
 
 def test_scope_checkpoint_skips_hidden_but_keeps_evidence(tmp_path: Path) -> None:

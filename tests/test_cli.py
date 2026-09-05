@@ -1,4 +1,5 @@
 import argparse
+from pathlib import Path
 
 import pytest
 
@@ -10,6 +11,8 @@ from satyrn_evals.cli import (
     positive_int,
     split_attempt_argv,
 )
+from satyrn_evals.errors import SatyrnError, UsageError
+from satyrn_evals.summary import SUMMARY_NAME
 from satyrn_evals.workspace import DEFAULT_TIMEOUT
 
 
@@ -105,3 +108,98 @@ def test_run_cli_dispatch(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_run_cli_rejects_nonpositive_n() -> None:
     with pytest.raises(SystemExit):
         cli_module.main(["run", "format_number", "--n", "0", "--", "cmd"])
+
+
+def test_attempt_grade_failed_exits_3_and_prints_message(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from satyrn_evals.attempt_record import (
+        AttemptCode,
+        AttemptOutcome,
+        AttemptRecord,
+    )
+
+    record = AttemptRecord(
+        version=1, outcome=AttemptOutcome.ATTEMPTED,
+        code=AttemptCode.GRADE_FAILED,
+        message="attempt preserved and admitted; grading did not complete: boom",
+        task="t", command=("fake",), command_exit=0,
+        patch_path="patch.diff", transcript_path="transcript.txt",
+        patch_digest="a" * 64, transcript_digest="b" * 64,
+        verdict=None, receipt_path=None, timeout=900.0,
+        workspace_base_sha="c" * 40, attempt_dir="t-1",
+    )
+    monkeypatch.setattr(cli_module, "attempt", lambda **kw: record)
+    assert cli_module.main(["attempt", "t", "--", "cmd"]) == 3
+    assert "boom" in capsys.readouterr().err
+
+
+# --- P4b Task 2: summarize/regrade CLI dispatch and exit codes ---
+
+
+def test_summarize_cli_writes_summary(tmp_path: Path, monkeypatch) -> None:
+    seen: dict[str, object] = {}
+    monkeypatch.setattr(
+        cli_module, "summarize_output",
+        lambda output, **kw: seen.update(output=str(output), **kw),
+    )
+    assert cli_module.main(["summarize", str(tmp_path)]) == 0
+    assert seen["output"] == str(tmp_path)
+
+
+def test_summarize_cli_usage_error_exits_2(
+    tmp_path: Path, monkeypatch
+) -> None:
+    def refuse(output, **kw):
+        raise UsageError(f"no {SUMMARY_NAME} under {output}")
+
+    monkeypatch.setattr(cli_module, "summarize_output", refuse)
+    assert cli_module.main(["summarize", str(tmp_path)]) == 2
+
+
+def test_regrade_cli_dispatches(
+    tmp_path: Path, monkeypatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    seen: dict[str, object] = {}
+    monkeypatch.setattr(
+        cli_module, "regrade_attempt",
+        lambda attempt_dir, **kw: seen.update(
+            attempt_dir=str(attempt_dir), **kw
+        ) or object(),  # non-None: graded leg, no no-op note
+    )
+    assert cli_module.main(["regrade", str(tmp_path)]) == 0
+    assert seen["attempt_dir"] == str(tmp_path)
+    assert capsys.readouterr().err == ""
+
+
+def test_regrade_cli_noop_exits_0_with_note(
+    tmp_path: Path, monkeypatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(cli_module, "regrade_attempt",
+                        lambda attempt_dir, **kw: None)
+    assert cli_module.main(["regrade", str(tmp_path)]) == 0
+    assert "nothing" in capsys.readouterr().err
+
+
+def test_regrade_cli_usage_error_exits_2(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setattr(
+        cli_module, "regrade_attempt",
+        lambda attempt_dir, **kw: (_ for _ in ()).throw(
+            UsageError("no attempt record")
+        ),
+    )
+    assert cli_module.main(["regrade", str(tmp_path)]) == 2
+
+
+def test_regrade_cli_operational_error_exits_3(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setattr(
+        cli_module, "regrade_attempt",
+        lambda attempt_dir, **kw: (_ for _ in ()).throw(
+            SatyrnError("regrade: verdict unavailable")
+        ),
+    )
+    assert cli_module.main(["regrade", str(tmp_path)]) == 3
