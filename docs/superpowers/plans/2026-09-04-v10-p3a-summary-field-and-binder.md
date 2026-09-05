@@ -41,8 +41,6 @@ and P2 (`scan_transcript`).
 
 ---
 
----
-
 ### Task 1: `Summary.pathology` and the pure-tally signature change
 
 **Files:** `src/satyrn_evals/summary.py`; construction sites in `run.py`,

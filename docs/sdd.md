@@ -643,8 +643,11 @@ dependency-bearing-task condition, not the receiver failure the exclusion
 recorded.
 
 The 100% gate is the invariant; the statement count is recomputed by the
-gate command. Ruff lint clean, `just lint-docs` within caps, and
-`git diff --check` clean on the recorded tree. Pyrefly: V10's five
+gate command. Ruff lint clean, `just lint-docs` within caps, the strict docs
+build (`sphinx-build -W -b html`) clean, and `git diff --check` clean on
+the recorded tree. (Close-out note 2026-09-05: two adjacent `---`
+transitions in the split plan files initially failed the strict build;
+fixed in the follow-up docs commit.) Pyrefly: V10's five
 changed modules add zero new errors (module-scoped pyrefly reports three
 errors, all on pre-existing lines — the `del dict[key]` unsupported-delete
 family and the regrade `Path | None` union); the full tree carries ~110

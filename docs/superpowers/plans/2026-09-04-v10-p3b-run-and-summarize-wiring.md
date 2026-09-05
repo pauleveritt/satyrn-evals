@@ -41,8 +41,6 @@ and P2 (`scan_transcript`).
 
 ---
 
----
-
 ### Task 3: `run` wiring — own summary and abort marker
 
 **Files:** `src/satyrn_evals/run.py`; test `tests/test_run.py`.
