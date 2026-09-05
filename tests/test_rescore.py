@@ -784,3 +784,131 @@ def test_summarize_refuses_a_mixed_rung_batch(tmp_path: Path) -> None:
     write_anchor(out, "format_number-1", "format_number-2")
     with pytest.raises(SatyrnError, match="mixed rungs"):
         summarize_output(out)
+
+
+def _empty_patch_cell(
+    output: Path, name: str, *, patch: str | None
+) -> tuple[str, AttemptRecord, None]:
+    """A pi-adapter-shaped refusal cell: the record names ``patch.diff``
+    and the file exists, because ``attempt_pi.py:230`` writes it
+    unconditionally. ``patch`` is that file's content; ``None`` makes it
+    unreadable instead (mode 0).
+    """
+    cell = output / name
+    cell.mkdir(parents=True, exist_ok=True)
+    target = cell / "patch.diff"
+    if patch is None:
+        target.write_text("x\n", encoding="utf-8")
+        target.chmod(0)
+    else:
+        target.write_text(patch, encoding="utf-8")
+    (cell / "transcript.txt").write_text(_GOOD_TRANSCRIPT, encoding="utf-8")
+    rec = record(
+        task=TASK,
+        attempt_dir=name,
+        outcome=AttemptOutcome.REFUSED,
+        code=AttemptCode.NO_PATCH,
+        verdict=None,
+        receipt_path=None,
+    )
+    write_attempt_record(cell / "attempt.json", rec)
+    return name, rec, None
+
+
+def test_compute_pathology_an_empty_patch_file_counts_the_terminal_turn(
+    tmp_path: Path,
+) -> None:
+    """V11d F2, the defect this pins: every pi-adapter cell names a
+    ``patch.diff`` because the adapter always writes one, so
+    ``patch_path is not None`` was true even on a NO_PATCH refusal and
+    ``tool_free_terminal_turns`` could never fire. ``had_patch`` means a
+    non-empty patch. Demonstration cell (from the *voided* first
+    mini-probe, retained transcript only):
+    ``~/satyrn-smokes/2026-09-05-v11c-miniprobe/plausible-wrong-fix/
+    agentclinic-repair-plausible-wrong-fix-20260905-200622-258836`` --
+    0-byte ``patch.diff``, published 0, recomputes to 1.
+    """
+    output, task_dir, manifest = _visible_setup(tmp_path)
+    cell = _empty_patch_cell(output, "format_number-1", patch="")
+    block = compute_pathology(
+        output, [cell], task_dir=task_dir, manifest=manifest
+    )["format_number-1"]
+    assert block["measured"] is True
+    assert block["tool_free_terminal_turns"] == 1
+
+
+def test_compute_pathology_a_whitespace_only_patch_counts_the_terminal_turn(
+    tmp_path: Path,
+) -> None:
+    """Sibling of the pin above: a patch file holding only whitespace
+    applies nothing, so it is not a patch either -- emptiness is decided
+    after stripping, not on the byte count."""
+    output, task_dir, manifest = _visible_setup(tmp_path)
+    cell = _empty_patch_cell(output, "format_number-1", patch="\n \n")
+    block = compute_pathology(
+        output, [cell], task_dir=task_dir, manifest=manifest
+    )["format_number-1"]
+    assert block["measured"] is True
+    assert block["tool_free_terminal_turns"] == 1
+
+
+def test_compute_pathology_a_real_patch_file_keeps_terminal_zero(
+    tmp_path: Path,
+) -> None:
+    """The success sibling for the two pins above, in the same shape: the
+    record names ``patch.diff`` and the file holds a real diff, so the
+    gate still stays silent in the direction it was designed for."""
+    output, task_dir, manifest = _visible_setup(tmp_path)
+    cell = _empty_patch_cell(
+        output, "format_number-1", patch="diff --git a/x b/x\n"
+    )
+    block = compute_pathology(
+        output, [cell], task_dir=task_dir, manifest=manifest
+    )["format_number-1"]
+    assert block["measured"] is True
+    assert block["tool_free_terminal_turns"] == 0
+
+
+def test_compute_pathology_an_unreadable_patch_stays_silent(
+    tmp_path: Path,
+) -> None:
+    """Confirmed 2026-09-05: a recorded patch that cannot be read is
+    absent evidence, and absent evidence does not become a finding. The
+    count stays 0 rather than manufacturing a pathology from an I/O
+    problem; the rest of the transcript-local counts are unaffected."""
+    output, task_dir, manifest = _visible_setup(tmp_path)
+    cell = _empty_patch_cell(output, "format_number-1", patch=None)
+    block = compute_pathology(
+        output, [cell], task_dir=task_dir, manifest=manifest
+    )["format_number-1"]
+    assert block["measured"] is True
+    assert block["tool_free_terminal_turns"] == 0
+
+
+def test_compute_pathology_a_directory_shaped_patch_stays_silent(
+    tmp_path: Path,
+) -> None:
+    """Shape pin for the same silence rule: a recorded ``patch.diff`` that
+    is a directory reads as an OSError, which is absent evidence rather
+    than a finding. Sibling of the unreadable-patch pin above; both keep
+    the empty-patch fix from firing on an I/O problem."""
+    output, task_dir, manifest = _visible_setup(tmp_path)
+    name = "format_number-1"
+    cell = output / name
+    cell.mkdir(parents=True, exist_ok=True)
+    (cell / "patch.diff").mkdir()
+    (cell / "transcript.txt").write_text(_GOOD_TRANSCRIPT, encoding="utf-8")
+    rec = record(
+        task=TASK,
+        attempt_dir=name,
+        outcome=AttemptOutcome.REFUSED,
+        code=AttemptCode.NO_PATCH,
+        verdict=None,
+        receipt_path=None,
+    )
+    write_attempt_record(cell / "attempt.json", rec)
+    block = compute_pathology(
+        output, [(name, rec, None)], task_dir=task_dir, manifest=manifest
+    )[name]
+    assert block["measured"] is True
+    assert block["tool_free_terminal_turns"] == 0

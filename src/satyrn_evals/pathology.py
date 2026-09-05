@@ -81,8 +81,10 @@ def _unmeasured(reason: PathologyReason) -> CellPathology:
 def count_transcript(text: str, *, had_patch: bool) -> CellPathology:
     """Count pathology over one well-formed transcript (spec §2, §3).
 
-    ``had_patch`` is the cell record's patch presence (spec §3.6); every
-    other count is transcript-local. The empty string is ``empty``; a
+    ``had_patch`` is whether the cell preserved a patch *with content in
+    it* (spec §3.6, as corrected by V11d F2 -- see ``rescore._had_patch``,
+    which is where the binder decides it); every other count is
+    transcript-local. The empty string is ``empty``; a
     transcript the call site could not read at all is ``absent`` and is
     decided by the caller, not here.
     """

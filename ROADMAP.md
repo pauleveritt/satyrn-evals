@@ -17,8 +17,13 @@ substrate are in `main`. Neither of those measures anything. **V11c's
 Baseline mini-probe has run and selected its task; its two-arm spike is
 held.** The next build work is the V11d fix round and V12's entry gates:
 [plan of record](docs/superpowers/plans/2026-09-05-v11d-instrument-fixes-and-v12-entry.md),
-proposed 2026-09-05 and awaiting confirmation; its preflight-command slice is
-already done and verified. The later phases do not promise
+confirmed 2026-09-05. Its first three slices are done and verified —
+preflight command resolution (F1), the empty-patch metric fix re-scored
+from retained transcripts (F2), and the signal-killed-`run` abort record,
+reproduced before it was fixed (F3):
+[record](docs/superpowers/research/2026-09-05-v11d-f2-f3-record.md).
+Slices 3–5 (resume support, `MODEL_ERROR`, the remaining V12 entry gates)
+are not started. The later phases do not promise
 that Engine will win. They promise a durable placement profile, then a
 prospective result whose null outcome is recorded as prominently as a
 positive one. Rationale: the [`2026-09-04 roadmap record`](docs/superpowers/research/2026-09-04-roadmap-to-a-reliable-instrument-and-a-first-engine-result.md), as amended

@@ -1,7 +1,9 @@
 # V11d — instrument fixes, then V12's entry gates
 
-**Status: proposal, awaiting confirmation.** `CLAUDE.md` requires a confirmed
-proposal before implementation. One slice is already done and is marked so.
+**Status: confirmed 2026-09-05**, with slices 1–2 authorized for that
+session and slices 3–5 left for their own go-ahead. Slices 0, 1 and 2 are
+done; see the
+[F2/F3 record](../research/2026-09-05-v11d-f2-f3-record.md).
 
 Ordered by the maintainer's direction of 2026-09-05: the small metric fix and
 the signal-interruption reproduction first, then V12 resume support and the
@@ -35,7 +37,7 @@ project keeps re-learning about.
 **Its stated limit:** a resolvable command is not a working one. That is what
 the V5d smoke is for, and this does not replace it.
 
-## Slice 1 — the empty-patch metric fix (**F2**)
+## Slice 1 — the empty-patch metric fix (**F2**, **done**)
 
 Small and self-contained; first because it silently understates every
 pi-adapter cell already collected.
@@ -58,10 +60,12 @@ always true and the counter is dead.
 
 **Re-score, do not re-run.** Every affected cell has a retained transcript, so
 `regrade`/`summarize` rebuild the corrected counts offline. The known
-demonstration: `miniprobe-2/plausible-wrong-fix/…-200622-258836` publishes
-`0` and recomputes to `1`.
+demonstration: `…-200622-258836` publishes `0` and recomputes to `1`.
+**Correction:** that cell is in `miniprobe` (the **voided** first
+mini-probe), not `miniprobe-2` as this plan first stated — the record
+carries the recompute and the two-directional discrimination.
 
-## Slice 2 — signal-interruption reproduction (**F3**)
+## Slice 2 — signal-interruption reproduction (**F3**, **done**)
 
 `run.py:123-153` writes `aborted.json` on any `BaseException`, and a
 `UsageError` demonstrably does (the aborted Engine smoke recorded `completed:
@@ -71,7 +75,8 @@ no `aborted.json`.
 
 **Reproduce before fixing.** A test that sends SIGTERM to a live `run` and
 asserts on what lands. If the reproduction fails, F3 is a misattribution and
-is recorded as such rather than quietly dropped.
+is recorded as such rather than quietly dropped. **It reproduced**, for
+SIGTERM and SIGHUP alike, with the clean-run sibling passing throughout.
 
 **Constraint:** the default tier forbids subprocesses, so this is an
 **integration-tier** test, marked and excluded from CI. Do not weaken the

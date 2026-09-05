@@ -8,15 +8,30 @@ produces a contamination tally beside the verdict counts; a visible oracle
 omits it.
 
 Completion contract: ``summary.json`` is written only when all n attempts
-complete. If the loop aborts — an exception or Ctrl-C after at least one
-cell — run writes ``aborted.json`` (requested/completed/error plus the
-tallies over the completed cells) and re-raises, so a partial batch is
-never mistaken for a completed short run.
+complete. If the loop aborts — an exception, Ctrl-C, or a terminating
+signal after at least one cell — run writes ``aborted.json``
+(requested/completed/error plus the tallies over the completed cells) and
+re-raises, so a partial batch is never mistaken for a completed short run.
+
+That contract used to have a hole (V11d F3). ``except BaseException``
+catches what Python *raises*, and the default disposition of SIGTERM and
+SIGHUP raises nothing: the interpreter dies where it stands. An
+interrupted batch therefore left cell directories, no ``summary.json``
+and no ``aborted.json`` — indistinguishable, from the artifacts alone,
+from a batch that was never started. ``_abort_on_signals`` turns those
+two signals into a raised ``SignalAbort`` for the duration of the cell
+loop so the existing abort path runs, then restores whatever handlers it
+displaced. SIGINT is left alone: it already raises ``KeyboardInterrupt``.
+SIGKILL cannot be caught by anything and remains outside this contract.
 """
 
 import json
+import signal
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import asdict
 from pathlib import Path
+from types import FrameType
 
 from satyrn_evals.attempt import DEFAULT_TIMEOUT, attempt, resolve_contract
 from satyrn_evals.errors import OverlayError, SatyrnError, UsageError
@@ -31,6 +46,47 @@ from satyrn_evals.summary import (
     compute_summary,
     write_summary,
 )
+
+type SignalHandler = (
+    Callable[[int, FrameType | None], object] | int | signal.Handlers | None
+)
+
+ABORT_SIGNALS: tuple[signal.Signals, ...] = (signal.SIGTERM, signal.SIGHUP)
+
+
+class SignalAbort(BaseException):
+    """A terminating signal reached the batch loop (V11d F3).
+
+    ``BaseException`` on purpose: like ``KeyboardInterrupt``, this is not
+    a condition any inner ``except Exception`` should be able to swallow
+    on its way out. ``str()`` is the signal's name, so the abort record's
+    error field names what killed the batch.
+    """
+
+    def __init__(self, signum: int) -> None:
+        self.signum = signum
+        super().__init__(signal.Signals(signum).name)
+
+
+@contextmanager
+def _abort_on_signals() -> Iterator[None]:
+    """Raise ``SignalAbort`` on a terminating signal, then restore.
+
+    Restoring matters: ``run`` is a library call, and a test or a caller
+    that runs a batch in-process must get its own handlers back.
+    """
+
+    def handler(signum: int, frame: FrameType | None) -> None:
+        raise SignalAbort(signum)
+
+    displaced: dict[signal.Signals, SignalHandler] = {}
+    try:
+        for sig in ABORT_SIGNALS:
+            displaced[sig] = signal.signal(sig, handler)
+        yield
+    finally:
+        for sig, previous in displaced.items():
+            signal.signal(sig, previous)
 
 
 def _write_aborted(
@@ -108,18 +164,25 @@ def run(
         raise SatyrnError(f"run: overlay unavailable: {exc}") from exc
     cells: list[AttemptCell] = []
     try:
-        for _ in range(n):
-            record = attempt(
-                task=task, tasks_root=tasks_root, output=output, command=command,
-                timeout=timeout, rung=rung,
-            )
-            if record.attempt_dir is None:
-                raise RuntimeError("attempt record does not name its attempt directory")
-            receipt: dict | None = None
-            if record.receipt_path is not None:
-                receipt_path = output / record.attempt_dir / record.receipt_path
-                receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
-            cells.append((record.attempt_dir, record, receipt))
+        with _abort_on_signals():
+            for _ in range(n):
+                record = attempt(
+                    task=task, tasks_root=tasks_root, output=output,
+                    command=command, timeout=timeout, rung=rung,
+                )
+                if record.attempt_dir is None:
+                    raise RuntimeError(
+                        "attempt record does not name its attempt directory"
+                    )
+                receipt: dict | None = None
+                if record.receipt_path is not None:
+                    receipt_path = (
+                        output / record.attempt_dir / record.receipt_path
+                    )
+                    receipt = json.loads(
+                        receipt_path.read_text(encoding="utf-8")
+                    )
+                cells.append((record.attempt_dir, record, receipt))
     except BaseException as exc:
         # never lose the tally over completed cells (T1) — but never as a
         # file named summary.json: an aborted batch must not look complete.

@@ -166,6 +166,26 @@ def _read_transcript(path: Path) -> str | None:
         return None
 
 
+def _had_patch(path: Path | None) -> bool:
+    """Whether the cell preserved a patch with content in it (V11d F2).
+
+    Not ``patch_path is not None``: ``attempt_pi.py:230`` writes
+    ``patch.diff`` unconditionally, so on every pi-adapter cell the name
+    is always recorded and the file always exists -- which made
+    ``tool_free_terminal_turns`` unable to fire on the refusals it was
+    built to count. A patch is a patch when it has non-whitespace
+    content. A recorded patch that cannot be read is absent evidence,
+    not a finding, so it reports ``True`` and the gate stays silent
+    (confirmed 2026-09-05).
+    """
+    if path is None:
+        return False
+    try:
+        return bool(path.read_text(encoding="utf-8", errors="replace").strip())
+    except OSError:
+        return True
+
+
 def compute_pathology(
     output: Path,
     cells: Sequence[AttemptCell],
@@ -211,8 +231,13 @@ def compute_pathology(
         if text is None:
             blocks[name] = _ABSENT
             continue
+        patch = (
+            None
+            if record.patch_path is None
+            else output / name / record.patch_path
+        )
         block = count_transcript(
-            text, had_patch=record.patch_path is not None
+            text, had_patch=_had_patch(patch)
         ).to_block()
         if hidden and block.get("measured") is True:
             # Hidden implies the overlay is present here -- loaded above or
