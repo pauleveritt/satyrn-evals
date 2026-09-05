@@ -38,7 +38,8 @@ and **the Baseline mini-probe has now run** — 12/12 cells, selecting
 (`~/satyrn-smokes/2026-09-05-v11c-miniprobe-2/RESULT.md`). **The two-arm spike
 has not been run**; the maintainer held it. Preflight is per-batch: re-run it
 into a new output directory immediately before the spike, as was done for the
-mini-probe. The
+mini-probe. **Quiet the machine first** — the voided attempt was a GPU
+out-of-memory, which is machine state that no V11d fix prevents. The
 [V11 fix brief](docs/superpowers/research/2026-09-05-next-agent-brief-v11-fixes.md)
 records the corrections that landed to reach this state.
 

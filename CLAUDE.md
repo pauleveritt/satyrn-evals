@@ -108,6 +108,27 @@ investigation and repeated spending.
   batch, never tuned mid-sequence, and tuning waits until the instrument is
   reliable.
 
+- **An instrument fix round needs a stopping rule, the way an experiment
+  does.** A batch has one — `n` frozen, no extension after reading the
+  result. A fix round had none, so each round found more than it closed:
+  V11d opened with six findings and reached nine, while the run those
+  fixes were for stayed held. So, before a fix is allowed ahead of an
+  authorized run, it must **block that run** or be **impossible to
+  re-score afterwards**. Everything else waits until after. This is not a
+  quality standard being lowered — it is what capture-separate-from-
+  grading was built to buy (`BRIEF.md` rule 3: a grading defect is
+  "fixable and re-scored without re-running a model"). Applied to V11d on
+  2026-09-05: only F1 blocked the V11c spike; F2 and F4 are re-scorable
+  from retained transcripts and F5 belongs to V12, so the round stopped
+  after slice 2 and the spike went next.
+
+- **Some failures are machine state, and no code fix reaches them.** The
+  voided first mini-probe was a GPU out-of-memory. Nothing in V11d
+  prevents another — `MODEL_ERROR` classifies one after the fact, it does
+  not stop one. Before an unattended batch, quiet the machine; that
+  precondition is operational and belongs in the pre-batch check, not in
+  a slice.
+
 - **A long run is resumable before it is long.** Any batch big enough to be
   interrupted ships resume support first: completed cells survive
   interruption, and incomplete or invalid cells have explicit, written rules

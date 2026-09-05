@@ -1,9 +1,21 @@
 # V11d — instrument fixes, then V12's entry gates
 
-**Status: confirmed 2026-09-05**, with slices 1–2 authorized for that
-session and slices 3–5 left for their own go-ahead. Slices 0, 1 and 2 are
-done; see the
+**Status: confirmed 2026-09-05, then stopped after slice 2 the same day.**
+Slices 0, 1 and 2 are done — see the
 [F2/F3 record](../research/2026-09-05-v11d-f2-f3-record.md).
+
+**Slices 3–5 are deferred behind the held V11c spike**, by the stopping
+rule this round paid for (`CLAUDE.md`, "an instrument fix round needs a
+stopping rule"). Of the six findings only **F1 blocked** the spike; **F2
+and F4 are re-scorable** from retained transcripts after the run, which
+is what `BRIEF.md` rule 3 exists to buy; and **F5 belongs to V12's 288
+cells**, not to this spike's 24. The round opened with six findings and
+reached nine — the real-E5 engine failure, the drifted 100%-coverage
+claim, and `regrade_attempt` no-opping on refusal cells — while the run
+the fixes were for stayed held.
+
+Slice 4 keeps a confirmed design, recorded below, for whoever picks it
+up after the spike.
 
 Ordered by the maintainer's direction of 2026-09-05: the small metric fix and
 the signal-interruption reproduction first, then V12 resume support and the
@@ -123,6 +135,50 @@ classifier is therefore judged on both directions before it ships.
 counts-only layer, which would leave the cell inside `code_counts[NO_PATCH]`;
 report and never drop — `n` stays intact and exclusion from a success count
 is the maintainer's call under V11c §2 rule 1.
+
+### Slice 4's confirmed design (2026-09-05), for after the spike
+
+Recorded so it is not re-derived. The decision surface, computed from the
+retained transcripts of both batches:
+
+| shape | cells | `stopReason` | tokens | `errorMessage` | treatment |
+|---|---|---|---|---|---|
+| healthy | 11 of 12 (of record) | `stop`/`length` | 3.9k–23.6k | none | untouched |
+| context exhaustion | `misleading-locus …203854` | `error` | 0 | `400: {"message":"Prompt too long: 80036 tokens exceeds max context window of 80000 tokens", …}` | **stays in the denominator** |
+| runtime fault | `plausible-wrong-fix …200818`, `…200819` (voided) | `error` | 0 | `[METAL] Command buffer execution failed: Insufficient Memory (…OutOfMemory)` | **`MODEL_ERROR`** |
+
+`stopReason == "error"` and `totalTokens == 0` are each true of **both**
+error shapes, so neither can be the rule — confirming `0ec2e34`. One
+structural shortcut is dead too: `responseModel: "keepalive"` appears on
+the OOM cell **and** on a healthy `OK` cell. (Beside the point here but
+owed to V12's observed-transcript-model gate: `responseModel` is not the
+model identity; `message.model` is.)
+
+**The rule.** On a `stopReason: "error"` terminal turn, an
+`errorMessage` that is a status response from the model server
+(`^\d{3}: …`) means the server was reached and answered about its own
+input limits — a model-side outcome that stays in the denominator.
+Anything else is the substrate failing beneath a well-formed request →
+`MODEL_ERROR`. Deliberately conservative toward `MODEL_ERROR` for unknown
+faults, because report-never-drop makes that visible, whereas today's
+behaviour — infrastructure silently counted as `NO_PATCH` — is not. Its
+cost: a model-side failure arriving without a status code would inflate
+apparent infrastructure trouble rather than hide a refusal.
+
+**Two decisions confirmed by the maintainer:**
+
+1. **A pure classifier over the transcript, called from both paths** —
+   `attempt()` before `decide_refusal`, and the re-score path, so cells
+   already collected reclassify offline.
+2. **A new `AttemptCode.MODEL_ERROR` with its own policy row; outcome
+   stays `REFUSED`.** It leaves `code_counts[NO_PATCH]` — this slice's
+   actual complaint — and gets its own summary line. `n` stays intact.
+
+**A gap this plan missed:** `regrade_attempt` no-ops on refusal cells
+(`rescore.py:362`, "nothing was graded, so nothing re-scores"), so an
+attempt-time-only decision would strand every collected cell at
+`NO_PATCH` with no offline path to correct it — the failure `BRIEF.md`
+rule 3 exists to prevent. Decision 1 is what closes it.
 
 ## Slice 5 — remaining V12 entry gates
 
