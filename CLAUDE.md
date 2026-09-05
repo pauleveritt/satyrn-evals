@@ -67,6 +67,52 @@ recorded condition that would reopen it, in `BACKLOG.md`.
   These are the house style, not a preference — a review that rewrites
   them into older forms is wrong.
 
+## How work is paced (confirmed 2026-09-05)
+
+These are working agreements, not design. They exist to stop repeated
+investigation and repeated spending.
+
+- **One current status record.** `ROADMAP.md`'s opening paragraph and its
+  phase table must agree. They drifted once — the opening said "awaiting
+  landing" while the table recorded completion — and the cost was a later
+  session re-investigating settled work. When a phase moves, update both in
+  the same edit or neither.
+
+- **Reuse evidence before spending inference.** A grading or metric change is
+  re-scored from retained transcripts (`regrade`, `summarize`), never re-run.
+  A V5d smoke repeats only when the **execution path** materially changes —
+  a new adapter, argv, runtime, contract shape, or arm. A
+  documentation-only commit changes no path and earns no re-smoke.
+
+- **Inference runs from a frozen checkout; development happens in a separate
+  worktree.** A batch's reproducibility claim is pinned to the commit
+  preflight recorded, and preflight refuses a dirty tree — so editing the
+  tree that is running cells either blocks the batch or invalidates it. V12
+  preparation proceeds in its own worktree, independent of Engine work.
+  Create worktrees with `git worktree add` / `git checkout`, or `rsync -a` —
+  **never** a `cp` loop over `git status`, which once silently skipped
+  `arms/` and `scripts/` and produced spurious failures.
+
+- **Test at the right grain.** Focused tests during implementation; the full
+  gates (`uv run pytest`, `uv run ruff check`, `just lint-docs`, `just docs`)
+  at integration. Do not re-run unchanged gates after every handoff.
+
+- **Delegation.** Give Luna bounded changes with explicit acceptance tests
+  stated up front. Use Terra for runtime boundaries, failure classification,
+  and final review. After a change lands, re-review **the change and the
+  findings it affects** — do not restart a broad review each time.
+
+- **Inference settings are frozen between batches.** Context limits,
+  compaction, quantization and stopping rules change what is measured, not
+  just how long a run takes. They are decided and **recorded** before a
+  batch, never tuned mid-sequence, and tuning waits until the instrument is
+  reliable.
+
+- **A long run is resumable before it is long.** Any batch big enough to be
+  interrupted ships resume support first: completed cells survive
+  interruption, and incomplete or invalid cells have explicit, written rules
+  rather than being silently re-run or silently counted.
+
 ## When something looks like a known failure mode
 
 Check `docs/superpowers/research/2026-08-16-harvest-index.md` before

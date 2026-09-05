@@ -11,11 +11,14 @@ Backlog, not into the current phase.*
 ## Now
 
 **The next direction is a reliable instrument, a fitted AgentClinic suite,
-and one preregistered Engine comparison.** V9 and V10 are complete. The
-current phases are **V11a-trim and V11b-trim** — confirmed 2026-09-05 and
-implemented and full-gate green in `main`'s working tree, awaiting
-maintainer-controlled landing — which ship the trimmed contract ladder and a
-two-arm substrate. Neither measures anything. The later phases do not promise
+and one preregistered Engine comparison.** V9, V10, V11a-trim and V11b-trim
+are complete and landed; the trimmed contract ladder and the two-arm
+substrate are in `main`. Neither of those measures anything. **V11c's
+Baseline mini-probe has run and selected its task; its two-arm spike is
+held.** The next build work is the V11d fix round and V12's entry gates:
+[plan of record](docs/superpowers/plans/2026-09-05-v11d-instrument-fixes-and-v12-entry.md),
+proposed 2026-09-05 and awaiting confirmation; its preflight-command slice is
+already done and verified. The later phases do not promise
 that Engine will win. They promise a durable placement profile, then a
 prospective result whose null outcome is recorded as prominently as a
 positive one. Rationale: the [`2026-09-04 roadmap record`](docs/superpowers/research/2026-09-04-roadmap-to-a-reliable-instrument-and-a-first-engine-result.md), as amended

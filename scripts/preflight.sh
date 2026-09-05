@@ -104,6 +104,20 @@ MEASUREMENT_PROCESSES="$(ps -axo pid=,ppid=,command= | \
   || fail "measurement-shaped process already running:\n$MEASUREMENT_PROCESSES"
 ok "no measurement-shaped Pi or Engine process is running"
 
+# --- 0b. every arm's command is findable on PATH -------------------------
+# A commit and a digest prove *which* code would run; they do not prove the
+# command can be found. On 2026-09-05 this script went green while
+# `satyrn-engine` was absent from PATH (it lives in the engine repo's own
+# virtualenv), and the Engine smoke launched from that shell died in under a
+# second. A 24-cell spike would have aborted its whole Engine half.
+# Run under `uv run` so the check resolves the way a cell resolves: the
+# batch is launched as `uv run satyrn-evals run ...`, so its children see
+# the evals virtualenv's bin directory. Checked with a bare `python3`, the
+# Baseline command reads as missing when it is not.
+uv run --project "$EVALS_ROOT" python \
+  "$EVALS_ROOT/scripts/preflight_commands.py" "$BASELINE_ARM" "$ENGINE_ARM" \
+  || fail "an arm's command is not on PATH; put it there before spending a batch"
+
 # --- 1. the engine checkout is exactly the pinned commit, and clean -------
 
 HEAD_SHA="$(git -C "$ENGINE_REPO" rev-parse HEAD)"
