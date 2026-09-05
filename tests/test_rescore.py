@@ -1,6 +1,8 @@
 """summarize_output/regrade_attempt: pure from-disk rebuild and re-score."""
 
 import json
+import os
+import shutil
 from dataclasses import replace
 from pathlib import Path
 
@@ -14,9 +16,14 @@ from satyrn_evals.attempt_record import (
     write_attempt_record,
 )
 from satyrn_evals.errors import SatyrnError, UsageError
-from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
+from satyrn_evals.manifest import (
+    DEFAULT_TASKS_ROOT,
+    TaskManifest,
+    load_manifest,
+    resolve_task,
+)
 from satyrn_evals.receipt import Receipt
-from satyrn_evals.rescore import regrade_attempt, summarize_output
+from satyrn_evals.rescore import compute_pathology, regrade_attempt, summarize_output
 from satyrn_evals.summary import ABORTED_NAME, SUMMARY_NAME
 from satyrn_evals.verdict import Verdict
 
@@ -333,3 +340,390 @@ def test_regrade_unavailable_verdict_raises_operational(
     loaded = load_attempt_record(out / "format_number-1" / "attempt.json")
     assert loaded.code is AttemptCode.OK
     assert loaded.verdict is Verdict.UNAVAILABLE
+
+
+# --- V10 P3a Task 2: compute_pathology (the artifact binder) ---
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_GOOD_TRANSCRIPT = (
+    _REPO_ROOT / "tests" / "data" / "v10" / "good-repair.jsonl"
+).read_text(encoding="utf-8")
+
+
+def _pathology_cell(
+    output: Path,
+    name: str,
+    *,
+    task: str = TASK,
+    transcript: str | None = None,
+    names_transcript: bool = True,
+    as_directory: bool = False,
+    unreadable: bool = False,
+) -> tuple[str, AttemptRecord, None]:
+    """One cell dir with an attempt record (and on-disk copy) + transcript.
+
+    ``transcript=None`` leaves the file absent while the record still
+    names it (spec §4: missing at summary time); ``names_transcript=False``
+    mirrors a TRANSCRIPT_MISSING refusal whose record names no transcript
+    at all.
+    """
+    cell = output / name
+    cell.mkdir(parents=True, exist_ok=True)
+    (cell / "patch.diff").write_text("diff --git a/x b/x\n", encoding="utf-8")
+    if names_transcript:
+        rec = record(task=task, attempt_dir=name)
+        target = cell / "transcript.txt"
+        if as_directory:
+            target.mkdir()
+        elif unreadable:
+            target.write_text("x\n", encoding="utf-8")
+            target.chmod(0)
+        elif transcript is not None:
+            target.write_text(transcript, encoding="utf-8")
+    else:
+        rec = record(
+            task=task,
+            attempt_dir=name,
+            outcome=AttemptOutcome.REFUSED,
+            code=AttemptCode.TRANSCRIPT_MISSING,
+            verdict=None,
+            transcript_path=None,
+            transcript_digest=None,
+            receipt_path=None,
+        )
+    write_attempt_record(cell / "attempt.json", rec)
+    return name, rec, None
+
+
+def _visible_setup(tmp_path: Path) -> tuple[Path, Path, TaskManifest]:
+    """Output dir + the bundled format_number task's dir and manifest."""
+    task_dir = resolve_task(TASK, tasks_root=_bundled())
+    return tmp_path / "run", task_dir, load_manifest(task_dir)
+
+
+def _hidden_task_dir(tmp_path: Path, name: str = "hidden-task") -> Path:
+    """A bundled-style hidden task: base (with skip-worthy entries),
+    a grader overlay, and a manifest declaring both."""
+    task = tmp_path / name
+    (task / "base").mkdir(parents=True)
+    (task / "base" / "app.py").write_text("x = 1\n", encoding="utf-8")
+    (task / "base" / "pkg").mkdir()
+    (task / "base" / "pkg" / "__init__.py").write_text("", encoding="utf-8")
+    (task / "base" / "data.bin").write_bytes(b"\xff\xfe\x00")
+    os.symlink("app.py", task / "base" / "link.py")
+    (task / "fixtures").mkdir(parents=True)
+    (task / "fixtures" / "kg.patch").write_text("", encoding="utf-8")
+    (task / "grader" / "overlay" / "tests").mkdir(parents=True)
+    (task / "grader" / "overlay" / "tests" / "t_hidden.py").write_text(
+        _HIDDEN_OVERLAY, encoding="utf-8"
+    )
+    (task / "manifest.json").write_text(
+        json.dumps(
+            {
+                "name": name,
+                "contract": "do the thing",
+                "oracle": ["python", "-m", "pytest"],
+                "expected_test_ids": ["tests/t_hidden.py::test_x"],
+                "source_paths": ["src"],
+                "fixtures": {"known_good": "fixtures/kg.patch"},
+                "grader_overlay": "grader/overlay",
+                "oracle_visibility": "hidden",
+            }
+        ),
+        encoding="utf-8",
+    )
+    return task
+
+
+_HIDDEN_OVERLAY = (
+    "def test_x():\n"
+    "\n"
+    "    x = 1\n"
+    "    y = 2\n"
+    "    z = 3\n"
+    "    assert x + y == z\n"
+)  # 5 non-blank lines: >= GRADER_BLOCK_LINES, so block windows match
+
+
+def _leaky_transcript(payload: str) -> str:
+    """A well-formed (R1-R6) one-turn transcript whose read result echoes
+    ``payload`` inside a JSON string -- the only way overlay content can
+    appear in a *measured* cell (spec §3.8, decoded scan body)."""
+    return "\n".join(
+        [
+            '{"type": "session", "version": 3, "cwd": "/w"}',
+            '{"type": "agent_start"}',
+            '{"type": "turn_start"}',
+            '{"type": "tool_execution_start", "toolCallId": "r1", "toolName": "read", "args": {"path": "app.py"}}',
+            json.dumps(
+                {
+                    "type": "tool_execution_end", "toolCallId": "r1",
+                    "toolName": "read",
+                    "result": {"content": [{"type": "text", "text": payload}]},
+                }
+            ),
+            '{"type": "turn_end", "message": {"role": "assistant", "content": []}}',
+            '{"type": "agent_end"}',
+            '{"type": "agent_settled"}',
+        ]
+    )
+
+
+def _hidden_setup(tmp_path: Path) -> tuple[Path, Path, TaskManifest]:
+    task_dir = _hidden_task_dir(tmp_path)
+    return tmp_path / "run", task_dir, load_manifest(task_dir)
+
+
+def test_compute_pathology_marks_missing_transcript_absent(
+    tmp_path: Path,
+) -> None:
+    output, task_dir, manifest = _visible_setup(tmp_path)
+    cells = [
+        _pathology_cell(output, "format_number-1"),
+        _pathology_cell(output, "format_number-2"),
+    ]
+    block = compute_pathology(output, cells, task_dir=task_dir, manifest=manifest)
+    assert block == {
+        "format_number-1": {"measured": False, "reason": "absent"},
+        "format_number-2": {"measured": False, "reason": "absent"},
+    }
+
+
+def test_compute_pathology_counts_a_good_transcript(tmp_path: Path) -> None:
+    output, task_dir, manifest = _visible_setup(tmp_path)
+    cells = [
+        _pathology_cell(output, "format_number-1", transcript=_GOOD_TRANSCRIPT)
+    ]
+    block = compute_pathology(output, cells, task_dir=task_dir, manifest=manifest)
+    cell = block["format_number-1"]
+    assert cell["measured"] is True
+    assert cell["tool_calls"] == {"read": 6, "edit": 2}
+    assert "overlay_windows" not in cell  # visible task never carries the key
+
+
+def test_compute_pathology_record_without_transcript_is_absent(
+    tmp_path: Path,
+) -> None:
+    """Refusal-cell records name no transcript: absent, never an error."""
+    output, task_dir, manifest = _visible_setup(tmp_path)
+    cells = [_pathology_cell(output, "format_number-1", names_transcript=False)]
+    block = compute_pathology(output, cells, task_dir=task_dir, manifest=manifest)
+    assert block["format_number-1"] == {"measured": False, "reason": "absent"}
+
+
+def test_compute_pathology_non_regular_transcript_is_absent(
+    tmp_path: Path,
+) -> None:
+    output, task_dir, manifest = _visible_setup(tmp_path)
+    cells = [_pathology_cell(output, "format_number-1", as_directory=True)]
+    block = compute_pathology(output, cells, task_dir=task_dir, manifest=manifest)
+    assert block["format_number-1"] == {"measured": False, "reason": "absent"}
+
+
+def test_compute_pathology_unreadable_transcript_is_absent(
+    tmp_path: Path,
+) -> None:
+    output, task_dir, manifest = _visible_setup(tmp_path)
+    cells = [_pathology_cell(output, "format_number-1", unreadable=True)]
+    block = compute_pathology(output, cells, task_dir=task_dir, manifest=manifest)
+    assert block["format_number-1"] == {"measured": False, "reason": "absent"}
+
+
+def test_compute_pathology_garbage_text_is_unparseable_not_absent(
+    tmp_path: Path,
+) -> None:
+    """Readable garbage is the parser's verdict (unparseable), not the
+    binder's (absent) — spec §4: only genuinely unreadable files are
+    absent."""
+    output, task_dir, manifest = _visible_setup(tmp_path)
+    cells = [_pathology_cell(output, "format_number-1", transcript="not json\n")]
+    block = compute_pathology(output, cells, task_dir=task_dir, manifest=manifest)
+    assert block["format_number-1"] == {"measured": False, "reason": "unparseable"}
+
+
+def test_compute_pathology_hidden_measured_cell_gains_overlay_windows(
+    tmp_path: Path,
+) -> None:
+    """The clean sibling of the leak pair: a hidden cell whose decoded
+    payload carries no overlay window reports overlay_windows == 0."""
+    output, task_dir, manifest = _hidden_setup(tmp_path)
+    cells = [
+        _pathology_cell(
+            output, "hidden-task-1", task="hidden-task",
+            transcript=_GOOD_TRANSCRIPT,
+        )
+    ]
+    block = compute_pathology(output, cells, task_dir=task_dir, manifest=manifest)
+    cell = block["hidden-task-1"]
+    assert cell["measured"] is True
+    assert cell["overlay_windows"] == 0  # clean transcript: no leak
+
+
+def test_compute_pathology_hidden_overlay_leak_fires(
+    tmp_path: Path,
+) -> None:
+    """BRIEF rule 8, fire direction: a hidden cell whose *decoded* result
+    content carries the overlay's hidden-file window verbatim reports
+    overlay_windows == 1 (the raw stream is JSON-escaped, so only the
+    decoded scan body can catch the leak -- spec §3.8 amendment)."""
+    output, task_dir, manifest = _hidden_setup(tmp_path)
+    cells = [
+        _pathology_cell(
+            output, "hidden-task-1", task="hidden-task",
+            transcript=_leaky_transcript(_HIDDEN_OVERLAY),
+        )
+    ]
+    block = compute_pathology(output, cells, task_dir=task_dir, manifest=manifest)
+    assert block["hidden-task-1"]["overlay_windows"] == 1
+
+
+def test_compute_pathology_overlay_window_shared_with_base_stays_clean(
+    tmp_path: Path,
+) -> None:
+    """BRIEF rule 8, silence direction: a window also present in the
+    model-visible base texts is shown content, not evidence -- the same
+    decoded echo reports 0 when the base carries the text (visible
+    subtraction, spec §3.8)."""
+    output, task_dir, manifest = _hidden_setup(tmp_path)
+    # The base now carries the very text the transcript echoes: the model
+    # could legitimately have read it there.
+    (task_dir / "base" / "public.py").write_text(
+        _HIDDEN_OVERLAY, encoding="utf-8"
+    )
+    cells = [
+        _pathology_cell(
+            output, "hidden-task-1", task="hidden-task",
+            transcript=_leaky_transcript(_HIDDEN_OVERLAY),
+        )
+    ]
+    block = compute_pathology(output, cells, task_dir=task_dir, manifest=manifest)
+    assert block["hidden-task-1"]["overlay_windows"] == 0
+
+
+def test_compute_pathology_hidden_without_base_scans_no_visible_text(
+    tmp_path: Path,
+) -> None:
+    """A hidden task whose base vanished post-load: visible subtraction
+    is empty and the scan still runs (0 windows on a clean transcript)."""
+    output, task_dir, manifest = _hidden_setup(tmp_path)
+    shutil.rmtree(task_dir / "base")
+    cells = [
+        _pathology_cell(
+            output, "hidden-task-1", task="hidden-task",
+            transcript=_GOOD_TRANSCRIPT,
+        )
+    ]
+    block = compute_pathology(output, cells, task_dir=task_dir, manifest=manifest)
+    assert block["hidden-task-1"]["overlay_windows"] == 0
+
+
+def test_compute_pathology_unmeasured_cell_never_carries_count_keys(
+    tmp_path: Path,
+) -> None:
+    """S1: measured:false publishes only a reason — no overlay_windows even
+    when the raw transcript text echoes the overlay verbatim (raw overlay
+    lines are not a well-formed Pi stream, so the parser calls it
+    unparseable and no count key is attached)."""
+    output, task_dir, manifest = _hidden_setup(tmp_path)
+    cells = [
+        _pathology_cell(
+            output, "hidden-task-1", task="hidden-task",
+            transcript=_HIDDEN_OVERLAY,
+        )
+    ]
+    block = compute_pathology(output, cells, task_dir=task_dir, manifest=manifest)
+    assert block["hidden-task-1"] == {"measured": False, "reason": "unparseable"}
+
+
+def test_compute_pathology_unreadable_overlay_is_operational(
+    tmp_path: Path,
+) -> None:
+    """A stored overlay that disappears between manifest load and summary
+    time is shared-task-data corruption: it raises, never per-cell
+    unmeasured (spec §4)."""
+    output, task_dir, manifest = _hidden_setup(tmp_path)
+    shutil.rmtree(task_dir / "grader")
+    cells = [
+        _pathology_cell(
+            output, "hidden-task-1", task="hidden-task",
+            transcript=_GOOD_TRANSCRIPT,
+        )
+    ]
+    with pytest.raises(SatyrnError):
+        compute_pathology(output, cells, task_dir=task_dir, manifest=manifest)
+
+
+def test_compute_pathology_had_patch_false_counts_the_terminal_turn(
+    tmp_path: Path,
+) -> None:
+    """The binder-level had_patch=False arc (spec §3.6, deferred minor from
+    P3a Task 2): a measured transcript whose cell preserved no patch (a
+    NO_PATCH refusal that still delivered a transcript) and whose terminal
+    turn is text-only reports tool_free_terminal_turns == 1 — the
+    floored-model signal — never a hard-wired 0."""
+    output, task_dir, manifest = _visible_setup(tmp_path)
+    name = "format_number-1"
+    cell = output / name
+    cell.mkdir(parents=True, exist_ok=True)
+    (cell / "transcript.txt").write_text(_GOOD_TRANSCRIPT, encoding="utf-8")
+    rec = record(
+        task=TASK,
+        attempt_dir=name,
+        outcome=AttemptOutcome.REFUSED,
+        code=AttemptCode.NO_PATCH,
+        patch_path=None,
+        patch_digest=None,
+        verdict=None,
+        receipt_path=None,
+    )
+    write_attempt_record(cell / "attempt.json", rec)
+    block = compute_pathology(
+        output, [(name, rec, None)], task_dir=task_dir, manifest=manifest
+    )
+    cell_block = block[name]
+    assert cell_block["measured"] is True
+    assert cell_block["tool_free_terminal_turns"] == 1
+
+
+def test_compute_pathology_had_patch_true_keeps_terminal_zero(
+    tmp_path: Path,
+) -> None:
+    """Sibling of the pin above: the same text-only-terminal transcript
+    with a preserved patch (the usual OK cell) reports 0 — the count is
+    the conjunction, not the terminal text alone."""
+    output, task_dir, manifest = _visible_setup(tmp_path)
+    cells = [
+        _pathology_cell(
+            output, "format_number-1", transcript=_GOOD_TRANSCRIPT
+        )
+    ]
+    block = compute_pathology(output, cells, task_dir=task_dir, manifest=manifest)
+    cell_block = block["format_number-1"]
+    assert cell_block["measured"] is True
+    assert cell_block["tool_free_terminal_turns"] == 0
+
+
+def test_summarize_refuses_an_unreadable_overlay_as_operational(
+    tmp_path: Path,
+) -> None:
+    """An overlay that vanishes between the run and a later summarize is
+    shared task data: summarize raises operational (exit 3), never a
+    per-cell unmeasured (V10 spec §4). OverlayError alone would exit 2
+    (usage); the summary write path must be 3."""
+    task_dir = _hidden_task_dir(tmp_path, name="hidden-task")
+    # Corrupt the overlay content: the manifest's path-only check passes,
+    # but load_overlay's deep validation (UTF-8 text) fails -- the layer
+    # spec §4 calls operational (3) on the summarize write path.
+    (task_dir / "grader" / "overlay" / "tests" / "t_hidden.py").write_bytes(
+        b"\xff\xfe not utf-8"
+    )
+    out = tmp_path / "run"
+    write_cell(
+        out, "hidden-task-1",
+        record(task="hidden-task", attempt_dir="hidden-task-1"),
+        receipt=_CLEAN_RECEIPT,
+    )
+    write_anchor(out, "hidden-task-1")
+    with pytest.raises(SatyrnError, match="overlay") as excinfo:
+        summarize_output(out, tasks_root=tmp_path)
+    assert excinfo.value.exit_code == 3

@@ -9,6 +9,7 @@ from satyrn_evals.contamination import (
     payload_strings,
     scan_patch,
     scan_texts,
+    scan_transcript,
 )
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, load_manifest
 from satyrn_evals.overlay import OverlaySpec, load_overlay
@@ -240,3 +241,96 @@ def test_whole_file_visible_subtraction():
     spec = _spec_with(body)
     patch = _patch_adding("y.py", body)
     assert scan_patch(patch, spec, visible_texts=[body]).outcome == "clean"
+
+
+def make_spec_short() -> OverlaySpec:
+    """A <=4-non-blank-line overlay: matches as ``whole_file`` only."""
+    return OverlaySpec(
+        root=Path("grader/overlay"),
+        rel_paths=("tests/t_hidden.py",),
+        digests={"tests/t_hidden.py": "abc"},
+        texts={"tests/t_hidden.py": "def test_secret():\n    assert False\n"},
+    )
+
+
+def test_transcript_catting_hidden_file_flags_whole_file() -> None:
+    spec = make_spec_short()
+    leaked = "def test_secret():\n    assert False\n"  # echoed verbatim
+    hits = scan_transcript(leaked, spec)
+    assert len(hits) == 1
+    assert hits[0].overlay_path == "tests/t_hidden.py"
+    assert hits[0].kind == "whole_file"
+    assert hits[0].in_path == "transcript.txt"
+    assert hits[0].line == 1
+
+
+def test_transcript_with_base_read_stays_clean() -> None:
+    spec = make_spec()  # 5+ non-blank overlay lines -> block matching
+    visible = "def test_a():\n\n    x = 1\n    y = 2\n    z = 3\n    assert x + y == z\n"
+    assert scan_transcript(visible, spec, visible_texts=[visible]) == ()
+
+
+def test_transcript_echoing_overlay_block_flags() -> None:
+    spec = make_spec()
+    leaked = "def test_a():\n\n    x = 1\n    y = 2\n    z = 3\n    assert x + y == z\n"
+    hits = scan_transcript(leaked, spec)
+    assert len(hits) == 1
+    assert hits[0].kind == "block"
+    assert hits[0].line == 1
+
+
+def test_transcript_one_idiomatic_line_stays_clean() -> None:
+    spec = make_spec()
+    assert scan_transcript("import pytest\n", spec) == ()
+
+
+def test_overlay_window_shared_with_visible_text_is_not_evidence() -> None:
+    spec = make_spec()
+    shared = "    x = 1\n    y = 2\n    z = 3\n    assert x + y == z\n"
+    assert scan_transcript(shared, spec, visible_texts=[shared]) == ()
+
+
+def test_visible_first_window_does_not_suppress_a_later_hidden_window() -> None:
+    """Subtraction is window-scoped (spec §3.8): a visible start-0 window
+    does not hide a later window that is not visible."""
+    spec = make_spec()
+    visible = "def test_a():\n    x = 1\n    y = 2\n    z = 3\n"  # window at start 0
+    later = "    x = 1\n    y = 2\n    z = 3\n    assert x + y == z\n"  # window at start 1
+    hits = scan_transcript(later, spec, visible_texts=[visible])
+    assert len(hits) == 1
+    assert hits[0].kind == "block"
+
+
+def test_transcript_repeating_overlay_content_counts_one_evidence() -> None:
+    """One Evidence per overlay file, never per occurrence or window."""
+    spec = make_spec()
+    leaked = "def test_a():\n\n    x = 1\n    y = 2\n    z = 3\n    assert x + y == z\n"
+    assert len(scan_transcript(leaked + "\n" + leaked, spec)) == 1
+
+
+def test_empty_overlay_file_contributes_nothing() -> None:
+    spec = OverlaySpec(
+        root=Path("grader/overlay"), rel_paths=("empty.py",),
+        digests={"empty.py": "d"}, texts={"empty.py": "\n\n"},
+    )
+    assert scan_transcript("def test_a():\n    assert False\n", spec) == ()
+
+
+def test_transcript_evidence_line_points_at_the_matching_raw_line() -> None:
+    spec = make_spec_short()
+    leaked = "def test_secret():\n    assert False\n"
+    hits = scan_transcript("noise\n" + leaked, spec)
+    assert len(hits) == 1
+    assert hits[0].line == 2  # raw line of the window's first non-blank line
+
+
+def test_transcript_flags_two_overlay_files_in_spec_order() -> None:
+    spec = OverlaySpec(
+        root=Path("grader/overlay"),
+        rel_paths=("a.py", "b.py"),
+        digests={"a.py": "1", "b.py": "2"},
+        texts={"a.py": "A1\nA2\n", "b.py": "B1\nB2\n"},
+    )
+    hits = scan_transcript("B1\nB2\nA1\nA2\n", spec)
+    assert [hit.overlay_path for hit in hits] == ["a.py", "b.py"]
+    assert [hit.kind for hit in hits] == ["whole_file", "whole_file"]

@@ -141,3 +141,14 @@ a batch.
   handoff prompt (`satyrn-engine/src/satyrn_engine/contract.py:23-28`,
   `attempt.py:229-238`) — prompt content, not run telemetry. The pointer
   was wrong.*
+
+*Superseded (2026-09-04) by V10 — an offline evals-side reader, not an
+engine-side emitter. The change of grounds (the preserved transcript is a
+durable attempt artifact, read offline as `grade` reads `patch.diff`;
+recorded in the V10 spec §0 and its §13 review companion) means the
+counts no longer wait on an engine telemetry field. Four of the deferred
+metrics (`tool_calls`, `repeat`, `churn` minus `context`) plus no-op
+edits, test-runner commands, tool-free terminal turns, workspace escapes,
+and overlay windows ship as the V10 pathology block
+(`docs/superpowers/specs/2026-09-04-v10-transcript-pathology-counts-design.md`).
+The deferral's original text stands above as the record.*

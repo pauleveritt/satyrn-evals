@@ -157,6 +157,57 @@ def scan_patch(
     )
 
 
+def scan_transcript(
+    text: str,
+    spec: OverlaySpec,
+    visible_texts: Sequence[str] = (),
+) -> tuple[Evidence, ...]:
+    """Check (d): verbatim overlay windows inside a preserved transcript.
+
+    The transcript is the one graded artifact V7's checks do not cover
+    (an attempt's ``clean`` covers the patch and workspace absence only,
+    not the transcript -- 2026-09-04 V10 spec §3.8). Matching is verbatim
+    raw-line windows exactly as ``scan_patch`` matches added patch lines,
+    with the same model-visible subtraction: a window that also appears in
+    the visible texts is shown content, not evidence.
+
+    One Evidence per overlay *file evidenced*, never per sliding window or
+    occurrence (spec §3.8): an overlay file whose non-blank lines fit in
+    one window (<= GRADER_BLOCK_LINES) matches as ``whole_file``; a
+    longer file matches on its first >= GRADER_BLOCK_LINES window in
+    overlay line order as ``block``. ``line`` points into the transcript
+    (1-based raw line of the window's first non-blank line).
+    """
+    transcript_seq = _nonblank(text)
+    visible_seqs = tuple(_nonblank(value) for value in visible_texts)
+    evidence: list[Evidence] = []
+    for overlay_path, overlay_text in spec.texts.items():
+        overlay_seq = _nonblank(overlay_text)
+        window = min(GRADER_BLOCK_LINES, len(overlay_seq))
+        if window == 0:
+            continue
+        kind = "whole_file" if window == len(overlay_seq) else "block"
+        overlay_lines = [line for _, line in overlay_seq]
+        transcript_lines = [line for _, line in transcript_seq]
+        for start in range(len(overlay_lines) - window + 1):
+            needle = overlay_lines[start : start + window]
+            if _window_in_visible(needle, visible_seqs):
+                continue  # shown content: not evidence of seeing the overlay
+            for pos in range(len(transcript_lines) - window + 1):
+                if transcript_lines[pos : pos + window] == needle:
+                    evidence.append(
+                        Evidence(
+                            kind, overlay_path, "transcript.txt",
+                            transcript_seq[pos][0],
+                        )
+                    )
+                    break
+            else:
+                continue
+            break  # one Evidence per overlay file (spec §3.8)
+    return tuple(evidence)
+
+
 def scan_texts(
     sources: Sequence[tuple[str, str | None]], spec: OverlaySpec
 ) -> CheckResult:

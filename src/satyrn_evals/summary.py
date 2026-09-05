@@ -4,6 +4,9 @@ A cell is (attempt directory name, record, parsed receipt dict or None).
 Visible-task summaries carry cells + oracle_visibility but no contamination
 section; hidden-task summaries additionally tally contamination outcomes
 beside the verdict counts, with graded = flagged + clean + unmeasured.
+Every summary carries a pathology block: one entry per cell (measured
+counts, or measured:false with a reason), keyed in the summary's cell
+order (V10 spec §4).
 """
 
 import json
@@ -42,6 +45,7 @@ class Summary:
     oracle_visibility: str
     cells: list[str]
     contamination: dict[str, int] | None
+    pathology: dict[str, dict]
 
     def __post_init__(self) -> None:
         if self.n < 0 or self.attempted < 0 or self.refused < 0:
@@ -62,6 +66,7 @@ class Summary:
                 != self.contamination["graded"]
             ):
                 raise ValueError("flagged + clean + unmeasured must equal graded")
+        _validate_pathology(self.pathology, set(self.cells))
 
 
 def _cell_outcome(receipt: dict) -> str:
@@ -81,8 +86,47 @@ def _cell_outcome(receipt: dict) -> str:
     return overall(results)
 
 
+def _validate_pathology(pathology: dict[str, dict], cell_names: set[str]) -> None:
+    """Raise ValueError unless pathology names exactly the cells.
+
+    The wire block always carries one entry per cell (V10 spec §4): the
+    keys must equal the cell names and every value must be a block
+    carrying a boolean ``measured``. Shared by ``Summary.__post_init__``
+    and ``compute_summary`` so both constructors enforce the same rule.
+    """
+    if set(pathology) != cell_names:
+        missing = sorted(cell_names - set(pathology))
+        extra = sorted(set(pathology) - cell_names)
+        raise ValueError(
+            f"pathology must name exactly the cells (missing: {missing}, extra: {extra})"
+        )
+    if any(
+        not isinstance(block, dict) or not isinstance(block.get("measured"), bool)
+        for block in pathology.values()
+    ):
+        raise ValueError("each pathology block must carry a boolean measured")
+
+
+def absent_pathology(cells: Sequence[AttemptCell]) -> dict[str, dict]:
+    """One unmeasured block per cell, keyed in cell order.
+
+    The pure tally never reads transcripts; a tally-level caller that has
+    not read them names every cell ``absent`` (V10 spec §4: per-cell
+    unmeasured is a reporting state, never an error). The V10 binder
+    (rescore.compute_pathology, P3a Task 2) replaces this with real
+    measured/unmeasured blocks on the run/summarize write paths.
+    """
+    return {
+        name: {"measured": False, "reason": "absent"}
+        for name, _, _ in cells
+    }
+
+
 def compute_summary(
-    cells: Sequence[AttemptCell], *, oracle_visibility: str
+    cells: Sequence[AttemptCell],
+    *,
+    oracle_visibility: str,
+    pathology: dict[str, dict],
 ) -> Summary:
     if not cells:
         raise ValueError("compute_summary requires at least one cell")
@@ -103,6 +147,7 @@ def compute_summary(
             raise ValueError(f"cell {name} has no recorded timeout")
         if record.timeout != timeout:
             raise ValueError(f"mixed timeouts in cells ({name})")
+    _validate_pathology(pathology, {name for name, _, _ in cells})
     n = len(cells)
     attempted = sum(
         1 for _, record, _ in cells if record.outcome is AttemptOutcome.ATTEMPTED
@@ -142,6 +187,8 @@ def compute_summary(
         oracle_visibility=oracle_visibility,
         cells=[name for name, _, _ in cells],
         contamination=contamination,
+        # the field keys must follow the summary's cell order (spec §4)
+        pathology={name: pathology[name] for name, _, _ in cells},
     )
 
 

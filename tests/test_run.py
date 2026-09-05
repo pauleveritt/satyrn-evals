@@ -61,14 +61,19 @@ def ok_record(
     )
 
 
-def _fake_attempt(receipt_text: str = '{"verdict": "pass"}'):
+def _fake_attempt(
+    receipt_text: str = '{"verdict": "pass"}',
+    transcript: str | None = None,
+):
     """A non-spawning attempt double bound to one directory identity.
 
     Mirrors attempt()'s contract end to end on disk: run() hands the double
     task/output/command/timeout as keyword arguments (exactly as it calls
     attempt()), so the double creates the <task>-<stamp> directory holding
     receipt.json AND attempt.json, and returns a record whose attempt_dir
-    names it.
+    names it. When ``transcript`` is given, the double also writes
+    transcript.txt at the seam path the real command writes through, so
+    the cell measures under the V10 pathology binder.
     """
 
     def fake(
@@ -80,6 +85,10 @@ def _fake_attempt(receipt_text: str = '{"verdict": "pass"}'):
         cell_dir = output / name
         cell_dir.mkdir()
         (cell_dir / "receipt.json").write_text(receipt_text, encoding="utf-8")
+        if transcript is not None:
+            (cell_dir / "transcript.txt").write_text(
+                transcript, encoding="utf-8"
+            )
         record = ok_record(name, task=task, command=tuple(command),
                            timeout=timeout)
         write_attempt_record(cell_dir / "attempt.json", record)
@@ -396,3 +405,305 @@ def test_run_completion_replaces_a_stale_aborted_marker(
     assert summary.n == 1
     assert not (output / "aborted.json").exists()
     assert (output / "summary.json").exists()
+
+
+# A well-formed Pi v3 transcript whose pathology counts are
+# {tool_calls: {read: 2, edit: 2}} (the P1 test-module shape): two reads in
+# turn one, an identical edit twice across turns two/three, a text-only
+# final turn, and the agent terminal. Mirror of tests/test_pathology.py's
+# GOOD.
+GOOD_TRANSCRIPT = "\n".join([
+    '{"type": "session", "version": 3, "cwd": "/w"}',
+    '{"type": "agent_start"}',
+    '{"type": "turn_start"}',
+    '{"type": "tool_execution_start", "toolCallId": "1", "toolName": "read", "args": {"path": "app.py"}}',
+    '{"type": "tool_execution_end", "toolCallId": "1", "toolName": "read", "result": {}}',
+    '{"type": "tool_execution_start", "toolCallId": "2", "toolName": "read", "args": {"path": "tests/test_app.py"}}',
+    '{"type": "tool_execution_end", "toolCallId": "2", "toolName": "read", "result": {}}',
+    '{"type": "turn_end", "message": {"role": "assistant", "content": []}}',
+    '{"type": "turn_start"}',
+    '{"type": "tool_execution_start", "toolCallId": "3", "toolName": "edit", "args": {"path": "app.py", "edits": [{"oldText": "a", "newText": "b"}]}}',
+    '{"type": "tool_execution_end", "toolCallId": "3", "toolName": "edit", "result": {}}',
+    '{"type": "turn_end", "message": {"role": "assistant", "content": []}}',
+    '{"type": "turn_start"}',
+    '{"type": "tool_execution_start", "toolCallId": "4", "toolName": "edit", "args": {"path": "app.py", "edits": [{"oldText": "a", "newText": "b"}]}}',
+    '{"type": "tool_execution_end", "toolCallId": "4", "toolName": "edit", "result": {}}',
+    '{"type": "turn_end", "message": {"role": "assistant", "content": [{"type": "text", "text": "done"}]}}',
+    '{"type": "agent_end"}',
+    '{"type": "agent_settled"}',
+])
+
+
+def test_run_summary_carries_real_pathology_for_completed_cells(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """run's own summary carries the binder's measured blocks (V10 §4)."""
+    output = tmp_path / "runs"
+    fake = _fake_attempt(transcript=GOOD_TRANSCRIPT)
+    monkeypatch.setattr(run_module, "attempt", fake)
+    run_module.run(
+        task="format_number", tasks_root=DEFAULT_TASKS_ROOT, output=output,
+        command=["fake"], n=2, timeout=1.5,
+    )
+    summary = json.loads((output / "summary.json").read_text(encoding="utf-8"))
+    assert set(summary["pathology"]) == set(summary["cells"])
+    assert all(
+        block["measured"] is True for block in summary["pathology"].values()
+    )
+    assert summary["pathology"][summary["cells"][0]]["tool_calls"] == {
+        "read": 2, "edit": 2,
+    }
+
+
+def test_run_summary_marks_fake_cells_without_transcripts_absent(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Success sibling: a cell whose record names no transcript on disk is
+    `absent`, never a fabricated zero — asserted, not hidden."""
+    output = tmp_path / "runs"
+    monkeypatch.setattr(run_module, "attempt", _fake_attempt())
+    run_module.run(
+        task="format_number", tasks_root=DEFAULT_TASKS_ROOT, output=output,
+        command=["fake"], n=1, timeout=1.5,
+    )
+    summary = json.loads((output / "summary.json").read_text(encoding="utf-8"))
+    cell = summary["cells"][0]
+    assert summary["pathology"][cell] == {
+        "measured": False, "reason": "absent",
+    }
+
+
+def test_abort_marker_never_masks_the_primary_exception(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """The primary abort exception surfaces; the marker records it."""
+    output = tmp_path / "runs"
+
+    def failing_fake(**kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(run_module, "attempt", failing_fake)
+    with pytest.raises(RuntimeError, match="boom"):
+        run_module.run(
+            task="format_number", tasks_root=DEFAULT_TASKS_ROOT,
+            output=output, command=["fake"], n=2, timeout=1.5,
+        )
+    marker = json.loads((output / "aborted.json").read_text(encoding="utf-8"))
+    assert "boom" in marker["error"]
+    assert not (output / "summary.json").exists()
+
+
+def test_abort_binder_failure_never_masks_the_primary_exception(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """A binder failure on the abort path is folded into the marker's error;
+    the marker omits the block and the primary exception still surfaces."""
+    output = tmp_path / "runs"
+    calls = {"n": 0}
+    base = _fake_attempt(transcript=GOOD_TRANSCRIPT)
+
+    def flaky(**kwargs):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            raise RuntimeError("boom")
+        return base(**kwargs)
+
+    def broken_binder(
+        output, cells, *, task_dir, manifest, overlay=None, visible_texts=None,
+    ):
+        raise RuntimeError("binder broke")
+
+    monkeypatch.setattr(run_module, "attempt", flaky)
+    monkeypatch.setattr(run_module, "compute_pathology", broken_binder)
+    with pytest.raises(RuntimeError, match="boom"):
+        run_module.run(
+            task="format_number", tasks_root=DEFAULT_TASKS_ROOT,
+            output=output, command=["fake"], n=2, timeout=1.5,
+        )
+    marker = json.loads((output / "aborted.json").read_text(encoding="utf-8"))
+    assert "boom" in marker["error"]
+    assert "pathology unavailable: RuntimeError: binder broke" in marker["error"]
+    assert "pathology" not in marker  # the block is omitted, never fabricated
+    assert not (output / "summary.json").exists()
+
+
+def test_abort_marker_carries_pathology_when_binder_succeeds(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Success sibling: an abort with a working binder writes the marker
+    WITH the completed cells' measured blocks."""
+    output = tmp_path / "runs"
+    calls = {"n": 0}
+    base = _fake_attempt(transcript=GOOD_TRANSCRIPT)
+
+    def flaky(**kwargs):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            raise OSError("boom")
+        return base(**kwargs)
+
+    monkeypatch.setattr(run_module, "attempt", flaky)
+    with pytest.raises(OSError, match="boom"):
+        run_module.run(
+            task="format_number", tasks_root=DEFAULT_TASKS_ROOT,
+            output=output, command=["fake"], n=2, timeout=1.5,
+        )
+    marker = json.loads((output / "aborted.json").read_text(encoding="utf-8"))
+    assert marker["completed"] == 1
+    cells = marker["cells"]
+    assert set(marker["pathology"]) == set(cells)
+    assert marker["pathology"][cells[0]]["measured"] is True
+    assert not (output / "summary.json").exists()
+
+
+def _hidden_run_task(tmp_path: Path) -> tuple[Path, Path]:
+    """A bundled-style hidden task under ``tmp_path`` (name ``hidden-task``).
+
+    Returns ``(task_dir, overlay_file)`` so a test can corrupt or repair
+    the overlay after construction (V10 close-out recovery tests)."""
+    task_dir = tmp_path / "hidden-task"
+    (task_dir / "base").mkdir(parents=True)
+    (task_dir / "base" / "app.py").write_text("x = 1\n", encoding="utf-8")
+    (task_dir / "fixtures").mkdir(parents=True)
+    (task_dir / "fixtures" / "kg.patch").write_text("", encoding="utf-8")
+    (task_dir / "grader" / "overlay").mkdir(parents=True)
+    overlay_file = task_dir / "grader" / "overlay" / "t_hidden.py"
+    overlay_file.write_text("def test_x():\n    assert True\n", encoding="utf-8")
+    (task_dir / "manifest.json").write_text(
+        json.dumps(
+            {
+                "name": "hidden-task",
+                "contract": "do the thing",
+                "oracle": ["python", "-m", "pytest"],
+                "expected_test_ids": ["t_hidden.py::test_x"],
+                "source_paths": ["src"],
+                "fixtures": {"known_good": "fixtures/kg.patch"},
+                "grader_overlay": "grader/overlay",
+                "oracle_visibility": "hidden",
+            }
+        ),
+        encoding="utf-8",
+    )
+    return task_dir, overlay_file
+
+
+def test_run_refuses_a_broken_overlay_before_any_attempt(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """A broken overlay refuses run BEFORE its first attempt (V10 spec §4,
+    close-out correction 2026-09-05): nothing is preserved, no
+    summary/aborted marker is written, and the attempt seam is never
+    invoked -- repair + rerun costs no model time."""
+    from satyrn_evals.errors import SatyrnError
+
+    _task_dir, overlay_file = _hidden_run_task(tmp_path)
+    # Corrupt the overlay content: load_manifest's path-only check passes;
+    # load_overlay's deep UTF-8 validation fails on run's pre-loop load.
+    overlay_file.write_bytes(b"\xff\xfe not utf-8")
+    calls = {"n": 0}
+    base = _fake_attempt(transcript=GOOD_TRANSCRIPT)
+
+    def counting_fake(**kwargs):
+        calls["n"] += 1
+        return base(**kwargs)
+
+    monkeypatch.setattr(run_module, "attempt", counting_fake)
+    output = tmp_path / "out"
+    with pytest.raises(SatyrnError, match="overlay") as excinfo:
+        run_module.run(
+            task="hidden-task", tasks_root=tmp_path, output=output,
+            command=["fake"], n=2, timeout=1.5,
+        )
+    assert excinfo.value.exit_code == 3
+    assert calls["n"] == 0  # refused before the first attempt
+    assert not (output / "summary.json").exists()
+    assert not (output / "aborted.json").exists()
+    assert not output.exists() or not any(output.iterdir())  # no cells
+
+
+def test_run_then_summarize_recovers_after_overlay_repair(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """The recovery requirement (V10 spec §4/§9.7, close-out correction):
+    after run() succeeds, a later overlay break makes summarize fail
+    operationally (the run is already anchored), and repairing the overlay
+    lets summarize_output recover from the preserved anchor reproducing the
+    run's own bytes -- with ZERO additional attempt invocations (no model
+    re-run)."""
+    from satyrn_evals.errors import SatyrnError
+    from satyrn_evals.rescore import summarize_output
+
+    _task_dir, overlay_file = _hidden_run_task(tmp_path)
+    overlay_text = "def test_x():\n    assert True\n"
+    calls = {"n": 0}
+    base = _fake_attempt(transcript=GOOD_TRANSCRIPT, receipt_text=_CLEAN_RECEIPT)
+
+    def counting_fake(**kwargs):
+        calls["n"] += 1
+        return base(**kwargs)
+
+    monkeypatch.setattr(run_module, "attempt", counting_fake)
+    output = tmp_path / "out"
+    run_module.run(
+        task="hidden-task", tasks_root=tmp_path, output=output,
+        command=["fake"], n=1, timeout=1.5,
+    )
+    own = (output / "summary.json").read_bytes()
+    assert "pathology" in json.loads(own.decode())
+    # Break the overlay after the run: summarize fails operationally...
+    overlay_file.write_bytes(b"\xff\xfe not utf-8")
+    with pytest.raises(SatyrnError, match="overlay"):
+        summarize_output(output, tasks_root=tmp_path)
+    # ...and repair recovers from the anchor with no new attempts.
+    overlay_file.write_text(overlay_text, encoding="utf-8")
+    summarize_output(output, tasks_root=tmp_path)
+    assert (output / "summary.json").read_bytes() == own
+    assert calls["n"] == 1  # only run's single attempt; summarize never invokes
+
+
+def test_run_then_summarize_is_byte_identical_with_pathology(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """The V9 invariant extended to pathology: summarize's rebuild over
+    the run's own cells reproduces run's summary.json byte for byte,
+    including the pathology block computed from the preserved
+    transcripts (V10 spec §4)."""
+    from satyrn_evals.rescore import summarize_output
+
+    output = tmp_path / "runs"
+    monkeypatch.setattr(
+        run_module, "attempt", _fake_attempt(transcript=GOOD_TRANSCRIPT)
+    )
+    run_module.run(
+        task="format_number", tasks_root=DEFAULT_TASKS_ROOT, output=output,
+        command=["fake"], n=2, timeout=1.5,
+    )
+    own = (output / "summary.json").read_bytes()
+    summarize_output(output, tasks_root=DEFAULT_TASKS_ROOT)
+    assert (output / "summary.json").read_bytes() == own
+
+
+def test_summarize_enriches_a_pre_v10_summary(tmp_path: Path, monkeypatch) -> None:
+    """A pre-V10 summary (no pathology key) re-summarized under V10 gains
+    the block and is restored to the run's own bytes (V10 spec §4,
+    retroactive application)."""
+    from satyrn_evals.rescore import summarize_output
+
+    output = tmp_path / "runs"
+    monkeypatch.setattr(
+        run_module, "attempt", _fake_attempt(transcript=GOOD_TRANSCRIPT)
+    )
+    run_module.run(
+        task="format_number", tasks_root=DEFAULT_TASKS_ROOT, output=output,
+        command=["fake"], n=2, timeout=1.5,
+    )
+    path = output / "summary.json"
+    own = path.read_bytes()
+    data = json.loads(path.read_text(encoding="utf-8"))
+    del data["pathology"]  # simulate a pre-V10 summary
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    summarize_output(output, tasks_root=DEFAULT_TASKS_ROOT)
+    rebuilt = json.loads(path.read_text(encoding="utf-8"))
+    assert set(rebuilt["pathology"]) == set(rebuilt["cells"])
+    assert all(b["measured"] is True for b in rebuilt["pathology"].values())
+    assert path.read_bytes() == own

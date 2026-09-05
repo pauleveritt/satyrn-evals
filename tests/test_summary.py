@@ -8,12 +8,19 @@ beside the verdict counts, with graded = flagged + clean + unmeasured.
 
 import dataclasses
 import json
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 
 from satyrn_evals.attempt_record import AttemptCode, AttemptOutcome, AttemptRecord
-from satyrn_evals.summary import Summary, compute_summary, write_summary
+from satyrn_evals.summary import (
+    AttemptCell,
+    Summary,
+    absent_pathology,
+    compute_summary,
+    write_summary,
+)
 from satyrn_evals.verdict import Verdict
 
 _CODES = frozenset(code.value for code in AttemptCode)
@@ -58,6 +65,25 @@ def _cell(
     return (name, record, receipt)
 
 
+def _compute(
+    cells: Sequence[AttemptCell],
+    *,
+    oracle_visibility: str = "visible",
+    pathology: dict[str, dict] | None = None,
+) -> Summary:
+    """compute_summary over pure-tally cells with honest absent blocks.
+
+    These tests never place transcripts on disk, so every cell's honest
+    pathology block is `absent`. Tests that exercise the pathology
+    contract itself call compute_summary directly with explicit blocks.
+    """
+    if pathology is None:
+        pathology = absent_pathology(cells)
+    return compute_summary(
+        cells, oracle_visibility=oracle_visibility, pathology=pathology
+    )
+
+
 def _receipt_dict(
     checks: tuple[tuple[str, str], ...] = (("grader_content_in_patch", "clean"),),
 ) -> dict:
@@ -72,7 +98,7 @@ def _receipt_dict(
 
 
 def test_summary_round_trip_and_tally(tmp_path: Path) -> None:
-    summary = compute_summary(
+    summary = _compute(
         [("task-1", make_record(AttemptCode.OK, Verdict.PASS), None)],
         oracle_visibility="visible",
     )
@@ -89,7 +115,7 @@ def test_summary_round_trip_and_tally(tmp_path: Path) -> None:
 
 
 def test_compute_summary_all_refused_is_the_sibling() -> None:
-    summary = compute_summary(
+    summary = _compute(
         [
             ("task-1", make_record(AttemptCode.NO_PATCH, None), None),
             (
@@ -106,7 +132,7 @@ def test_compute_summary_all_refused_is_the_sibling() -> None:
 
 
 def test_compute_summary_tallies_verdicts_over_attempted_only() -> None:
-    summary = compute_summary(
+    summary = _compute(
         [
             ("task-1", make_record(AttemptCode.OK, Verdict.PASS), None),
             ("task-2", make_record(AttemptCode.OK, Verdict.FAIL), None),
@@ -121,7 +147,7 @@ def test_compute_summary_tallies_verdicts_over_attempted_only() -> None:
 
 
 def test_summary_names_cells_and_visibility() -> None:
-    summary = compute_summary(
+    summary = _compute(
         [_cell("task-1"), _cell("task-2")], oracle_visibility="visible"
     )
     assert summary.cells == ["task-1", "task-2"]
@@ -140,7 +166,7 @@ def test_hidden_summary_counts_and_invariant() -> None:
         _cell("task-3", receipt={}),  # pre-V7 receipt: no key
         _cell("task-4", code=AttemptCode.NO_PATCH, verdict=None, receipt=None),  # refused
     ]
-    summary = compute_summary(cells, oracle_visibility="hidden")
+    summary = _compute(cells, oracle_visibility="hidden")
     assert summary.contamination == {
         "graded": 3,
         "flagged": 1,
@@ -162,8 +188,8 @@ def test_denominators_unchanged_by_contamination_outcomes() -> None:
         )
         for i, v in enumerate(verdicts)
     ]
-    a = compute_summary(clean, oracle_visibility="visible")
-    b = compute_summary(flagged, oracle_visibility="hidden")
+    a = _compute(clean, oracle_visibility="visible")
+    b = _compute(flagged, oracle_visibility="hidden")
     assert (
         a.n,
         a.attempted,
@@ -195,6 +221,7 @@ def test_summary_invariant_refuses_bad_tally() -> None:
             timeout=123.0,
             oracle_visibility="hidden",
             cells=["t-1"],
+            pathology={"t-1": {"measured": False, "reason": "absent"}},
             contamination={"graded": 2, "flagged": 1, "clean": 1, "unmeasured": 1},
         )
 
@@ -213,23 +240,28 @@ def test_summary_invariant_refuses_bad_key_set() -> None:
             timeout=123.0,
             oracle_visibility="hidden",
             cells=["t-1"],
+            pathology={"t-1": {"measured": False, "reason": "absent"}},
             contamination={"graded": 1, "flagged": 1, "clean": 0, "bogus": 0},
         )
 
 
 def test_write_summary_omits_contamination_when_visible(tmp_path: Path) -> None:
     path = tmp_path / "summary.json"
-    write_summary(path, compute_summary([_cell("task-1")], oracle_visibility="visible"))
+    write_summary(path, _compute([_cell("task-1")], oracle_visibility="visible"))
     data = json.loads(path.read_text())
     assert "contamination" not in data
     assert data["task"] == "format_number"
     assert data["command"] == ["fake"]
     assert data["timeout"] == 123.0
+    # pathology is always on the wire (V10 spec §4), even for visible runs
+    assert data["pathology"] == {
+        "task-1": {"measured": False, "reason": "absent"}
+    }
 
 
 def test_write_summary_includes_contamination_when_hidden(tmp_path: Path) -> None:
     path = tmp_path / "summary.json"
-    summary = compute_summary(
+    summary = _compute(
         [_cell("task-1", receipt=_receipt_dict())], oracle_visibility="hidden"
     )
     write_summary(path, summary)
@@ -256,6 +288,7 @@ def test_summary_rejects_invalid_counts() -> None:
             timeout=123.0,
             oracle_visibility="visible",
             cells=[],
+            pathology={},
             contamination=None,
         )
     with pytest.raises(ValueError, match="attempted \\+ refused"):
@@ -271,6 +304,7 @@ def test_summary_rejects_invalid_counts() -> None:
             timeout=123.0,
             oracle_visibility="visible",
             cells=[],
+            pathology={},
             contamination=None,
         )
     with pytest.raises(ValueError, match="one key per"):
@@ -286,6 +320,7 @@ def test_summary_rejects_invalid_counts() -> None:
             timeout=123.0,
             oracle_visibility="visible",
             cells=[],
+            pathology={},
             contamination=None,
         )
     with pytest.raises(ValueError, match="timeouts must equal"):
@@ -301,6 +336,7 @@ def test_summary_rejects_invalid_counts() -> None:
             timeout=123.0,
             oracle_visibility="visible",
             cells=[],
+            pathology={},
             contamination=None,
         )
 
@@ -310,7 +346,7 @@ def test_summary_names_its_arm_from_the_records() -> None:
         ("t-1", make_record(AttemptCode.OK, Verdict.PASS), None),
         ("t-2", make_record(AttemptCode.OK, Verdict.FAIL), None),
     ]
-    summary = compute_summary(cells, oracle_visibility="visible")
+    summary = _compute(cells, oracle_visibility="visible")
     assert summary.task == "format_number"
     assert summary.command == ["fake"]
     assert summary.timeout == 123.0
@@ -319,26 +355,26 @@ def test_summary_names_its_arm_from_the_records() -> None:
 def test_compute_summary_refuses_cells_without_a_timeout() -> None:
     record = dataclasses.replace(make_record(AttemptCode.OK, Verdict.PASS), timeout=None)
     with pytest.raises(ValueError, match="timeout"):
-        compute_summary([("t-1", record, None)], oracle_visibility="visible")
+        _compute([("t-1", record, None)], oracle_visibility="visible")
 
 
 def test_compute_summary_refuses_empty_cells() -> None:
     with pytest.raises(ValueError, match="at least one cell"):
-        compute_summary([], oracle_visibility="visible")
+        _compute([], oracle_visibility="visible")
 
 
 def test_compute_summary_refuses_mixed_identity() -> None:
     a = make_record(AttemptCode.OK, Verdict.PASS)
     b = dataclasses.replace(a, command=("other",))
     with pytest.raises(ValueError, match="command"):
-        compute_summary([("t-1", a, None), ("t-2", b, None)], oracle_visibility="visible")
+        _compute([("t-1", a, None), ("t-2", b, None)], oracle_visibility="visible")
 
 
 def test_compute_summary_refuses_mixed_task_on_a_later_cell() -> None:
     a = make_record(AttemptCode.OK, Verdict.PASS)
     b = dataclasses.replace(a, task="other-task")
     with pytest.raises(ValueError, match="mixed tasks"):
-        compute_summary([("t-1", a, None), ("t-2", b, None)],
+        _compute([("t-1", a, None), ("t-2", b, None)],
                         oracle_visibility="visible")
 
 
@@ -346,7 +382,7 @@ def test_compute_summary_refuses_a_later_cell_without_a_timeout() -> None:
     a = make_record(AttemptCode.OK, Verdict.PASS)
     b = dataclasses.replace(a, timeout=None)
     with pytest.raises(ValueError, match="has no recorded timeout"):
-        compute_summary([("t-1", a, None), ("t-2", b, None)],
+        _compute([("t-1", a, None), ("t-2", b, None)],
                         oracle_visibility="visible")
 
 
@@ -354,5 +390,63 @@ def test_compute_summary_refuses_mixed_timeouts() -> None:
     a = make_record(AttemptCode.OK, Verdict.PASS)
     b = dataclasses.replace(a, timeout=456.0)
     with pytest.raises(ValueError, match="mixed timeouts"):
-        compute_summary([("t-1", a, None), ("t-2", b, None)],
+        _compute([("t-1", a, None), ("t-2", b, None)],
                         oracle_visibility="visible")
+
+
+def test_summary_pathology_requires_every_cell_key() -> None:
+    cells = [_cell("t-1"), _cell("t-2")]
+    with pytest.raises(ValueError, match="pathology"):
+        compute_summary(
+            cells,
+            oracle_visibility="visible",
+            pathology={"t-1": {"measured": False, "reason": "absent"}},
+        )
+
+
+def test_summary_pathology_refuses_blocks_without_measured() -> None:
+    cells = [_cell("t-1")]
+    with pytest.raises(ValueError, match="boolean measured"):
+        compute_summary(
+            cells,
+            oracle_visibility="visible",
+            pathology={"t-1": {"reason": "absent"}},
+        )
+
+
+def test_summary_pathology_writes_through() -> None:
+    cells = [_cell("t-1")]
+    pathology = {"t-1": {"measured": False, "reason": "absent"}}
+    summary = compute_summary(cells, oracle_visibility="visible", pathology=pathology)
+    assert summary.pathology == pathology
+
+
+def test_summary_pathology_refuses_non_dict_block() -> None:
+    """The short-circuit's non-dict branch: a block that is not a dict."""
+    cells = [_cell("t-1")]
+    with pytest.raises(ValueError, match="boolean measured"):
+        compute_summary(
+            cells,
+            oracle_visibility="visible",
+            # deliberately ill-typed: the validation must refuse it
+            pathology={"t-1": "junk"},  # type: ignore[assignment]
+        )
+
+
+def test_summary_pathology_follows_cell_order_not_input_order() -> None:
+    """compute_summary reorders the block to the summary's cell order.
+
+    In-order callers (all of them today) cannot distinguish a reorder from
+    a passthrough; an out-of-order input pins the reorder (spec §4: keys
+    follow the summary's cell order) and that the values followed their
+    keys.
+    """
+    cells = [_cell("t-1"), _cell("t-2")]
+    blocks = {
+        "t-2": {"measured": False, "reason": "absent"},
+        "t-1": {"measured": True, "tool_calls": {"read": 1}},
+    }
+    summary = compute_summary(cells, oracle_visibility="visible", pathology=blocks)
+    assert list(summary.pathology) == summary.cells
+    assert summary.pathology["t-1"] == blocks["t-1"]
+    assert summary.pathology["t-2"] == blocks["t-2"]

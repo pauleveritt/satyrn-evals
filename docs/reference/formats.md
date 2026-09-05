@@ -180,6 +180,7 @@ paths, no trustworthy {term}`hook result`) — the receipt names the cause.
 | `task` | the task name from the attempt records |
 | `command` | the effective attempt command from the records (including any engine-contract suffix) |
 | `timeout` | the attempt timeout in seconds |
+| `pathology` | per-cell block keyed by the cell names in `cells` order: each a measured count set or `{"measured": false, "reason": …}`; absent or unparseable/unknown-vocabulary/structurally-unsound transcripts are `unmeasured`, never zero. Hidden-oracle runs add `overlay_windows` to measured cells; visible-oracle runs carry no overlay key. Count definitions and the reason set: the V10 spec (`docs/superpowers/specs/2026-09-04-v10-transcript-pathology-counts-design.md` §3) |
 
 The summary is counts-only by design: outcome tallies, never wall-clock
 times, confidence intervals, or publication claims. It is the authoritative
@@ -192,14 +193,23 @@ the error, and the tallies over the completed cells; a later completed run
 in the same directory replaces the marker with its `summary.json`.
 
 A summary can be rebuilt from disk: `satyrn-evals summarize OUTPUT_DIR`
-recomputes `summary.json` from the preserved attempt records through the
-same tally `run` uses, so a rebuilt summary is byte-identical to the run's
-own. The rebuild is anchored on the exact cells the run's `summary.json`
-names — a stray sibling directory or an un-appended crash cell can never
-change it — and it refuses a directory whose run aborted (exit `3`, message
-pointing at `aborted.json`). `satyrn-evals regrade ATTEMPT_DIR` re-runs the
-grader over a preserved patch and rewrites its receipt and record — the
-executable form of re-scoring without re-running an attempt.
+recomputes `summary.json` from the preserved attempt records and
+transcripts through the same tally `run` uses, so a rebuilt summary is
+byte-identical to the run's own under the same code and artifacts. The
+rebuild is anchored on the exact cells the run's `summary.json` names — a
+stray sibling directory or an un-appended crash cell can never change it —
+and it refuses a directory whose run aborted (exit `3`, message pointing
+at `aborted.json`). A summary written before V10 carries no `pathology`
+block; re-running `summarize` over such a run *enriches* it, computing the
+block from the preserved transcripts — the retroactive mechanism that
+applies V10 to runs already on disk. `satyrn-evals regrade ATTEMPT_DIR`
+re-runs the grader over a preserved patch and rewrites its receipt and
+record — the executable form of re-scoring without re-running an attempt.
+
+A preserved transcript outside the V10 vocabulary (a fake command's
+arbitrary text, a session's mapped transcript) makes that cell
+`{"measured": false, "reason": …}` — a reporting state, never an error
+and never a change to any exit code.
 
 ## Hook result
 

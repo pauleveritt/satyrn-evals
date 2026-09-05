@@ -595,3 +595,105 @@ uv run pytest -q -m '' --ignore=tests/integration/test_local_pings_bundled.py \
 ```
 
 Ruff and `git diff --check` clean; `just lint-docs` within caps.
+
+## V10 verification record
+
+V10 ships the transcript-derived pathology counts as an offline reader of
+the preserved attempt transcript — the same relationship `grade` has to
+`patch.diff`. `pathology.py` enforces the documented well-formedness rules
+R1–R6 over the preserved Pi stream-JSON and counts the seven
+transcript-local axes (`tool_calls` by name, `repeats`, `churn`,
+`noop_edits`, `test_runner_commands`, `tool_free_terminal_turns`,
+`workspace_escapes`) plus `overlay_windows` for hidden-oracle measured
+cells via decoded-payload scanning. A malformed/partial/unknown
+transcript makes the whole cell `{"measured": false, "reason": …}` —
+never partial counts beside a clean-looking zero (S1). `summary.json`
+carries a per-cell `pathology` block through one shared computation on
+`run`'s own summary, the abort marker, and `summarize_output`, so a
+rebuilt summary is byte-identical to the run's own under the same code
+and artifacts and a pre-V10 run re-summarized under V10 gains the block
+(retroactive enrichment). No new CLI surface, no exit-code change, and
+`regrade` recomputes no pathology (spec §8). Everything is default-tier pure file/text
+processing; no model, no network, no subprocess.
+
+Gate evidence collected on macOS:
+
+```text
+uv run pytest -q
+842 passed, 255 deselected          # tripwire green (post close-out fixes)
+
+uv run pytest -q -m '' --cov=src/satyrn_evals --cov-branch \
+  --cov-report=term-missing --cov-fail-under=100
+1096 passed, 1 skipped            # post close-out fixes (R4/R5/toolName + recovery tests)
+TOTAL 100% coverage (statement count recomputed by the gate)
+```
+
+Recorded correction (2026-09-05, close-out): the gate command drops the
+`--ignore=tests/integration/test_local_pings_bundled.py` exclusion carried
+since the V7 record — the two bundled local-pings integration tests now
+pass (2 passed, 0.65 s), so the count rises by two over V9's shape. The
+exclusion's documented reason ("needs an external ping receiver that is
+absent on this machine") does not describe these tests: they grade the
+bundled known-good/known-broken fixture pair through the task's own
+materialized locked environment, made reliable by V8's
+environment-materialization work. They remain integration-tier and depend
+on the integration dependency group plus first-time locked-env
+materialization (uv cache or network on a fresh clone) — the standard
+dependency-bearing-task condition, not the receiver failure the exclusion
+recorded.
+
+The 100% gate is the invariant; the statement count is recomputed by the
+gate command. Ruff lint clean, `just lint-docs` within caps, and
+`git diff --check` clean on the recorded tree. Pyrefly: V10's five
+changed modules add zero new errors (module-scoped pyrefly reports three
+errors, all on pre-existing lines — the `del dict[key]` unsupported-delete
+family and the regrade `Path | None` union); the full tree carries ~110
+pre-existing pyrefly errors on committed, untouched files — a toolchain
+drift since V9's verification, recorded here as a known pre-existing
+condition, not a V10 regression.
+
+**Fixture discrimination, both directions, by name** — the V10 evidence
+floor:
+
+- **The validation row** (`tests/test_pathology.py::test_validation_row_reproduces_the_spec_table`,
+  1 passed): the faithful-good fixture `tests/data/v10/good-repair.jsonl`
+  reproduces the spec's §3 row exactly — `tool_calls {read: 6, edit: 2}`,
+  `repeats: 4` (`read tests/test_app.py` ×3, `read app.py` ×2, identical
+  `edit app.py` ×2), `churn`/`noop_edits`/`test_runner_commands`/
+  `tool_free_terminal_turns`/`workspace_escapes`/`overlay_windows` all 0 —
+  matching the spec-time count over the preserved V8 smoke transcript.
+- **Whole-cell unmeasured (S1)** (`test_measured_false_never_carries_counts`
+  plus one fixture per R1–R6 violation, each with its success sibling):
+  an empty, unparseable, unknown-vocabulary, wrong-version,
+  structurally-malformed, or partial transcript publishes only
+  `{"measured": false, "reason": …}`; no count key ever coexists with
+  `measured: false`.
+- **The overlay detector discriminates** (P3a amendment,
+  `tests/test_rescore.py`): a hidden-oracle cell whose decoded tool-result
+  payload carries a verbatim overlay window fires (`overlay_windows: 1`);
+  the same window present only in a model-visible `base/` text stays
+  clean (visible subtraction); an unmeasured cell never carries the key.
+- **Retroactive enrichment** (`tests/test_run.py::test_summarize_enriches_a_pre_v10_summary`
+  and `test_run_then_summarize_is_byte_identical_with_pathology`, 2
+  passed): a run dir whose `summary.json` had its `pathology` key deleted
+  re-summarizes to regain the block with every other field unchanged, and
+  `summarize_output` over a V10 run reproduces the run's own bytes.
+- **The abort marker never lies** (`tests/test_run.py`): a batch that
+  aborts writes `aborted.json` — never `summary.json` — carrying the
+  pathology block when the binder succeeded, and a binder failure on the
+  abort path is folded into the marker's `error` so the primary exception
+  always surfaces; an overlay failure on a completed run's summary is
+  operational (exit 3).
+
+**Corrections recorded along the way** — cited, not restated; full
+records in the V10 spec §13 and
+`docs/superpowers/research/2026-09-04-v10-spec-evidence-and-reviews.md`:
+the spec self-review corrected the validation row's `repeats` (1 → 4 by
+recomputation); the GLM 5.3 review's five Important and four Minor
+findings were accepted; the R4 turn-alternation rule and the decoded-payload
+`overlay_windows` amendment are recorded in the spec §13 companion (this
+file's sibling research record) beside the rules they amended (§2 R4,
+§3.8). The BACKLOG.md
+"Transcript-derived summary metrics" entry was removed on resolution per
+the backlog's rule 3. A maintainer close-out review of the V10 worktree
+may produce further corrections, recorded the same way.

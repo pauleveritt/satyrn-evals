@@ -9,11 +9,18 @@ artifact, and a directory whose run aborted is refused (an aborted run
 writes aborted.json, never summary.json). regrade_attempt re-runs the
 grader over a preserved patch and rewrites receipt + record. Pure file
 I/O up to the grade call: default-tier testable without argparse.
+
+V10: compute_pathology builds the per-cell pathology block from the
+preserved transcripts (the artifact binder the run/summarize write paths
+call), joining the transcript overlay scan for hidden tasks.
 """
 
 import json
+import stat
+from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
+from typing import cast
 
 from satyrn_evals.attempt_record import (
     AttemptCode,
@@ -21,9 +28,17 @@ from satyrn_evals.attempt_record import (
     load_attempt_record,
     write_attempt_record,
 )
-from satyrn_evals.errors import SatyrnError, UsageError
+from satyrn_evals.contamination import scan_transcript
+from satyrn_evals.errors import OverlayError, SatyrnError, UsageError
 from satyrn_evals.grade import grade
-from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, load_manifest, resolve_task
+from satyrn_evals.manifest import (
+    DEFAULT_TASKS_ROOT,
+    TaskManifest,
+    load_manifest,
+    resolve_task,
+)
+from satyrn_evals.overlay import OverlaySpec, load_overlay
+from satyrn_evals.pathology import count_transcript, decoded_scan_text
 from satyrn_evals.summary import (
     ABORTED_NAME,
     SUMMARY_NAME,
@@ -109,6 +124,133 @@ def _load_cell(cell_dir: Path) -> AttemptCell:
     return name, record, receipt
 
 
+def _base_texts(task_dir: Path) -> list[str]:
+    """UTF-8 text of the task's model-visible base files (visible windows).
+
+    The overlay scan subtracts windows that also appear here: content the
+    model saw legitimately is not evidence of having seen the overlay
+    (V10 spec §3.8). Unreadable, non-UTF-8, and non-file entries
+    contribute nothing.
+    """
+    texts: list[str] = []
+    base = task_dir / "base"
+    if not base.is_dir():
+        return []
+    for path in sorted(base.rglob("*")):
+        if not (path.is_file() and not path.is_symlink()):
+            continue
+        try:
+            texts.append(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError):
+            continue
+    return texts
+
+
+_ABSENT = {"measured": False, "reason": "absent"}
+
+
+def _read_transcript(path: Path) -> str | None:
+    """The transcript text, or None when the file is not readable.
+
+    V10 spec §4: a named transcript that is missing, not a regular file,
+    or unreadable at summary time is per-cell ``absent`` — never a batch
+    failure. Decoding uses errors="replace", so only a genuinely
+    unreadable file maps to absent; garbage text is the parser's to call
+    ``unparseable``.
+    """
+    try:
+        if not stat.S_ISREG(path.lstat().st_mode):
+            return None
+        return path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+
+
+def compute_pathology(
+    output: Path,
+    cells: Sequence[AttemptCell],
+    *,
+    task_dir: Path,
+    manifest: TaskManifest,
+    overlay: OverlaySpec | None = None,
+    visible_texts: list[str] | None = None,
+) -> dict[str, dict]:
+    """Per-cell pathology blocks over the preserved transcripts (V10 §4).
+
+    A per-cell read problem is per-cell ``absent``, never a batch failure;
+    only shared task-data problems (the overlay) raise. Hidden-oracle
+    measured cells gain ``overlay_windows``: the transcript's *decoded*
+    payload text (spec §3.8) is scanned for overlay windows with the base
+    texts subtracted; visible-oracle cells never carry the key. Blocks
+    appear in the cells' order.
+
+    ``overlay``/``visible_texts`` preload the shared context (close-out
+    correction 2026-09-05, spec §4): when a hidden caller already loaded
+    them (``run`` validates before its first attempt), they are passed in
+    and nothing shared is re-read here; when ``None`` they are loaded from
+    the task as before (``summarize``'s path -- its run is already
+    anchored, so a broken overlay there is operational and recoverable).
+    """
+    hidden = manifest.oracle_visibility == "hidden"
+    if hidden:
+        if overlay is None:
+            overlay = load_overlay(task_dir, manifest)
+        if visible_texts is None:
+            visible_texts = _base_texts(task_dir)
+    blocks: dict[str, dict] = {}
+    for name, record, _ in cells:
+        path = (
+            None
+            if record.transcript_path is None
+            else output / name / record.transcript_path
+        )
+        if path is None:
+            blocks[name] = _ABSENT
+            continue
+        text = _read_transcript(path)
+        if text is None:
+            blocks[name] = _ABSENT
+            continue
+        block = count_transcript(
+            text, had_patch=record.patch_path is not None
+        ).to_block()
+        if hidden and block.get("measured") is True:
+            # Hidden implies the overlay is present here -- loaded above or
+            # pre-loaded by the caller (it raises on an unreadable
+            # overlay), so the cast documents that invariant for the type
+            # checker. The scan body is the decoded payload text (spec
+            # §3.8): raw-line matching over the JSON-escaped stream alone
+            # could not fire.
+            scan_body = decoded_scan_text(text)
+            block["overlay_windows"] = len(
+                scan_transcript(
+                    scan_body,
+                    cast(OverlaySpec, overlay),
+                    visible_texts=(
+                        visible_texts if visible_texts is not None else []
+                    ),
+                )
+            )
+        blocks[name] = block
+    return blocks
+
+
+def pathology_context(
+    task_dir: Path, manifest: TaskManifest
+) -> tuple[OverlaySpec | None, list[str]]:
+    """The shared pathology context for a run, loaded before its first attempt.
+
+    V10 spec §4 (close-out correction 2026-09-05): ``run`` validates the
+    shared pathology context up front so a broken overlay refuses the run
+    pre-cell (nothing preserved, recoverable by repair + rerun) and no
+    shared-context failure can strand completed cells post-loop. Visible
+    tasks carry no overlay and no base-text subtraction.
+    """
+    if manifest.oracle_visibility != "hidden":
+        return None, []
+    return load_overlay(task_dir, manifest), _base_texts(task_dir)
+
+
 def summarize_output(
     output: Path, *, tasks_root: Path | None = None
 ) -> Summary:
@@ -122,7 +264,10 @@ def summarize_output(
     Usage (2): missing dir / not a run output directory / unknown task /
     moved cell. Operational (3): aborted batch, unreadable anchor, record,
     or receipt; a named cell missing from disk; mixed or inconsistent
-    cells.
+    cells; an overlay that cannot load (V10 spec §4: shared task data,
+    never a per-cell unmeasured). The rebuild carries the same per-cell
+    pathology block run writes, recomputed from the preserved transcripts
+    (V10 spec §4) — a pre-V10 summary gains the block on re-summarize.
     """
     output = Path(output)
     if not output.is_dir():
@@ -141,11 +286,22 @@ def summarize_output(
     task_dir = resolve_task(cells[0][1].task, tasks_root=root)
     manifest = load_manifest(task_dir)
     try:
+        pathology = compute_pathology(
+            output, cells, task_dir=task_dir, manifest=manifest
+        )
         summary = compute_summary(
-            cells, oracle_visibility=manifest.oracle_visibility
+            cells,
+            oracle_visibility=manifest.oracle_visibility,
+            pathology=pathology,
         )
     except ValueError as exc:
         raise SatyrnError(f"summarize: {exc}") from exc
+    except OverlayError as exc:
+        # An overlay defect is shared task data, not a per-cell problem:
+        # operational (3), naming summarize (V10 spec §4). OverlayError
+        # alone would exit 2 (usage, the attempt-time reading); the
+        # summary write paths must be exit 3.
+        raise SatyrnError(f"summarize: overlay unavailable: {exc}") from exc
     write_summary(output / SUMMARY_NAME, summary)
     return summary
 
