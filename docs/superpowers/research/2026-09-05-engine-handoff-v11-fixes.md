@@ -74,5 +74,6 @@ at `~/satyrn-smokes/2026-09-05-v11-post-landing-engine-rerun/` did so: it
 exited 0 before the 900-second eval timeout, retained patch and transcript,
 used a generated contract, and rebuilt to measured pathology with five
 `loop_broken` events. Its task verdict was `fail`, which is immaterial to a
-V5d infrastructure check. The remaining V11c preconditions were separately
-met by the clean-tree preflight and Baseline post-landing smoke.
+V5d infrastructure check. The Baseline post-landing smoke and an earlier
+clean-tree preflight supplied the other evidence; a final preflight rerun
+must still obtain a live completion immediately before any budgeted batch.

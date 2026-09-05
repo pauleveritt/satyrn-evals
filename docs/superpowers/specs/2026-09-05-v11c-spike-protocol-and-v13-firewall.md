@@ -26,7 +26,7 @@ written after seeing a count is not a rule.
 | 2 | Baseline V5d smoke passed, pathology `measured: true` | **met** — post-landing evidence `2026-09-05-v11-post-landing-baseline/` |
 | 3 | Engine V5d smoke passed on a **generated** contract | **met** — repaired Engine `25ca0be`, evidence `2026-09-05-v11-post-landing-engine-rerun/` |
 | 4 | Per-cell input-token floor measured inside a materialized workspace | **met** — 1,546 |
-| 5 | `preflight.sh` green: pins, clean trees, **live one-word completion** | **met** — evidence `2026-09-05-v11-post-landing/` |
+| 5 | `preflight.sh` green: pins, clean trees, **live one-word completion** | **blocked (2026-09-05)** — all local pin and clean-tree checks passed on the final rerun, but the live completion returned HTTP 500. Earlier green evidence remains at `2026-09-05-v11-post-landing/`; re-run preflight successfully immediately before any batch. |
 
 If precondition 2 or 3 comes back `unmeasured`, **V10 is amended with a
 discriminating fixture and test before any budgeted cell.** A non-empty
