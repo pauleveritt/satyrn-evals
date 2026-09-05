@@ -1,8 +1,8 @@
 # Engine handoff — V11 correction round
 
 **Date:** 2026-09-05
-**Status:** handoff for `satyrn-engine`; no Engine code was changed here and
-no new model or smoke run is authorized by this note.
+**Status:** handed off and closed. Engine repair `25ca0be` landed, and the
+post-repair, uncounted V5d smoke passed its infrastructure checklist.
 
 This records the final surviving Engine spool and the repairs required before
 an Engine arm can consume budget in V11c or V12. The evidence is diagnostic,
@@ -69,6 +69,10 @@ only if all of the following are true:
 - no `.venv`, bytecode, or other runtime residue is left in the materialized
   workspace.
 
-A passing smoke clears the Engine-specific V11c gate. It does not authorize a
-budgeted comparison by itself: clean-tree preflight, the remaining V11
-landing controls, and the protocol's other preconditions still apply.
+A passing smoke clears the Engine-specific V11c gate. The post-repair smoke
+at `~/satyrn-smokes/2026-09-05-v11-post-landing-engine-rerun/` did so: it
+exited 0 before the 900-second eval timeout, retained patch and transcript,
+used a generated contract, and rebuilt to measured pathology with five
+`loop_broken` events. Its task verdict was `fail`, which is immaterial to a
+V5d infrastructure check. The remaining V11c preconditions were separately
+met by the clean-tree preflight and Baseline post-landing smoke.

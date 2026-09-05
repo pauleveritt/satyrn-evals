@@ -178,6 +178,6 @@ asking what the detector is *for*.
 |---|---|---|
 | 1 | V11a + V11b landed, full gate green | **met** |
 | 2 | Baseline smoke passed, pathology `measured: true` | **met, after the §3 amendment** |
-| 3 | Engine smoke on a generated contract | pending |
+| 3 | Engine smoke on a generated contract | **met** — repaired Engine `25ca0be` exited 0 on a generated contract, preserved its transcript and patch, and recorded five recognised `loop_broken` events at `~/satyrn-smokes/2026-09-05-v11-post-landing-engine-rerun/` |
 | 4 | Per-cell input-token floor measured in a workspace | **met — 1,546** |
-| 5 | `preflight.sh` green | pending |
+| 5 | `preflight.sh` green | **met** — post-landing preflight evidence at `~/satyrn-smokes/2026-09-05-v11-post-landing/` |
