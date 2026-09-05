@@ -252,8 +252,17 @@ is absent there. The session adapter already discriminates it
 **Reopens as a design proposal** — a non-scoring `MODEL_ERROR` read from the
 preserved transcript before `decide_refusal`, so `regrade` re-derives it
 without a model; never from the exit code (`BRIEF.md` rule 4). Until then,
-**screen every batch**:
-`grep -l '"stopReason":"error"' RUNS_ROOT/*/*/transcript.txt`.
+**screening is harder
+than it looks** (tested 2026-09-05 on
+`~/satyrn-smokes/2026-09-05-v11c-miniprobe-2/`): `'"stopReason":"error"'` also
+fires on a cell that exhausted its context after 285 turns — real pathology
+that must stay in the denominator — and `'"totalTokens":0'` matched 11 of 12
+cells, four of them passes. Only the infrastructure signature discriminated,
+`grep -l 'kIOGPUCommandBufferCallbackErrorOutOfMemory' RUNS_ROOT/*/*/transcript.txt`
+(silent on all 12 valid cells; named 4 of 7 in the voided batch). That is
+OOM-specific, so `MODEL_ERROR` must **classify the terminal turn's
+`errorMessage`**: a provider or runtime failure voids the cell, a model-side
+400 for context exhaustion does not.
 
 **`tool_free_terminal_turns` is dead on every pi-adapter cell** (found
 2026-09-05, same investigation; independent of the OOM above). The counter is
