@@ -13,29 +13,27 @@ Backlog, not into the current phase.*
 **The next direction is a reliable instrument, a fitted AgentClinic suite,
 and one preregistered Engine comparison.** V9, V10, V11a-trim and V11b-trim
 are complete and landed; the trimmed contract ladder and the two-arm
-substrate are in `main`. Neither of those measures anything. **V11c's mini-probe and its two-arm spike have both
-run**; the spike recorded **Engine 10/12 versus Baseline 5/12** successful
-attempts — outcome 1 by the predeclared table, exploratory, no mechanism
-claim (`~/satyrn-smokes/2026-09-05-v11c-spike-184017/RESULT.md`). A follow-up
-Baseline-only probe closed the one condition that could have made those
-counts an instrument artifact: with pi's window corrected, 5 of 6 cells
-still locked and **none was rescued by compaction**
-(`~/satyrn-smokes/2026-09-05-compaction-probe-214218/RESULT.md`). That
-window is now corrected to the enforced 80,000 for every arm — successful-
-attempt counts stay comparable across the change, `code_counts` do not
-([decision](docs/superpowers/research/2026-09-05-context-window-decision.md)).
-A **staged V12 reference profile** has now run — 120 cells, both named
-Gemma capability points, five tasks, R1 and R3, `n=6`, every tally
-accepted: `~/satyrn-smokes/2026-09-06-overnight-232554/RESULT.md`. R3
-ceilings almost everywhere and the two capability points do not order
-cleanly, so `depth-2` R1 is *worse* at the larger point. The remaining
+substrate are in `main`. Neither of those measures anything. **V11c's two-arm spike recorded Engine 10/12 versus
+Baseline 5/12** successful attempts — outcome 1 by the predeclared table,
+exploratory, no mechanism claim. A follow-up probe closed the one
+condition that could have made that an instrument artifact: compaction
+rescues no locked loop. pi's context window is now corrected to the
+enforced 80,000 for every arm, so successful-attempt counts stay
+comparable across the change while `code_counts` do not (records beside
+their cells; [decision](docs/superpowers/research/2026-09-05-context-window-decision.md)).
+A **staged V12 reference profile** has now run — 168 cells over R0, R1
+and R3 at both named Gemma capability points, every tally accepted
+(`~/satyrn-smokes/2026-09-06-overnight-232554/RESULT.md` and
+`~/satyrn-smokes/2026-09-06-r0-profile-081459/RESULT.md`). R3 ceilings
+almost everywhere and R0 is bimodal, so **every middle-band value sits at
+R1** — a thin headroom inventory for V13 — and the two capability points
+do not order cleanly. The remaining
 build work is V12's entry gates:
 [plan of record](docs/superpowers/plans/2026-09-05-v11d-instrument-fixes-and-v12-entry.md),
-confirmed 2026-09-05. Slices 0–2 are done and verified (F1, F2, F3:
-[record](docs/superpowers/research/2026-09-05-v11d-f2-f3-record.md)); the
-round then **stopped after slice 2** by the rule it paid for (`CLAUDE.md`,
-"an instrument fix round needs a stopping rule"), and slices 3–5 remain
-deferred. The later phases do not promise
+confirmed 2026-09-05. Slices 0–2 and 4 are done (F1, F2, F3:
+[record](docs/superpowers/research/2026-09-05-v11d-f2-f3-record.md); F4 is
+`MODEL_ERROR`); the round **stopped after slice 2** by the rule it paid
+for (`CLAUDE.md`), and slices 3 and 5 remain deferred. The later phases do not promise
 that Engine will win. They promise a durable placement profile, then a
 prospective result whose null outcome is recorded as prominently as a
 positive one. Rationale: the [`2026-09-04 roadmap record`](docs/superpowers/research/2026-09-04-roadmap-to-a-reliable-instrument-and-a-first-engine-result.md), as amended

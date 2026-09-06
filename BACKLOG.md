@@ -290,7 +290,30 @@ exits 2 writing neither patch nor transcript, so evals records
 the tests invoke it through `uv run --project` and the binary runs.
 **Reopens as a V12 entry gate**, since it is the real-engine attempt path.
 
-**R2, R3 and the two framing tasks are out of placement** (decided
+**All placement headroom is at R1, and the ladder is not monotone**
+(measured 2026-09-06, 168 cells across two capability points).
+`~/satyrn-smokes/2026-09-06-r0-profile-081459/RESULT.md`. R3 measured 6/6
+on nine of ten task/model pairs and R0 is bimodal too — floors and
+ceilings, nothing between — so **every middle-band value in the profile
+is at R1**: `depth-2` R1 (3/6 at the 12B, 1/6 at the 26B) and
+`misleading-locus` R1 (3/6 at the 12B). That is the entire headroom
+inventory for a V13 primary cell, and it is thin. R2 is not authored;
+`framing-2`/`framing-2-edit` are out because a fair R0 needs `specs/`
+vendored, which V11a reversed. **Reopens** if a later capability point
+stops ceilings on R3, or if the suite gains tasks.
+
+**Naming unrunnable checks may cost more than it gives** (observed
+2026-09-06, same run). `misleading-locus` scored **5/6 at R0 against 3/6
+at R1** — the richer contract did worse. Across those twelve 12B cells,
+R1 drew 41 `app.py` reads and 13 suite runs against R0's 29 and 19, with
+3 locked cells against 1: R1 names three acceptance checks absent from
+the workspace, and the model appears to hunt them in source instead of
+running the suite it has. Descriptive at `n=6`; the mechanism is a
+hypothesis consistent with three counts moving together. **Reopens as a
+contract-design question** — whether R1 should name checks the model
+cannot run — independently of which rungs are placed.
+
+** (decided
 2026-09-06 from the staged profile). R3 measured 6/6 on nine of ten
 task/model pairs, so it places nothing and is dropped; R2 sits between R1
 and a rung that ceilings, so it is not authored. R0 is authored for the
