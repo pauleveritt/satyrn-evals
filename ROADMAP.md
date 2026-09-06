@@ -97,6 +97,34 @@ V13 — the first evidence that `read,edit` *loses* on a repair task.
 > and 7/12 in the pre-pin V13 batch, against V13a's 2/6 — the `n=6` reading
 > was the outlier. Zero schema refusals across 24 Engine cells; the loop
 > stays gone.
+>
+> **V13c re-inventoried the suite post-pin on two axes (72 cells), and the
+> headroom inventory was an artifact of `n=6`.** `plausible-wrong-fix`,
+> recorded as saturated at Baseline 6/6, is the **most discriminating task
+> in the suite**: Baseline 12/12 against **Engine 6/12**, and cost-to-succeed
+> separating at p = 0.00005. **A task at ceiling for one arm can be the most
+> informative task in the suite** — the middle-band rule read on the
+> reference arm alone would have discarded it. `depth-3` is a confirmed
+> quality floor (0/12 both arms, 10 and 9 patches) that still carries
+> failure shapes; `framing-2-edit` carries the least (11/12 vs 12/12, costs
+> overlapping at p = 0.560).
+> Result: `~/satyrn-smokes/2026-09-06-v13c-200158/RESULT.md`.
+>
+> **The mechanism behind Engine's six `NO_PATCH` cells runs end to end and
+> is engine-side:** no model-invocable test runner → the model re-reads
+> `app.py` instead of running the suite → the identity breaker blocks the
+> repeats → `CONSECUTIVE_BLOCK_LIMIT = 3` terminates the turn before a
+> single edit is attempted. Baseline never enters that loop; it runs `bash`
+> about four times a cell and edits. Both links are already queued in
+> `satyrn-engine`.
+>
+> **A second measurement axis is established.** On V13b's 48 cells the
+> outcome contrast was p = 0.333 while cost-to-succeed — tool calls on
+> passing cells — separated at p = 0.00009. A count per cell carries far
+> more than a pass/fail bit, which is what makes a suite affordable: an
+> outcome comparison of the observed effect needs ~100 cells per arm for
+> 80% power, where cost separates at `n` under 10. Cost is **conditional on
+> success** and is never pooled with how often you win.
 The later phases do not promise
 that Engine will win. They promise a durable placement profile, then a
 prospective result whose null outcome is recorded as prominently as a
