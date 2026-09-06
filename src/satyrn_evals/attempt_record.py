@@ -51,6 +51,7 @@ class AttemptCode(StrEnum):
     TRANSCRIPT_EMPTY = "TRANSCRIPT_EMPTY"
     WORKSPACE_FAILED = "WORKSPACE_FAILED"
     COMMAND_TIMEOUT = "COMMAND_TIMEOUT"
+    REPEAT_LIMIT = "REPEAT_LIMIT"
     CLEANUP_FAILED = "CLEANUP_FAILED"
     GRADE_FAILED = "GRADE_FAILED"
 
@@ -125,6 +126,18 @@ _ATTEMPT_POLICIES: dict[AttemptCode, _AttemptPolicy] = {
         _ArtifactPolicy.NONE,
     ),
     AttemptCode.COMMAND_TIMEOUT: _AttemptPolicy(
+        AttemptOutcome.REFUSED,
+        _Presence.FORBIDDEN,
+        _Presence.REQUIRED,
+        _Presence.FORBIDDEN,
+        _ArtifactPolicy.ANY,
+    ),
+    AttemptCode.REPEAT_LIMIT: _AttemptPolicy(
+        # Stopped by the repeated-call spending rule, exactly as a timeout
+        # stops a cell: no exit code, artifacts harvested if the adapter
+        # wrote any. Its own code rather than NO_PATCH because a cell we
+        # stopped is not the same event as one that refused on its own,
+        # and pooling the two is the maintainer's call, not this table's.
         AttemptOutcome.REFUSED,
         _Presence.FORBIDDEN,
         _Presence.REQUIRED,

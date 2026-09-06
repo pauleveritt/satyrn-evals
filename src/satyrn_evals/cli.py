@@ -78,6 +78,7 @@ def main(argv: list[str] | None = None) -> int:
                 output=Path(args.output),
                 command=command,
                 timeout=args.timeout,
+                max_repeated_calls=args.max_repeated_calls,
                 rung=args.rung,
             )
             if record.code is AttemptCode.GRADE_FAILED:
@@ -99,6 +100,7 @@ def main(argv: list[str] | None = None) -> int:
                 command=command,
                 n=args.n,
                 timeout=args.timeout,
+                max_repeated_calls=args.max_repeated_calls,
                 rung=args.rung,
             )
             return 0
@@ -204,6 +206,12 @@ attempt_p.add_argument(
     help="contract rung key from the task manifest (default: the task contract)",
 )
 attempt_p.add_argument(
+    "--max-repeated-calls",
+    type=positive_int,
+    default=None,
+    help="stop a cell after N identical consecutive tool calls (default: off; a spending rule, recorded on the attempt record)",
+)
+attempt_p.add_argument(
     "--timeout",
     type=positive_finite_timeout,
     default=DEFAULT_TIMEOUT,
@@ -229,6 +237,12 @@ run_p.add_argument(
     "--rung",
     default=None,
     help="contract rung key from the task manifest (default: the task contract)",
+)
+run_p.add_argument(
+    "--max-repeated-calls",
+    type=positive_int,
+    default=None,
+    help="stop a cell after N identical consecutive tool calls (default: off; a spending rule, recorded on the attempt record)",
 )
 run_p.add_argument(
     "--timeout",

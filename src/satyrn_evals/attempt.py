@@ -50,6 +50,7 @@ type SelectedContract = tuple[str | None, str]
 _WORKSPACE_ATTEMPT_CODES: dict[WorkspaceCode, AttemptCode] = {
     WorkspaceCode.WORKSPACE_FAILED: AttemptCode.WORKSPACE_FAILED,
     WorkspaceCode.COMMAND_TIMEOUT: AttemptCode.COMMAND_TIMEOUT,
+    WorkspaceCode.REPEAT_LIMIT: AttemptCode.REPEAT_LIMIT,
     WorkspaceCode.CLEANUP_FAILED: AttemptCode.CLEANUP_FAILED,
 }
 
@@ -126,6 +127,7 @@ def attempt(
     command: list[str],
     timeout: float = DEFAULT_TIMEOUT,
     rung: str | None = None,
+    max_repeated_calls: int | None = None,
 ) -> AttemptRecord:
     """Run COMMAND against TASK, preserve patch + transcript, grade, and record.
 
@@ -190,6 +192,8 @@ def attempt(
             command=effective_command,
             environment=env,
             timeout=timeout,
+            transcript=transcript_path,
+            max_repeated_calls=max_repeated_calls,
             overlay=(
                 load_overlay(task_dir, manifest)
                 if manifest.oracle_visibility == "hidden"

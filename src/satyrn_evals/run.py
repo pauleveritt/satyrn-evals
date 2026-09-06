@@ -141,6 +141,7 @@ def run(
     n: int,
     timeout: float = DEFAULT_TIMEOUT,
     rung: str | None = None,
+    max_repeated_calls: int | None = None,
 ) -> Summary:
     if n < 1:
         raise UsageError("run requires a positive --n")
@@ -169,6 +170,7 @@ def run(
                 record = attempt(
                     task=task, tasks_root=tasks_root, output=output,
                     command=command, timeout=timeout, rung=rung,
+                    max_repeated_calls=max_repeated_calls,
                 )
                 if record.attempt_dir is None:
                     raise RuntimeError(

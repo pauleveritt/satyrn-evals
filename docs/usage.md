@@ -105,7 +105,8 @@ worktree reconstructed from the task base, preserve the patch and transcript
 the command delivers, and grade the preserved patch offline.
 
 ```console
-satyrn-evals attempt TASK [--tasks-root DIR] [--output DIR] [--rung KEY] [--timeout SECONDS] -- COMMAND...
+satyrn-evals attempt TASK [--tasks-root DIR] [--output DIR] [--rung KEY] [--timeout SECONDS]
+    [--max-repeated-calls N] -- COMMAND...
 ```
 
 - `TASK` — a {term}`task` name (bundled, or under `--tasks-root`), resolved
@@ -119,7 +120,15 @@ map to export as `SATYRN_TASK_CONTRACT`; default: the manifest's `contract`.
 An unknown key, or `--rung` against a task with no `contracts`, is a usage
 error naming the available keys. **The command never sees `--rung`** — the
 rung reaches it only as the exported contract text.
-- `--timeout SECONDS` — a positive finite command deadline; default `30`.
+- `--timeout SECONDS` — a positive finite command deadline; default `900`.
+- `--max-repeated-calls N` — stop the command after `N` identical
+consecutive tool calls; **off by default**. A spending rule, not a nudge:
+the command is torn down exactly as the timeout tears it down and is sent
+nothing, so a bare arm stays bare. The cell records
+`REPEAT_LIMIT` — deliberately not `NO_PATCH`, because a cell that was
+stopped is not the same event as one that refused on its own. The limit a
+batch used is recorded on every attempt record. It reads the transcript as
+the command writes it, so it applies to any adapter that writes one.
 - `-- COMMAND...` — the {term}`attempt command`: an executable plus its
 arguments. The `--` is required and separates evals' own flags from the
 command; everything after the first `--` is the command verbatim. A missing
@@ -228,10 +237,12 @@ grading as `attempt`; it adds repetition and aggregation, not another engine
 integration.
 
 ```console
-satyrn-evals run TASK [--n N] [--rung KEY] [--tasks-root DIR] [--output DIR] [--timeout SECONDS] -- COMMAND...
+satyrn-evals run TASK [--n N] [--rung KEY] [--tasks-root DIR] [--output DIR] [--timeout SECONDS]
+    [--max-repeated-calls N] -- COMMAND...
 ```
 
-- `TASK`, `--tasks-root`, `--timeout`, and `-- COMMAND...` have the same
+- `TASK`, `--tasks-root`, `--timeout`, `--max-repeated-calls`, and
+  `-- COMMAND...` have the same
   meaning as for `attempt`.
 - `--n N` — a positive number of attempts; default `8`.
 - `--rung KEY` — as for `attempt`, applied to every cell. An unknown rung is

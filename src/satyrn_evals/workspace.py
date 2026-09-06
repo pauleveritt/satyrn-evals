@@ -24,6 +24,7 @@ from typing import BinaryIO
 
 from satyrn_evals.errors import OracleError, OverlayError, SatyrnError
 from satyrn_evals.overlay import OverlaySpec, assert_overlay_absent
+from satyrn_evals.repeat_limit import RepeatTripwire
 
 DEFAULT_TIMEOUT = 900.0
 # 900 s = the corrected probes' observed per-cell ceiling (2-15 min).
@@ -57,6 +58,7 @@ class WorkspaceCode(StrEnum):
     WORKSPACE_FAILED = "WORKSPACE_FAILED"
     COMMAND_UNAVAILABLE = "COMMAND_UNAVAILABLE"
     COMMAND_TIMEOUT = "COMMAND_TIMEOUT"
+    REPEAT_LIMIT = "REPEAT_LIMIT"
     CLEANUP_FAILED = "CLEANUP_FAILED"
 
 
@@ -100,6 +102,11 @@ _WORKSPACE_POLICIES: dict[WorkspaceCode, _WorkspacePolicy] = {
         _Presence.FORBIDDEN, _Presence.REQUIRED, _Presence.FORBIDDEN
     ),
     WorkspaceCode.COMMAND_TIMEOUT: _WorkspacePolicy(
+        _Presence.FORBIDDEN, _Presence.REQUIRED, _Presence.FORBIDDEN
+    ),
+    WorkspaceCode.REPEAT_LIMIT: _WorkspacePolicy(
+        # Torn down by the repeated-call spending rule, so the same shape
+        # as a timeout: no exit code, a base_sha, nothing retained.
         _Presence.FORBIDDEN, _Presence.REQUIRED, _Presence.FORBIDDEN
     ),
     WorkspaceCode.CLEANUP_FAILED: _WorkspacePolicy(
@@ -726,12 +733,64 @@ def _teardown_process(
     return reaped and gone, "; ".join(details) or None
 
 
+def _wait_or_trip(
+    process: subprocess.Popen[bytes],
+    *,
+    timeout: float,
+    transcript: Path | None,
+    limit: int | None,
+    poll: float = 0.25,
+) -> tuple[int | None, RepeatTripwire | None]:
+    """Wait for the process, watching the transcript for a locked loop.
+
+    Returns ``(exit code, tripwire)``: the exit code when the process
+    finished on its own (with a ``None`` tripwire), or ``(None, wire)``
+    when the repeated-call limit tripped first. ``TimeoutExpired``
+    propagates, so the timeout path above is unchanged.
+
+    ``limit is None`` -- the default -- skips the tailing entirely and
+    waits exactly as before, so a batch that did not ask for the spending
+    rule cannot be affected by it.
+
+    The transcript is read as it is written, so only whole lines are fed
+    and a partial trailing write is held until its newline arrives.
+    """
+    if limit is None or transcript is None:
+        return process.wait(timeout=timeout), None
+    wire = RepeatTripwire(limit)
+    deadline = time.monotonic() + timeout
+    pending = ""
+    handle: BinaryIO | None = None
+    try:
+        while True:
+            if handle is None and transcript.is_file():
+                handle = transcript.open("rb")
+            if handle is not None:
+                pending += handle.read().decode("utf-8", errors="replace")
+                while "\n" in pending:
+                    line, pending = pending.split("\n", 1)
+                    if wire.feed(line):
+                        return None, wire
+            if (remaining := deadline - time.monotonic()) <= 0:
+                raise subprocess.TimeoutExpired(process.args, timeout)
+            try:
+                return process.wait(timeout=min(poll, remaining)), None
+            except subprocess.TimeoutExpired:
+                continue
+    finally:
+        if handle is not None:
+            handle.close()
+
+
 def _run_command(
     command: Sequence[str],
     state: _WorkspaceState,
     environment: Mapping[str, str],
     timeout: float,
     teardown_grace: float,
+    *,
+    transcript: Path | None = None,
+    max_repeated_calls: int | None = None,
 ) -> WorkspaceResult:
     outputs: list[BinaryIO] = []
     pending: WorkspaceResult | None = None
@@ -769,8 +828,14 @@ def _run_command(
             )
             raise
         else:
+            tripped: RepeatTripwire | None = None
             try:
-                command_exit = process.wait(timeout=timeout)
+                command_exit, tripped = _wait_or_trip(
+                    process,
+                    timeout=timeout,
+                    transcript=transcript,
+                    limit=max_repeated_calls,
+                )
             except subprocess.TimeoutExpired:
                 try:
                     safe, detail = _teardown_process(process, teardown_grace)
@@ -818,14 +883,49 @@ def _run_command(
                         )
                 raise
             else:
-                # COMMAND is explicitly synchronous at this V4 boundary.
-                state.process_cleanup_safe = True
-                pending = WorkspaceResult(
-                    WorkspaceCode.OK,
-                    "attempt command completed",
-                    command_exit,
-                    state.base_sha,
-                )
+                if tripped is not None:
+                    # The spending rule fired: tear down exactly as the
+                    # timeout branch does, and report it as its own code so
+                    # a stopped cell is never mistaken for one that refused
+                    # on its own. Artifacts already written are harvested.
+                    try:
+                        safe, detail = _teardown_process(process, teardown_grace)
+                    except BaseException as exc:
+                        active_exception = exc
+                        _add_exception_note(
+                            exc,
+                            "process cleanup is unconfirmed; "
+                            f"{_retained_workspace(state)}",
+                        )
+                        raise
+                    state.process_cleanup_safe = safe
+                    pending = (
+                        WorkspaceResult(
+                            WorkspaceCode.REPEAT_LIMIT,
+                            f"attempt command repeated one tool call "
+                            f"{tripped.run} times, at the limit of "
+                            f"{tripped.limit}",
+                            None,
+                            state.base_sha,
+                        )
+                        if safe
+                        else WorkspaceResult(
+                            WorkspaceCode.CLEANUP_FAILED,
+                            f"repeat-limit cleanup is unconfirmed: {detail}",
+                            None,
+                            state.base_sha,
+                            os.fspath(state.parent),
+                        )
+                    )
+                else:
+                    # COMMAND is explicitly synchronous at this V4 boundary.
+                    state.process_cleanup_safe = True
+                    pending = WorkspaceResult(
+                        WorkspaceCode.OK,
+                        "attempt command completed",
+                        command_exit,
+                        state.base_sha,
+                    )
     except OSError as exc:
         if active_exception is exc:
             raise
@@ -930,8 +1030,16 @@ def run_workspace(
     timeout: float = DEFAULT_TIMEOUT,
     teardown_grace: float = DEFAULT_TEARDOWN_GRACE,
     overlay: OverlaySpec | None = None,
+    transcript: Path | None = None,
+    max_repeated_calls: int | None = None,
 ) -> WorkspaceResult:
-    """Run ``command`` once in a reconstructed detached Git worktree."""
+    """Run ``command`` once in a reconstructed detached Git worktree.
+
+    ``max_repeated_calls`` opts the cell into the repeated-call spending
+    rule (`repeat_limit.py`), which needs ``transcript`` to watch. Both
+    default to off: a batch that did not ask for the rule runs exactly as
+    it did before it existed.
+    """
     if not command:
         raise ValueError("workspace command is empty")
     if not math.isfinite(timeout) or timeout <= 0:
@@ -965,6 +1073,8 @@ def run_workspace(
             git_environment,
             timeout,
             teardown_grace,
+            transcript=transcript,
+            max_repeated_calls=max_repeated_calls,
         )
     except _RetainedCleanupError as exc:
         pending = WorkspaceResult(

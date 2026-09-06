@@ -1101,7 +1101,7 @@ def test_run_workspace_cleanup_precedence_and_exception_identity(
         state.registration = Registration.PRESENT
         state.base_sha = "a" * 40
 
-    def run(*_args: Any) -> WorkspaceResult:
+    def run(*_args: Any, **_kwargs: Any) -> WorkspaceResult:
         return WorkspaceResult(WorkspaceCode.OK, "ok", 7, "a" * 40)
 
     _patch_workspace_setup(monkeypatch, parent, prepare, run)
@@ -1149,7 +1149,7 @@ def test_run_workspace_secondary_baseexceptions_and_parent_failures(
     def present(_base: Path, state: workspace_module._WorkspaceState, _env: dict[str, str]) -> None:
         state.registration = Registration.PRESENT
 
-    def run(*_args: Any) -> WorkspaceResult:
+    def run(*_args: Any, **_kwargs: Any) -> WorkspaceResult:
         return WorkspaceResult(WorkspaceCode.OK, "ok", 0, "a" * 40)
 
     _patch_workspace_setup(monkeypatch, parent, present, run)
@@ -1308,7 +1308,7 @@ def test_run_workspace_active_secondary_cleanup_failures_become_notes(
             monkeypatch,
             parent,
             lambda *_args, selected=primary: (_ for _ in ()).throw(selected),
-            lambda *_args: None,
+            lambda *_args, **_kwargs: None,
         )
         monkeypatch.setattr(
             workspace_module.shutil,
@@ -1367,8 +1367,8 @@ def test_run_workspace_asserts_result_invariant(
     _patch_workspace_setup(
         monkeypatch,
         parent,
-        lambda *_args: None,
-        lambda *_args: None,
+        lambda *_args, **_kwargs: None,
+        lambda *_args, **_kwargs: None,
     )
     with pytest.raises(AssertionError, match="produced no result"):
         workspace_module.run_workspace(

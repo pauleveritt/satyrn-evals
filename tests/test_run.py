@@ -85,6 +85,7 @@ def _fake_attempt(
     def fake(
         *, task: str, tasks_root: Path, output: Path, command: list[str],
         timeout: float, rung: str | None = None,
+        max_repeated_calls: int | None = None,
     ) -> AttemptRecord:
         output.mkdir(parents=True, exist_ok=True)
         name = attempt_dir_name(task, datetime.now(UTC))

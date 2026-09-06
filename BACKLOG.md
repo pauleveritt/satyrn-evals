@@ -290,21 +290,23 @@ exits 2 writing neither patch nor transcript, so evals records
 the tests invoke it through `uv run --project` and the binary runs.
 **Reopens as a V12 entry gate**, since it is the real-engine attempt path.
 
-**An early-stop rule for repeated identical tool calls** (proposed
-2026-09-05 after the V11c spike). 70 of the batch's 102 minutes were seven
-cells re-reading one file ~281 times after locking at their fifth tool call;
-correcting the context limit makes this *slower*, not faster (a 900 s timeout
-replaces a 10-minute wall). A spending rule — K identical consecutive calls →
-kill, harvest, score `NO_PATCH` with a distinct flag — sends the model no
-message, so a bare arm stays bare. Evidence it changes no outcome: 8/8
-recorded locked cells never exited through 280+ repeats; that must be
-re-checked per model. **Reopens once the compaction question is decided**,
-since the rule forecloses observing a compaction rescue.
+**Re-validate the repeated-call limit per model** (owed 2026-09-05, when
+the rule shipped). `--max-repeated-calls` rests on a gap measured on
+gemma-4-12B alone: the longest run of identical consecutive tool calls is
+1-5 on every cell that succeeded and 280 on each locked cell, with nothing
+between. V12 introduces a second capability point, and a limit is only as
+good as the separation on the model it is applied to.
+`tests/integration/test_repeat_limit_replay.py` asserts that gap and will
+fail if a future batch closes it. **Reopens before the limit is enabled for
+any model it has not been replayed against.**
 
-**A publishability criterion for an exploratory comparison** (owed
-2026-09-05). Today's outcome-1/outcome-3 call was argued rather than
-mechanical. Proposed test: the strict tally accepts the set; model identity
-is verified per transcript; every open finding is classified as
-verdict-affecting or diagnostic-only and none is verdict-affecting; every
-inference setting the arm depends on is recorded in the arm record.
-**Reopens when written down** — without it, "one more re-run" has no end.
+**Decide whether compaction rescues a locked loop** (owed 2026-09-05). The
+V11c spike could not tell whether Baseline's seven locked cells failed
+because the model locked at call 4 or because pi never compacted (its
+declared 262,144 window against the server's enforced 80,000). The cheapest
+separating design is Baseline-only, this task, the context limit corrected,
+`n=6` — about four loop cells expected; if none is rescued the hypothesis is
+dead for roughly an hour of machine time. **Run it with
+`--max-repeated-calls` off**, since the rule forecloses observing a rescue.
+**Reopens as a recorded mini-batch proposal**, not a spike re-run: V11c's
+budget of at most 36 cells is spent.

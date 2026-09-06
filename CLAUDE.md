@@ -108,6 +108,21 @@ investigation and repeated spending.
   batch, never tuned mid-sequence, and tuning waits until the instrument is
   reliable.
 
+- **When an exploratory comparison may be published.** Four conditions,
+  all four required, checked before the counts leave the runs directory:
+  (a) the strict tally accepts the set — no missing cell, no stray
+  directory, no wrong rung; (b) model identity is verified from each
+  transcript's own `message.model`, not from the requested argv;
+  (c) every open finding is classified as touching **verdict counts** or
+  **diagnostic counts only**, and none touches verdict counts; (d) every
+  inference setting the arm's behaviour depends on is recorded in the arm
+  record, and preflight checked it against the live configuration.
+  Written down 2026-09-05 because that day's outcome-1-versus-outcome-3
+  call was *argued* rather than decided — and an argued call after seeing
+  the counts is the shape the spike protocol forbids. On the V11c spike
+  (a)–(c) held and (d) failed; (d) is now check 0c. Without this test,
+  "one more re-run" has no end.
+
 - **An instrument fix round needs a stopping rule, the way an experiment
   does.** A batch has one — `n` frozen, no extension after reading the
   result. A fix round had none, so each round found more than it closed:

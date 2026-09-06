@@ -301,7 +301,7 @@ def _valid_v4_record(code: AttemptCode) -> AttemptRecord:
             )
         case AttemptCode.WORKSPACE_FAILED:
             pass
-        case AttemptCode.COMMAND_TIMEOUT:
+        case AttemptCode.COMMAND_TIMEOUT | AttemptCode.REPEAT_LIMIT:
             values["workspace_base_sha"] = "c" * 40
         case AttemptCode.CLEANUP_FAILED:
             values["retained_path"] = "/tmp/retained"
@@ -339,6 +339,14 @@ def test_attempt_policy_is_complete() -> None:
         (AttemptCode.OK, {"command_exit": None}, "requires command_exit"),
         (AttemptCode.NO_PATCH, {"workspace_base_sha": None}, "requires workspace_base_sha"),
         (AttemptCode.COMMAND_TIMEOUT, {"command_exit": 7}, "null command_exit"),
+        # The repeated-call spending rule tears the process down the way a
+        # timeout does, so it owes the same shape: no exit code, a base sha.
+        (AttemptCode.REPEAT_LIMIT, {"command_exit": 7}, "null command_exit"),
+        (
+            AttemptCode.REPEAT_LIMIT,
+            {"workspace_base_sha": None},
+            "requires workspace_base_sha",
+        ),
         (AttemptCode.COMMAND_TIMEOUT, {"workspace_base_sha": None}, "requires workspace_base_sha"),
         (
             AttemptCode.TRANSCRIPT_MISSING,
