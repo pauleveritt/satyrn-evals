@@ -88,7 +88,6 @@ for arm_file in "${ARM_FILES[@]}"; do
   [ -f "$arm_file" ] || { echo "preflight: no such arm file: $arm_file" >&2; exit 2; }
 done
 BASELINE_ARM="${ARM_FILES[0]}"
-ENGINE_ARM="${ARM_FILES[${#ARM_FILES[@]}-1]}"
 
 fail() { echo "preflight FAILED: $*" >&2; exit 1; }
 ok() { echo "preflight ok: $*"; }
@@ -117,13 +116,17 @@ for arm_file in "${ARM_FILES[@]}"; do
     ENGINE_PINNING_ARM="$arm_file"
   fi
 done
+# A first-vs-last comparison of two arms silently skips a third, middle
+# arm -- exactly the "pass on an arm nobody checked" defect this script's
+# PATH-resolution comment (below) already warns about. preflight_models.py
+# checks every arm named on the command line, not just the ends.
+uv run --project "$EVALS_ROOT" python \
+  "$EVALS_ROOT/scripts/preflight_models.py" "${ARM_FILES[@]}" \
+  || fail "the arm files do not all name the same model"
+
 SERVER_MODEL="$(pin "$BASELINE_ARM" server_model)"
 PI_MODEL="$(pin "$BASELINE_ARM" model)"
-ENGINE_ARM_MODEL="$(pin "$ENGINE_ARM" model)"
-
-[ "$PI_MODEL" = "$ENGINE_ARM_MODEL" ] \
-  || fail "the arm files name different models: $PI_MODEL vs $ENGINE_ARM_MODEL"
-ok "both arms address $PI_MODEL (server id $SERVER_MODEL)"
+ok "all arms address $PI_MODEL (server id $SERVER_MODEL)"
 
 # --- 0. no orphaned measurement-shaped process ---------------------------
 # Interactive Pi processes started by IDE integrations are legitimate and

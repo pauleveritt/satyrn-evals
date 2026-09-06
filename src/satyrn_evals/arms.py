@@ -27,7 +27,7 @@ from typing import Literal
 
 from satyrn_evals.errors import UsageError
 
-type ArmName = Literal["baseline", "baseline-compaction", "engine"]
+type ArmName = Literal["baseline", "baseline-compaction", "envelope", "engine"]
 #: ``baseline-compaction`` is **historical**. It named the arm of the
 #: 2026-09-05 compaction probe, run while ``baseline`` still declared a
 #: 262,144 context window; the name kept those cells from pooling with
@@ -81,7 +81,7 @@ class Arm:
 def _arm_name(raw: str, source: Path) -> ArmName:
     """The arm identity, narrowed to the arms this phase defines."""
     match raw:
-        case "baseline" | "baseline-compaction" | "engine":
+        case "baseline" | "baseline-compaction" | "envelope" | "engine":
             return raw
         case _:
             raise ArmError(f"{source}: unknown arm {raw!r}")
@@ -191,10 +191,16 @@ def build_argv(arm: Arm) -> list[str]:
     if not arm.model:
         raise ArmError(f"arm {arm.arm!r} has no model; cannot build argv")
     match arm.arm:
-        case "baseline" | "baseline-compaction":
-            # Same argv: the two differ only in pi's own configuration,
-            # which is why the difference is pinned in the arm record and
-            # checked by preflight rather than passed on the command line.
+        case "baseline" | "baseline-compaction" | "envelope":
+            # Baseline and Baseline-compaction differ only in pi's own
+            # configuration, which is why that difference is pinned in the
+            # arm record and checked by preflight rather than passed on the
+            # command line. Envelope is bare pi run against Engine's own
+            # tool surface, so it is the same in-tree pi adapter as
+            # Baseline; its argv is Baseline's argv with a different
+            # `--tools` value, and for these arms the tool surface really
+            # is passed on the command line (unlike the engine arm below,
+            # where it is recorded only).
             return [*arm.argv, "--model", arm.model, "--tools", ",".join(arm.tools)]
         case "engine":
             # `satyrn-engine attempt` takes --model and a contract path;

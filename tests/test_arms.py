@@ -29,6 +29,7 @@ from satyrn_evals.arms import (
 ARMS_ROOT = Path(__file__).resolve().parents[1] / "arms"
 BASELINE = ARMS_ROOT / "baseline.json"
 ENGINE = ARMS_ROOT / "engine.json"
+ENVELOPE = ARMS_ROOT / "envelope.json"
 
 
 def _write(tmp_path: Path, source: Path, **changes: object) -> Path:
@@ -88,6 +89,38 @@ def test_the_two_arms_differ_only_in_argv_and_tools() -> None:
     assert baseline.argv != engine.argv
 
 
+def test_envelope_file_loads_with_read_and_edit_only() -> None:
+    """Fixture: arms/envelope.json."""
+    arm = load_arm(ENVELOPE)
+    assert arm.arm == "envelope"
+    assert arm.tools == ("read", "edit")
+    assert arm.model == "omlx/gemma-4-12B-it-MLX-8bit"
+    assert arm.server_model == "gemma-4-12B-it-MLX-8bit"
+
+
+def test_envelope_agrees_with_baseline_on_everything_but_arm_and_tools() -> None:
+    """Envelope is byte-identical to Baseline except for the two fields
+    that name it and give it Engine's tool surface (spec: bare pi run
+    against Engine's own tools)."""
+    baseline_data = json.loads(BASELINE.read_text(encoding="utf-8"))
+    envelope_data = json.loads(ENVELOPE.read_text(encoding="utf-8"))
+    differing_keys = {
+        key
+        for key in baseline_data
+        if baseline_data.get(key) != envelope_data.get(key)
+    }
+    assert differing_keys == {"arm", "tools"}
+    assert envelope_data["arm"] == "envelope"
+    assert envelope_data["tools"] == ["read", "edit"]
+
+    baseline, envelope = load_arm(BASELINE), load_arm(ENVELOPE)
+    assert baseline.model == envelope.model
+    assert baseline.server_model == envelope.server_model
+    assert baseline.pins == envelope.pins
+    assert baseline.argv == envelope.argv
+    assert baseline.tools != envelope.tools
+
+
 # --- refusals, each against a copy of a shipped file -----------------------
 
 
@@ -128,8 +161,8 @@ def test_empty_argv_is_refused(tmp_path: Path) -> None:
 
 
 def test_unknown_arm_name_is_refused(tmp_path: Path) -> None:
-    path = _write(tmp_path, BASELINE, arm="envelope")
-    with pytest.raises(ArmError, match="envelope"):
+    path = _write(tmp_path, BASELINE, arm="telepathy")
+    with pytest.raises(ArmError, match="telepathy"):
         load_arm(path)
 
 
@@ -214,6 +247,30 @@ def test_baseline_argv_uses_space_form_model_and_comma_joined_tools() -> None:
     assert argv[0] == "satyrn-evals-attempt-pi"
 
 
+def test_baseline_argv_is_unchanged_by_the_envelope_addition() -> None:
+    """Regression sibling for the envelope test below: adding a third arm
+    must not perturb Baseline's own argv construction."""
+    assert build_argv(load_arm(BASELINE)) == [
+        "satyrn-evals-attempt-pi",
+        "--model",
+        "omlx/gemma-4-12B-it-MLX-8bit",
+        "--tools",
+        "read,bash,edit,write",
+    ]
+
+
+def test_envelope_argv_is_baseline_argv_with_engines_tools() -> None:
+    """Fixture: arms/envelope.json. Envelope runs the same in-tree pi
+    adapter as Baseline; only the `--tools` value differs."""
+    assert build_argv(load_arm(ENVELOPE)) == [
+        "satyrn-evals-attempt-pi",
+        "--model",
+        "omlx/gemma-4-12B-it-MLX-8bit",
+        "--tools",
+        "read,edit",
+    ]
+
+
 def test_engine_argv_carries_the_model_and_no_tools_flag() -> None:
     """Fixture: arms/engine.json. `satyrn-engine attempt` takes --model and
     a contract path only; its tool surface is fixed in build_pi_command."""
@@ -279,7 +336,7 @@ def test_build_argv_refuses_an_arm_name_it_does_not_know() -> None:
     """A hand-built `Arm` must never yield an argv that silently drops the
     tool surface. The sibling successes are the two rows above."""
     arm = Arm(
-        arm=cast(ArmName, "envelope"),
+        arm=cast(ArmName, "telepathy"),
         argv=("something",),
         tools=("read",),
         model="omlx/m",
