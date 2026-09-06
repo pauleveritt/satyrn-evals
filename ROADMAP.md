@@ -48,12 +48,27 @@ forbids a `path` key inside the edit item that the model also sends at the
 top level, where the schema requires it, and its loop breaker keys on
 exact call identity so a varying `newText` never trips it
 (`satyrn-engine/packages/engine/mutator.ts:107-127`,
-`engine.ts:100-126`). Neither pi arm carries the defect. **That is the
-next engine change**, and it is validated without inference: 701 refused
-calls replayed, 701/701 accepted once item extras are tolerated, with
-malformed calls still refused. Envelope's restricted surface also cost it
-against Baseline — the first evidence that `read,edit` *loses* on a repair
-task.
+`engine.ts:100-126`). Neither pi arm carries the defect. **That engine change
+has since landed** (`satyrn-engine` `b977941`; 973 refused calls replay
+clean, malformed ones still refused), and **V13a verified it live**:
+Baseline and Engine interleaved, `n=6` per arm on `depth-2` and
+`misleading-locus` at R1, **0 schema refusals across 12 Engine cells**
+against 973 before, no Engine timeouts, and Engine 4/6 and 5/6 against
+Baseline 2/6 and 3/6 — descriptive, `n=6` carries no threshold
+(`~/satyrn-smokes/2026-09-06-v13a-174142/RESULT.md`, protocol frozen in
+`docs/superpowers/specs/2026-09-06-v13a-engine-fix-verification-spike.md`).
+**The arms are comparable again; that is the claim, not that Engine is
+better.** Envelope's restricted surface also cost it against Baseline in
+V13 — the first evidence that `read,edit` *loses* on a repair task.
+
+> **Recorded 2026-09-06, and it changes how a probe may be designed.**
+> Baseline on `depth-2` R1 measured 7/12 in the V13 batch and 2/6 in the
+> V13a batch — same arm, task, rung and model, different batch, with
+> `temperature` unpinned for every arm. V13a was first designed as
+> Engine-only read against V13's Baseline; that design would have compared
+> Engine 4/6 against Baseline 7/12 and concluded the opposite of what the
+> interleaved batch shows. **Counts are compared within an interleaved
+> batch or not at all.** Pinning temperature is owed to `BACKLOG.md`.
 The later phases do not promise
 that Engine will win. They promise a durable placement profile, then a
 prospective result whose null outcome is recorded as prominently as a
