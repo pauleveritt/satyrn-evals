@@ -94,8 +94,11 @@ investigation and repeated spending.
   `arms/` and `scripts/` and produced spurious failures.
 
 - **Test at the right grain.** Focused tests during implementation; the full
-  gates (`uv run pytest`, `uv run ruff check`, `just lint-docs`, `just docs`)
-  at integration. Do not re-run unchanged gates after every handoff.
+  gates at integration — **`just gates`**, which runs `uv run pytest -q`,
+  `uv run ruff check`, `just lint-docs` and `just docs` and stops on the
+  first non-zero exit. Read that exit code; never pipe a gate into `tail` or
+  anything else, which is how a check that cannot fail gets written. Do not
+  re-run unchanged gates after every handoff.
 
 - **Delegation.** Give Luna bounded changes with explicit acceptance tests
   stated up front. Use Terra for runtime boundaries, failure classification,

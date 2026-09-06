@@ -21,6 +21,11 @@ FILE_CAPS: dict[str, int] = {
     "ROADMAP.md": 400,
     "BACKLOG.md": 400,
 }
+# Deliberately absent from FILE_CAPS. `ARCHIVE.md` is where the roadmap's
+# overflow goes; capping it would only create a third file for the same
+# history. `tests/test_doc_caps.py` pins the exemption so a later tidy cannot
+# add it here silently — the same treatment the Excludes column already has.
+UNCAPPED: frozenset[str] = frozenset({"ARCHIVE.md"})
 GLOB_CAPS: tuple[tuple[str, int], ...] = (
     ("docs/superpowers/specs/*.md", 400),
     ("docs/superpowers/plans/*.md", 400),

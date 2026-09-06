@@ -18,8 +18,8 @@ The cycle shape, from the superpowers workflow:
    command a contributor can run and evidence that names a success fixture
    and a failure fixture.
 5. **Record** — completed phases, and the withdrawn framings and retracted
-   figures found along the way, move to the archive section of
-   `ROADMAP.md` rather than being edited away.
+   figures found along the way, move to `ARCHIVE.md`
+   rather than being edited away.
 
 The maintainer decides when to commit. Agents may leave the worktree dirty
 across plan tasks and must not create checkpoint commits unless explicitly
@@ -53,6 +53,7 @@ one this lineage has already watched fail.
 |---|---|---|
 | `ROADMAP.md` **whole file** | 400 lines | Something owes a move to `docs/superpowers/research/` or deletion |
 | `BACKLOG.md` **whole file** | 400 lines | Prune resolved entries, or a research doc is owed |
+| `ARCHIVE.md` **whole file** | uncapped | Deliberate — see below |
 | Phase-table **Direction** cell | 900 chars | A verdict or research doc is owed |
 | Phase-table **Status** cell | 1,000 chars | A verdict or research doc is owed |
 | Phase-table **Excludes** cell | uncapped | Deliberate — see below |
@@ -68,6 +69,15 @@ sibling project added this column to a positional checker and its Status cap
 silently began measuring Excludes, caught only at phase close-out. Two
 regression tests pin the mapping, with a third asserting Excludes stays
 uncapped.
+
+**`ARCHIVE.md` is uncapped, and deliberately so.** The roadmap's cap exists
+so the *planning surface* stays readable; the archive is where its overflow
+is supposed to go. Capping the archive would only push the same history into
+a third file and leave the reader one more place to look. A regression test
+pins this, the way the Excludes column's own exemption is pinned
+(`tests/test_doc_caps.py`), so a later tidy cannot quietly cap it. `ARCHIVE.md`
+is **not** on `CLAUDE.md`'s read-in-full list: the point of the move is that a
+session need not hold the history to work.
 
 **Excludes for a phase with no spec is provisional.** Where a spec exists, the
 cell condenses that spec's own non-goals section. Where one does not, it is

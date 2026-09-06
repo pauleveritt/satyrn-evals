@@ -1,9 +1,11 @@
 # V13 — preregistration
 
-**Status: draft, awaiting confirmation.** Everything here except
-[§7](#7-the-one-open-decision-envelope) is frozen by being written down
-before any non-reference arm runs. Nothing in it reads a non-reference
-outcome.
+**Status: confirmed by the maintainer, 2026-09-06.**
+[§7](#7-envelope-decided-2026-09-06) — the one section left open — was
+decided that day, so **every section is frozen by being written down
+before any non-reference arm runs**, and nothing in it reads a
+non-reference outcome. This commit is the timestamp: it precedes the
+Envelope smoke and every budgeted cell.
 
 ## 1. The question
 
@@ -21,7 +23,9 @@ only** — the 2026-09-06 staged profile and R0 profile, 168 cells of bare
 Pi at two capability points:
 
 1. the ordered primary-cell selection (§3), and
-2. the rule mapping reference-arm evidence to Envelope's cap (§7, open).
+2. Envelope's definition (§7) — **decided 2026-09-06 as a tool
+   surface, not a cap**, so no reference-arm budget evidence is
+   mapped to it and nothing in it reads an outcome.
 
 Neither reads V11c spike outcomes. **Spike cells are never pooled with
 V13 cells.**
@@ -30,7 +34,13 @@ V13 cells.**
 
 **Eligible** = a pure-edit repair cell the reference arm places below
 ceiling and above a capability wall: `0 < successful attempts < n`, with
-at least one retained patch. Seven of 29 profiled cells qualify.
+at least one retained patch. Seven of **28 distinct** profiled cells
+qualify. (Corrected 2026-09-06: an earlier draft read "29 profiled
+cells." There are 29 tallies and 28 distinct `(task, rung, model)`
+cells — `misleading-locus` R1 on the 26B was tallied twice as a
+calibration duplicate, 6/6 both times, so it is at ceiling and
+ineligible under either count. The recompute below globs both tallies;
+selection is unaffected.)
 
 **Ordered rule.** Rank ascending by:
 
@@ -74,7 +84,7 @@ PY
 | arm | definition |
 |---|---|
 | Baseline | bare Pi as shipped, `arms/baseline.json` |
-| Envelope | **open — see §7.** Cannot run until frozen |
+| Envelope | bare Pi on Engine's tool surface, `arms/envelope.json` — `read,edit`, every other setting identical to Baseline. Prospective, not a reproduction. See §7 |
 | Engine | the shipped Engine, `arms/engine.json`, pinned `25ca0be` |
 
 ## 5. Design
@@ -108,28 +118,48 @@ PY
 - Any other eligible cell run afterwards is a descriptive replication,
   never an independent chance at a positive.
 
-## 7. The one open decision: Envelope
+## 7. Envelope, decided 2026-09-06
 
-**V13 cannot run until this is frozen**, because the schedule interleaves
-all three arms.
+**Envelope = `satyrn-evals-attempt-pi` with tools `read,edit`** — bare Pi
+on Engine's own tool surface, every other setting identical to
+`arms/baseline.json`: same model, same pins, same `inference` block, no
+engine code, **no budget cap**. It is `arms/envelope.json`.
 
-What is known: the 900 s / 8192 tokens / 80 k context in the de-admission
-record are pi and model settings, **not** what `envelope-cap.ts` capped.
-The historical configuration is unrecoverable, so this is a fresh choice
-that must be argued from a per-cell floor measured inside a materialized
-workspace. That floor is on record: **1,546 input tokens**
-(`~/satyrn-smokes/2026-09-05-v11-trim/token-floor.json`).
+**Why a surface and not a cap.** The canonical product Envelope was itself
+a restricted tool surface — "the canonical product Envelope, which used
+only `read,write`"
+(`docs/superpowers/research/2026-08-27-local-pings-envelope-engine-followup.md:24-27`).
+Engine exposes `read,edit` (`arms/engine.json`, `"tools"`). Putting bare Pi
+on exactly that surface gives three whole-product arms — Baseline's four
+tools, Engine's two tools without Engine, and Engine — and an Envelope that
+*can* out-score Baseline. It needs no argument from the 1,546-token floor,
+no engine edit (the engine stays byte-identical at `25ca0be`, which this
+preregistration's own preflight requires), and no new mechanism.
 
-**A trap to avoid when choosing.** Defining Envelope as "Baseline plus a
-stall cap" is appealing and wrong twice over: an arm that only terminates
-stalled cells can never record *more* successful attempts than Baseline,
-so it is a pointless outcome arm; and it converges mechanistically with
-Engine's loop breaker, weakening the three-way contrast V13 exists for.
+**It is prospective, not a reproduction.** `edit` is not `write`, and the
+era's pi, prompt and adapter are unrecoverable (`BACKLOG.md`, "Historical
+Envelope artifact recovery"). No sentence about this arm may claim to
+reproduce the historical Envelope.
 
-This is Engine-side design and belongs in `satyrn-engine`'s backlog. It
-is recorded here because that repository is pinned at `25ca0be` and must
-stay byte-identical for the Engine arm — editing it would make V13's own
-preflight refuse. **Transfer it when the pin next moves.**
+**The trap this avoids.** Defining Envelope as "Baseline plus a stall cap"
+is appealing and wrong twice over: an arm that only terminates stalled
+cells can never record *more* successful attempts than Baseline, so it is a
+pointless outcome arm; and it converges mechanistically with Engine's loop
+breaker, weakening the three-way contrast V13 exists for.
+
+**Superseded, and kept visible.** The prior text of this section said the
+cap "must be argued from a per-cell floor measured inside a materialized
+workspace," and named that floor — **1,546 input tokens**
+(`~/satyrn-smokes/2026-09-05-v11-trim/token-floor.json`). There is no cap,
+so no floor argument is owed. `ROADMAP.md` carries the matching dated
+amendment; the decision and its rationale are in
+`docs/superpowers/research/2026-09-06-next-agent-brief-v13-envelope-and-roadmap-control.md` §2.
+
+**Owed before the first budgeted cell.** The Envelope path is a materially
+new execution path, so it takes one uncounted V5d smoke cell whose
+transcript is read for *positive* evidence — `edit` present in
+`tool_execution_*` events, `bash` and `write` absent — not merely for the
+absence of an error.
 
 ## 8. What voids a run
 

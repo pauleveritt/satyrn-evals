@@ -36,9 +36,12 @@ the surface and a detector is owed.
 account for the 9,753-token repo-root measurement, and the same directory
 gave 13,645 on one call and 9,753 on another. Both need a stream capture that
 was not obtained. Unresolved, and no number from that record may be used as a
-budget input until it is. **Reopens** when the Envelope cap is argued (V13,
-proposal §2.4) — that argument needs a measured per-cell floor from inside a
-materialized workspace, which the V5d smokes are tasked to capture.
+budget input until it is. **No longer reopens on V13:** Envelope was defined
+on 2026-09-06 as a tool surface (`read,edit`), not a budget, so no cap is
+argued and no per-cell floor is needed. **Reopens** whenever a token budget
+is next argued from a measured floor — a stall or budget cap for any arm, or
+a context-window change — which needs the stream capture that was not
+obtained.
 
 **`stringified-annotations` capture** (V5c, 2026-09-03). Deferred from V5c,
 which captures `local-pings` only: its Engine arm is pinned at ceiling (6/6,
@@ -290,12 +293,6 @@ exits 2 writing neither patch nor transcript, so evals records
 the tests invoke it through `uv run --project` and the binary runs.
 **Reopens as a V12 entry gate**, since it is the real-engine attempt path.
 
-**Envelope's definition is owed to `satyrn-engine`.** V13's one open
-decision, argued in full at
-`docs/superpowers/specs/2026-09-06-v13-preregistration.md` §7 — including
-the measured 1,546-token floor it must be argued from, and why "Baseline
-plus a stall cap" is a trap. **V13 cannot run until it is frozen.**
-
 **Engine's loop breaker keys on repetition, not progress.** It trips on
 `CONSECUTIVE_BLOCK_LIMIT = 3` consecutive blocked repeats and fired 56
 times across the spike's 12 Engine cells, sharing the blind spot found in
@@ -304,9 +301,9 @@ over 231 cells: a patch-producing cell never exceeded **21** consecutive
 non-editing calls; failures reached **363**. The rules differ in kind —
 evals' terminates and tells the model nothing, Engine's intervenes.
 
-Both sit here only because `satyrn-engine` is pinned at `25ca0be` and must
+This sits here only because `satyrn-engine` is pinned at `25ca0be` and must
 stay byte-identical for the Engine arm; editing it would make V13's own
-preflight refuse. **Transfer both when the pin moves.**
+preflight refuse. **Transfer it when the pin moves.**
 
 **The repeated-call rule catches repetition, not stalling** (found
 2026-09-06 in the abandoned R1b run). One cell made 264
@@ -362,7 +359,7 @@ hypothesis consistent with three counts moving together. **Reopens as a
 contract-design question** — whether R1 should name checks the model
 cannot run — independently of which rungs are placed.
 
-** (decided
+**R2, R3 and the two framing tasks are out of placement** (decided
 2026-09-06 from the staged profile). R3 measured 6/6 on nine of ten
 task/model pairs, so it places nothing and is dropped; R2 sits between R1
 and a rung that ceilings, so it is not authored. R0 is authored for the
@@ -375,7 +372,7 @@ and the 24/24 gate. **Reopens as its own slice** if those two tasks are
 wanted in placement, and **reopens for R2/R3** if a later capability
 point stops ceilings on R3.
 
-** (found 2026-09-06 by the
+**R3 carries almost no placement information** (found 2026-09-06 by the
 staged V12 profile). At both named Gemma capability points R3 is 6/6 on 9
 of 10 task/model pairs and 5/6 on the tenth, while R1 spreads 0/6 to 6/6
 (`~/satyrn-smokes/2026-09-06-overnight-232554/RESULT.md`). A rung that
@@ -383,13 +380,3 @@ every task ceilings on cannot place anything. **Reopens against V12's
 rung set**: either R3 is dropped from placement, or R0/R2 are authored and
 the four-point monotonicity check decides where the information is. This
 bears directly on `BRIEF.md`'s unsolved problem, a suite with headroom.
-
-** (owed 2026-09-05, when
-the rule shipped). `--max-repeated-calls` rests on a gap measured on
-gemma-4-12B alone: the longest run of identical consecutive tool calls is
-1-5 on every cell that succeeded and 280 on each locked cell, with nothing
-between. V12 introduces a second capability point, and a limit is only as
-good as the separation on the model it is applied to.
-`tests/integration/test_repeat_limit_replay.py` asserts that gap and will
-fail if a future batch closes it. **Reopens before the limit is enabled for
-any model it has not been replayed against.**

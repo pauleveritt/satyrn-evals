@@ -99,7 +99,16 @@ signal, completed cells stay readable, and the incomplete cell is
 distinguishable from a completed one. Sibling: a clean run still writes
 `summary.json` and no abort record.
 
-## Slice 3 — V12 resume-safe driver (**F5**)
+## Slice 3 — V12 resume-safe driver (**F5**, **withdrawn 2026-09-06**)
+
+> **Withdrawn, not deferred.** Staging made it moot: the profile ran in
+> batches of at most 60 cells and 168 cells landed with no interruption
+> loss, so nothing was left for a resume path to preserve. The 288-cell
+> figure below is the count this slice was written against and no longer
+> the plan. It reopens only if a batch is again scheduled past the
+> interruption horizon in one piece. Recorded in `ROADMAP.md`'s 2026-09-06
+> amendment and in
+> `docs/superpowers/research/2026-09-06-next-agent-brief-v13-envelope-and-roadmap-control.md` §7.
 
 Built **before** V12's long run, not during it. 288 cells is far past the
 interruption horizon this session already crossed twice.

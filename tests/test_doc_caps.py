@@ -19,9 +19,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
 from lint_docs import (  # noqa: E402  # type: ignore[missing-import]  # tools/ added via sys.path above
     BACKLOG_ENTRY_CAP,
     DIRECTION_CAP,
+    FILE_CAPS,
     GRANDFATHERED,
     ROOT,
     STATUS_CAP,
+    UNCAPPED,
     check,
 )
 
@@ -122,6 +124,31 @@ def test_a_long_excludes_cell_is_not_capped(tmp_path: Path) -> None:
     _roadmap(tmp_path, direction="short", excludes="x" * (STATUS_CAP + 1), status="done")
 
     assert check(tmp_path).failures == []
+
+
+def test_a_long_archive_is_not_capped(tmp_path: Path) -> None:
+    """`ARCHIVE.md` is where the roadmap's overflow goes, so it is uncapped.
+
+    Its refusal sibling is the line below: the same 5,000 lines under a capped
+    name *is* refused, which is what proves the checker ran on this tree at all
+    rather than returning an empty report.
+    """
+    body = "# Archive\n" + "a\n" * 5_000
+    _write(tmp_path, "ARCHIVE.md", body)
+
+    assert check(tmp_path).failures == []
+
+    _write(tmp_path, "ROADMAP.md", body)
+
+    assert any("ROADMAP.md" in f and "> 400" in f for f in check(tmp_path).failures)
+
+
+def test_archive_is_not_in_the_cap_table(tmp_path: Path) -> None:
+    """The exemption is declared, not incidental. A later tidy that adds
+    `ARCHIVE.md` to `FILE_CAPS` fails here rather than silently capping the
+    record."""
+    assert "ARCHIVE.md" in UNCAPPED
+    assert "ARCHIVE.md" not in FILE_CAPS
 
 
 def test_grandfathered_paths_all_exist() -> None:

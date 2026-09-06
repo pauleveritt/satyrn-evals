@@ -10,6 +10,17 @@ watch-docs:
 docs:
     uv run --group docs sphinx-build -W -b html docs docs/_build/html
 
+# Every gate, in order, failing on the first non-zero exit. Use this rather
+# than typing the four commands: on 2026-09-06 two sessions checked a gate by
+# reading the exit code of the `tail` it was piped into — a check that cannot
+# fail, which is this project's own named instrument defect. A gate is never
+# piped into anything.
+gates:
+    uv run pytest -q
+    uv run ruff check
+    just lint-docs
+    just docs
+
 # Enforce the document caps in docs/sdd.md. Caps alone do not work.
 lint-docs:
     uv run python tools/lint_docs.py

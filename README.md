@@ -99,7 +99,8 @@ contamination is reported on receipts and summaries, never on an exit code.
 ## Status
 
 `grade`, `capture`, `attempt`, and `run` are available. V6 session evaluation
-is proposed. See [ROADMAP.md](ROADMAP.md) for phases and current design work.
+is proposed. See [ROADMAP.md](ROADMAP.md) for phases and current design
+work, and [ARCHIVE.md](ARCHIVE.md) for the phases already completed.
 
 ## Development
 
