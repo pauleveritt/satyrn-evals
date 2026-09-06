@@ -30,6 +30,7 @@ from satyrn_evals.engine_contract import (
 from satyrn_evals.errors import PatchParseError, SatyrnError, UsageError
 from satyrn_evals.grade import grade
 from satyrn_evals.manifest import TaskManifest, load_manifest, resolve_task
+from satyrn_evals.model_error import infrastructure_failure
 from satyrn_evals.overlay import load_overlay
 from satyrn_evals.patch import parse_patch_paths
 from satyrn_evals.receipt import patch_digest
@@ -258,6 +259,23 @@ def _finish_attempt(
         patch_digest(transcript_bytes) if transcript_bytes is not None else None
     )
 
+    fault: str | None = None
+    # V11d slice 4. MODEL_ERROR replaces the NO_PATCH this cell would
+    # otherwise get -- it never displaces a patch. A model that edited
+    # files and then hit a GPU fault on its next turn has still produced a
+    # gradeable patch, and refusing it ungraded would destroy evidence
+    # that cannot be recovered offline. So the substrate is only consulted
+    # where decide_refusal would have said NO_PATCH, which is also exactly
+    # the population the re-score path reclassifies. The two call sites
+    # must agree or a cell's code depends on when it was decided.
+    # Never the exit code (BRIEF rule 4).
+    if (
+        code is None
+        and transcript_text is not None
+        and decide_refusal(patch_text, transcript_text) is AttemptCode.NO_PATCH
+        and (fault := infrastructure_failure(transcript_text)) is not None
+    ):
+        code = AttemptCode.MODEL_ERROR
     if code is None:
         if patch_error is not None:
             code = AttemptCode.PATCH_INVALID
@@ -277,6 +295,8 @@ def _finish_attempt(
             if workspace.code is not WorkspaceCode.OK
             else f"attempt refused: {code}"
         )
+        if code is AttemptCode.MODEL_ERROR and fault is not None:
+            message = f"{message}: {fault}"
         artifact_errors = tuple(
             error for error in (patch_error, transcript_error) if error is not None
         )

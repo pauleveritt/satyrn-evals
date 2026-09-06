@@ -303,6 +303,9 @@ def _valid_v4_record(code: AttemptCode) -> AttemptRecord:
             pass
         case AttemptCode.COMMAND_TIMEOUT | AttemptCode.REPEAT_LIMIT:
             values["workspace_base_sha"] = "c" * 40
+        case AttemptCode.MODEL_ERROR:
+            # The command ran and exited; the substrate failed under it.
+            values.update(command_exit=0, workspace_base_sha="c" * 40)
         case AttemptCode.CLEANUP_FAILED:
             values["retained_path"] = "/tmp/retained"
         case AttemptCode.GRADE_FAILED:
@@ -342,6 +345,11 @@ def test_attempt_policy_is_complete() -> None:
         # The repeated-call spending rule tears the process down the way a
         # timeout does, so it owes the same shape: no exit code, a base sha.
         (AttemptCode.REPEAT_LIMIT, {"command_exit": 7}, "null command_exit"),
+        (
+            AttemptCode.MODEL_ERROR,
+            {"command_exit": None},
+            "requires command_exit",
+        ),
         (
             AttemptCode.REPEAT_LIMIT,
             {"workspace_base_sha": None},

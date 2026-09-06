@@ -37,6 +37,7 @@ from satyrn_evals.manifest import (
     load_manifest,
     resolve_task,
 )
+from satyrn_evals.model_error import infrastructure_failure
 from satyrn_evals.overlay import OverlaySpec, load_overlay
 from satyrn_evals.pathology import count_transcript, decoded_scan_text
 from satyrn_evals.summary import (
@@ -359,6 +360,40 @@ def regrade_attempt(
             f"regrade: record names {record.attempt_dir!r}, "
             f"not {attempt_dir.name!r}"
         )
+    # V11d slice 4: reclassify before the gradeable check. regrade
+    # otherwise no-ops on every refusal cell, which would strand each
+    # already-collected infrastructure failure at NO_PATCH with no offline
+    # path to correct it -- exactly what BRIEF rule 3 promises against.
+    # Scoped to NO_PATCH: that is the observed defect, and a cell that
+    # produced a patch is not one the substrate silently swallowed.
+    if (
+        record.code in (AttemptCode.NO_PATCH, AttemptCode.MODEL_ERROR)
+        and record.transcript_path is not None
+        and (text := _read_transcript(attempt_dir / record.transcript_path))
+        is not None
+    ):
+        # Re-*derive* rather than only promote. The transcript is the
+        # authority, so when the classification rule changes a cell can be
+        # re-scored in both directions -- the property that makes a
+        # grading decision correctable without re-running a model
+        # (BRIEF rule 3). A one-way promotion would strand every cell
+        # reclassified under a rule later found wrong.
+        fault = infrastructure_failure(text)
+        derived = (
+            AttemptCode.MODEL_ERROR if fault is not None else AttemptCode.NO_PATCH
+        )
+        if derived is not record.code:
+            rewritten = replace(
+                record,
+                code=derived,
+                message=(
+                    f"attempt refused: MODEL_ERROR: {fault}"
+                    if fault is not None
+                    else "attempt refused: NO_PATCH"
+                ),
+            )
+            write_attempt_record(record_path, rewritten)
+            return rewritten
     if not _gradeable(record):
         return None  # nothing was graded, so nothing re-scores (no-op).
     # OK and GRADE_FAILED policies both require patch + transcript, so the
