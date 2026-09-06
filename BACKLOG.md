@@ -290,6 +290,37 @@ exits 2 writing neither patch nor transcript, so evals records
 the tests invoke it through `uv run --project` and the binary runs.
 **Reopens as a V12 entry gate**, since it is the real-engine attempt path.
 
+**The repeated-call rule catches repetition, not stalling** (found
+2026-09-06 in the abandoned R1b run). One cell made 264
+`bash: python3 -c 'from mod…'` calls whose text varied slightly each
+time, so the identical-run counter never reached its limit and the cell
+ran to the 900 s timeout. The rule catches identical repeats; it does not
+catch a model varying its command while making no progress.
+
+**Proposed fix, and deliberately not a similarity matcher.** Both
+observed pathologies — 281 identical reads, and 264 varied one-liners —
+share something simpler than resemblance: **no edit for hundreds of
+calls**. Measured over every retained transcript (231 cells): the longest
+run of consecutive non-editing tool calls is **21** on cells that
+produced a patch (n=190, median 5) and reaches **363** on cells that did
+not (n=41, median 10). A limit of 30 cuts **0/190** patch-producing cells
+and **14/41** non-producing ones, and the plateau is flat from 30 to 80,
+so it is not a tuned threshold. That is a stronger separation than the
+identical-run rule has, needs no dependency, and is deterministic — where
+"are these two commands the same work?" is a fuzzy question whose wrong
+answers over-fire. **Reopens as a proposal**: a second spending rule,
+`--max-calls-without-edit`, off by default like the first, with the
+per-model replay this project now expects.
+
+**R1b is authored but unevaluated** (2026-09-06). Its head-to-head was
+abandoned five cells in, when V13 was made the priority
+(`~/satyrn-smokes/2026-09-06-r1b-headtohead-*/ABANDONED.md`). The rung
+exists in four manifests and is held by two authoring gates, but **no
+placement data exists for it** and the hypothesis that motivated it —
+that naming unrunnable checks costs more than it gives — is untested.
+**Reopens** when contract design is the priority; until then R1b must not
+be read as validated or used in a profile.
+
 **All placement headroom is at R1, and the ladder is not monotone**
 (measured 2026-09-06, 168 cells across two capability points).
 `~/satyrn-smokes/2026-09-06-r0-profile-081459/RESULT.md`. R3 measured 6/6
