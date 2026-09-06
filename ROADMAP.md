@@ -16,16 +16,20 @@ are complete and landed; the trimmed contract ladder and the two-arm
 substrate are in `main`. Neither of those measures anything. **V11c's mini-probe and its two-arm spike have both
 run**; the spike recorded **Engine 10/12 versus Baseline 5/12** successful
 attempts — outcome 1 by the predeclared table, exploratory, no mechanism
-claim (`~/satyrn-smokes/2026-09-05-v11c-spike-184017/RESULT.md`). A
-follow-up Baseline-only probe closed the one condition that could have
-made those counts an instrument artifact: with pi's context window
-corrected, 5 of 6 cells still locked and **none was rescued by
-compaction**
-(`~/satyrn-smokes/2026-09-05-compaction-probe-214218/RESULT.md`). pi's window
-is now corrected to the enforced 80,000 for every arm; successful-attempt
-counts stay comparable across that change but `code_counts` do not
+claim (`~/satyrn-smokes/2026-09-05-v11c-spike-184017/RESULT.md`). A follow-up
+Baseline-only probe closed the one condition that could have made those
+counts an instrument artifact: with pi's window corrected, 5 of 6 cells
+still locked and **none was rescued by compaction**
+(`~/satyrn-smokes/2026-09-05-compaction-probe-214218/RESULT.md`). That
+window is now corrected to the enforced 80,000 for every arm — successful-
+attempt counts stay comparable across the change, `code_counts` do not
 ([decision](docs/superpowers/research/2026-09-05-context-window-decision.md)).
-The remaining build work is V12's entry gates:
+A **staged V12 reference profile** has now run — 120 cells, both named
+Gemma capability points, five tasks, R1 and R3, `n=6`, every tally
+accepted: `~/satyrn-smokes/2026-09-06-overnight-232554/RESULT.md`. R3
+ceilings almost everywhere and the two capability points do not order
+cleanly, so `depth-2` R1 is *worse* at the larger point. The remaining
+build work is V12's entry gates:
 [plan of record](docs/superpowers/plans/2026-09-05-v11d-instrument-fixes-and-v12-entry.md),
 confirmed 2026-09-05. Slices 0–2 are done and verified (F1, F2, F3:
 [record](docs/superpowers/research/2026-09-05-v11d-f2-f3-record.md)); the
@@ -39,12 +43,9 @@ by the [`2026-09-05 V11-trim amendment`](docs/superpowers/research/2026-09-05-ro
 [`trim and spike proposal`](docs/superpowers/research/2026-09-05-v11-trim-and-spike-proposal.md).
 
 No later phase starts before its own short design proposal is confirmed, as
-required by `CLAUDE.md`. The mini-probe selected
-`agentclinic-repair-misleading-locus` at R1 by a frozen rule
-(`~/satyrn-smokes/2026-09-05-v11c-miniprobe-2/RESULT.md`); the spike and
-the compaction probe are recorded beside their own cells. Preflight is
-per-batch: re-run it into a new output directory immediately before each
-budgeted batch, as was done for all three. **Quiet the machine first** — the voided attempt was a GPU
+required by `CLAUDE.md`. Every batch is recorded beside its own cells.
+Preflight is per-batch: re-run it into a new output directory immediately
+before each budgeted batch, as was done for all five. **Quiet the machine first** — the voided attempt was a GPU
 out-of-memory, which is machine state that no V11d fix prevents. The
 [V11 fix brief](docs/superpowers/research/2026-09-05-next-agent-brief-v11-fixes.md)
 records the corrections that landed to reach this state.

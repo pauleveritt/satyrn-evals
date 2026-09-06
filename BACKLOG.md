@@ -290,7 +290,16 @@ exits 2 writing neither patch nor transcript, so evals records
 the tests invoke it through `uv run --project` and the binary runs.
 **Reopens as a V12 entry gate**, since it is the real-engine attempt path.
 
-**Re-validate the repeated-call limit per model** (owed 2026-09-05, when
+**R3 carries almost no placement information** (found 2026-09-06 by the
+staged V12 profile). At both named Gemma capability points R3 is 6/6 on 9
+of 10 task/model pairs and 5/6 on the tenth, while R1 spreads 0/6 to 6/6
+(`~/satyrn-smokes/2026-09-06-overnight-232554/RESULT.md`). A rung that
+every task ceilings on cannot place anything. **Reopens against V12's
+rung set**: either R3 is dropped from placement, or R0/R2 are authored and
+the four-point monotonicity check decides where the information is. This
+bears directly on `BRIEF.md`'s unsolved problem, a suite with headroom.
+
+** (owed 2026-09-05, when
 the rule shipped). `--max-repeated-calls` rests on a gap measured on
 gemma-4-12B alone: the longest run of identical consecutive tool calls is
 1-5 on every cell that succeeded and 280 on each locked cell, with nothing
