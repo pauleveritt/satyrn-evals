@@ -152,10 +152,10 @@ DERIVED_ASSERTION_TEXT: dict[str, tuple[str, ...]] = {
 #: `specs/` vendored into `base/` -- reversed by V11a to keep `base/`
 #: byte-identical -- and they keep the trim's set until that slice runs.
 EXPECTED_RUNGS = {
-    "depth-2": {"R0", "R1", "R3"},
-    "depth-3": {"R0", "R1", "R3"},
-    "misleading-locus": {"R0", "R1", "R3"},
-    "plausible-wrong-fix": {"R0", "R1", "R3"},
+    "depth-2": {"R0", "R1", "R1b", "R3"},
+    "depth-3": {"R0", "R1", "R1b", "R3"},
+    "misleading-locus": {"R0", "R1", "R1b", "R3"},
+    "plausible-wrong-fix": {"R0", "R1", "R1b", "R3"},
     "framing-2": {"R1", "R3"},
     "framing-2-edit": {"R1", "R3"},
 }

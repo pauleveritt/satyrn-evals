@@ -60,6 +60,43 @@ def test_r1_does_name_hidden_checks(task: str) -> None:
     assert named, f"{task}: R1 names no hidden check, so R0 < R1 is untested"
 
 
+#: The evidence each task's R1 carries, as behaviour rather than as a
+#: check name. R1b must preserve every one of these, or it is not the same
+#: rung -- it is a second R0 wearing R1's label.
+EVIDENCE_SIGNATURES = {
+    "agentclinic-repair-depth-2": ("casefold", "307", "303"),
+    "agentclinic-repair-depth-3": (
+        "casefold", "307", "303", "assert None is not None",
+    ),
+    "agentclinic-repair-misleading-locus": ("Codex acceptance test",),
+    "agentclinic-repair-plausible-wrong-fix": ("307", "303"),
+}
+
+
+@pytest.mark.parametrize("task", R0_TASKS)
+def test_r1b_names_no_hidden_check(task: str) -> None:
+    """R1b exists to test one hypothesis: that naming acceptance checks
+    the model cannot run costs more than it gives. `misleading-locus`
+    scored 5/6 at R0 against 3/6 at R1, with R1 drawing more source reads
+    and fewer suite runs. R1b therefore carries R1's evidence with the
+    identifiers removed, and must name none of them."""
+    manifest = _manifest(task)
+    named = {n for n in _hidden_names(manifest) if n in manifest.contracts["R1b"]}
+    assert named == set(), f"{task}: R1b names hidden checks {sorted(named)}"
+
+
+@pytest.mark.parametrize("task", R0_TASKS)
+def test_r1b_keeps_every_evidence_signature_r1_carries(task: str) -> None:
+    """The sibling that stops R1b from being a downgrade. Removing the
+    identifiers must not remove the evidence: if R1b dropped the error
+    signatures too, a difference in outcome would say nothing about
+    naming and everything about telling the model less."""
+    manifest = _manifest(task)
+    for signature in EVIDENCE_SIGNATURES[task]:
+        assert signature in manifest.contracts["R1"], f"{task}: R1 lost {signature!r}"
+        assert signature in manifest.contracts["R1b"], f"{task}: R1b lost {signature!r}"
+
+
 @pytest.mark.parametrize("task", R0_TASKS)
 def test_r0_is_authored_for_every_task_the_profile_places(task: str) -> None:
     """A missing rung would silently shrink the profile rather than fail
