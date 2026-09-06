@@ -13,17 +13,20 @@ Backlog, not into the current phase.*
 **The next direction is a reliable instrument, a fitted AgentClinic suite,
 and one preregistered Engine comparison.** V9, V10, V11a-trim and V11b-trim
 are complete and landed; the trimmed contract ladder and the two-arm
-substrate are in `main`. Neither of those measures anything. **V11c's
-Baseline mini-probe has run and selected its task; its two-arm spike is
-held.** The next build work is the V11d fix round and V12's entry gates:
+substrate are in `main`. Neither of those measures anything. **V11c's mini-probe and its two-arm spike have both
+run**; the spike recorded **Engine 10/12 versus Baseline 5/12** successful
+attempts — outcome 1 by the predeclared table, exploratory, no mechanism
+claim (`~/satyrn-smokes/2026-09-05-v11c-spike-184017/RESULT.md`). The remaining build work is V12's entry gates:
 [plan of record](docs/superpowers/plans/2026-09-05-v11d-instrument-fixes-and-v12-entry.md),
 confirmed 2026-09-05. Its first three slices are done and verified —
 preflight command resolution (F1), the empty-patch metric fix re-scored
 from retained transcripts (F2), and the signal-killed-`run` abort record,
 reproduced before it was fixed (F3):
 [record](docs/superpowers/research/2026-09-05-v11d-f2-f3-record.md).
-Slices 3–5 (resume support, `MODEL_ERROR`, the remaining V12 entry gates)
-are not started. The later phases do not promise
+**The round then stopped after slice 2**, by the rule it paid for
+(`CLAUDE.md`, "an instrument fix round needs a stopping rule"): only F1
+blocked the spike, F2 and F4 re-score from retained transcripts, and F5
+belongs to V12's 288 cells. Slices 3–5 remain deferred. The later phases do not promise
 that Engine will win. They promise a durable placement profile, then a
 prospective result whose null outcome is recorded as prominently as a
 positive one. Rationale: the [`2026-09-04 roadmap record`](docs/superpowers/research/2026-09-04-roadmap-to-a-reliable-instrument-and-a-first-engine-result.md), as amended
@@ -35,10 +38,11 @@ required by `CLAUDE.md`. The spike protocol and V13 firewall were confirmed
 2026-09-05, so V11c's cells are authorized. All five preconditions were met
 and **the Baseline mini-probe has now run** — 12/12 cells, selecting
 `agentclinic-repair-misleading-locus` at R1 by the frozen rule
-(`~/satyrn-smokes/2026-09-05-v11c-miniprobe-2/RESULT.md`). **The two-arm spike
-has not been run**; the maintainer held it. Preflight is per-batch: re-run it
-into a new output directory immediately before the spike, as was done for the
-mini-probe. **Quiet the machine first** — the voided attempt was a GPU
+(`~/satyrn-smokes/2026-09-05-v11c-miniprobe-2/RESULT.md`). **The two-arm spike has now run** — 24/24 cells,
+tally accepted, preflight green, recorded in
+`~/satyrn-smokes/2026-09-05-v11c-spike-184017/RESULT.md`. Preflight is
+per-batch: re-run it into a new output directory immediately before each
+budgeted batch, as was done for both. **Quiet the machine first** — the voided attempt was a GPU
 out-of-memory, which is machine state that no V11d fix prevents. The
 [V11 fix brief](docs/superpowers/research/2026-09-05-next-agent-brief-v11-fixes.md)
 records the corrections that landed to reach this state.
@@ -68,7 +72,7 @@ lands.
 | V10 | Transcript-derived pathology counts | Offline-read the preserved Pi attempt transcript and report tool calls, repeat, churn, no-op edits, test_runner_commands (command-text evidence, never proof tests ran), tool_free_terminal_turns, workspace escapes, and overlay windows; absent or unparseable data is `unmeasured`, never zero | Wall-clock metrics; changes to the Engine telemetry seam; causal claims from counts alone; session transcripts (A1) | **complete** — design spec `docs/superpowers/specs/2026-09-04-v10-transcript-pathology-counts-design.md` accepted 2026-09-04 (maintainer adjustments A1–A4, schema tightenings S1–S2; self-review + GLM 5.3 review + close-out corrections in the spec companion `docs/superpowers/research/2026-09-04-v10-spec-evidence-and-reviews.md`); plans `2026-09-04-v10-p1/p2/p3a/p3b/p4`; verification record `docs/sdd.md` |
 | V11a | Evidence ladder (trimmed) | Ship an open `contracts: {rung: text}` manifest map carrying **R1 and R3 only**, generate the engine contract from manifest plus rung, add `--rung`, and record `rung` + `contract_digest` on the attempt record and summary | R0 and R2 — a V12 entry gate; vendoring `specs/` into `base/` — reversed; the widened hidden-id check — contradictory at R1, which carries bare hidden function names by design; model runs; Envelope | **complete** — landed as `a37c56a` and corrected by `1193296`; full gate and post-landing V5d evidence are green. **Rung labels are unverified authoring claims until V12** ([amendment](docs/superpowers/research/2026-09-05-roadmap-amendment-v11-trim.md)) |
 | V11b | Reproducible arm substrate (trimmed) | Ship the in-tree Pi attempt adapter and two arm definitions — Baseline and Engine — with exact argv, tools, model identifier, pins and `-nc`, plus preflight, interleave and strict-tally scripts that refuse a malformed batch rather than shrink a denominator | Envelope — deferred to V13 scoping, since nobody knows what `envelope-cap.ts` capped; a budgeted probe; claiming an isolated mechanism effect; creation-capable patch capture — a V12 entry gate | **complete** — Engine repair `25ca0be` is pinned by `45ab88e`; both distinct paths passed uncounted post-landing V5d smokes, and clean-tree preflight is green. See the V11 fix brief and plan for correction evidence. |
-| V11c | Baseline mini-probe and two-arm spike | Buy an early product-level signal for at most 36 cells: a Baseline-only mini-probe (R1, `n=4`, three candidate tasks) selects one cell by a rule frozen beforehand, then Baseline vs Engine at `n=12` per arm, interleaved on a seeded schedule | Preregistration and admission — it is **neither**; Envelope, so two arms not three; extending `n` after reading the result; pooling spike cells with V13's; any mechanism sentence | **mini-probe complete 2026-09-05; spike held** — 12/12 Baseline cells at R1 selected `agentclinic-repair-misleading-locus` (3/4 interior; `plausible-wrong-fix` 4/4, `depth-3` 0/4 with 4/4 retained patches — a quality floor, not a capability wall). Result and recompute commands: `~/satyrn-smokes/2026-09-05-v11c-miniprobe-2/RESULT.md`; rule application recorded in the spike-protocol spec. A first attempt is **void** (GPU out-of-memory scored as `NO_PATCH`; `~/satyrn-smokes/2026-09-05-v11c-miniprobe/VOID.md`) and is not pooled with it. The 24-cell spike is authorized by the selection but unrun |
+| V11c | Baseline mini-probe and two-arm spike | Buy an early product-level signal for at most 36 cells: a Baseline-only mini-probe (R1, `n=4`, three candidate tasks) selects one cell by a rule frozen beforehand, then Baseline vs Engine at `n=12` per arm, interleaved on a seeded schedule | Preregistration and admission — it is **neither**; Envelope, so two arms not three; extending `n` after reading the result; pooling spike cells with V13's; any mechanism sentence | **mini-probe complete 2026-09-05; spike held** — 12/12 Baseline cells at R1 selected `agentclinic-repair-misleading-locus` (3/4 interior; `plausible-wrong-fix` 4/4, `depth-3` 0/4 with 4/4 retained patches — a quality floor, not a capability wall). Result and recompute commands: `~/satyrn-smokes/2026-09-05-v11c-miniprobe-2/RESULT.md`; rule application recorded in the spike-protocol spec. A first attempt is **void** (GPU out-of-memory scored as `NO_PATCH`; `~/satyrn-smokes/2026-09-05-v11c-miniprobe/VOID.md`) and is not pooled with it. The 24-cell spike then ran: tally accepted 24/24, **Engine 10/12 vs Baseline 5/12** successful attempts — **outcome 1**, exploratory, no mechanism claim. Every non-success in **both** arms is one shape: a `read app.py` loop locked at the fifth tool call. Result and the recompute: `~/satyrn-smokes/2026-09-05-v11c-spike-184017/RESULT.md` |
 | V12 | Placement profile | Run the reference arm only for both named Gemma capability points, six tasks, and all four rungs at `n=6`; retain the three-way outcome split and classify every task-rung/model cell into a band | Comparing arms; admission claims; tuning a contract or sample size after reading the profile | **queued after V11b** — scientific scope unchanged. **Entry gate:** author R0 and R2 and restore the four-point monotonicity check; ship creation-capable patch capture before `framing-2` runs; re-run the live one-word completion, never `/v1/models`; plus R2 and a well-formed-tool-call canary per model, observed transcript-model validation, and a resume-safe 288-cell driver |
 | V13 | Preregistered three-arm probe | Compare Baseline, prospective Envelope, and Engine on a predeclared eligible pure-edit cell, interleaved by a recorded schedule; publish counts, bands, pathology counts, and a positive or null result | Mechanism attribution; build/author tasks; escalating `n` or changing cells after the result | **queued after V10 and V12** — scientific scope unchanged; exactly one primary cell prevents a multiple-cell success hunt. V13 now also **defines and preregisters Envelope**, and its primary-cell and Envelope-budget algorithms are frozen from reference-arm data alone **before** the spike runs |
 | W1 | Weight | Simplify unsupported cleanup and git plumbing, remove legacy record/Windows branches and duplicate enums, freeze capture, and retain the 100% branch gate while recording the coverage reduction | New behavior; weaker verification; work that V9 did not first stabilize | **independent after V9** |

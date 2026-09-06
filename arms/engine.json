@@ -17,5 +17,12 @@
       "engine.ts": "2e4fc0644d807c625831147708173b830250127ed393a37e0d6172ed24ed9f9b",
       "mutator.ts": "a08d6dea63fdd382532259a26d178dabc0a8ba499b7c6adcdb56d6ba07e06168"
     }
+  },
+  "inference": {
+    "context_window": 262144,
+    "max_tokens": 8192,
+    "compaction_enabled": true,
+    "compaction_reserve_tokens": 16384,
+    "temperature": null
   }
 }

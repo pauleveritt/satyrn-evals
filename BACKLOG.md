@@ -264,32 +264,47 @@ OOM-specific, so `MODEL_ERROR` must **classify the terminal turn's
 `errorMessage`**: a provider or runtime failure voids the cell, a model-side
 400 for context exhaustion does not.
 
-**`tool_free_terminal_turns` is dead on every pi-adapter cell** (found
-2026-09-05, same investigation; independent of the OOM above). The counter is
-gated on `not had_patch` (`src/satyrn_evals/pathology.py:321`), but `rescore`
-passes `had_patch=record.patch_path is not None`
-(`src/satyrn_evals/rescore.py:214`) while `attempt_pi` writes `patch.diff`
-unconditionally, empty or not (`src/satyrn_evals/attempt_pi.py:231`) and
-`attempt.py:289` sets `patch_path` whenever the file exists. So `had_patch` is
-always true and the counter can never fire. Demonstrated on a cell from the
-voided batch: the published summary for
-`plausible-wrong-fix/…-200622-258836` records `tool_free_terminal_turns: 0`;
-recomputed from that same preserved transcript with the repo's own
-`count_transcript`, it is **1**. The code matches the V10 spec's letter
-(`record.patch_path is None`) and defeats its intent (§3.6: the floored model
-that stops after a text turn without ever editing). This silently understates
-every pi-adapter cell already collected, including the green post-landing
-smokes. **Reopens with the fix** — `had_patch` must mean a non-empty patch —
-**plus a refusal/success test pair** per `BRIEF.md` rule 6, since a counter
-stuck at zero is precisely the defect that passes silently.
+**An invalid tool call voids a whole cell's counts** (found 2026-09-05 in
+the V11c spike; first diagnosed wrongly, corrected the same day). Two Engine
+cells read `measured: false` on an `edit` missing its top-level `path`
+(`~/satyrn-smokes/2026-09-05-v11c-spike-184017/cell-005-engine` events 163,
+197; `cell-011-engine` event 220). This is **not** an unmodelled argument
+shape: the paired `tool_execution_end` records pi refusing the call
+(`Validation failed for tool "edit"`), so the edit never ran, and reading a
+path out of it would manufacture counts from a call that did nothing. A fix
+doing exactly that was written and reverted; the pin and its success sibling
+are in `tests/test_pathology.py`. So `_structure_ok`
+(`src/satyrn_evals/pathology.py:233`) is right to reject the event and
+disproportionate to void the cell — an invalid tool call is model pathology,
+which a pathology counter should count. Exposure engine 2/12, baseline 0/12.
+**Diagnostic counts only; re-scorable.** **Reopens as a design proposal, not
+a patch:** an axis counting invalid tool calls, and whether one bad event
+should void a cell — against which stands "unmeasured, never zero" and four
+silent-zero incidents, so any scheme must make a partial count unreadable as
+a complete one.
 
-**A signal-killed run writes no `aborted.json`** (observed 2026-09-05, same
-batch, lowest confidence of the three). `run.py:123-153` writes `aborted.json`
-on any `BaseException`, but stopping the mini-probe mid-cell left
-`misleading-locus/` with three cell directories, no `summary.json`, and no
-`aborted.json`; the interrupted cell
-(`…-200931-612268`, 191 KB of transcript, 17 tool calls) has no `attempt.json`
-at all. Inferred, not verified: the process was ended by a signal that raises
-no Python exception. **Reopens when someone can reproduce a SIGTERM against a
-live `run`** — this is a V9 loop-integrity gap if it holds, and a
-misattribution if it does not.
+**`test_real_e5_*` fail against the pinned engine** (found 2026-09-05,
+pre-existing at `25f33a2`, verified by stashing). The engine at `25ca0be`
+exits 2 writing neither patch nor transcript, so evals records
+`REFUSED`/`NO_PATCH` with `transcript_path: None`. **Not** the PATH trap —
+the tests invoke it through `uv run --project` and the binary runs.
+**Reopens as a V12 entry gate**, since it is the real-engine attempt path.
+
+**An early-stop rule for repeated identical tool calls** (proposed
+2026-09-05 after the V11c spike). 70 of the batch's 102 minutes were seven
+cells re-reading one file ~281 times after locking at their fifth tool call;
+correcting the context limit makes this *slower*, not faster (a 900 s timeout
+replaces a 10-minute wall). A spending rule — K identical consecutive calls →
+kill, harvest, score `NO_PATCH` with a distinct flag — sends the model no
+message, so a bare arm stays bare. Evidence it changes no outcome: 8/8
+recorded locked cells never exited through 280+ repeats; that must be
+re-checked per model. **Reopens once the compaction question is decided**,
+since the rule forecloses observing a compaction rescue.
+
+**A publishability criterion for an exploratory comparison** (owed
+2026-09-05). Today's outcome-1/outcome-3 call was argued rather than
+mechanical. Proposed test: the strict tally accepts the set; model identity
+is verified per transcript; every open finding is classified as
+verdict-affecting or diagnostic-only and none is verdict-affecting; every
+inference setting the arm depends on is recorded in the arm record.
+**Reopens when written down** — without it, "one more re-run" has no end.

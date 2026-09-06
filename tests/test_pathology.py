@@ -855,3 +855,66 @@ def test_unknown_engine_entry_custom_type_is_not_silently_accepted() -> None:
     bad = _LOOP_BROKEN_DOC.replace('"loop_broken"', '"future_telemetry"')
     block = count_transcript(bad, had_patch=True)
     assert (block.measured, block.reason) == (False, "unknown_event")
+
+
+# --- V11c follow-up: an invalid `edit` call is not an alternate shape ---
+
+def _doc(*tool_events: str) -> str:
+    """A minimal well-formed document wrapping one turn of tool events."""
+    return "\n".join([
+        '{"type": "session", "version": 3, "cwd": "/w"}',
+        '{"type": "agent_start"}',
+        '{"type": "turn_start"}',
+        *tool_events,
+        '{"type": "turn_end", "message": {"role": "assistant", "content": []}}',
+        '{"type": "agent_end"}',
+        '{"type": "agent_settled"}',
+    ])
+
+
+def test_an_edit_without_a_top_level_path_is_malformed() -> None:
+    """Regression pin, and a correction (2026-09-05).
+
+    Two Engine cells of the V11c spike read ``measured: false`` on an
+    ``edit`` whose args were ``{"edits": [{"path": …, oldText, newText}]}``
+    with no top-level ``path``. That was first diagnosed here as a second
+    legitimate argument shape V10 failed to model. It is not. The paired
+    ``tool_execution_end`` records pi refusing the call --
+    ``Validation failed for tool "edit": - path: must have required
+    properties path`` -- so the edit never executed. Teaching V10 to read a
+    path out of it would manufacture ``tool_calls``, ``churn`` and
+    ``noop_edits`` from a call that did nothing.
+
+    Evidence: ``~/satyrn-smokes/2026-09-05-v11c-spike-184017/
+    cell-005-engine`` events 163 and 197, ``cell-011-engine`` event 220.
+
+    What remains owed is a way to *count* an invalid tool call rather than
+    void the cell over it -- a new axis, and a proposal. See `BACKLOG.md`.
+    """
+    block = count_transcript(
+        _doc(
+            '{"type": "tool_execution_start", "toolCallId": "1", "toolName":'
+            ' "edit", "args": {"edits": [{"path": "app.py", "oldText": "a",'
+            ' "newText": "b"}]}}',
+            '{"type": "tool_execution_end", "toolCallId": "1", "toolName":'
+            ' "edit", "result": {}}',
+        ),
+        had_patch=True,
+    )
+    assert (block.measured, block.reason) == (False, "malformed")
+
+
+def test_a_well_formed_edit_is_still_measured() -> None:
+    """The success sibling: the shape pi actually accepts still counts."""
+    block = count_transcript(
+        _doc(
+            '{"type": "tool_execution_start", "toolCallId": "1", "toolName":'
+            ' "edit", "args": {"path": "app.py", "edits": [{"oldText": "a",'
+            ' "newText": "b"}]}}',
+            '{"type": "tool_execution_end", "toolCallId": "1", "toolName":'
+            ' "edit", "result": {}}',
+        ),
+        had_patch=True,
+    )
+    assert block.measured is True
+    assert block.tool_calls["edit"] == 1

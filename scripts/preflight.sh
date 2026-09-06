@@ -118,6 +118,20 @@ uv run --project "$EVALS_ROOT" python \
   "$EVALS_ROOT/scripts/preflight_commands.py" "$BASELINE_ARM" "$ENGINE_ARM" \
   || fail "an arm's command is not on PATH; put it there before spending a batch"
 
+# --- 0c. pi's inference settings are the ones the arms record -------------
+# F6: pi declared a 262,144 context window while the server enforced
+# 80,000, so compaction could never fire and seven Baseline cells of the
+# V11c spike each burned ten minutes walking into that wall. The mismatch
+# was recorded beforehand; what was missing was any check that the
+# settings a batch depends on are the settings that are live. A setting
+# changed under a batch is now a refusal, not a discovery afterwards.
+# Stated limit: this compares pi's *declared* config, and cannot see what
+# the server enforces -- that is the live completion's job, and the
+# batch's.
+uv run --project "$EVALS_ROOT" python \
+  "$EVALS_ROOT/scripts/preflight_inference.py" "$BASELINE_ARM" "$ENGINE_ARM" \
+  || fail "an inference setting drifted from what the arm records"
+
 # --- 1. the engine checkout is exactly the pinned commit, and clean -------
 
 HEAD_SHA="$(git -C "$ENGINE_REPO" rev-parse HEAD)"
