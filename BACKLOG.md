@@ -290,36 +290,23 @@ exits 2 writing neither patch nor transcript, so evals records
 the tests invoke it through `uv run --project` and the binary runs.
 **Reopens as a V12 entry gate**, since it is the real-engine attempt path.
 
-**Envelope's definition is owed, and it belongs to Engine** (V13's one
-open decision, 2026-09-06). V13's preregistration
-(`docs/superpowers/specs/2026-09-06-v13-preregistration.md`) freezes
-everything except this, and **cannot run until it is frozen**, since the
-schedule interleaves all three arms. The 900 s / 8192 tokens / 80 k
-context in the de-admission record are pi and model settings, not what
-`envelope-cap.ts` capped, so the cap is a fresh choice argued from the
-measured per-cell floor of 1,546 input tokens.
+**Envelope's definition is owed to `satyrn-engine`.** V13's one open
+decision, argued in full at
+`docs/superpowers/specs/2026-09-06-v13-preregistration.md` §7 — including
+the measured 1,546-token floor it must be argued from, and why "Baseline
+plus a stall cap" is a trap. **V13 cannot run until it is frozen.**
 
-**The trap:** defining Envelope as "Baseline plus a stall cap" fails
-twice — an arm that only terminates stalled cells can never record *more*
-successful attempts than Baseline, and it converges mechanistically with
-Engine's loop breaker, weakening the three-way contrast V13 exists for.
-
-This entry lives here only because `satyrn-engine` is pinned at `25ca0be`
-and must stay byte-identical for the Engine arm; editing it would make
-V13's own preflight refuse. **Transfer it to `satyrn-engine`'s backlog
-when the pin next moves.**
-
-**Engine's loop breaker keys on repetition, not progress** (observed
-2026-09-06, same insight as the evals-side rule). It trips on
+**Engine's loop breaker keys on repetition, not progress.** It trips on
 `CONSECUTIVE_BLOCK_LIMIT = 3` consecutive blocked repeats and fired 56
-times across the spike's 12 Engine cells, so it shares the evals rule's
-blind spot: a model varying its commands slips through. The transferable
-evidence is measured on the reference arm across 231 cells — a cell that
-produced a patch never exceeded **21** consecutive non-editing calls,
-while failures reached **363**. Note the two rules are different in kind:
-evals' terminates and tells the model nothing, Engine's intervenes and
-changes what the model does next. **Also for `satyrn-engine`'s backlog**,
-on the same transfer.
+times across the spike's 12 Engine cells, sharing the blind spot found in
+evals' own rule. Transferable evidence, measured on the reference arm
+over 231 cells: a patch-producing cell never exceeded **21** consecutive
+non-editing calls; failures reached **363**. The rules differ in kind —
+evals' terminates and tells the model nothing, Engine's intervenes.
+
+Both sit here only because `satyrn-engine` is pinned at `25ca0be` and must
+stay byte-identical for the Engine arm; editing it would make V13's own
+preflight refuse. **Transfer both when the pin moves.**
 
 **The repeated-call rule catches repetition, not stalling** (found
 2026-09-06 in the abandoned R1b run). One cell made 264
