@@ -73,7 +73,12 @@ def test_engine_file_loads_with_read_edit_and_the_pinned_commit() -> None:
     assert arm.model == load_arm(BASELINE).model
     commit = arm.pins.engine_commit
     assert commit is not None
-    assert commit.startswith("25ca0be")  # the repaired Engine commit
+    # The pin moves only by a recorded decision, which is what this line is
+    # for -- it failed when the pin was bumped and had to be updated on
+    # purpose. 25ca0be was the repaired Engine commit V11c and V13 ran
+    # against; b977941 adds the edit-schema fix that V13 found
+    # (973 refused calls, five lost cells) and nothing else.
+    assert commit.startswith("b977941")
     assert len(commit) == 40
     assert set(arm.pins.digests) == {"engine.ts", "mutator.ts"}
     assert all(len(value) == 64 for value in arm.pins.digests.values())
