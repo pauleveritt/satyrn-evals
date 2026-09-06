@@ -139,6 +139,27 @@ V13 — the first evidence that `read,edit` *loses* on a repair task.
 > into the tally.** Cost is **conditional on success** and never pooled
 > with how often you win; the unconditional figure — total cost divided by
 > successes — belongs beside it.
+>
+> **V13d (36 cells, three arms, one task) settled the unit and left the
+> mechanism open.** `plausible-wrong-fix` R1: Baseline **12/12**, Envelope
+> **4/12**, Engine **6/12**; locked cells 0/12, 3/12, 5/12 by a measure
+> defined before the batch (longest identical run before the first edit
+> >= 5, arm-neutral because the arms have different terminators).
+> **Outcome D passed** — Engine's V13c rate reproduced independently — and
+> the frozen table's verdict on the mechanism is **outcome C,
+> underpowered**: Envelope's 3/12 sits in the declared ambiguous band, so
+> no mechanism claim is made either way. What is decisive is the other
+> axis: **removing `bash` and `write` costs 8 of 12 successes**
+> (p = 0.00067), and Engine recovers 2 of those 8, indistinguishable from
+> chance. That justifies a model-invocable test runner on evidence, on this
+> task — on `misleading-locus` the sign was opposite.
+> **The cost unit is settled by demonstration:** conditional medians say
+> Engine's wins are *cheaper* than Baseline's in tokens (p = 0.999) while
+> costing more in calls (p = 0.00005); the unconditional figure says Engine
+> costs **2.1x** Baseline per success and Envelope **4.5x**, because they
+> fail often rather than because their wins are dear. V16 reports both
+> units and the unconditional figure.
+> `~/satyrn-smokes/2026-09-06-v13d-232118/RESULT.md`.
 The later phases do not promise
 that Engine will win. They promise a durable placement profile, then a
 prospective result whose null outcome is recorded as prominently as a
