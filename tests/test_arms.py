@@ -384,3 +384,20 @@ def test_an_unknown_arm_name_is_still_refused(tmp_path: Path) -> None:
     }), encoding="utf-8")
     with pytest.raises(ArmError, match="unknown arm"):
         load_arm(path)
+
+
+def test_baseline_compaction_builds_the_baseline_argv(tmp_path: Path) -> None:
+    """The two arms differ only in pi's own configuration, so their argv
+    is identical -- which is exactly why that difference has to be pinned
+    in the arm record and checked by preflight, where it is visible."""
+    path = tmp_path / "arm.json"
+    path.write_text(json.dumps({
+        "arm": "baseline-compaction",
+        "argv": ["satyrn-evals-attempt-pi"],
+        "tools": ["read", "edit"],
+        "model": "omlx/m", "server_model": "m",
+        "pins": {"pi": "0.84.4", "engine_commit": None, "digests": {}},
+    }), encoding="utf-8")
+    assert build_argv(load_arm(path)) == [
+        "satyrn-evals-attempt-pi", "--model", "omlx/m", "--tools", "read,edit"
+    ]

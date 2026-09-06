@@ -189,7 +189,10 @@ def build_argv(arm: Arm) -> list[str]:
     if not arm.model:
         raise ArmError(f"arm {arm.arm!r} has no model; cannot build argv")
     match arm.arm:
-        case "baseline":
+        case "baseline" | "baseline-compaction":
+            # Same argv: the two differ only in pi's own configuration,
+            # which is why the difference is pinned in the arm record and
+            # checked by preflight rather than passed on the command line.
             return [*arm.argv, "--model", arm.model, "--tools", ",".join(arm.tools)]
         case "engine":
             # `satyrn-engine attempt` takes --model and a contract path;
