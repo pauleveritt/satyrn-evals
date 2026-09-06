@@ -353,3 +353,34 @@ def test_preflight_demands_a_measured_token_floor() -> None:
     # an absent measurement reported as 0 is the recorded silent-zero class.
     assert "input_token_floor" in script
     assert "token_floor.py" in script, "the refusal must name the tool that fixes it"
+
+
+def test_baseline_compaction_is_its_own_arm(tmp_path: Path) -> None:
+    """`baseline-compaction` loads as a distinct arm, so its cells can
+    never be pooled with the `baseline` cells that ran while pi's
+    compaction was unreachable. A shared name is exactly how that pooling
+    would happen without anyone deciding it."""
+    path = tmp_path / "arm.json"
+    path.write_text(json.dumps({
+        "arm": "baseline-compaction",
+        "argv": ["satyrn-evals-attempt-pi"],
+        "tools": ["read", "bash", "edit", "write"],
+        "model": "omlx/m",
+        "server_model": "m",
+        "pins": {"pi": "0.84.4", "engine_commit": None, "digests": {}},
+    }), encoding="utf-8")
+    assert load_arm(path).arm == "baseline-compaction"
+
+
+def test_an_unknown_arm_name_is_still_refused(tmp_path: Path) -> None:
+    """The refusal sibling: widening the vocabulary by one name must not
+    open it to any name."""
+    path = tmp_path / "arm.json"
+    path.write_text(json.dumps({
+        "arm": "baseline-experimental",
+        "argv": ["x"], "tools": ["read"], "model": "omlx/m",
+        "server_model": "m",
+        "pins": {"pi": "0.84.4", "engine_commit": None, "digests": {}},
+    }), encoding="utf-8")
+    with pytest.raises(ArmError, match="unknown arm"):
+        load_arm(path)

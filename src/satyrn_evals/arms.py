@@ -27,7 +27,13 @@ from typing import Literal
 
 from satyrn_evals.errors import UsageError
 
-type ArmName = Literal["baseline", "engine"]
+type ArmName = Literal["baseline", "baseline-compaction", "engine"]
+#: ``baseline-compaction`` is Baseline with pi's context window corrected
+#: to the limit the server actually enforces, so pi's compaction can fire.
+#: It is a *distinct* name rather than a differently-configured
+#: ``baseline`` on purpose: its cells must never pool with cells from the
+#: arm that ran with compaction unreachable, and a shared name is how that
+#: pooling would happen silently.
 
 #: The pi tool names an arm file may name. pi 0.84.4 accepts these four
 #: through `--tools`; an unknown name is an authoring error that would
@@ -71,9 +77,9 @@ class Arm:
 
 
 def _arm_name(raw: str, source: Path) -> ArmName:
-    """The arm identity, narrowed to the two arms this phase defines."""
+    """The arm identity, narrowed to the arms this phase defines."""
     match raw:
-        case "baseline" | "engine":
+        case "baseline" | "baseline-compaction" | "engine":
             return raw
         case _:
             raise ArmError(f"{source}: unknown arm {raw!r}")
