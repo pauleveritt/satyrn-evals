@@ -36,6 +36,7 @@ RUNG=""
 CONTRACT_DIGEST=""
 OUTPUT=""
 TOKEN_FLOOR_RECORD=""
+ARMS=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -48,6 +49,7 @@ while [ $# -gt 0 ]; do
     --contract-digest) CONTRACT_DIGEST="$2"; shift 2 ;;
     --output) OUTPUT="$2"; shift 2 ;;
     --token-floor-record) TOKEN_FLOOR_RECORD="$2"; shift 2 ;;
+    --arms) ARMS="$2"; shift 2 ;;
     *) echo "preflight: unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -55,7 +57,6 @@ done
 # Written out flag by flag rather than with indirect expansion: macOS
 # ships bash 3.2, where ${!var} and ${var,,} are not both available.
 require() { [ -n "$2" ] || { echo "preflight: $1 is required" >&2; exit 2; }; }
-require --engine-repo "$ENGINE_REPO"
 require --seed "$SEED"
 require --n "$N"
 require --task "$TASK"
@@ -65,8 +66,29 @@ require --output "$OUTPUT"
 require --token-floor-record "$TOKEN_FLOOR_RECORD"
 
 EVALS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BASELINE_ARM="$EVALS_ROOT/arms/baseline.json"
-ENGINE_ARM="$EVALS_ROOT/arms/engine.json"
+
+# --arms takes a comma-separated list of arm files, defaulting to the
+# two-arm batch this script was written for. A batch that runs one arm
+# must be gated on that arm: checking an arm the batch is not running
+# would refuse on settings nothing depends on, and -- worse -- pass on an
+# arm nobody checked.
+if [ -z "$ARMS" ]; then
+  ARM_FILES=("$EVALS_ROOT/arms/baseline.json" "$EVALS_ROOT/arms/engine.json")
+else
+  ARM_FILES=()
+  # bash 3.2: no readarray, so split on commas the portable way.
+  while IFS= read -r arm_entry; do
+    case "$arm_entry" in
+      /*) ARM_FILES+=("$arm_entry") ;;
+      *) ARM_FILES+=("$EVALS_ROOT/$arm_entry") ;;
+    esac
+  done <<< "$(printf '%s' "$ARMS" | tr ',' '\n')"
+fi
+for arm_file in "${ARM_FILES[@]}"; do
+  [ -f "$arm_file" ] || { echo "preflight: no such arm file: $arm_file" >&2; exit 2; }
+done
+BASELINE_ARM="${ARM_FILES[0]}"
+ENGINE_ARM="${ARM_FILES[${#ARM_FILES[@]}-1]}"
 
 fail() { echo "preflight FAILED: $*" >&2; exit 1; }
 ok() { echo "preflight ok: $*"; }
@@ -83,9 +105,18 @@ print(cursor)
 ' "$@"; }
 
 PINNED_PI="$(pin "$BASELINE_ARM" pins pi)"
-PINNED_COMMIT="$(pin "$ENGINE_ARM" pins engine_commit)"
-PINNED_ENGINE_TS="$(pin "$ENGINE_ARM" pins digests engine.ts)"
-PINNED_MUTATOR_TS="$(pin "$ENGINE_ARM" pins digests mutator.ts)"
+
+# The engine pin checks apply only when an arm in *this* batch actually
+# runs the engine. A Baseline-only batch pins no commit, and checking one
+# anyway would compare against a null and refuse on a condition nothing in
+# the batch depends on. The skip is announced, never silent: "a preflight
+# that could not fail" is a recorded instrument defect.
+ENGINE_PINNING_ARM=""
+for arm_file in "${ARM_FILES[@]}"; do
+  if [ "$(pin "$arm_file" pins engine_commit)" != "None" ]; then
+    ENGINE_PINNING_ARM="$arm_file"
+  fi
+done
 SERVER_MODEL="$(pin "$BASELINE_ARM" server_model)"
 PI_MODEL="$(pin "$BASELINE_ARM" model)"
 ENGINE_ARM_MODEL="$(pin "$ENGINE_ARM" model)"
@@ -115,7 +146,7 @@ ok "no measurement-shaped Pi or Engine process is running"
 # the evals virtualenv's bin directory. Checked with a bare `python3`, the
 # Baseline command reads as missing when it is not.
 uv run --project "$EVALS_ROOT" python \
-  "$EVALS_ROOT/scripts/preflight_commands.py" "$BASELINE_ARM" "$ENGINE_ARM" \
+  "$EVALS_ROOT/scripts/preflight_commands.py" "${ARM_FILES[@]}" \
   || fail "an arm's command is not on PATH; put it there before spending a batch"
 
 # --- 0c. pi's inference settings are the ones the arms record -------------
@@ -129,10 +160,21 @@ uv run --project "$EVALS_ROOT" python \
 # the server enforces -- that is the live completion's job, and the
 # batch's.
 uv run --project "$EVALS_ROOT" python \
-  "$EVALS_ROOT/scripts/preflight_inference.py" "$BASELINE_ARM" "$ENGINE_ARM" \
+  "$EVALS_ROOT/scripts/preflight_inference.py" "${ARM_FILES[@]}" \
   || fail "an inference setting drifted from what the arm records"
 
 # --- 1. the engine checkout is exactly the pinned commit, and clean -------
+
+if [ -z "$ENGINE_PINNING_ARM" ]; then
+  HEAD_SHA=""
+  ACTUAL_ENGINE_TS=""
+  ACTUAL_MUTATOR_TS=""
+  ok "no arm in this batch pins an engine commit; engine checks not applicable"
+else
+PINNED_COMMIT="$(pin "$ENGINE_PINNING_ARM" pins engine_commit)"
+PINNED_ENGINE_TS="$(pin "$ENGINE_PINNING_ARM" pins digests engine.ts)"
+PINNED_MUTATOR_TS="$(pin "$ENGINE_PINNING_ARM" pins digests mutator.ts)"
+require --engine-repo "$ENGINE_REPO"
 
 HEAD_SHA="$(git -C "$ENGINE_REPO" rev-parse HEAD)"
 [ "$HEAD_SHA" = "$PINNED_COMMIT" ] \
@@ -158,6 +200,7 @@ ACTUAL_MUTATOR_TS="$(digest_of "$ENGINE_REPO/packages/engine/mutator.ts")"
 [ "$ACTUAL_MUTATOR_TS" = "$PINNED_MUTATOR_TS" ] \
   || fail "mutator.ts is $ACTUAL_MUTATOR_TS, pinned $PINNED_MUTATOR_TS"
 ok "engine.ts and mutator.ts match their pinned sha256 digests"
+fi
 
 # --- 3. pi is the pinned version -----------------------------------------
 
@@ -231,7 +274,7 @@ ok "evals is $EVALS_SHA with a clean working tree"
 uv run --project "$EVALS_ROOT" python "$EVALS_ROOT/scripts/interleave.py" \
   --seed "$SEED" --n "$N" --task "$TASK" --rung "$RUNG" \
   --contract-digest "$CONTRACT_DIGEST" --output "$OUTPUT" \
-  "$BASELINE_ARM" "$ENGINE_ARM"
+  "${ARM_FILES[@]}"
 
 cat > "$OUTPUT/preflight.json" <<JSON
 {
