@@ -912,3 +912,97 @@ def test_compute_pathology_a_directory_shaped_patch_stays_silent(
     )[name]
     assert block["measured"] is True
     assert block["tool_free_terminal_turns"] == 0
+
+
+# --- V11d slice 4: reclassifying a collected cell offline ---
+
+_OOM_TRANSCRIPT = "\n".join([
+    '{"type": "session", "version": 3, "cwd": "/w"}',
+    '{"type": "agent_start"}',
+    '{"type": "turn_start"}',
+    json.dumps({"type": "turn_end", "message": {
+        "role": "assistant", "content": [], "model": "m",
+        "usage": {"totalTokens": 0}, "stopReason": "error",
+        "errorMessage": "[METAL] Command buffer execution failed: "
+                        "Insufficient Memory (kIOGPUCommandBufferCallback"
+                        "ErrorOutOfMemory).",
+    }}),
+    '{"type": "agent_end"}',
+])
+
+
+def _refusal_cell(output: Path, name: str, transcript: str) -> Path:
+    cell = output / name
+    cell.mkdir(parents=True, exist_ok=True)
+    (cell / "patch.diff").write_text("", encoding="utf-8")
+    (cell / "transcript.txt").write_text(transcript, encoding="utf-8")
+    write_attempt_record(cell / "attempt.json", record(
+        task=TASK, attempt_dir=name, outcome=AttemptOutcome.REFUSED,
+        code=AttemptCode.NO_PATCH, verdict=None, receipt_path=None,
+    ))
+    return cell
+
+
+def test_regrade_reclassifies_a_collected_infrastructure_failure(
+    tmp_path: Path,
+) -> None:
+    """The gap the V11d plan missed: regrade no-ops on refusal cells
+    (`rescore.py`, "nothing was graded, so nothing re-scores"), so an
+    attempt-time-only MODEL_ERROR would strand every cell already
+    collected at NO_PATCH -- which is what BRIEF rule 3 exists to
+    prevent. Five such cells are on record."""
+    cell = _refusal_cell(tmp_path / "run", "cell-1", _OOM_TRANSCRIPT)
+    rewritten = regrade_attempt(cell, tasks_root=DEFAULT_TASKS_ROOT)
+    assert rewritten is not None
+    assert rewritten.code is AttemptCode.MODEL_ERROR
+    assert load_attempt_record(cell / "attempt.json").code is AttemptCode.MODEL_ERROR
+
+
+def test_regrade_leaves_a_genuine_refusal_alone(tmp_path: Path) -> None:
+    """The success sibling, and the cell that defeated two earlier
+    screens: a 400 about the server's own context limit means the model
+    was reached. Genuine pathology; it stays NO_PATCH and stays in the
+    denominator."""
+    context = _OOM_TRANSCRIPT.replace(
+        "[METAL] Command buffer execution failed: Insufficient Memory "
+        "(kIOGPUCommandBufferCallbackErrorOutOfMemory).",
+        '400: {"message":"Prompt too long: 80036 tokens exceeds max '
+        'context window of 80000 tokens"}',
+    )
+    cell = _refusal_cell(tmp_path / "run", "cell-1", context)
+    assert regrade_attempt(cell, tasks_root=DEFAULT_TASKS_ROOT) is None
+    assert load_attempt_record(cell / "attempt.json").code is AttemptCode.NO_PATCH
+
+
+def test_regrade_reclassification_is_idempotent(tmp_path: Path) -> None:
+    """Re-scoring is run repeatedly over retained evidence, so a cell
+    already reclassified must not be rewritten again."""
+    cell = _refusal_cell(tmp_path / "run", "cell-1", _OOM_TRANSCRIPT)
+    assert regrade_attempt(cell, tasks_root=DEFAULT_TASKS_ROOT) is not None
+    assert regrade_attempt(cell, tasks_root=DEFAULT_TASKS_ROOT) is None
+
+
+def test_regrade_reverts_a_reclassification_the_rule_no_longer_supports(
+    tmp_path: Path,
+) -> None:
+    """Re-scoring derives the code from the transcript in *both*
+    directions (correction 2026-09-06). A one-way promotion would strand
+    every cell reclassified under a rule later found wrong -- and the
+    rule was already corrected once, when a 503 was moved from model-side
+    to infrastructure. The transcript is the authority, not the record."""
+    context = _OOM_TRANSCRIPT.replace(
+        "[METAL] Command buffer execution failed: Insufficient Memory "
+        "(kIOGPUCommandBufferCallbackErrorOutOfMemory).",
+        '400: {"message":"Prompt too long"}',
+    )
+    cell = _refusal_cell(tmp_path / "run", "cell-1", context)
+    # a record wrongly reclassified under some earlier rule
+    rec = load_attempt_record(cell / "attempt.json")
+    write_attempt_record(
+        cell / "attempt.json",
+        replace(rec, code=AttemptCode.MODEL_ERROR, message="attempt refused: MODEL_ERROR"),
+    )
+    rewritten = regrade_attempt(cell, tasks_root=DEFAULT_TASKS_ROOT)
+    assert rewritten is not None
+    assert rewritten.code is AttemptCode.NO_PATCH
+    assert load_attempt_record(cell / "attempt.json").code is AttemptCode.NO_PATCH

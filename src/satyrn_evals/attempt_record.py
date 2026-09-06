@@ -52,6 +52,7 @@ class AttemptCode(StrEnum):
     WORKSPACE_FAILED = "WORKSPACE_FAILED"
     COMMAND_TIMEOUT = "COMMAND_TIMEOUT"
     REPEAT_LIMIT = "REPEAT_LIMIT"
+    MODEL_ERROR = "MODEL_ERROR"
     CLEANUP_FAILED = "CLEANUP_FAILED"
     GRADE_FAILED = "GRADE_FAILED"
 
@@ -140,6 +141,20 @@ _ATTEMPT_POLICIES: dict[AttemptCode, _AttemptPolicy] = {
         # and pooling the two is the maintainer's call, not this table's.
         AttemptOutcome.REFUSED,
         _Presence.FORBIDDEN,
+        _Presence.REQUIRED,
+        _Presence.FORBIDDEN,
+        _ArtifactPolicy.ANY,
+    ),
+    AttemptCode.MODEL_ERROR: _AttemptPolicy(
+        # The inference substrate failed underneath a well-formed request,
+        # so the cell measured nothing. The command itself ran and exited,
+        # unlike a timeout, hence a required exit code. Its own code
+        # rather than NO_PATCH because an infrastructure failure counted
+        # as a refusal understates the arm -- the defect that voided the
+        # first V11c mini-probe. n stays intact; excluding it from a
+        # success count is the maintainer's call, not this table's.
+        AttemptOutcome.REFUSED,
+        _Presence.REQUIRED,
         _Presence.REQUIRED,
         _Presence.FORBIDDEN,
         _ArtifactPolicy.ANY,

@@ -118,7 +118,7 @@ interruption horizon this session already crossed twice.
 are untouched with the run reaching *n*; plus the refusal sibling, where a
 changed pin stops the resume.
 
-## Slice 4 — `MODEL_ERROR` (**F4**)
+## Slice 4 — `MODEL_ERROR` (**F4**, **done**)
 
 A non-scoring outcome code decided from the **preserved transcript** before
 `decide_refusal` runs, mirroring `pi_session.py:60-84`, which already does
@@ -179,6 +179,49 @@ apparent infrastructure trouble rather than hide a refusal.
 attempt-time-only decision would strand every collected cell at
 `NO_PATCH` with no offline path to correct it — the failure `BRIEF.md`
 rule 3 exists to prevent. Decision 1 is what closes it.
+
+### Corrections found in review, recorded (2026-09-06)
+
+Four, all caught by an adversarial review of the first implementation.
+
+1. **The two call sites disagreed, and one destroyed evidence.** The
+   attempt path consulted the substrate whenever no code was set — before
+   looking at the patch — while the re-score path only reclassified
+   `NO_PATCH`. So a cell that edited files and *then* hit a GPU fault was
+   refused `MODEL_ERROR` and never graded, and `regrade` could not
+   recover it (`_gradeable` admits only `OK`/`GRADE_FAILED`). The
+   classifier now runs only where `decide_refusal` would have said
+   `NO_PATCH`, which is exactly the population re-scoring reclassifies.
+   **`MODEL_ERROR` replaces a `NO_PATCH`; it never displaces a patch.**
+   No cell on disk had that shape, which is why the replay evidence did
+   not catch it — the known-bad and known-good sets contained no
+   patch-plus-errored-turn cell.
+2. **The rule was a pattern match on punctuation.** It keyed on a literal
+   `"400: "`. pi renders `"<status>: <body>"` only when the provider
+   returns a structured error object and `"<status> <message>"` otherwise,
+   so the same context overflow from a server returning a bare string
+   would have been called infrastructure. Worse, *any* status counted as
+   model-side, so a 503 — the server blaming itself, which pi's own retry
+   layer treats as a transient provider error — landed in the denominator
+   as a refusal. The rule now asks what HTTP already answers: **4xx the
+   server blamed the request (model-side); 5xx it blamed itself
+   (infrastructure); no status is a runtime fault**, except pi's own
+   `Provider finish_reason:` rendering, which is model-side. A test that
+   pinned `503` as model-side encoded the bug and was inverted.
+3. **Re-scoring was one-way.** It promoted `NO_PATCH → MODEL_ERROR` but
+   never back, so cells reclassified under a rule later found wrong —
+   and the rule *was* wrong once already — could not be re-derived.
+   `regrade` now derives the code from the transcript in both directions.
+4. **The evidence census was wrong.** It was reported as 69 cells; the
+   scope stated (excluding the running overnight batch) actually holds
+   **54**. The corrected replay: fires on 5, silent on 49, of which
+   **8** are context-exhaustion known-goods — the seven `400:` cells of
+   the V11c spike plus the mini-probe's, a better known-good set than the
+   single cell first cited.
+
+The attempt-path wiring had no test at all; it now has three
+(`tests/integration/test_model_error_attempt.py`), including the
+delivered-patch regression from finding 1.
 
 ## Slice 5 — remaining V12 entry gates
 

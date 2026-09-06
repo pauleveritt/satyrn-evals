@@ -129,6 +129,18 @@ nothing, so a bare arm stays bare. The cell records
 stopped is not the same event as one that refused on its own. The limit a
 batch used is recorded on every attempt record. It reads the transcript as
 the command writes it, so it applies to any adapter that writes one.
+- **`MODEL_ERROR`** is recorded when the preserved transcript shows the
+inference substrate failed underneath a well-formed request — a 5xx from
+the model server, or a runtime fault such as a GPU out-of-memory — and the
+attempt delivered no patch. It is its own outcome code rather than
+`NO_PATCH` because an infrastructure failure counted as a refusal
+understates the arm; that defect voided a whole probe. **`n` stays
+intact** and the cell is reported, never dropped: excluding it from a
+success count is the maintainer's call. A 4xx is *not* a model error — the
+server answered and rejected the input on its own terms (a context
+overflow is the case on record), which is genuine pathology and stays in
+the denominator. A cell that *did* deliver a patch is graded normally even
+if its final turn errored.
 - `-- COMMAND...` — the {term}`attempt command`: an executable plus its
 arguments. The `--` is required and separates evals' own flags from the
 command; everything after the first `--` is the command verbatim. A missing
