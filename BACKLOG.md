@@ -299,14 +299,3 @@ good as the separation on the model it is applied to.
 `tests/integration/test_repeat_limit_replay.py` asserts that gap and will
 fail if a future batch closes it. **Reopens before the limit is enabled for
 any model it has not been replayed against.**
-
-**Decide whether compaction rescues a locked loop** (owed 2026-09-05). The
-V11c spike could not tell whether Baseline's seven locked cells failed
-because the model locked at call 4 or because pi never compacted (its
-declared 262,144 window against the server's enforced 80,000). The cheapest
-separating design is Baseline-only, this task, the context limit corrected,
-`n=6` — about four loop cells expected; if none is rescued the hypothesis is
-dead for roughly an hour of machine time. **Run it with
-`--max-repeated-calls` off**, since the rule forecloses observing a rescue.
-**Reopens as a recorded mini-batch proposal**, not a spike re-run: V11c's
-budget of at most 36 cells is spent.
