@@ -83,6 +83,20 @@ V13 — the first evidence that `read,edit` *loses* on a repair task.
 > read `settings.json`'s `temperature`, a key **pi never reads**, so both
 > sides of that comparison were always `None` — a check that could not fail,
 > inside the check whose job is to catch those.
+>
+> **V13b is the first post-pin batch, and headroom survived.** Baseline and
+> Engine interleaved, `n=12` per arm on both headroom tasks at R1, 48 cells,
+> temperature verified on both sides: **`depth-2` Baseline 7/12 vs Engine
+> 9/12; `misleading-locus` Baseline 7/12 vs Engine 9/12**, both p = 0.333
+> descriptive. All four arm/task cells sit strictly inside 0–12, so these
+> are the reference bands for post-pin work
+> (`~/satyrn-smokes/2026-09-06-v13b-184301/RESULT.md`). The predeclared
+> continuity flag did **not** fire — weak evidence, declared weak in
+> advance, and no confirmation that 1.0 is what the server had been running.
+> **`n=6` is too small to carry a band:** `depth-2` Baseline read 7/12 here
+> and 7/12 in the pre-pin V13 batch, against V13a's 2/6 — the `n=6` reading
+> was the outlier. Zero schema refusals across 24 Engine cells; the loop
+> stays gone.
 The later phases do not promise
 that Engine will win. They promise a durable placement profile, then a
 prospective result whose null outcome is recorded as prominently as a
