@@ -31,6 +31,28 @@ detector. Evidence and the arm-parity finding:
 an instruction file in `base/` — at which point construction no longer closes
 the surface and a detector is owed.
 
+**The two selection rules have no recorded reopen condition** (found
+2026-09-06). `CLAUDE.md` says each carries one "in `BACKLOG.md`"; neither
+does. **Reopens when** a probed task records a comparison outcome the rule
+refuses on reference-arm evidence alone — which `plausible-wrong-fix` did
+(Baseline 12/12 vs Engine 6/12, admitted by no rule because the V12
+profile ran the reference arm only).
+
+**The read-lock attractor has no explanation** (found 2026-09-06 across
+V13/V13b/V13c). A cell surveys the tree, then repeats one identical `read`
+until something stops it; **0 of 8** bare-Pi cells reaching a run of 5
+before any edit ever edited. Its rate varies by task and arm with no known
+cause — `plausible-wrong-fix` Engine 6/12 vs Baseline 0/12,
+`misleading-locus` Engine 0/12 vs Baseline 5/12 — and the sign rules out
+the missing-runner story: the Baseline lock cells run `pytest` second.
+Candidates: the wrapper prompt, the tool surface, the breaker's message.
+**Reopens as the next diagnostic question**; a three-arm probe separates them.
+
+**pi's `samplingParams` is checked but not demonstrated** (2026-09-06).
+Preflight compares the arm record against `models.json`, both of which this
+repository controls; nothing shows pi sends it to the server. **Reopens
+before any claim that a batch is reproducible at a stated temperature.**
+
 **Where pi's ~9,000 unexplained repo-root tokens come from** (V11b,
 2026-09-05). `CLAUDE.md` (~1,260 tokens) plus ~3 KB of home files does not
 account for the 9,753-token repo-root measurement, and the same directory
@@ -157,18 +179,13 @@ fresh qualification, not a re-scoring of this task. The completed n=8
 cells are not extended or reinterpreted.
 
 **Historical Envelope artifact recovery** (2026-09-03). The canonical
-`read,write` Envelope is unrecoverable on this machine: the pinned
-`envelope-cap.ts` (`b7455133…`) exists in no revision here — all seven
-copies hash `0448af10…`, the pilot's extension — and the era's Pi version,
-adapter, and artifact harvesting were never recorded (`local-ai-pi`
-`workloads/svcs/cells/gemma12b-envelope.toml`; the reconstruction-stop
-evidence is in the de-admission record). Optional research, not a blocker.
-**Reopens when the full recorded configuration is recoverable — the
-`b7455133` extension *and* the era's Pi version, prompt, adapter, and
-artifact-harvesting provenance — and the maintainer wants a faithful
-reproduction.** Until then, any Envelope assembled with current Pi, a new
-adapter, or a selected prompt is a new prospective arm, not a
-reproduction.
+`read,write` Envelope is unrecoverable here: the pinned `envelope-cap.ts`
+(`b7455133…`) exists in no revision — all seven copies hash the pilot's
+`0448af10…` — and the era's Pi version, prompt, adapter and artifact
+harvesting were never recorded. Optional research, not a blocker; V13
+defined and ran a **prospective** `read,edit` Envelope instead (prereg §7).
+**Reopens only when the full recorded configuration is recoverable and a
+faithful reproduction is wanted.**
 
 **Replace the `local-pings` known-broken adversary** (V6 remediation,
 2026-09-04). The allocator-sensitive adversary (a `get_pings` iterating

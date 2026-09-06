@@ -110,21 +110,35 @@ V13 — the first evidence that `read,edit` *loses* on a repair task.
 > overlapping at p = 0.560).
 > Result: `~/satyrn-smokes/2026-09-06-v13c-200158/RESULT.md`.
 >
-> **The mechanism behind Engine's six `NO_PATCH` cells runs end to end and
-> is engine-side:** no model-invocable test runner → the model re-reads
-> `app.py` instead of running the suite → the identity breaker blocks the
-> repeats → `CONSECUTIVE_BLOCK_LIMIT = 3` terminates the turn before a
-> single edit is attempted. Baseline never enters that loop; it runs `bash`
-> about four times a cell and edits. Both links are already queued in
-> `satyrn-engine`.
+> **Corrected 2026-09-06, same day, before it was acted on.** This first
+> read as a mechanism running "end to end": no test runner → re-reads →
+> breaker blocks → terminate → `NO_PATCH`. **Two of its three links are
+> refuted by cells in the same batches.** Eight bare-Pi cells across V13,
+> V13b and V13c reached an identical-read run of ≥5 before any edit and
+> **0 of 8 ever edited** — so the breaker converts a doomed cell into a
+> faster failure and does not cost the patch. And the five Baseline
+> `REPEAT_LIMIT` cells on `misleading-locus` run `pytest` as their *second*
+> call and lock anyway, with Baseline locking 5/12 there against Engine's
+> 0/12 — the opposite sign to the runner hypothesis. What stands: the
+> terminate path ended all six cells and none attempted an edit; the lock
+> is a sampled read-lock attractor whose rate varies by task and arm, and
+> **its cause is untested**. Candidates that differ between the arms:
+> the wrapper prompt, the tool surface, and the breaker's injected message.
 >
-> **A second measurement axis is established.** On V13b's 48 cells the
-> outcome contrast was p = 0.333 while cost-to-succeed — tool calls on
-> passing cells — separated at p = 0.00009. A count per cell carries far
-> more than a pass/fail bit, which is what makes a suite affordable: an
-> outcome comparison of the observed effect needs ~100 cells per arm for
-> 80% power, where cost separates at `n` under 10. Cost is **conditional on
-> success** and is never pooled with how often you win.
+> **A second measurement axis is a candidate, and its unit is undecided.**
+> On V13b's 48 cells the outcome contrast was p = 0.333 while
+> cost-to-succeed in **tool calls** separated at p = 0.00009. But every one
+> of those call p-values is the **floor** — the smallest the exact test can
+> emit at that `n`, meaning complete separation and nothing about
+> magnitude — and the same cells measured in **tokens** read p = 0.247 on
+> `plausible-wrong-fix`, 0.057 on `depth-2` and 0.036 on
+> `misleading-locus`. On `plausible-wrong-fix` the call separation is the
+> tool surface: Baseline spends one `bash` turn where Engine spends three
+> `read` turns, and the token medians are 11,659 against 12,048. **A unit
+> that reads the same cells at 0.00005 and 0.247 is not ready to be frozen
+> into the tally.** Cost is **conditional on success** and never pooled
+> with how often you win; the unconditional figure — total cost divided by
+> successes — belongs beside it.
 The later phases do not promise
 that Engine will win. They promise a durable placement profile, then a
 prospective result whose null outcome is recorded as prominently as a
