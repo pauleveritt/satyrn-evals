@@ -1,0 +1,26 @@
+{
+  "arm": "baseline",
+  "argv": [
+    "satyrn-evals-attempt-pi"
+  ],
+  "tools": [
+    "read",
+    "bash",
+    "edit",
+    "write"
+  ],
+  "model": "omlx/gemma-4-26b-a4b-it-8bit",
+  "server_model": "gemma-4-26b-a4b-it-8bit",
+  "pins": {
+    "pi": "0.84.4",
+    "engine_commit": null,
+    "digests": {}
+  },
+  "inference": {
+    "context_window": 80000,
+    "max_tokens": 8192,
+    "compaction_enabled": true,
+    "compaction_reserve_tokens": 16384,
+    "temperature": null
+  }
+}
