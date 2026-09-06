@@ -290,7 +290,20 @@ exits 2 writing neither patch nor transcript, so evals records
 the tests invoke it through `uv run --project` and the binary runs.
 **Reopens as a V12 entry gate**, since it is the real-engine attempt path.
 
-**R3 carries almost no placement information** (found 2026-09-06 by the
+**R2, R3 and the two framing tasks are out of placement** (decided
+2026-09-06 from the staged profile). R3 measured 6/6 on nine of ten
+task/model pairs, so it places nothing and is dropped; R2 sits between R1
+and a rung that ceilings, so it is not authored. R0 is authored for the
+four tasks whose public suite is red at base, verified per task rather
+than recalled (1 failed / 3 passed each). `framing-2` and
+`framing-2-edit` are excluded: their public suite is green at base, so a
+fair R0 needs `specs/` vendored into `base/`, which V11a reversed to keep
+`base/` byte-identical — changing it re-derives the contamination pairs
+and the 24/24 gate. **Reopens as its own slice** if those two tasks are
+wanted in placement, and **reopens for R2/R3** if a later capability
+point stops ceilings on R3.
+
+** (found 2026-09-06 by the
 staged V12 profile). At both named Gemma capability points R3 is 6/6 on 9
 of 10 task/model pairs and 5/6 on the tenth, while R1 spreads 0/6 to 6/6
 (`~/satyrn-smokes/2026-09-06-overnight-232554/RESULT.md`). A rung that

@@ -41,6 +41,7 @@
     "fix_sha": "unrecorded"
   },
   "contracts": {
+    "R0": "Repair the seeded bug in the AgentClinic complaints app. A separate acceptance suite, not present in this workspace, decides the outcome; its checks are not shown to you. Your workspace has a runnable public suite under tests/ (uv run python -m pytest tests/), which is red before your change; a fix must keep every existing behavior intact.",
     "R1": "Repair the seeded bug in the AgentClinic complaints app. A separate acceptance suite, not present in this workspace, reports one failing check, test_posted_complaint_appears_on_complaints_board: the posted complaint's text ('Codex acceptance test') is not in the rendered complaints board HTML. Your workspace has a runnable public suite under tests/ (uv run python -m pytest tests/); a fix must keep every existing behavior intact.",
     "R3": "Repair the seeded bug in the AgentClinic complaints app. A separate acceptance suite, not present in this workspace, reports one failing check, test_posted_complaint_appears_on_complaints_board: the just-posted complaint never appears on the board, because the POST handler appends to a copy of the seed list and the board re-renders the untouched seed. The seeded defect is in app.py; fix the handler so the complaint is recorded and shown. Your workspace has a runnable public suite under tests/ (uv run python -m pytest tests/); a fix must keep every existing behavior intact."
   }

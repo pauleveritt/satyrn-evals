@@ -146,10 +146,27 @@ DERIVED_ASSERTION_TEXT: dict[str, tuple[str, ...]] = {
 }
 
 
+#: Rung sets, pinned per task rather than assumed uniform. R0 was
+#: authored 2026-09-06 for the four tasks whose public suite is red at
+#: base; the two framing tasks are green at base, so a fair R0 would need
+#: `specs/` vendored into `base/` -- reversed by V11a to keep `base/`
+#: byte-identical -- and they keep the trim's set until that slice runs.
+EXPECTED_RUNGS = {
+    "depth-2": {"R0", "R1", "R3"},
+    "depth-3": {"R0", "R1", "R3"},
+    "misleading-locus": {"R0", "R1", "R3"},
+    "plausible-wrong-fix": {"R0", "R1", "R3"},
+    "framing-2": {"R1", "R3"},
+    "framing-2-edit": {"R1", "R3"},
+}
+
+
 @pytest.mark.parametrize("state", STATES)
-def test_manifest_ships_exactly_r1_and_r3(state: str) -> None:
+def test_manifest_ships_its_recorded_rung_set(state: str) -> None:
+    """A rung appearing or vanishing unnoticed would silently change what
+    a profile places, so the set is asserted per task, not discovered."""
     manifest = load_manifest(resolve_task(f"agentclinic-repair-{state}"))
-    assert set(manifest.contracts) == {"R1", "R3"}, state
+    assert set(manifest.contracts) == EXPECTED_RUNGS[state], state
 
 
 @pytest.mark.parametrize("state", STATES)
