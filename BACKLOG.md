@@ -31,17 +31,6 @@ detector. Evidence and the arm-parity finding:
 an instruction file in `base/` — at which point construction no longer closes
 the surface and a detector is owed.
 
-**Temperature is unpinned on every arm** (found 2026-09-06 by V13 and
-V13a). No arm file records a `temperature`, so cells run at pi's default,
-which is recorded nowhere; preflight 0c announces this rather than
-checking it. Every batch this month carries the gap. It does not
-differentially favour an arm within an interleaved batch — all arms share
-the default — but it is why counts from different batches are not
-comparable, measured: Baseline on `agentclinic-repair-depth-2` R1 was 7/12
-in the V13 batch and 2/6 in the V13a batch. **Reopens before any design
-that compares counts across batches**, and whenever a claim needs to be
-reproducible across time rather than internally consistent.
-
 **Where pi's ~9,000 unexplained repo-root tokens come from** (V11b,
 2026-09-05). `CLAUDE.md` (~1,260 tokens) plus ~3 KB of home files does not
 account for the 9,753-token repo-root measurement, and the same directory

@@ -23,6 +23,6 @@
     "max_tokens": 8192,
     "compaction_enabled": true,
     "compaction_reserve_tokens": 16384,
-    "temperature": null
+    "temperature": 1.0
   }
 }

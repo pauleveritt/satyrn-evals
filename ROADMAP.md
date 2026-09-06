@@ -68,7 +68,21 @@ V13 — the first evidence that `read,edit` *loses* on a repair task.
 > Engine-only read against V13's Baseline; that design would have compared
 > Engine 4/6 against Baseline 7/12 and concluded the opposite of what the
 > interleaved batch shows. **Counts are compared within an interleaved
-> batch or not at all.** Pinning temperature is owed to `BACKLOG.md`.
+> batch or not at all.**
+>
+> **Pinned the same day, and it is a re-baseline.** Every arm now records
+> `temperature: 1.0`, pi's `models.json` sends it through the model entry's
+> `samplingParams`, and preflight 0c checks the two against each other —
+> refusing an arm that pins none, a config that sends none, and the case
+> where *both* are absent, which is not agreement but nobody having decided.
+> **Every batch before this pin ran at the server's own unrecorded default
+> and is not comparable across it**: V11c, the V12 profile, V13 and V13a are
+> all pre-pin. 1.0 was chosen as the value most likely to match what was
+> already running — for continuity, not tuned — and that continuity is
+> assumed, not measured. The correction that made it possible: preflight
+> read `settings.json`'s `temperature`, a key **pi never reads**, so both
+> sides of that comparison were always `None` — a check that could not fail,
+> inside the check whose job is to catch those.
 The later phases do not promise
 that Engine will win. They promise a durable placement profile, then a
 prospective result whose null outcome is recorded as prominently as a

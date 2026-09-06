@@ -59,12 +59,21 @@ def live_settings(config_dir: Path, model_id: str) -> dict[str, object]:
         (config_dir / "settings.json").read_text(encoding="utf-8")
     )
     compaction = settings.get("compaction") or {}
+    # Temperature is read from the model entry's `samplingParams`, which is
+    # the only path pi actually sends. Corrected 2026-09-06: this used to
+    # read `settings["temperature"]`, a key pi never reads -- verified in
+    # pi 0.84.4, where `buildBaseOptions` takes `temperature` only from the
+    # caller's options while `samplingParams` comes from the model entry and
+    # the provider does `Object.assign(params, options.samplingParams)`.
+    # Both sides of the old comparison were therefore always None: a check
+    # that could not fail, in the preflight whose job is to catch those.
+    sampling = entry.get("samplingParams") or {}
     return {
         "context_window": entry.get("contextWindow"),
         "max_tokens": entry.get("maxTokens"),
         "compaction_enabled": compaction.get("enabled"),
         "compaction_reserve_tokens": compaction.get("reserveTokens"),
-        "temperature": settings.get("temperature"),
+        "temperature": sampling.get("temperature"),
     }
 
 
@@ -110,6 +119,20 @@ def drifted(
             for key in sorted(live)
             if recorded.get(key) != live.get(key)
         )
+        # An unpinned temperature is a drift even when both sides agree that
+        # it is absent: agreeing on "nobody decided" is what a check that
+        # cannot fail looks like. The sampler is then the server's default,
+        # which no record names and which makes counts from different
+        # batches incomparable -- measured on 2026-09-06, when Baseline on
+        # the same task, rung and model read 7/12 in one batch and 2/6 in
+        # the next.
+        # Only the both-absent case is added here: a one-sided absence is
+        # already an inequality the loop above reports, and reporting it
+        # twice would make one drift look like two.
+        if recorded.get("temperature") is None and live.get("temperature") is None:
+            drifts.append(
+                (name, "temperature", recorded.get("temperature"), live.get("temperature"))
+            )
     return drifts
 
 
@@ -136,11 +159,10 @@ def main(argv: list[str] | None = None) -> int:
             f"(context_window={recorded['context_window']}, "
             f"compaction_reserve_tokens={recorded['compaction_reserve_tokens']})"
         )
-        if recorded.get("temperature") is None:
-            print(
-                f"preflight note: arm {arm.get('arm')} pins no temperature; "
-                "cells run at pi's default, which is not recorded anywhere"
-            )
+        print(
+            f"preflight ok: arm {arm.get('arm')} pins temperature="
+            f"{recorded['temperature']}, and pi's models.json sends it"
+        )
     return 0
 
 

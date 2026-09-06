@@ -25,7 +25,7 @@ _LIVE = {
     "max_tokens": 8192,
     "compaction_enabled": True,
     "compaction_reserve_tokens": 16384,
-    "temperature": None,
+    "temperature": 1.0,
 }
 
 
@@ -39,12 +39,17 @@ def config_dir(tmp_path: Path) -> Path:
             "omlx": {"models": [
                 {"id": "other-model", "contextWindow": 32000, "maxTokens": 32000},
                 {"id": "gemma-4-12B-it-MLX-8bit",
-                 "contextWindow": 262144, "maxTokens": 8192},
+                 "contextWindow": 262144, "maxTokens": 8192,
+                 "samplingParams": {"temperature": 1.0}},
             ]}
         }
     }), encoding="utf-8")
+    # `settings.json` carries a *decoy* temperature. pi never reads one from
+    # here -- `buildBaseOptions` takes it only from caller options -- so a
+    # checker that reads it is comparing two values nothing sends.
     (d / "settings.json").write_text(json.dumps({
-        "compaction": {"enabled": True, "reserveTokens": 16384}
+        "compaction": {"enabled": True, "reserveTokens": 16384},
+        "temperature": 0.123,
     }), encoding="utf-8")
     return d
 
@@ -110,6 +115,55 @@ def test_every_drifted_setting_is_reported_not_just_the_first(
     re-run it once per setting."""
     arm = _arm(tmp_path, "baseline", context_window=1, max_tokens=2)
     assert len(drifted([arm], config_dir=config_dir)) == 2
+
+
+def test_temperature_is_read_from_sampling_params_not_settings(
+    config_dir: Path
+) -> None:
+    """The effective path, pinned. `settings.json` carries a decoy 0.123 that
+    pi never sends; `models.json`'s `samplingParams` is what reaches the
+    request body."""
+    live = live_settings(config_dir, "gemma-4-12B-it-MLX-8bit")
+
+    assert live["temperature"] == 1.0
+
+
+def test_an_arm_pinning_no_temperature_is_refused(
+    tmp_path: Path, config_dir: Path
+) -> None:
+    """The refusal this file was missing. Both sides agreeing on `None` is
+    not agreement -- it is nobody having decided, and the sampler is then the
+    server's own default, which no record names."""
+    models = json.loads((config_dir / "models.json").read_text(encoding="utf-8"))
+    models["providers"]["omlx"]["models"][1].pop("samplingParams")
+    (config_dir / "models.json").write_text(json.dumps(models), encoding="utf-8")
+
+    drifts = drifted([_arm(tmp_path, "baseline", temperature=None)], config_dir=config_dir)
+
+    assert [(setting, recorded, live) for _, setting, recorded, live in drifts] == [
+        ("temperature", None, None)
+    ]
+
+
+def test_a_pi_config_sending_no_temperature_is_refused(
+    tmp_path: Path, config_dir: Path
+) -> None:
+    """The other direction: the arm pins 1.0 but pi would send nothing."""
+    models = json.loads((config_dir / "models.json").read_text(encoding="utf-8"))
+    models["providers"]["omlx"]["models"][1].pop("samplingParams")
+    (config_dir / "models.json").write_text(json.dumps(models), encoding="utf-8")
+
+    drifts = drifted([_arm(tmp_path, "baseline")], config_dir=config_dir)
+
+    assert any(setting == "temperature" and live is None for _, setting, _, live in drifts)
+
+
+def test_a_changed_temperature_is_refused(tmp_path: Path, config_dir: Path) -> None:
+    drifts = drifted([_arm(tmp_path, "baseline", temperature=0.7)], config_dir=config_dir)
+
+    assert [(setting, recorded, live) for _, setting, recorded, live in drifts] == [
+        ("temperature", 0.7, 1.0)
+    ]
 
 
 def test_a_model_pi_does_not_list_is_an_error(
