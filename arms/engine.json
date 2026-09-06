@@ -19,7 +19,7 @@
     }
   },
   "inference": {
-    "context_window": 262144,
+    "context_window": 80000,
     "max_tokens": 8192,
     "compaction_enabled": true,
     "compaction_reserve_tokens": 16384,

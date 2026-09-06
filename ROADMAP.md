@@ -21,17 +21,17 @@ follow-up Baseline-only probe closed the one condition that could have
 made those counts an instrument artifact: with pi's context window
 corrected, 5 of 6 cells still locked and **none was rescued by
 compaction**
-(`~/satyrn-smokes/2026-09-05-compaction-probe-214218/RESULT.md`). The remaining build work is V12's entry gates:
+(`~/satyrn-smokes/2026-09-05-compaction-probe-214218/RESULT.md`). pi's window
+is now corrected to the enforced 80,000 for every arm; successful-attempt
+counts stay comparable across that change but `code_counts` do not
+([decision](docs/superpowers/research/2026-09-05-context-window-decision.md)).
+The remaining build work is V12's entry gates:
 [plan of record](docs/superpowers/plans/2026-09-05-v11d-instrument-fixes-and-v12-entry.md),
-confirmed 2026-09-05. Its first three slices are done and verified —
-preflight command resolution (F1), the empty-patch metric fix re-scored
-from retained transcripts (F2), and the signal-killed-`run` abort record,
-reproduced before it was fixed (F3):
-[record](docs/superpowers/research/2026-09-05-v11d-f2-f3-record.md).
-**The round then stopped after slice 2**, by the rule it paid for
-(`CLAUDE.md`, "an instrument fix round needs a stopping rule"): only F1
-blocked the spike, F2 and F4 re-score from retained transcripts, and F5
-belongs to V12's 288 cells. Slices 3–5 remain deferred. The later phases do not promise
+confirmed 2026-09-05. Slices 0–2 are done and verified (F1, F2, F3:
+[record](docs/superpowers/research/2026-09-05-v11d-f2-f3-record.md)); the
+round then **stopped after slice 2** by the rule it paid for (`CLAUDE.md`,
+"an instrument fix round needs a stopping rule"), and slices 3–5 remain
+deferred. The later phases do not promise
 that Engine will win. They promise a durable placement profile, then a
 prospective result whose null outcome is recorded as prominently as a
 positive one. Rationale: the [`2026-09-04 roadmap record`](docs/superpowers/research/2026-09-04-roadmap-to-a-reliable-instrument-and-a-first-engine-result.md), as amended

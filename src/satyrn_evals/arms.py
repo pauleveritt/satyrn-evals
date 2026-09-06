@@ -28,12 +28,14 @@ from typing import Literal
 from satyrn_evals.errors import UsageError
 
 type ArmName = Literal["baseline", "baseline-compaction", "engine"]
-#: ``baseline-compaction`` is Baseline with pi's context window corrected
-#: to the limit the server actually enforces, so pi's compaction can fire.
-#: It is a *distinct* name rather than a differently-configured
-#: ``baseline`` on purpose: its cells must never pool with cells from the
-#: arm that ran with compaction unreachable, and a shared name is how that
-#: pooling would happen silently.
+#: ``baseline-compaction`` is **historical**. It named the arm of the
+#: 2026-09-05 compaction probe, run while ``baseline`` still declared a
+#: 262,144 context window; the name kept those cells from pooling with
+#: cells that ran with compaction unreachable. Since the window was
+#: corrected for every arm, ``baseline`` *is* the compacting
+#: configuration and no arm file carries this name. It stays in the
+#: vocabulary so the probe's schedule remains readable — deleting it
+#: would make a recorded batch unloadable to make a tidier enum.
 
 #: The pi tool names an arm file may name. pi 0.84.4 accepts these four
 #: through `--tools`; an unknown name is an authoring error that would
