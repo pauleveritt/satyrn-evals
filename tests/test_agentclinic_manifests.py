@@ -246,6 +246,24 @@ def test_r1_is_shorter_than_r3(state: str) -> None:
     assert len(manifest.contracts["R1"]) < len(manifest.contracts["R3"]), state
 
 
+def _block(rendered: str, key: str) -> list[str]:
+    """The `  - ` items under one top-level key, and no others.
+
+    Collecting every `  - ` line instead would silently absorb a later
+    block -- which is exactly what happened when `test_command` was added
+    beneath `writable_paths`, and is the same positional-parsing defect
+    `tools/lint_docs.py` records for its own column checker.
+    """
+    lines = rendered.splitlines()
+    start = lines.index(key)
+    items: list[str] = []
+    for line in lines[start + 1 :]:
+        if not line.startswith("  - "):
+            break
+        items.append(line)
+    return items
+
+
 @pytest.mark.parametrize("state", STATES)
 def test_both_rungs_generate_an_engine_contract(state: str) -> None:
     """Every shipped rung renders; the two differ in id and task and agree
@@ -259,8 +277,8 @@ def test_both_rungs_generate_an_engine_contract(state: str) -> None:
     r1, r3 = rendered["R1"].decode(), rendered["R3"].decode()
     assert r1 != r3, state
     assert r1.startswith(f'id: "agentclinic-repair-{state}@R1+'), state
-    paths = [line for line in r1.splitlines() if line.startswith("  - ")]
-    assert paths == [line for line in r3.splitlines() if line.startswith("  - ")]
+    paths = _block(r1, "writable_paths:")
+    assert paths == _block(r3, "writable_paths:")
     assert paths == [
         '  - "app.py"',
         '  - "models.py"',

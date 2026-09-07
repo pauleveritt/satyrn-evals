@@ -86,6 +86,13 @@ def render_engine_contract(
         f"  - {json.dumps(pattern)}"
         for pattern in writable_paths(task_dir, manifest.source_paths)
     ]
+    # `test_command` is emitted only when the task declares a public suite.
+    # Absent, the Engine registers no `run_tests` tool and its pi argv is
+    # byte-identical to what it was before satyrn-engine E7 -- so a task
+    # that has not opted in is not silently given a new tool surface.
+    if manifest.public_suite:
+        lines.append("test_command:")
+        lines += [f"  - {json.dumps(token)}" for token in manifest.public_suite]
     return ("\n".join(lines) + "\n").encode("utf-8")
 
 

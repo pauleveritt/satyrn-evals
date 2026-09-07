@@ -9,6 +9,10 @@ from typing import Literal
 
 from satyrn_evals.errors import ManifestError
 
+#: The oracle hook plugin name. A public suite naming it would run the
+#: hidden grader through the executor's own process.
+ORACLE_HOOK_PLUGIN = "satyrn_evals.oracle_hook"
+
 DEFAULT_TASKS_ROOT = Path(__file__).resolve().parent / "tasks"
 
 
@@ -33,6 +37,46 @@ class TaskManifest:
     grader_overlay: str | None = None
     oracle_visibility: OracleVisibility = "visible"
     contracts: ContractRungs = field(default_factory=dict)
+    #: The **public** suite command, if this task offers one to an executor.
+    #: It becomes the Engine contract's ``test_command``, which registers the
+    #: engine's `run_tests` tool (satyrn-engine E7). It is deliberately a
+    #: separate field from ``oracle``: the oracle runs the *hidden* grader
+    #: overlay through the result hook and must never reach a model. The
+    #: attempt workspace is proven free of the overlay by
+    #: ``assert_overlay_absent``, so a public suite there can only see public
+    #: tests -- and ``_validate_public_suite`` refuses one that names the
+    #: hook or the overlay directory anyway, because a guarantee with two
+    #: independent reasons survives one of them being edited away.
+    public_suite: tuple[str, ...] = ()
+
+
+def _validate_public_suite(value: object, grader_overlay: str | None) -> tuple[str, ...]:
+    """Validate the optional public suite command, refusing a leak.
+
+    Refused when it names the oracle hook plugin or the grader overlay
+    directory: those run or expose the hidden tests, and a task that hands
+    an executor either has stopped being a hidden-oracle task.
+    """
+    match value:
+        case None:
+            return ()
+        case list() if value and all(isinstance(x, str) and x for x in value):
+            command = tuple(value)
+        case _:
+            raise ManifestError(
+                "public_suite must be a non-empty list of non-empty command strings"
+            )
+    forbidden = {ORACLE_HOOK_PLUGIN}
+    if grader_overlay:
+        forbidden.add(grader_overlay)
+    for token in command:
+        for needle in forbidden:
+            if needle in token:
+                raise ManifestError(
+                    f"public_suite must not name {needle!r}: it would hand the "
+                    "executor the hidden oracle"
+                )
+    return command
 
 
 def _validate_grader_overlay(task_dir: Path, value: object) -> str | None:
@@ -237,6 +281,7 @@ def load_manifest(task_dir: Path) -> TaskManifest:
             raise ManifestError(f"fixture file missing: {fixtures[key]}")
     engine_contract = _validate_engine_contract(task_dir, data.get("engine_contract"))
     grader_overlay = _validate_grader_overlay(task_dir, data.get("grader_overlay"))
+    public_suite = _validate_public_suite(data.get("public_suite"), grader_overlay)
     visibility_raw = data.get("oracle_visibility", "visible")
     if visibility_raw not in ("visible", "hidden"):
         raise ManifestError(
@@ -266,6 +311,7 @@ def load_manifest(task_dir: Path) -> TaskManifest:
         grader_overlay=grader_overlay,
         oracle_visibility=visibility,
         contracts=contracts,
+        public_suite=public_suite,
     )
 
 

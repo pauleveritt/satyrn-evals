@@ -592,3 +592,70 @@ def test_visible_task_rung_may_name_any_path(tmp_path: Path) -> None:
     data["contracts"] = {"R1": "make tests/t_hidden.py pass"}
     (task / "manifest.json").write_text(json.dumps(data))
     assert load_manifest(task).contracts["R1"].startswith("make tests")
+
+
+def _task_with_public_suite(tmp_path: Path, suite: object, *, overlay: str | None = None) -> Path:
+    """A valid task whose manifest carries `public_suite` (and maybe an overlay)."""
+    task_dir = _valid_task(tmp_path)
+    data = json.loads((task_dir / "manifest.json").read_text())
+    data["public_suite"] = suite
+    if overlay is not None:
+        (task_dir / overlay).mkdir(parents=True, exist_ok=True)
+        data["grader_overlay"] = overlay
+        data["oracle_visibility"] = "hidden"  # the manifest requires the pair
+    (task_dir / "manifest.json").write_text(json.dumps(data))
+    return task_dir
+
+
+def test_a_manifest_without_public_suite_declares_none(tmp_path: Path) -> None:
+    """The success sibling for every refusal below, and the default: a task
+    that has not opted in gets no `test_command` and no new tool surface."""
+    assert load_manifest(_valid_task(tmp_path)).public_suite == ()
+
+
+def test_a_public_suite_is_loaded_as_a_command_tuple(tmp_path: Path) -> None:
+    task = _task_with_public_suite(tmp_path, ["uv", "run", "python", "-m", "pytest", "tests/"])
+
+    assert load_manifest(task).public_suite == (
+        "uv", "run", "python", "-m", "pytest", "tests/",
+    )
+
+
+def test_a_public_suite_naming_the_oracle_hook_is_refused(tmp_path: Path) -> None:
+    """The leak refusal: handing the executor the hook runs the hidden
+    grader inside the executor's own process."""
+    task = _task_with_public_suite(
+        tmp_path, ["python", "-m", "pytest", "-p", "satyrn_evals.oracle_hook"]
+    )
+
+    with pytest.raises(ManifestError, match="public_suite must not name"):
+        load_manifest(task)
+
+
+def test_a_public_suite_naming_the_grader_overlay_is_refused(tmp_path: Path) -> None:
+    task = _task_with_public_suite(
+        tmp_path, ["python", "-m", "pytest", "overlay"], overlay="overlay"
+    )
+
+    with pytest.raises(ManifestError, match="public_suite must not name"):
+        load_manifest(task)
+
+
+def test_a_public_suite_beside_an_overlay_it_does_not_name_is_accepted(
+    tmp_path: Path,
+) -> None:
+    """The sibling for the two refusals: a hidden-oracle task may still
+    declare a public suite, as long as it names neither."""
+    task = _task_with_public_suite(
+        tmp_path, ["python", "-m", "pytest", "tests/"], overlay="overlay"
+    )
+
+    assert load_manifest(task).public_suite == ("python", "-m", "pytest", "tests/")
+
+
+@pytest.mark.parametrize("bad", [[], "pytest", ["python", ""], ["python", 3], {}])
+def test_a_malformed_public_suite_is_refused(tmp_path: Path, bad: object) -> None:
+    task = _task_with_public_suite(tmp_path, bad)
+
+    with pytest.raises(ManifestError, match="public_suite must be a non-empty list"):
+        load_manifest(task)

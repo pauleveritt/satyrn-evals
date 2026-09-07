@@ -12,6 +12,7 @@ fixture and to reject a neighbouring path outside it.
 """
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -183,3 +184,32 @@ def test_id_of_the_default_contract_names_no_rung() -> None:
     identifier = contract_id("t", None, "a" * 64)
     assert identifier.startswith("t@contract+")
     assert identifier == contract_id("t", None, "a" * 64)
+
+
+def test_a_contract_omits_test_command_when_no_public_suite_is_declared(
+    tmp_path: Path,
+) -> None:
+    """The default, and the sibling for the emission test below: a task that
+    has not opted in must render exactly what it rendered before
+    satyrn-engine E7, so its Engine arm gains no tool surface silently."""
+    rendered = render_engine_contract(
+        tmp_path, _manifest(("solution.py",)), rung="R1", contract_text="Fix it."
+    ).decode("utf-8")
+
+    assert "test_command" not in rendered
+
+
+def test_a_declared_public_suite_is_emitted_as_test_command(tmp_path: Path) -> None:
+    """Fixture: a manifest declaring `public_suite`. The Engine registers its
+    `run_tests` tool only when this key is present."""
+    declared = replace(
+        _manifest(("solution.py",)), public_suite=("uv", "run", "pytest", "tests/")
+    )
+
+    rendered = render_engine_contract(
+        tmp_path, declared, rung="R1", contract_text="Fix it."
+    ).decode("utf-8")
+
+    assert "test_command:" in rendered
+    for token in ("uv", "run", "pytest", "tests/"):
+        assert f'  - "{token}"' in rendered
