@@ -77,10 +77,16 @@ def test_engine_file_loads_with_read_edit_and_the_pinned_commit() -> None:
     # for -- it failed when the pin was bumped and had to be updated on
     # purpose. 25ca0be was the repaired Engine commit V11c and V13 ran
     # against; b977941 adds the edit-schema fix that V13 found
-    # (973 refused calls, five lost cells) and nothing else.
-    assert commit.startswith("b977941")
+    # (973 refused calls, five lost cells); bc0434a adds E7's run_tests
+    # tool, which is why the digest set gained runner.ts and orchestrator.ts.
+    assert commit.startswith("bc0434a")
     assert len(commit) == 40
-    assert set(arm.pins.digests) == {"engine.ts", "mutator.ts"}
+    assert set(arm.pins.digests) == {
+        "engine.ts",
+        "mutator.ts",
+        "runner.ts",
+        "orchestrator.ts",
+    }
     assert all(len(value) == 64 for value in arm.pins.digests.values())
 
 
@@ -377,9 +383,24 @@ def test_preflight_reads_the_pins_instead_of_restating_them() -> None:
     assert arm.pins.engine_commit is not None
     for literal in (arm.pins.engine_commit, *arm.pins.digests.values()):
         assert literal not in script
-    # ...and it must actually read them out of the committed arm files
-    assert "pins digests engine.ts" in script
+    # ...and it must actually read them out of the committed arm files.
+    # Checked generically since engine E7: the script iterates whatever
+    # names the arm records rather than naming files, so that a source
+    # added to the pin set cannot end up recorded but unchecked.
+    assert 'pins digests "$name"' in script
     assert "pins engine_commit" in script
+
+
+def test_preflight_checks_every_recorded_digest_not_a_fixed_pair() -> None:
+    """The sibling for the pin test above. engine E7 added `runner.ts` as a
+    third `--extension`; a preflight naming two files would have left it
+    recorded and unchecked, which is how the temperature gap happened."""
+    script = _preflight()
+    arm = load_arm(ENGINE)
+
+    assert len(arm.pins.digests) > 2
+    for name in arm.pins.digests:
+        assert name not in script, f"{name} is named literally in the script"
 
 
 def test_preflight_proves_the_model_with_a_completion_not_a_listing() -> None:

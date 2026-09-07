@@ -42,9 +42,21 @@ type ArmName = Literal["baseline", "baseline-compaction", "envelope", "engine"]
 #: otherwise reach the model as a silently dropped capability.
 KNOWN_TOOLS: frozenset[str] = frozenset({"read", "bash", "edit", "write"})
 
-#: The two Engine sources whose bytes the Engine arm pins. They are the
-#: two `--extension` files `satyrn-engine`'s `build_pi_command` hands pi.
-ENGINE_SOURCES: tuple[str, ...] = ("engine.ts", "mutator.ts")
+#: The Engine sources whose bytes the Engine arm pins.
+#:
+#: `engine.ts` and `mutator.ts` are the `--extension` files
+#: `satyrn-engine`'s `build_pi_command` has always handed pi. `runner.ts`
+#: joined them with engine E7, which hands it over as a third extension
+#: whenever the contract declares `test_command` -- a set that stopped at
+#: two would have left the model's new tool surface unpinned.
+#: `orchestrator.ts` is not an extension but is imported by both, so a
+#: digest set omitting it would pin the entry points and not the behaviour.
+ENGINE_SOURCES: tuple[str, ...] = (
+    "engine.ts",
+    "mutator.ts",
+    "runner.ts",
+    "orchestrator.ts",
+)
 
 _COMMIT_SHA = re.compile(r"\A[0-9a-f]{40}\Z")
 _SHA256 = re.compile(r"\A[0-9a-f]{64}\Z")

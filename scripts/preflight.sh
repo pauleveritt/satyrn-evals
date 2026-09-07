@@ -175,8 +175,6 @@ if [ -z "$ENGINE_PINNING_ARM" ]; then
   ok "no arm in this batch pins an engine commit; engine checks not applicable"
 else
 PINNED_COMMIT="$(pin "$ENGINE_PINNING_ARM" pins engine_commit)"
-PINNED_ENGINE_TS="$(pin "$ENGINE_PINNING_ARM" pins digests engine.ts)"
-PINNED_MUTATOR_TS="$(pin "$ENGINE_PINNING_ARM" pins digests mutator.ts)"
 require --engine-repo "$ENGINE_REPO"
 
 HEAD_SHA="$(git -C "$ENGINE_REPO" rev-parse HEAD)"
@@ -196,13 +194,32 @@ ok "engine working tree is clean"
 
 digest_of() { shasum -a 256 "$1" | awk '{print $1}'; }
 
-ACTUAL_ENGINE_TS="$(digest_of "$ENGINE_REPO/packages/engine/engine.ts")"
-[ "$ACTUAL_ENGINE_TS" = "$PINNED_ENGINE_TS" ] \
-  || fail "engine.ts is $ACTUAL_ENGINE_TS, pinned $PINNED_ENGINE_TS"
-ACTUAL_MUTATOR_TS="$(digest_of "$ENGINE_REPO/packages/engine/mutator.ts")"
-[ "$ACTUAL_MUTATOR_TS" = "$PINNED_MUTATOR_TS" ] \
-  || fail "mutator.ts is $ACTUAL_MUTATOR_TS, pinned $PINNED_MUTATOR_TS"
-ok "engine.ts and mutator.ts match their pinned sha256 digests"
+# Every digest the arm records is checked, by iterating the record rather
+# than naming source files here. Naming them meant that when engine E7
+# added a third `--extension`, widening the arm record alone would have
+# left the new file recorded but unchecked -- the same
+# recorded-but-not-checked shape as the temperature gap this preflight
+# already carried once. The record below emits exactly what was verified,
+# so it cannot drift from the check either.
+PINNED_NAMES="$(python3 -c '
+import json, sys
+print("\n".join(json.load(open(sys.argv[1]))["pins"]["digests"]))
+' "$ENGINE_PINNING_ARM")"
+[ -n "$PINNED_NAMES" ] || fail "the engine arm records no source digests"
+CHECKED=0
+VERIFIED_DIGESTS=""
+while IFS= read -r name; do
+  [ -n "$name" ] || continue
+  SOURCE="$ENGINE_REPO/packages/engine/$name"
+  [ -f "$SOURCE" ] || fail "pinned engine source is missing: $name"
+  EXPECTED="$(pin "$ENGINE_PINNING_ARM" pins digests "$name")"
+  ACTUAL="$(digest_of "$SOURCE")"
+  [ "$ACTUAL" = "$EXPECTED" ] || fail "$name is $ACTUAL, pinned $EXPECTED"
+  VERIFIED_DIGESTS="$VERIFIED_DIGESTS${VERIFIED_DIGESTS:+,}
+    \"$name\": \"$ACTUAL\""
+  CHECKED=$((CHECKED + 1))
+done <<< "$PINNED_NAMES"
+ok "$CHECKED pinned engine sources match their sha256 digests"
 fi
 
 # --- 3. pi is the pinned version -----------------------------------------
@@ -283,9 +300,7 @@ cat > "$OUTPUT/preflight.json" <<JSON
 {
   "evals_commit": "$EVALS_SHA",
   "engine_commit": "$HEAD_SHA",
-  "engine_digests": {
-    "engine.ts": "$ACTUAL_ENGINE_TS",
-    "mutator.ts": "$ACTUAL_MUTATOR_TS"
+  "engine_digests": {$VERIFIED_DIGESTS
   },
   "pi": "$ACTUAL_PI",
   "model": "$PI_MODEL",
