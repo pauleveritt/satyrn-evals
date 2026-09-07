@@ -405,9 +405,44 @@ def _attempt(
                 timeout=timeout,
                 rung=selected_rung,
                 digest=digest,
-                # Grading expiry reconciliation is the next slice.  This
-                # private path deliberately admits only pre-grade work.
-                deadline=None,
+                deadline=deadline,
+            )
+        except AttemptDeadlineExceeded:
+            assert deadline is not None
+            assert workspace_lease is not None
+            if (attempt_dir / "attempt.json").is_file():
+                return _finalize_deadline_from_record(
+                    attempt_dir, deadline, workspace_lease
+                )
+            if workspace.code is not WorkspaceCode.OK:
+                _finish_attempt(
+                    workspace=workspace,
+                    task_dir=task_dir,
+                    attempt_dir=attempt_dir,
+                    patch_path=patch_path,
+                    transcript_path=transcript_path,
+                    manifest=manifest,
+                    effective_command=effective_command,
+                    timeout=timeout,
+                    rung=selected_rung,
+                    digest=digest,
+                )
+                return _retain_expired_record(
+                    attempt_dir, deadline, workspace_lease.parent
+                )
+            return _write_deadline_refusal(
+                attempt_dir=attempt_dir,
+                patch_path=patch_path,
+                transcript_path=transcript_path,
+                manifest=manifest,
+                effective_command=effective_command,
+                timeout=timeout,
+                rung=selected_rung,
+                digest=digest,
+                deadline=deadline,
+                command_exit=workspace.command_exit,
+                workspace_base_sha=workspace.base_sha,
+                retained_path=os.fspath(workspace_lease.parent),
             )
         except BaseException as exc:
             if workspace_lease is not None:
@@ -418,8 +453,25 @@ def _attempt(
                     f"{workspace.message}; retained at {workspace.retained_path}",
                 )
             raise
+        release_completed = False
+        retained_path: str | None = None
         try:
-            retained_path, release_message = _release_attempt_workspace(workspace_lease)
+            retained_path, release_message = _release_attempt_workspace(
+                workspace_lease, deadline=deadline
+            )
+            release_completed = True
+            if deadline is not None:
+                deadline.remaining(DeadlinePhase.CLEANUP)
+        except AttemptDeadlineExceeded:
+            assert deadline is not None
+            assert workspace_lease is not None
+            return _finalize_deadline_from_record(
+                attempt_dir,
+                deadline,
+                workspace_lease,
+                workspace_retained=(not release_completed or retained_path is not None),
+                retained_path=retained_path,
+            )
         except BaseException as exc:
             if workspace_lease is not None:
                 _add_exception_note(
@@ -451,12 +503,18 @@ def _attempt(
 
 def _release_attempt_workspace(
     workspace: PreparedWorkspace | None,
+    *,
+    deadline: AttemptDeadline | None = None,
 ) -> tuple[str | None, str | None]:
     """Release a lease after durable attempt evidence, naming any retention."""
     if workspace is None:
         return None, None
     try:
-        retained_path = release_workspace(workspace)
+        retained_path = (
+            release_workspace(workspace, deadline=deadline)
+            if deadline is not None
+            else release_workspace(workspace)
+        )
     except WorkspaceReleaseError as exc:
         if exc.retained_path is None:
             raise
@@ -571,6 +629,9 @@ def _finalize_deadline_from_record(
     attempt_dir: Path,
     deadline: AttemptDeadline,
     workspace: PreparedWorkspace,
+    *,
+    workspace_retained: bool = True,
+    retained_path: str | None = None,
 ) -> AttemptRecord:
     """Add expiry provenance and reconcile an already-durable receipt.
 
@@ -605,6 +666,13 @@ def _finalize_deadline_from_record(
         expiry = caught
     else:
         raise AssertionError("deadline finalization requires an expired deadline")
+    resolved_retained_path = (
+        retained_path
+        if workspace_retained and retained_path is not None
+        else os.fspath(workspace.parent)
+        if workspace_retained
+        else None
+    )
     record = replace(
         record,
         attempt_timeout=deadline.timeout,
@@ -612,9 +680,9 @@ def _finalize_deadline_from_record(
             deadline.timeout,
             expiry.phase,
             expiry.elapsed,
-            workspace_retained=True,
+            workspace_retained=workspace_retained,
         ),
-        retained_path=os.fspath(workspace.parent),
+        retained_path=resolved_retained_path,
     )
     write_attempt_record(attempt_dir / "attempt.json", record)
     return record
@@ -658,10 +726,16 @@ def _finish_attempt(
     deadline: AttemptDeadline | None = None,
 ) -> AttemptRecord:
     """Preserve, grade, and record artifacts after the workspace is settled."""
+    if deadline is not None:
+        deadline.remaining(DeadlinePhase.PRESERVATION)
     command_exit = workspace.command_exit
     code = _workspace_refusal(workspace)
     patch_bytes, patch_error = _read_artifact(patch_path, "patch")
+    if deadline is not None:
+        deadline.remaining(DeadlinePhase.PRESERVATION)
     transcript_bytes, transcript_error = _read_artifact(transcript_path, "transcript")
+    if deadline is not None:
+        deadline.remaining(DeadlinePhase.PRESERVATION)
     patch_text = (
         patch_bytes.decode("utf-8", errors="replace")
         if patch_bytes is not None
@@ -676,6 +750,8 @@ def _finish_attempt(
     transcript_hash = (
         patch_digest(transcript_bytes) if transcript_bytes is not None else None
     )
+    if deadline is not None:
+        deadline.remaining(DeadlinePhase.PRESERVATION)
 
     fault: str | None = None
     # V11d slice 4. MODEL_ERROR replaces the NO_PATCH this cell would
@@ -710,6 +786,8 @@ def _finish_attempt(
         except UnicodeDecodeError:
             code = AttemptCode.PATCH_INVALID
     if code is not None:
+        if deadline is not None:
+            deadline.remaining(DeadlinePhase.PRESERVATION)
         message = (
             workspace.message
             if workspace.code is not WorkspaceCode.OK
@@ -774,6 +852,8 @@ def _finish_attempt(
     )
     write_attempt_record(attempt_dir / "attempt.json", base_record)
     try:
+        if deadline is not None:
+            deadline.remaining(DeadlinePhase.GRADING)
         receipt = (
             grade(task_dir, patch_path, attempt_dir / "receipt.json", deadline=deadline)
             if deadline is not None
@@ -793,6 +873,8 @@ def _finish_attempt(
         receipt_path="receipt.json",
     )
     write_attempt_record(attempt_dir / "attempt.json", record)
+    if deadline is not None:
+        deadline.remaining(DeadlinePhase.GRADING)
     return record
 
 

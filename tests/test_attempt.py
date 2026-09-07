@@ -1169,6 +1169,187 @@ def test_private_deadline_preservation_keeps_null_exit_workspace_authority(
     assert record.retained_path == "/tmp/fake-prepared-workspace"
 
 
+def test_private_deadline_grading_expiry_retains_pregrade_record(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    clock = _Clock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+
+    def run(**kwargs: Any) -> WorkspaceResult:
+        environment = kwargs["environment"]
+        Path(environment[attempt_module.PATCH_ENV]).write_text(GOOD_PATCH)
+        Path(environment[attempt_module.TRANSCRIPT_ENV]).write_text(TRANSCRIPT)
+        return WorkspaceResult(WorkspaceCode.OK, "done", 0, "b" * 40)
+
+    def grade(*_args: Path, deadline: AttemptDeadline) -> Receipt:
+        clock.now = 1.0
+        deadline.remaining(DeadlinePhase.GRADING)
+        raise AssertionError("unreachable")
+
+    _install_workspace_double(monkeypatch, run)
+    monkeypatch.setattr(attempt_module, "grade", grade)
+    record = _bounded_attempt(tmp_path, monkeypatch, deadline)
+
+    assert record.code is AttemptCode.GRADE_FAILED
+    assert record.deadline is not None
+    assert record.deadline.phase is DeadlinePhase.GRADING
+    assert record.retained_path == "/tmp/fake-prepared-workspace"
+
+
+def test_private_deadline_reconciles_receipt_written_before_grading_expiry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    clock = _Clock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+
+    def run(**kwargs: Any) -> WorkspaceResult:
+        environment = kwargs["environment"]
+        Path(environment[attempt_module.PATCH_ENV]).write_text(GOOD_PATCH)
+        Path(environment[attempt_module.TRANSCRIPT_ENV]).write_text(TRANSCRIPT)
+        return WorkspaceResult(WorkspaceCode.OK, "done", 0, "b" * 40)
+
+    def grade(*args: Path, deadline: AttemptDeadline) -> Receipt:
+        receipt = Receipt(
+            "t",
+            attempt_module.patch_digest(GOOD_PATCH.encode()),
+            Verdict.UNAVAILABLE,
+            "",
+            None,
+        )
+        write_receipt(args[2], receipt)
+        clock.now = 1.0
+        deadline.remaining(DeadlinePhase.GRADING)
+        raise AssertionError("unreachable")
+
+    _install_workspace_double(monkeypatch, run)
+    monkeypatch.setattr(attempt_module, "grade", grade)
+    record = _bounded_attempt(tmp_path, monkeypatch, deadline)
+
+    assert record.code is AttemptCode.OK
+    assert record.verdict is Verdict.UNAVAILABLE
+    assert record.deadline is not None
+    assert record.deadline.phase is DeadlinePhase.GRADING
+
+
+def test_private_deadline_cleanup_expiry_keeps_completed_grade(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class CleanupClock(_Clock):
+        armed = False
+        calls = 0
+
+        def __call__(self) -> float:
+            observed = self.now
+            if self.armed:
+                self.calls += 1
+            if self.calls == 3:
+                self.now = 1.0
+            return observed
+
+    clock = CleanupClock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+
+    def run(**kwargs: Any) -> WorkspaceResult:
+        environment = kwargs["environment"]
+        Path(environment[attempt_module.PATCH_ENV]).write_text(GOOD_PATCH)
+        Path(environment[attempt_module.TRANSCRIPT_ENV]).write_text(TRANSCRIPT)
+        return WorkspaceResult(WorkspaceCode.OK, "done", 0, "b" * 40)
+
+    def grade(*_args: Path, deadline: AttemptDeadline) -> Receipt:
+        clock.now = 0.5
+        clock.armed = True
+        return Receipt(
+            "t",
+            attempt_module.patch_digest(GOOD_PATCH.encode()),
+            Verdict.PASS,
+            "",
+            None,
+        )
+
+    def release(_lease: _FakeLease, *, deadline: AttemptDeadline) -> str | None:
+        deadline.remaining(DeadlinePhase.CLEANUP)
+        return None
+
+    _install_workspace_double(monkeypatch, run)
+    monkeypatch.setattr(attempt_module, "grade", grade)
+    monkeypatch.setattr(attempt_module, "release_workspace", release)
+    record = _bounded_attempt(tmp_path, monkeypatch, deadline)
+
+    assert record.code is AttemptCode.OK
+    assert record.verdict is Verdict.PASS
+    assert record.deadline is not None
+    assert record.deadline.phase is DeadlinePhase.CLEANUP
+    assert record.deadline.workspace_retained is False
+    assert record.retained_path is None
+
+
+def test_private_deadline_expiry_during_artifact_read_is_preservation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    clock = _Clock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+
+    def run(**kwargs: Any) -> WorkspaceResult:
+        environment = kwargs["environment"]
+        Path(environment[attempt_module.PATCH_ENV]).write_text(GOOD_PATCH)
+        Path(environment[attempt_module.TRANSCRIPT_ENV]).write_text(TRANSCRIPT)
+        return WorkspaceResult(WorkspaceCode.OK, "done", 0, "b" * 40)
+
+    original_read = attempt_module._read_artifact
+
+    def read(path: Path, label: str) -> tuple[bytes | None, str | None]:
+        result = original_read(path, label)
+        if label == "patch":
+            clock.now = 1.0
+        return result
+
+    _install_workspace_double(monkeypatch, run)
+    monkeypatch.setattr(attempt_module, "_read_artifact", read)
+    record = _bounded_attempt(tmp_path, monkeypatch, deadline)
+
+    assert record.code is AttemptCode.DEADLINE_EXCEEDED
+    assert record.deadline is not None
+    assert record.deadline.phase is DeadlinePhase.PRESERVATION
+
+
+def test_private_deadline_after_matching_record_write_is_grading(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    clock = _Clock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+
+    def run(**kwargs: Any) -> WorkspaceResult:
+        environment = kwargs["environment"]
+        Path(environment[attempt_module.PATCH_ENV]).write_text(GOOD_PATCH)
+        Path(environment[attempt_module.TRANSCRIPT_ENV]).write_text(TRANSCRIPT)
+        return WorkspaceResult(WorkspaceCode.OK, "done", 0, "b" * 40)
+
+    def grade(*_args: Path, deadline: AttemptDeadline) -> Receipt:
+        return Receipt(
+            "t",
+            attempt_module.patch_digest(GOOD_PATCH.encode()),
+            Verdict.PASS,
+            "",
+            None,
+        )
+
+    original_write = attempt_module.write_attempt_record
+
+    def write(path: Path, record: AttemptRecord) -> None:
+        original_write(path, record)
+        if record.code is AttemptCode.OK:
+            clock.now = 1.0
+
+    _install_workspace_double(monkeypatch, run)
+    monkeypatch.setattr(attempt_module, "grade", grade)
+    monkeypatch.setattr(attempt_module, "write_attempt_record", write)
+    record = _bounded_attempt(tmp_path, monkeypatch, deadline)
+
+    assert record.code is AttemptCode.OK
+    assert record.deadline is not None
+    assert record.deadline.phase is DeadlinePhase.GRADING
+
+
 def test_attempt_grades_and_records_before_releasing_workspace(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
