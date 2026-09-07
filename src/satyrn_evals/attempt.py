@@ -284,7 +284,9 @@ def _finish_attempt(
     if code is None:
         # grading reads the patch strictly (grade.py read_text); a patch that
         # is not valid UTF-8 must be refused here, not crash grading
-        assert patch_bytes is not None  # decide_refusal passed => a present, parseable patch
+        assert (
+            patch_bytes is not None
+        )  # decide_refusal passed => a present, parseable patch
         try:
             patch_bytes.decode("utf-8")
         except UnicodeDecodeError:

@@ -98,7 +98,10 @@ def _run_attempt(
     monkeypatch.setattr(attempt_module, "run_workspace", fake_run_workspace)
     output = tmp_path / "attempts"
     record = attempt_module.attempt(
-        task="t", tasks_root=tasks_root, output=output, command=["fake-agent"],
+        task="t",
+        tasks_root=tasks_root,
+        output=output,
+        command=["fake-agent"],
         timeout=timeout,
     )
     return record, _cells(output)[0]
@@ -144,7 +147,10 @@ def test_patch_checked_before_transcript() -> None:
 
 def test_attempt_dir_name_is_deterministic_given_when() -> None:
     when = datetime(2026, 8, 18, 14, 15, 23, 123456, tzinfo=UTC)
-    assert attempt_dir_name("format_number", when) == "format_number-20260818-141523-123456"
+    assert (
+        attempt_dir_name("format_number", when)
+        == "format_number-20260818-141523-123456"
+    )
 
 
 def test_attempt_dir_name_changes_with_when() -> None:
@@ -158,7 +164,9 @@ def test_attempt_rejects_empty_command_before_creating_output(tmp_path: Path) ->
     _task(tasks_root)
     output = tmp_path / "attempts"
     with pytest.raises(UsageError, match="command is empty"):
-        attempt_module.attempt(task="t", tasks_root=tasks_root, output=output, command=[])
+        attempt_module.attempt(
+            task="t", tasks_root=tasks_root, output=output, command=[]
+        )
     assert not output.exists()
 
 
@@ -206,7 +214,10 @@ def test_attempt_uses_an_external_temporary_uv_environment(
 
     monkeypatch.setattr(attempt_module, "run_workspace", fake_workspace)
     attempt_module.attempt(
-        task="t", tasks_root=tasks_root, output=tmp_path / "attempts", command=["fake-agent"]
+        task="t",
+        tasks_root=tasks_root,
+        output=tmp_path / "attempts",
+        command=["fake-agent"],
     )
 
     assert observed["PYTHONDONTWRITEBYTECODE"] == "1"
@@ -244,7 +255,8 @@ def test_attempt_records_refusal(
 
 
 def test_refusal_record_carries_the_timeout(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The timeout is durable on refused cells too — summarize needs it."""
     record, _attempt_dir = _run_attempt(
@@ -350,7 +362,9 @@ def test_artifact_read_failure_cannot_hide_workspace_result(
     assert record.retained_path == retained
     assert "not a regular file" in record.message
     attempt_dir = _cells(output)[0]
-    assert json.loads((attempt_dir / "attempt.json").read_text())["code"] == expected_code
+    assert (
+        json.loads((attempt_dir / "attempt.json").read_text())["code"] == expected_code
+    )
 
 
 @pytest.mark.parametrize("primary", [KeyboardInterrupt(), MemoryError("read")])
@@ -389,9 +403,7 @@ def test_artifact_baseexception_preserves_cleanup_recovery_evidence(
         )
 
     assert raised.value is primary
-    assert primary.__notes__ == [
-        f"workspace cleanup failed; retained at {retained}"
-    ]
+    assert primary.__notes__ == [f"workspace cleanup failed; retained at {retained}"]
 
 
 def test_artifact_baseexception_without_cleanup_evidence_is_unchanged(
@@ -472,9 +484,7 @@ def test_post_workspace_baseexception_preserves_cleanup_recovery_evidence(
         )
 
     assert raised.value is primary
-    assert primary.__notes__ == [
-        f"workspace cleanup failed; retained at {retained}"
-    ]
+    assert primary.__notes__ == [f"workspace cleanup failed; retained at {retained}"]
 
 
 def test_transcript_read_failure_is_typed(
@@ -603,7 +613,8 @@ def _grade_pass(*_args: Path, **_kwargs: object) -> Receipt:
 
 
 def test_record_is_written_before_grade_runs(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """T2: a grading crash must leave a durable, loadable record."""
     monkeypatch.setattr(attempt_module, "grade", _grade_boom)
@@ -620,7 +631,8 @@ def test_record_is_written_before_grade_runs(
 
 
 def test_successful_grade_rewrites_the_record_ok(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A successful grade leaves the record OK with verdict + receipt."""
     monkeypatch.setattr(attempt_module, "grade", _grade_pass)
@@ -684,13 +696,20 @@ def _attempt_with_rung(
         attempt_module,
         "grade",
         lambda *a, **k: Receipt(
-            task="t", patch_digest="a" * 64, verdict=Verdict.PASS,
-            reason="ok", evidence=None,
+            task="t",
+            patch_digest="a" * 64,
+            verdict=Verdict.PASS,
+            reason="ok",
+            evidence=None,
         ),
     )
     record = attempt_module.attempt(
-        task="t", tasks_root=tasks_root, output=tmp_path / "attempts",
-        command=["fake-agent"], timeout=123.0, rung=rung,
+        task="t",
+        tasks_root=tasks_root,
+        output=tmp_path / "attempts",
+        command=["fake-agent"],
+        timeout=123.0,
+        rung=rung,
     )
     return record, exported["contract"]
 
@@ -705,8 +724,10 @@ def test_rung_exports_that_rungs_text_and_records_the_rung(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     record, exported = _attempt_with_rung(
-        tmp_path, monkeypatch,
-        contracts={"R1": R1_TEXT, "R3": R3_TEXT}, rung="R1",
+        tmp_path,
+        monkeypatch,
+        contracts={"R1": R1_TEXT, "R3": R3_TEXT},
+        rung="R1",
     )
     assert exported == R1_TEXT
     assert record.rung == "R1"
@@ -718,8 +739,10 @@ def test_no_rung_exports_the_default_contract_and_still_records_a_digest(
 ) -> None:
     """Sibling success: the default path records rung=None and a real digest."""
     record, exported = _attempt_with_rung(
-        tmp_path, monkeypatch,
-        contracts={"R1": R1_TEXT, "R3": R3_TEXT}, rung=None,
+        tmp_path,
+        monkeypatch,
+        contracts={"R1": R1_TEXT, "R3": R3_TEXT},
+        rung=None,
     )
     assert exported == "Fix it."
     assert record.rung is None
@@ -742,8 +765,10 @@ def test_unknown_rung_is_a_usage_error_naming_the_available_keys(
 ) -> None:
     with pytest.raises(UsageError, match="R1, R3"):
         _attempt_with_rung(
-            tmp_path, monkeypatch,
-            contracts={"R1": R1_TEXT, "R3": R3_TEXT}, rung="R9",
+            tmp_path,
+            monkeypatch,
+            contracts={"R1": R1_TEXT, "R3": R3_TEXT},
+            rung="R9",
         )
 
 
@@ -765,8 +790,11 @@ def test_rung_on_a_task_with_no_contracts_is_a_usage_error(
 def _fake_grade(task_dir: Path, patch_path: Path, receipt_path: Path) -> Receipt:
     """A non-spawning grade that writes the receipt summarize later reads."""
     receipt = Receipt(
-        task="t", patch_digest="a" * 64, verdict=Verdict.PASS,
-        reason="ok", evidence=None,
+        task="t",
+        patch_digest="a" * 64,
+        verdict=Verdict.PASS,
+        reason="ok",
+        evidence=None,
     )
     write_receipt(receipt_path, receipt)
     return receipt
@@ -792,8 +820,12 @@ def _two_attempts(
     output = tmp_path / "attempts"
     records = [
         attempt_module.attempt(
-            task="t", tasks_root=tasks_root, output=output,
-            command=["fake-agent"], timeout=123.0, rung=rung,
+            task="t",
+            tasks_root=tasks_root,
+            output=output,
+            command=["fake-agent"],
+            timeout=123.0,
+            rung=rung,
         )
         for rung in rungs
     ]
@@ -827,7 +859,9 @@ def test_two_attempts_at_one_rung_summarize_and_re_summarize(
     records, output = _two_attempts(tmp_path, monkeypatch, rungs=("R1", "R1"))
     cells = [(r.attempt_dir, r, None) for r in records]
     summary = compute_summary(
-        cells, oracle_visibility="visible", pathology=absent_pathology(cells)  # type: ignore[bad-argument-type]  # the doubles' attempt_dir is always set
+        cells,
+        oracle_visibility="visible",
+        pathology=absent_pathology(cells),  # type: ignore[bad-argument-type]  # the doubles' attempt_dir is always set
     )
     assert summary.n == 2 and summary.rung == "R1"
     # the anchor names the run's own cells; summarize rebuilds over it
@@ -852,7 +886,9 @@ def test_two_attempts_at_different_rungs_are_refused_by_the_summary(
     cells = [(r.attempt_dir, r, None) for r in records]
     with pytest.raises(ValueError, match="mixed commands"):
         compute_summary(
-            cells, oracle_visibility="visible", pathology=absent_pathology(cells)  # type: ignore[bad-argument-type]  # the doubles' attempt_dir is always set
+            cells,
+            oracle_visibility="visible",
+            pathology=absent_pathology(cells),  # type: ignore[bad-argument-type]  # the doubles' attempt_dir is always set
         )
 
 
@@ -874,14 +910,20 @@ def test_hand_authored_engine_contract_keeps_todays_behaviour(
         attempt_module,
         "grade",
         lambda *a, **k: Receipt(
-            task="format_number", patch_digest="a" * 64, verdict=Verdict.PASS,
-            reason="ok", evidence=None,
+            task="format_number",
+            patch_digest="a" * 64,
+            verdict=Verdict.PASS,
+            reason="ok",
+            evidence=None,
         ),
     )
     output = tmp_path / "attempts"
     record = attempt_module.attempt(
-        task="format_number", tasks_root=DEFAULT_TASKS_ROOT, output=output,
-        command=["fake-agent"], timeout=123.0,
+        task="format_number",
+        tasks_root=DEFAULT_TASKS_ROOT,
+        output=output,
+        command=["fake-agent"],
+        timeout=123.0,
     )
     assert record.command[-1].endswith("format_number/engine-contract.yaml")
     assert not (output / "engine-contracts").exists()

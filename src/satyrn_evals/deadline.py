@@ -10,6 +10,15 @@ from satyrn_evals.attempt_record import DeadlinePhase
 type MonotonicClock = Callable[[], float]
 
 
+def validate_attempt_timeout(timeout: float) -> float:
+    """Normalize the optional API's positive finite timeout value."""
+    if type(timeout) not in (int, float) or not math.isfinite(timeout) or timeout <= 0:
+        raise ValueError(
+            "attempt deadline timeout must be a finite number greater than zero"
+        )
+    return float(timeout)
+
+
 @dataclass(frozen=True, slots=True, init=False)
 class AttemptDeadlineExceeded(TimeoutError):
     """The first lifecycle phase that observed an exhausted attempt budget."""
@@ -40,15 +49,7 @@ class AttemptDeadline:
     def __init__(
         self, timeout: float, *, clock: MonotonicClock = time.monotonic
     ) -> None:
-        if (
-            type(timeout) not in (int, float)
-            or not math.isfinite(timeout)
-            or timeout <= 0
-        ):
-            raise ValueError(
-                "attempt deadline timeout must be a finite number greater than zero"
-            )
-        self.timeout = float(timeout)
+        self.timeout = validate_attempt_timeout(timeout)
         self._clock = clock
         self._started = clock()
         self._expired: AttemptDeadlineExceeded | None = None

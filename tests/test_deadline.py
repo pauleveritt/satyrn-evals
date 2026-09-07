@@ -5,7 +5,11 @@ import pickle
 import pytest
 
 from satyrn_evals.attempt_record import DeadlinePhase
-from satyrn_evals.deadline import AttemptDeadline, AttemptDeadlineExceeded
+from satyrn_evals.deadline import (
+    AttemptDeadline,
+    AttemptDeadlineExceeded,
+    validate_attempt_timeout,
+)
 
 
 class FakeClock:
@@ -62,3 +66,7 @@ def test_deadline_prevents_a_new_productive_phase_after_expiry() -> None:
 def test_deadline_rejects_invalid_timeout(timeout: object) -> None:
     with pytest.raises(ValueError, match="finite number greater than zero"):
         AttemptDeadline(timeout)  # type: ignore[arg-type]
+
+
+def test_timeout_validation_normalizes_an_integer() -> None:
+    assert validate_attempt_timeout(10) == 10.0
