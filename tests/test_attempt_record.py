@@ -366,6 +366,58 @@ def test_completed_record_rejects_unhashed_artifacts_even_with_deadline() -> Non
         )
 
 
+@pytest.mark.parametrize(
+    "code", [AttemptCode.COMMAND_TIMEOUT, AttemptCode.REPEAT_LIMIT]
+)
+def test_prior_command_stop_keeps_its_code_when_deadline_expires_preserving(
+    code: AttemptCode,
+) -> None:
+    """The whole deadline is provenance, not a rewrite of an earlier stop."""
+    record = _valid_v4_record(code)
+    preserved = replace(
+        record,
+        timeout=30.0,
+        attempt_timeout=10.0,
+        contract_digest="d" * 64,
+        attempt_dir="format_number-1",
+        patch_path="patch.diff",
+        patch_digest=None,
+        deadline=_deadline(DeadlinePhase.PRESERVATION),
+    )
+    assert preserved.code is code
+    assert preserved.deadline is not None
+    assert preserved.patch_digest is None
+
+
+@pytest.mark.parametrize(
+    "code",
+    [
+        AttemptCode.NO_PATCH,
+        AttemptCode.PATCH_INVALID,
+        AttemptCode.TRANSCRIPT_MISSING,
+        AttemptCode.TRANSCRIPT_EMPTY,
+        AttemptCode.COMMAND_TIMEOUT,
+        AttemptCode.REPEAT_LIMIT,
+        AttemptCode.MODEL_ERROR,
+        AttemptCode.WORKSPACE_FAILED,
+        AttemptCode.CLEANUP_FAILED,
+    ],
+)
+def test_cleanup_deadline_preserves_an_earlier_refusal(code: AttemptCode) -> None:
+    record = _valid_v4_record(code)
+    retained = replace(
+        record,
+        timeout=30.0,
+        attempt_timeout=10.0,
+        contract_digest="d" * 64,
+        attempt_dir="format_number-1",
+        retained_path="/tmp/retained",
+        deadline=_deadline(DeadlinePhase.CLEANUP, workspace_retained=True),
+    )
+    assert retained.code is code
+    assert retained.deadline is not None
+
+
 def test_load_rejects_bad_outcome(tmp_path) -> None:
     path = tmp_path / "attempt.json"
     write_attempt_record(path, _refused())

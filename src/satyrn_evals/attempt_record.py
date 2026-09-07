@@ -11,6 +11,7 @@ from dataclasses import asdict, dataclass, field
 from enum import Enum, StrEnum, auto
 from pathlib import Path
 
+from satyrn_evals.receipt import write_json_atomically
 from satyrn_evals.verdict import Verdict
 
 _LEGACY_FIELDS = frozenset(
@@ -312,8 +313,7 @@ class AttemptRecord:
                     f"attempt record {path_name} and {digest_name} must agree"
                 )
             allows_unhashed_artifact = (
-                self.code is AttemptCode.DEADLINE_EXCEEDED
-                and self.deadline is not None
+                self.deadline is not None
                 and self.deadline.phase
                 in (DeadlinePhase.COMMAND, DeadlinePhase.PRESERVATION)
             )
@@ -390,6 +390,8 @@ class AttemptRecord:
             raise ValueError(f"{self.code} requires deadline provenance")
         if self.deadline is not None:
             allowed_phases = {
+                # Whole deadline is controlling if it fires before another
+                # command outcome is observed.
                 AttemptCode.DEADLINE_EXCEEDED: frozenset(
                     {
                         DeadlinePhase.SETUP,
@@ -397,12 +399,29 @@ class AttemptRecord:
                         DeadlinePhase.PRESERVATION,
                     }
                 ),
-                AttemptCode.GRADE_FAILED: frozenset(
-                    {DeadlinePhase.GRADING, DeadlinePhase.CLEANUP}
+                # A prior command stop remains the execution outcome if the
+                # whole budget only expires while preserving available files.
+                AttemptCode.COMMAND_TIMEOUT: frozenset(
+                    {DeadlinePhase.PRESERVATION, DeadlinePhase.CLEANUP}
                 ),
+                AttemptCode.REPEAT_LIMIT: frozenset(
+                    {DeadlinePhase.PRESERVATION, DeadlinePhase.CLEANUP}
+                ),
+                # A record written before cleanup keeps its independent
+                # execution/verdict outcome if the budget expires there.
                 AttemptCode.OK: frozenset(
                     {DeadlinePhase.GRADING, DeadlinePhase.CLEANUP}
                 ),
+                AttemptCode.GRADE_FAILED: frozenset(
+                    {DeadlinePhase.GRADING, DeadlinePhase.CLEANUP}
+                ),
+                AttemptCode.NO_PATCH: frozenset({DeadlinePhase.CLEANUP}),
+                AttemptCode.PATCH_INVALID: frozenset({DeadlinePhase.CLEANUP}),
+                AttemptCode.TRANSCRIPT_MISSING: frozenset({DeadlinePhase.CLEANUP}),
+                AttemptCode.TRANSCRIPT_EMPTY: frozenset({DeadlinePhase.CLEANUP}),
+                AttemptCode.WORKSPACE_FAILED: frozenset({DeadlinePhase.CLEANUP}),
+                AttemptCode.MODEL_ERROR: frozenset({DeadlinePhase.CLEANUP}),
+                AttemptCode.CLEANUP_FAILED: frozenset({DeadlinePhase.CLEANUP}),
             }
             if self.deadline.phase not in allowed_phases.get(self.code, frozenset()):
                 raise ValueError(
@@ -521,7 +540,7 @@ def write_attempt_record(path: Path, record: AttemptRecord) -> None:
     if legacy:
         for name in _V4_FIELDS:
             data.pop(name)
-    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    write_json_atomically(path, data)
 
 
 def load_attempt_record(path: Path) -> AttemptRecord:
