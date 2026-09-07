@@ -22,6 +22,8 @@ from enum import Enum, StrEnum, auto
 from pathlib import Path
 from typing import BinaryIO
 
+from satyrn_evals.attempt_record import DeadlinePhase
+from satyrn_evals.deadline import AttemptDeadline, AttemptDeadlineExceeded
 from satyrn_evals.errors import OracleError, OverlayError, SatyrnError
 from satyrn_evals.overlay import OverlaySpec, assert_overlay_absent
 from satyrn_evals.repeat_limit import RepeatTripwire
@@ -782,6 +784,7 @@ def _wait_or_trip(
     timeout: float,
     transcript: Path | None,
     limit: int | None,
+    deadline: AttemptDeadline | None = None,
     poll: float = 0.25,
 ) -> tuple[int | None, RepeatTripwire | None]:
     """Wait for the process, watching the transcript for a locked loop.
@@ -798,14 +801,31 @@ def _wait_or_trip(
     The transcript is read as it is written, so only whole lines are fed
     and a partial trailing write is held until its newline arrives.
     """
+
+    def whole_remaining() -> float:
+        return (
+            deadline.remaining(DeadlinePhase.COMMAND)
+            if deadline is not None
+            else timeout
+        )
+
     if limit is None or transcript is None:
-        return process.wait(timeout=timeout), None
+        try:
+            result = process.wait(timeout=min(timeout, whole_remaining()))
+        except subprocess.TimeoutExpired:
+            # Check the whole deadline first so a simultaneous observation
+            # consistently reports the lifecycle bound, not command timeout.
+            whole_remaining()
+            raise
+        whole_remaining()
+        return result, None
     wire = RepeatTripwire(limit)
-    deadline = time.monotonic() + timeout
+    command_deadline = time.monotonic() + timeout
     pending = ""
     handle: BinaryIO | None = None
     try:
         while True:
+            whole = whole_remaining()
             if handle is None and transcript.is_file():
                 handle = transcript.open("rb")
             if handle is not None:
@@ -813,13 +833,21 @@ def _wait_or_trip(
                 while "\n" in pending:
                     line, pending = pending.split("\n", 1)
                     if wire.feed(line):
+                        whole_remaining()
                         return None, wire
-            if (remaining := deadline - time.monotonic()) <= 0:
+            if (remaining := command_deadline - time.monotonic()) <= 0:
+                # Transcript processing can consume both budgets.  Observe
+                # the whole deadline at this same point before accepting the
+                # command timeout, so simultaneous expiry has one authority.
+                whole_remaining()
                 raise subprocess.TimeoutExpired(process.args, timeout)
             try:
-                return process.wait(timeout=min(poll, remaining)), None
+                result = process.wait(timeout=min(poll, remaining, whole))
             except subprocess.TimeoutExpired:
+                whole_remaining()
                 continue
+            whole_remaining()
+            return result, None
     finally:
         if handle is not None:
             handle.close()
@@ -834,6 +862,7 @@ def _run_command(
     *,
     transcript: Path | None = None,
     max_repeated_calls: int | None = None,
+    deadline: AttemptDeadline | None = None,
 ) -> WorkspaceResult:
     outputs: list[BinaryIO] = []
     pending: WorkspaceResult | None = None
@@ -847,6 +876,8 @@ def _run_command(
             )
         state.process_cleanup_safe = False
         try:
+            if deadline is not None:
+                deadline.remaining(DeadlinePhase.COMMAND)
             process = subprocess.Popen(
                 command,
                 cwd=state.worktree,
@@ -856,6 +887,10 @@ def _run_command(
                 stderr=outputs[1],
                 start_new_session=_is_posix(),
             )
+        except AttemptDeadlineExceeded:
+            # The process did not start; leave the lease intact for the
+            # attempt finalizer to retain rather than release after expiry.
+            raise
         except OSError as exc:
             state.process_cleanup_safe = True
             pending = WorkspaceResult(
@@ -878,6 +913,7 @@ def _run_command(
                     timeout=timeout,
                     transcript=transcript,
                     limit=max_repeated_calls,
+                    deadline=deadline,
                 )
             except subprocess.TimeoutExpired:
                 try:
@@ -969,6 +1005,9 @@ def _run_command(
                         command_exit,
                         state.base_sha,
                     )
+    except AttemptDeadlineExceeded as exc:
+        active_exception = exc
+        raise
     except OSError as exc:
         if active_exception is exc:
             raise
@@ -1361,6 +1400,7 @@ def run_prepared_command(
     teardown_grace: float = DEFAULT_TEARDOWN_GRACE,
     transcript: Path | None = None,
     max_repeated_calls: int | None = None,
+    deadline: AttemptDeadline | None = None,
 ) -> WorkspaceResult:
     """Run one command while leaving the prepared workspace leased."""
     _validate_command_limits(command, timeout, teardown_grace)
@@ -1372,6 +1412,7 @@ def run_prepared_command(
         teardown_grace,
         transcript=transcript,
         max_repeated_calls=max_repeated_calls,
+        deadline=deadline,
     )
 
 

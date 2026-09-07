@@ -48,6 +48,14 @@ def test_deadline_expiry_is_a_conventionally_reconstructible_exception() -> None
     assert pickle.loads(pickle.dumps(error)) == error
 
 
+def test_deadline_expiry_accepts_recovery_notes() -> None:
+    error = AttemptDeadlineExceeded(DeadlinePhase.COMMAND, 10.5)
+
+    error.add_note("workspace retained")
+
+    assert error.__notes__ == ["workspace retained"]
+
+
 def test_deadline_prevents_a_new_productive_phase_after_expiry() -> None:
     clock = FakeClock()
     deadline = AttemptDeadline(10.0, clock=clock)

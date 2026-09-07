@@ -19,7 +19,7 @@ def validate_attempt_timeout(timeout: float) -> float:
     return float(timeout)
 
 
-@dataclass(frozen=True, slots=True, init=False)
+@dataclass(init=False)
 class AttemptDeadlineExceeded(TimeoutError):
     """The first lifecycle phase that observed an exhausted attempt budget."""
 

@@ -8,6 +8,8 @@ from typing import Any, cast
 import pytest
 
 import satyrn_evals.workspace as workspace_module
+from satyrn_evals.attempt_record import DeadlinePhase
+from satyrn_evals.deadline import AttemptDeadline, AttemptDeadlineExceeded
 from satyrn_evals.workspace import Registration, WorkspaceCode, WorkspaceResult
 
 
@@ -751,6 +753,187 @@ class _FakeProcess:
 
 def _process(fake: _FakeProcess) -> subprocess.Popen[bytes]:
     return cast("subprocess.Popen[bytes]", fake)
+
+
+class _FakeClock:
+    def __init__(self) -> None:
+        self.now = 0.0
+
+    def __call__(self) -> float:
+        return self.now
+
+
+def test_command_deadline_expiry_before_launch_starts_no_process(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state = _state(tmp_path)
+    state.base_sha = "a" * 40
+    clock = _FakeClock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+    clock.now = 1.0
+    launched = False
+
+    def unexpected_popen(*_args: object, **_kwargs: object) -> None:
+        nonlocal launched
+        launched = True
+
+    monkeypatch.setattr(workspace_module.subprocess, "Popen", unexpected_popen)
+
+    with pytest.raises(AttemptDeadlineExceeded) as caught:
+        workspace_module._run_command(("x",), state, {}, 10.0, 0.1, deadline=deadline)
+
+    assert caught.value.phase is DeadlinePhase.COMMAND
+    assert not launched
+    assert not state.process_cleanup_safe
+
+
+def test_command_timeout_wins_when_whole_deadline_has_time_remaining(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state = _state(tmp_path)
+    state.base_sha = "a" * 40
+    process = _FakeProcess([subprocess.TimeoutExpired("x", 1)])
+    deadline = AttemptDeadline(10.0, clock=_FakeClock())
+    torn_down: list[_FakeProcess] = []
+
+    monkeypatch.setattr(
+        workspace_module.subprocess,
+        "Popen",
+        lambda *_args, **_kwargs: _process(process),
+    )
+    monkeypatch.setattr(
+        workspace_module,
+        "_teardown_process",
+        lambda value, _grace: (
+            torn_down.append(cast("_FakeProcess", value)) or (True, None)
+        ),
+    )
+
+    result = workspace_module._run_command(
+        ("x",), state, {}, 1.0, 0.1, deadline=deadline
+    )
+
+    assert result.code is WorkspaceCode.COMMAND_TIMEOUT
+    assert torn_down == [process]
+
+
+@pytest.mark.parametrize("whole_timeout", [0.5, 1.0])
+def test_command_whole_deadline_wins_timeout_observation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, whole_timeout: float
+) -> None:
+    state = _state(tmp_path)
+    state.base_sha = "a" * 40
+    process = _FakeProcess([subprocess.TimeoutExpired("x", 1)])
+    clock = _FakeClock()
+    deadline = AttemptDeadline(whole_timeout, clock=clock)
+    torn_down: list[_FakeProcess] = []
+    wait_timeouts: list[float | None] = []
+
+    def wait(timeout: float | None = None) -> int:
+        wait_timeouts.append(timeout)
+        clock.now = whole_timeout
+        raise subprocess.TimeoutExpired("x", 1)
+
+    process.wait = wait
+    monkeypatch.setattr(
+        workspace_module.subprocess,
+        "Popen",
+        lambda *_args, **_kwargs: _process(process),
+    )
+    monkeypatch.setattr(
+        workspace_module,
+        "_teardown_process",
+        lambda value, _grace: (
+            torn_down.append(cast("_FakeProcess", value)) or (True, None)
+        ),
+    )
+
+    with pytest.raises(AttemptDeadlineExceeded) as caught:
+        workspace_module._run_command(("x",), state, {}, 1.0, 0.1, deadline=deadline)
+
+    assert caught.value.phase is DeadlinePhase.COMMAND
+    assert torn_down == [process]
+    assert state.process_cleanup_safe
+    assert wait_timeouts == [whole_timeout]
+
+
+def test_command_deadline_keeps_an_unsafe_teardown_named(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state = _state(tmp_path)
+    state.base_sha = "a" * 40
+    process = _FakeProcess([subprocess.TimeoutExpired("x", 1)])
+    clock = _FakeClock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+
+    def wait(timeout: float | None = None) -> int:
+        del timeout
+        clock.now = 1.0
+        raise subprocess.TimeoutExpired("x", 1)
+
+    process.wait = wait
+    monkeypatch.setattr(
+        workspace_module.subprocess,
+        "Popen",
+        lambda *_args, **_kwargs: _process(process),
+    )
+    monkeypatch.setattr(
+        workspace_module, "_teardown_process", lambda *_args: (False, "alive")
+    )
+
+    with pytest.raises(AttemptDeadlineExceeded) as caught:
+        workspace_module._run_command(("x",), state, {}, 10.0, 0.1, deadline=deadline)
+
+    assert not state.process_cleanup_safe
+    assert caught.value.__notes__ == [
+        "process cleanup unconfirmed: alive; "
+        f"workspace parent retained at {state.parent}; command worktree {state.worktree}"
+    ]
+
+
+def test_command_deadline_allows_a_normal_completion_in_budget(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state = _state(tmp_path)
+    state.base_sha = "a" * 40
+    process = _FakeProcess([0])
+    deadline = AttemptDeadline(1.0, clock=_FakeClock())
+    monkeypatch.setattr(
+        workspace_module.subprocess,
+        "Popen",
+        lambda *_args, **_kwargs: _process(process),
+    )
+
+    result = workspace_module._run_command(
+        ("x",), state, {}, 10.0, 0.1, deadline=deadline
+    )
+
+    assert result.code is WorkspaceCode.OK
+
+
+def test_repeated_call_polling_gives_simultaneous_expiry_to_whole_deadline(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    transcript = tmp_path / "transcript.txt"
+    transcript.write_text("tool-call\n")
+    clock_values = iter((10.0, 10.0, 10.0, 11.0, 11.0))
+
+    def clock() -> float:
+        return next(clock_values)
+
+    deadline = AttemptDeadline(1.0, clock=clock)
+    monkeypatch.setattr(workspace_module.time, "monotonic", clock)
+
+    with pytest.raises(AttemptDeadlineExceeded) as caught:
+        workspace_module._wait_or_trip(
+            _process(_FakeProcess([])),
+            timeout=1.0,
+            transcript=transcript,
+            limit=2,
+            deadline=deadline,
+        )
+
+    assert caught.value.phase is DeadlinePhase.COMMAND
 
 
 def test_posix_teardown_spends_one_shared_grace_period(
