@@ -38,17 +38,6 @@ refuses on reference-arm evidence alone — which `plausible-wrong-fix` did
 (Baseline 12/12 vs Engine 6/12, admitted by no rule because the V12
 profile ran the reference arm only).
 
-**The engine's `run_tests` tool is offered and never invoked** (2026-09-06,
-V13e smoke). Four uncounted cells on `plausible-wrong-fix`, engine
-`bc0434a`: **0 `run_tests` calls**, including one that succeeded in 20
-calls without running the suite. Wiring verified — contract carries
-`test_command`, prompt names the tool, no extension error — so this is
-affordance, not plumbing. Baseline runs `pytest` via `bash` ~4x a cell on
-the same task. Hypothesis: strong priors for `bash`, none for a novel
-name, and a prompt that says "Stop when the task is complete" without
-asking for verification. **Reopens as an engine design proposal** — rename,
-re-describe, or instruct verification — testable with uncounted cells.
-
 **The read-lock attractor has no explanation** (found 2026-09-06 across
 V13/V13b/V13c). A cell surveys the tree, then repeats one identical `read`
 until something stops it; **0 of 8** bare-Pi cells reaching a run of 5
