@@ -81,6 +81,18 @@ V13 — the first evidence that `read,edit` *loses* on a repair task.
 > nothing on outcomes** — bands move when the engine moves, which is the
 > V16 proposal's argument arriving as evidence.
 >
+> **V14a tested E9's corrective message and it failed (outcome C).** Told
+> that an anchor was missing because its `new_text` is already applied,
+> the model re-sent the same edit in **16 of 28** events — a **57%**
+> re-send fraction against a **53%** pre-change reference, criterion frozen
+> beforehand (`~/satyrn-smokes/2026-09-07-v14a-123039/RESULT.md`). **A fact
+> about file state did not succeed where guidance failed**, which was the
+> whole argument for it. Hypothesis, not a finding: the runner refusal that
+> did work named *what to do instead*; this one names *what already
+> happened* and leaves the next action unspecified. E9's **preventive**
+> half — a successful edit returning the changed text instead of a hash —
+> is untested and works by a different mechanism.
+>
 > **V13f replicated it on a fresh seed:** Baseline 12/12, Engine 12/12
 > again, so the runner result is not a one-batch artifact
 > (`~/satyrn-smokes/2026-09-07-v13f-replication-020810/RESULT.md`).
