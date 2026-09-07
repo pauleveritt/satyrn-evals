@@ -35,3 +35,7 @@ Make normal, reviewable changes directly. Do not run model inference or create
 commits unless requested. Do not invent a spec or plan for a trivial change;
 use a current design and plan when the work needs one. An authorization remains
 in force for its stated scope.
+
+Use Sol for iterative implementation reviews and recommendations. Reserve Astra
+for a final acceptance review after the focused checks pass, unless the user
+explicitly asks for an earlier Astra gate.

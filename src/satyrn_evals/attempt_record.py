@@ -36,6 +36,48 @@ _V9_FIELDS = frozenset({"timeout"})
 # V11a: rung provenance. `rung` is null when the default `contract` was
 # exported; `contract_digest` names the exact text either way.
 _V11_FIELDS = frozenset({"rung", "contract_digest"})
+
+
+class DeadlinePhase(StrEnum):
+    """The lifecycle phase that first observed a whole-attempt expiry."""
+
+    SETUP = "setup"
+    COMMAND = "command"
+    PRESERVATION = "preservation"
+    GRADING = "grading"
+    CLEANUP = "cleanup"
+
+
+@dataclass(frozen=True, slots=True)
+class DeadlineProvenance:
+    """A whole-attempt deadline's durable, non-verdict observation."""
+
+    timeout: float
+    phase: DeadlinePhase
+    elapsed: float
+    workspace_retained: bool
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "phase", DeadlinePhase(self.phase))
+        for name in ("timeout", "elapsed"):
+            value = getattr(self, name)
+            if type(value) not in (int, float) or not math.isfinite(value):
+                raise ValueError(f"deadline {name} must be a finite number")
+            if value <= 0:
+                raise ValueError(f"deadline {name} must be greater than zero")
+            object.__setattr__(self, name, float(value))
+        if self.elapsed < self.timeout:
+            raise ValueError("deadline elapsed must be at least its timeout")
+        if type(self.workspace_retained) is not bool:
+            raise ValueError("deadline workspace_retained must be a boolean")
+
+
+# V12 records add the configured whole-attempt timeout. A V13 record adds
+# expiry provenance only when that limit actually expires.
+_V12_FIELDS = frozenset({"attempt_timeout"})
+_V13_FIELDS = frozenset({"deadline"})
+
+
 class AttemptOutcome(StrEnum):
     ATTEMPTED = "attempted"
     REFUSED = "refused"
@@ -55,6 +97,7 @@ class AttemptCode(StrEnum):
     MODEL_ERROR = "MODEL_ERROR"
     CLEANUP_FAILED = "CLEANUP_FAILED"
     GRADE_FAILED = "GRADE_FAILED"
+    DEADLINE_EXCEEDED = "DEADLINE_EXCEEDED"
 
 
 class _Presence(Enum):
@@ -79,6 +122,7 @@ class _AttemptPolicy:
     artifacts: _ArtifactPolicy
     verdict: _Presence = _Presence.FORBIDDEN
     receipt: _Presence = _Presence.FORBIDDEN
+    deadline: _Presence = _Presence.OPTIONAL
 
 
 _ATTEMPT_POLICIES: dict[AttemptCode, _AttemptPolicy] = {
@@ -173,6 +217,14 @@ _ATTEMPT_POLICIES: dict[AttemptCode, _AttemptPolicy] = {
         _Presence.FORBIDDEN,
         _ArtifactPolicy.BOTH,
     ),
+    AttemptCode.DEADLINE_EXCEEDED: _AttemptPolicy(
+        AttemptOutcome.REFUSED,
+        _Presence.OPTIONAL,
+        _Presence.OPTIONAL,
+        _Presence.OPTIONAL,
+        _ArtifactPolicy.ANY,
+        deadline=_Presence.REQUIRED,
+    ),
 }
 
 _LEGACY_CODES = frozenset(
@@ -207,6 +259,8 @@ class AttemptRecord:
     workspace_base_sha: str | None = None
     retained_path: str | None = None
     attempt_dir: str | None = None
+    deadline: DeadlineProvenance | None = None
+    attempt_timeout: float | None = None
     _legacy: bool = field(default=False, repr=False, compare=False, kw_only=True)
 
     def __post_init__(self) -> None:
@@ -238,25 +292,45 @@ class AttemptRecord:
             value = getattr(self, name)
             if value is not None and not _nonempty_text(value):
                 raise ValueError(f"attempt record {name} must be non-empty or null")
+        if self.deadline is not None and not isinstance(
+            self.deadline, DeadlineProvenance
+        ):
+            raise ValueError(
+                "attempt record deadline must be DeadlineProvenance or null"
+            )
         for path_name, digest_name in (
             ("patch_path", "patch_digest"),
             ("transcript_path", "transcript_digest"),
         ):
             path = getattr(self, path_name)
             digest = getattr(self, digest_name)
-            if (path is None) is not (digest is None):
-                raise ValueError(f"attempt record {path_name} and {digest_name} must agree")
+            if path is None and digest is not None:
+                raise ValueError(
+                    f"attempt record {path_name} and {digest_name} must agree"
+                )
+            allows_unhashed_artifact = (
+                self.code is AttemptCode.DEADLINE_EXCEEDED
+                and self.deadline is not None
+                and self.deadline.phase
+                in (DeadlinePhase.COMMAND, DeadlinePhase.PRESERVATION)
+            )
+            if path is not None and digest is None and not allows_unhashed_artifact:
+                raise ValueError(
+                    f"attempt record {path_name} and {digest_name} must agree"
+                )
             if digest is not None and not _hex_digest(digest, 64):
-                raise ValueError(f"attempt record {digest_name} must be a SHA-256 digest")
+                raise ValueError(
+                    f"attempt record {digest_name} must be a SHA-256 digest"
+                )
         if self.workspace_base_sha is not None and not (
             _hex_digest(self.workspace_base_sha, 40)
             or _hex_digest(self.workspace_base_sha, 64)
         ):
-            raise ValueError("attempt record workspace_base_sha must be a Git object ID")
-        if self.timeout is not None and type(self.timeout) not in (int, float):
             raise ValueError(
-                "attempt record timeout must be a positive finite number"
+                "attempt record workspace_base_sha must be a Git object ID"
             )
+        if self.timeout is not None and type(self.timeout) not in (int, float):
+            raise ValueError("attempt record timeout must be a positive finite number")
         if self.timeout is not None:
             if not math.isfinite(self.timeout) or self.timeout <= 0:
                 raise ValueError(
@@ -264,16 +338,41 @@ class AttemptRecord:
                 )
             if type(self.timeout) is not float:
                 object.__setattr__(self, "timeout", float(self.timeout))
+        if self.attempt_timeout is not None and type(self.attempt_timeout) not in (
+            int,
+            float,
+        ):
+            raise ValueError(
+                "attempt record attempt_timeout must be a positive finite number"
+            )
+        if self.attempt_timeout is not None:
+            if not math.isfinite(self.attempt_timeout) or self.attempt_timeout <= 0:
+                raise ValueError(
+                    "attempt record attempt_timeout must be a positive finite number"
+                )
+            if type(self.attempt_timeout) is not float:
+                object.__setattr__(self, "attempt_timeout", float(self.attempt_timeout))
         if self.rung is not None and not _nonempty_text(self.rung):
             raise ValueError("attempt record rung must be non-empty or null")
         if self.contract_digest is not None and not _hex_digest(
             self.contract_digest, 64
         ):
-            raise ValueError(
-                "attempt record contract_digest must be a SHA-256 digest"
-            )
+            raise ValueError("attempt record contract_digest must be a SHA-256 digest")
         if self.rung is not None and self.contract_digest is None:
             raise ValueError("attempt record rung requires a contract_digest")
+        if self.attempt_timeout is not None and (
+            self.timeout is None
+            or self.contract_digest is None
+            or self.attempt_dir is None
+        ):
+            raise ValueError(
+                "attempt timeout requires a current timeout, contract digest, and attempt directory"
+            )
+        if self.deadline is not None:
+            if self.attempt_timeout is None:
+                raise ValueError("deadline provenance requires an attempt timeout")
+            if self.deadline.timeout != self.attempt_timeout:
+                raise ValueError("deadline timeout must match attempt_timeout")
         if self.outcome is not policy.outcome:
             raise ValueError(f"{self.code} requires outcome {policy.outcome}")
         if policy.verdict is _Presence.REQUIRED and self.verdict is None:
@@ -284,15 +383,73 @@ class AttemptRecord:
             raise ValueError(f"{self.code} requires a receipt path")
         if policy.receipt is _Presence.FORBIDDEN and self.receipt_path is not None:
             raise ValueError(f"{self.code} requires no receipt path")
+        if policy.deadline is _Presence.REQUIRED and self.deadline is None:
+            raise ValueError(f"{self.code} requires deadline provenance")
+        if self.deadline is not None:
+            allowed_phases = {
+                AttemptCode.DEADLINE_EXCEEDED: frozenset(
+                    {
+                        DeadlinePhase.SETUP,
+                        DeadlinePhase.COMMAND,
+                        DeadlinePhase.PRESERVATION,
+                    }
+                ),
+                AttemptCode.GRADE_FAILED: frozenset(
+                    {DeadlinePhase.GRADING, DeadlinePhase.CLEANUP}
+                ),
+                AttemptCode.OK: frozenset(
+                    {DeadlinePhase.GRADING, DeadlinePhase.CLEANUP}
+                ),
+            }
+            if self.deadline.phase not in allowed_phases.get(self.code, frozenset()):
+                raise ValueError(
+                    f"{self.code} cannot carry deadline phase {self.deadline.phase}"
+                )
+            if self.code is AttemptCode.DEADLINE_EXCEEDED:
+                match self.deadline.phase:
+                    case DeadlinePhase.SETUP:
+                        if (
+                            self.command_exit is not None
+                            or self.workspace_base_sha is not None
+                            or self.patch_path is not None
+                            or self.transcript_path is not None
+                        ):
+                            raise ValueError(
+                                "setup deadline cannot contain command, workspace, or artifact evidence"
+                            )
+                    case DeadlinePhase.COMMAND:
+                        if (
+                            self.command_exit is not None
+                            or self.workspace_base_sha is None
+                        ):
+                            raise ValueError(
+                                "command deadline requires base SHA and no command exit"
+                            )
+                    case DeadlinePhase.PRESERVATION:
+                        if self.command_exit is None or self.workspace_base_sha is None:
+                            raise ValueError(
+                                "preservation deadline requires base SHA and command exit"
+                            )
+            workspace_retained = self.retained_path is not None
+            if self.deadline.workspace_retained is not workspace_retained:
+                raise ValueError(
+                    "deadline workspace_retained and retained_path must agree"
+                )
         if self.attempt_dir is not None and not _nonempty_text(self.attempt_dir):
             raise ValueError("attempt record attempt_dir must be non-empty or null")
         if self._legacy:
             if self.code not in _LEGACY_CODES:
-                raise ValueError("legacy attempt record cannot contain an operational code")
+                raise ValueError(
+                    "legacy attempt record cannot contain an operational code"
+                )
             if self.workspace_base_sha is not None or self.retained_path is not None:
-                raise ValueError("legacy attempt record cannot contain V4 workspace values")
+                raise ValueError(
+                    "legacy attempt record cannot contain V4 workspace values"
+                )
             if self.attempt_dir is not None:
-                raise ValueError("legacy attempt record cannot contain an attempt directory")
+                raise ValueError(
+                    "legacy attempt record cannot contain an attempt directory"
+                )
         if policy.command_exit is _Presence.REQUIRED and self.command_exit is None:
             raise ValueError(f"{self.code} requires command_exit")
         if policy.command_exit is _Presence.FORBIDDEN and self.command_exit is not None:
@@ -305,7 +462,14 @@ class AttemptRecord:
             raise ValueError(f"{self.code} requires workspace_base_sha")
         if policy.retained_path is _Presence.REQUIRED and self.retained_path is None:
             raise ValueError(f"{self.code} requires retained_path")
-        if policy.retained_path is _Presence.FORBIDDEN and self.retained_path is not None:
+        deadline_retention = (
+            self.deadline is not None and self.deadline.workspace_retained
+        )
+        if (
+            policy.retained_path is _Presence.FORBIDDEN
+            and self.retained_path is not None
+            and not deadline_retention
+        ):
             raise ValueError("only CLEANUP_FAILED may retain a path")
         if policy.artifacts is _ArtifactPolicy.BOTH and (
             self.patch_path is None or self.transcript_path is None
@@ -342,6 +506,10 @@ def write_attempt_record(path: Path, record: AttemptRecord) -> None:
         data.pop("attempt_dir", None)
     if data.get("timeout") is None:
         data.pop("timeout", None)
+    if data.get("attempt_timeout") is None:
+        data.pop("attempt_timeout", None)
+    if data.get("deadline") is None:
+        data.pop("deadline", None)
     if data.get("contract_digest") is None:
         # The timeout precedent: an older-generation record writes the older
         # field set exactly. A null rung with a digest still writes both.
@@ -366,16 +534,41 @@ def load_attempt_record(path: Path) -> AttemptRecord:
     v7_fields = v4_fields | _V7_FIELDS
     v9_fields = v7_fields | _V9_FIELDS
     current_fields = v9_fields | _V11_FIELDS
-    if fields not in {legacy_fields, v4_fields, v7_fields, v9_fields, current_fields}:
+    v12_fields = current_fields | _V12_FIELDS
+    v13_fields = v12_fields | _V13_FIELDS
+    if fields not in {
+        legacy_fields,
+        v4_fields,
+        v7_fields,
+        v9_fields,
+        current_fields,
+        v12_fields,
+        v13_fields,
+    }:
         if missing := _LEGACY_FIELDS - fields:
             raise ValueError(f"attempt record missing a field: {sorted(missing)}")
-        if unexpected := fields - current_fields:
-            raise ValueError(f"attempt record has unexpected fields: {sorted(unexpected)}")
-        raise ValueError("attempt record must contain both V4 workspace fields or neither")
+        if unexpected := fields - v13_fields:
+            raise ValueError(
+                f"attempt record has unexpected fields: {sorted(unexpected)}"
+            )
+        raise ValueError(
+            "attempt record must contain both V4 workspace fields or neither"
+        )
     if "timeout" in fields and data.get("timeout") is None:
         raise ValueError("current attempt record requires a timeout")
+    if "attempt_timeout" in fields and data.get("attempt_timeout") is None:
+        raise ValueError("current attempt record requires an attempt_timeout")
     if "contract_digest" in fields and data.get("contract_digest") is None:
         raise ValueError("current attempt record requires a contract_digest")
+    deadline = None
+    if "deadline" in fields:
+        deadline = data["deadline"]
+        if not isinstance(deadline, dict):
+            raise ValueError("attempt record deadline is not an object")
+        try:
+            deadline = DeadlineProvenance(**deadline)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"invalid attempt record deadline: {exc}") from exc
     legacy = fields == _LEGACY_FIELDS
     command = data["command"]
     if not isinstance(command, list):
@@ -409,6 +602,8 @@ def load_attempt_record(path: Path) -> AttemptRecord:
             workspace_base_sha=data.get("workspace_base_sha"),
             retained_path=data.get("retained_path"),
             attempt_dir=data.get("attempt_dir"),
+            deadline=deadline,
+            attempt_timeout=data.get("attempt_timeout"),
             _legacy=legacy,
         )
     except (KeyError, TypeError, ValueError) as e:

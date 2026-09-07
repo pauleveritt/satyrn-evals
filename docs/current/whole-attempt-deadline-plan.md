@@ -6,10 +6,11 @@ authorize an executor or model run.
 
 ## 1. Establish durable, default-tier semantics
 
-1. Extend the attempt record with an optional immutable deadline block:
-   configured whole-attempt seconds, first-expired phase, observed elapsed
-   seconds, and retained-workspace status. Add `DEADLINE_EXCEEDED` as the
-   pre-grade refusal code.
+1. Extend the attempt record with optional `attempt_timeout` configuration
+   provenance, plus an immutable `deadline` block when it expires: matching
+   whole-attempt seconds, first-expired phase, observed elapsed seconds, and
+   retained-workspace status. Add `DEADLINE_EXCEEDED` as the pre-grade refusal
+   code.
 2. Permit a retained artifact path with an absent digest only for the
    deadline-finalization missingness case; retain existing digest requirements
    otherwise. State that distinction in the wire-format documentation.
@@ -67,8 +68,9 @@ authorize an executor or model run.
 3. Run the default suite with its subprocess tripwire, the affected integration
    tests, Ruff, type checking, documentation lint, strict Sphinx, and
    `git diff --check`. Distinguish any baseline type-check failures.
-4. **Astra review gate:** review the implementation and retained evidence before
-   any live run. A live request still must freeze the task/rung, prompt,
+4. **Final Astra acceptance review:** after Sol's iterative reviews and all
+   focused checks, review the implementation and retained evidence before any
+   live run. A live request still must freeze the task/rung, prompt,
    executor, model/engine/tool revisions, schedule, both limits, stopping rule,
    budget, and evidence-review plan. The first live action is one bounded
    attempt; two per matched configuration is triage only.

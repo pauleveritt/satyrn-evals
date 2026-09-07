@@ -9,6 +9,8 @@ from satyrn_evals.attempt_record import (
     AttemptCode,
     AttemptOutcome,
     AttemptRecord,
+    DeadlinePhase,
+    DeadlineProvenance,
     load_attempt_record,
     write_attempt_record,
 )
@@ -53,6 +55,17 @@ def _refused() -> AttemptRecord:
     )
 
 
+def _deadline(
+    phase: DeadlinePhase = DeadlinePhase.COMMAND, *, workspace_retained: bool = False
+) -> DeadlineProvenance:
+    return DeadlineProvenance(
+        timeout=10.0,
+        phase=phase,
+        elapsed=10.5,
+        workspace_retained=workspace_retained,
+    )
+
+
 def test_write_attempted_roundtrip(tmp_path) -> None:
     path = tmp_path / "attempt.json"
     write_attempt_record(path, _attempted())
@@ -76,6 +89,281 @@ def test_write_refused_roundtrip(tmp_path) -> None:
     assert data["verdict"] is None
     assert data["receipt_path"] is None
     assert load_attempt_record(path) == _refused()
+
+
+def test_deadline_refusal_roundtrips_with_available_artifact_missingness(
+    tmp_path,
+) -> None:
+    path = tmp_path / "attempt.json"
+    record = AttemptRecord(
+        version=1,
+        outcome=AttemptOutcome.REFUSED,
+        code=AttemptCode.DEADLINE_EXCEEDED,
+        message="whole-attempt deadline exceeded during command",
+        task="format_number",
+        command=("fake_attempt.py",),
+        command_exit=None,
+        patch_path="patch.diff",
+        transcript_path=None,
+        patch_digest=None,
+        transcript_digest=None,
+        verdict=None,
+        receipt_path=None,
+        timeout=30.0,
+        attempt_timeout=10.0,
+        contract_digest="d" * 64,
+        workspace_base_sha="c" * 40,
+        attempt_dir="format_number-1",
+        deadline=_deadline(),
+    )
+    write_attempt_record(path, record)
+    data = json.loads(path.read_text())
+    assert data["deadline"] == {
+        "timeout": 10.0,
+        "phase": "command",
+        "elapsed": 10.5,
+        "workspace_retained": False,
+    }
+    assert load_attempt_record(path) == record
+
+
+def test_configured_within_budget_attempt_timeout_roundtrips(tmp_path) -> None:
+    path = tmp_path / "attempt.json"
+    record = replace(_current(), attempt_timeout=10.0)
+    write_attempt_record(path, record)
+    data = json.loads(path.read_text())
+    assert data["attempt_timeout"] == 10.0
+    assert "deadline" not in data
+    assert load_attempt_record(path) == record
+
+
+def test_unbounded_attempt_omits_whole_attempt_fields(tmp_path) -> None:
+    path = tmp_path / "attempt.json"
+    write_attempt_record(path, _current())
+    data = json.loads(path.read_text())
+    assert "attempt_timeout" not in data
+    assert "deadline" not in data
+
+
+def test_load_rejects_null_attempt_timeout(tmp_path) -> None:
+    path = tmp_path / "attempt.json"
+    write_attempt_record(path, replace(_current(), attempt_timeout=10.0))
+    data = json.loads(path.read_text())
+    data["attempt_timeout"] = None
+    path.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match="requires an attempt_timeout"):
+        load_attempt_record(path)
+
+
+def test_deadline_timeout_must_match_configured_attempt_timeout() -> None:
+    with pytest.raises(ValueError, match="must match attempt_timeout"):
+        replace(_valid_v4_record(AttemptCode.DEADLINE_EXCEEDED), attempt_timeout=11.0)
+
+
+@pytest.mark.parametrize(
+    ("deadline", "message"),
+    [
+        (None, "deadline is not an object"),
+        ([], "deadline is not an object"),
+        ({"timeout": 10.0}, "invalid attempt record deadline"),
+        (
+            {
+                "timeout": 10.0,
+                "phase": "unknown",
+                "elapsed": 10.5,
+                "workspace_retained": False,
+            },
+            "invalid attempt record deadline",
+        ),
+    ],
+)
+def test_load_rejects_noncanonical_deadline_block(
+    tmp_path, deadline: object, message: str
+) -> None:
+    path = tmp_path / "attempt.json"
+    write_attempt_record(path, _valid_v4_record(AttemptCode.DEADLINE_EXCEEDED))
+    data = json.loads(path.read_text())
+    data["deadline"] = deadline
+    path.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match=message):
+        load_attempt_record(path)
+
+
+@pytest.mark.parametrize(
+    ("changes", "message"),
+    [
+        ({"timeout": 0}, "deadline timeout"),
+        ({"elapsed": 9}, "at least its timeout"),
+        ({"workspace_retained": "yes"}, "workspace_retained"),
+    ],
+)
+def test_deadline_provenance_rejects_invalid_values(
+    changes: dict[str, object], message: str
+) -> None:
+    values = {
+        "timeout": 10.0,
+        "phase": DeadlinePhase.COMMAND,
+        "elapsed": 10.5,
+        "workspace_retained": False,
+    }
+    values.update(changes)
+    with pytest.raises(ValueError, match=message):
+        DeadlineProvenance(**values)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("phase", [DeadlinePhase.GRADING, DeadlinePhase.CLEANUP])
+def test_deadline_refusal_rejects_post_pregrade_phases(phase: DeadlinePhase) -> None:
+    with pytest.raises(ValueError, match="cannot carry deadline phase"):
+        replace(
+            _valid_v4_record(AttemptCode.DEADLINE_EXCEEDED),
+            deadline=_deadline(
+                phase, workspace_retained=phase is DeadlinePhase.CLEANUP
+            ),
+        )
+
+
+@pytest.mark.parametrize(
+    ("phase", "changes", "message"),
+    [
+        (
+            DeadlinePhase.SETUP,
+            {"workspace_base_sha": "c" * 40},
+            "setup deadline cannot contain",
+        ),
+        (
+            DeadlinePhase.SETUP,
+            {"patch_path": "patch.diff", "patch_digest": "a" * 64},
+            "setup deadline cannot contain",
+        ),
+        (
+            DeadlinePhase.SETUP,
+            {"command_exit": 0},
+            "setup deadline cannot contain",
+        ),
+        (
+            DeadlinePhase.COMMAND,
+            {"workspace_base_sha": None},
+            "command deadline requires base SHA",
+        ),
+        (
+            DeadlinePhase.COMMAND,
+            {"command_exit": 0},
+            "command deadline requires base SHA",
+        ),
+        (
+            DeadlinePhase.PRESERVATION,
+            {"workspace_base_sha": None, "command_exit": 0},
+            "preservation deadline requires base SHA",
+        ),
+        (
+            DeadlinePhase.PRESERVATION,
+            {"command_exit": None},
+            "preservation deadline requires base SHA",
+        ),
+    ],
+)
+def test_deadline_refusal_rejects_phase_inconsistent_evidence(
+    phase: DeadlinePhase, changes: dict[str, object], message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        replace(
+            _valid_v4_record(AttemptCode.DEADLINE_EXCEEDED),
+            deadline=_deadline(phase),
+            **changes,
+        )
+
+
+@pytest.mark.parametrize(
+    ("phase", "changes"),
+    [
+        (DeadlinePhase.SETUP, {"workspace_base_sha": None}),
+        (DeadlinePhase.COMMAND, {}),
+        (DeadlinePhase.PRESERVATION, {"command_exit": 0}),
+    ],
+)
+def test_deadline_refusal_accepts_phase_consistent_evidence(
+    phase: DeadlinePhase, changes: dict[str, object]
+) -> None:
+    record = replace(
+        _valid_v4_record(AttemptCode.DEADLINE_EXCEEDED),
+        deadline=_deadline(phase),
+        **changes,
+    )
+    assert record.deadline is not None
+    assert record.deadline.phase is phase
+
+
+def test_grade_failed_roundtrips_grading_deadline_provenance(tmp_path) -> None:
+    path = tmp_path / "attempt.json"
+    record = replace(
+        _valid_v4_record(AttemptCode.GRADE_FAILED),
+        timeout=30.0,
+        attempt_timeout=10.0,
+        contract_digest="d" * 64,
+        attempt_dir="format_number-1",
+        deadline=_deadline(DeadlinePhase.GRADING),
+    )
+    write_attempt_record(path, record)
+    assert load_attempt_record(path) == record
+
+
+@pytest.mark.parametrize("code", [AttemptCode.OK, AttemptCode.GRADE_FAILED])
+def test_cleanup_deadline_preserves_a_completed_outcome_and_workspace(
+    code: AttemptCode, tmp_path
+) -> None:
+    path = tmp_path / "attempt.json"
+    record = replace(
+        _valid_v4_record(code),
+        timeout=30.0,
+        attempt_timeout=10.0,
+        contract_digest="d" * 64,
+        attempt_dir="format_number-1",
+        retained_path="/tmp/retained",
+        deadline=_deadline(DeadlinePhase.CLEANUP, workspace_retained=True),
+    )
+    write_attempt_record(path, record)
+    assert load_attempt_record(path) == record
+
+
+def test_command_deadline_can_retain_workspace_during_finalization(tmp_path) -> None:
+    path = tmp_path / "attempt.json"
+    record = replace(
+        _valid_v4_record(AttemptCode.DEADLINE_EXCEEDED),
+        retained_path="/tmp/retained",
+        deadline=_deadline(DeadlinePhase.COMMAND, workspace_retained=True),
+    )
+    write_attempt_record(path, record)
+    assert load_attempt_record(path) == record
+
+
+@pytest.mark.parametrize(
+    ("retained_path", "workspace_retained"),
+    [(None, True), ("/tmp/retained", False)],
+)
+def test_deadline_workspace_retention_path_and_boolean_must_agree(
+    retained_path: str | None, workspace_retained: bool
+) -> None:
+    with pytest.raises(ValueError, match="workspace_retained and retained_path"):
+        replace(
+            _valid_v4_record(AttemptCode.DEADLINE_EXCEEDED),
+            retained_path=retained_path,
+            deadline=_deadline(
+                DeadlinePhase.COMMAND, workspace_retained=workspace_retained
+            ),
+        )
+
+
+def test_completed_record_rejects_unhashed_artifacts_even_with_deadline() -> None:
+    with pytest.raises(ValueError, match="patch_path and patch_digest must agree"):
+        replace(
+            _valid_v4_record(AttemptCode.OK),
+            timeout=30.0,
+            attempt_timeout=10.0,
+            contract_digest="d" * 64,
+            attempt_dir="format_number-1",
+            patch_digest=None,
+            deadline=_deadline(DeadlinePhase.GRADING),
+        )
 
 
 def test_load_rejects_bad_outcome(tmp_path) -> None:
@@ -318,6 +606,15 @@ def _valid_v4_record(code: AttemptCode) -> AttemptRecord:
                 transcript_digest="b" * 64,
                 workspace_base_sha="c" * 40,
             )
+        case AttemptCode.DEADLINE_EXCEEDED:
+            values.update(
+                timeout=30.0,
+                attempt_timeout=10.0,
+                contract_digest="d" * 64,
+                workspace_base_sha="c" * 40,
+                attempt_dir="t-1",
+                deadline=_deadline(),
+            )
     return AttemptRecord(**values)  # type: ignore[arg-type]
 
 
@@ -340,7 +637,11 @@ def test_attempt_policy_is_complete() -> None:
     ("code", "changes", "message"),
     [
         (AttemptCode.OK, {"command_exit": None}, "requires command_exit"),
-        (AttemptCode.NO_PATCH, {"workspace_base_sha": None}, "requires workspace_base_sha"),
+        (
+            AttemptCode.NO_PATCH,
+            {"workspace_base_sha": None},
+            "requires workspace_base_sha",
+        ),
         (AttemptCode.COMMAND_TIMEOUT, {"command_exit": 7}, "null command_exit"),
         # The repeated-call spending rule tears the process down the way a
         # timeout does, so it owes the same shape: no exit code, a base sha.
@@ -355,7 +656,11 @@ def test_attempt_policy_is_complete() -> None:
             {"workspace_base_sha": None},
             "requires workspace_base_sha",
         ),
-        (AttemptCode.COMMAND_TIMEOUT, {"workspace_base_sha": None}, "requires workspace_base_sha"),
+        (
+            AttemptCode.COMMAND_TIMEOUT,
+            {"workspace_base_sha": None},
+            "requires workspace_base_sha",
+        ),
         (
             AttemptCode.TRANSCRIPT_MISSING,
             {"patch_path": None, "patch_digest": None},
@@ -522,9 +827,19 @@ def test_legacy_marker_rejects_attempt_dir() -> None:
     values = {
         field: getattr(_refused(), field)
         for field in (
-            "version", "outcome", "code", "message", "task", "command",
-            "command_exit", "patch_path", "transcript_path", "patch_digest",
-            "transcript_digest", "verdict", "receipt_path",
+            "version",
+            "outcome",
+            "code",
+            "message",
+            "task",
+            "command",
+            "command_exit",
+            "patch_path",
+            "transcript_path",
+            "patch_digest",
+            "transcript_digest",
+            "verdict",
+            "receipt_path",
         )
     }
     values["attempt_dir"] = "format_number-1"
@@ -568,13 +883,21 @@ def test_grade_failed_policy_allows_no_verdict_or_receipt() -> None:
 def test_grade_failed_refuses_a_verdict_or_receipt() -> None:
     """A GRADE_FAILED record carrying verdict/receipt is a contradiction."""
     kwargs = dict(
-        version=1, outcome=AttemptOutcome.ATTEMPTED,
-        code=AttemptCode.GRADE_FAILED, message="m", task="t",
-        command=("fake",), command_exit=0,
-        patch_path="patch.diff", transcript_path="transcript.txt",
-        patch_digest="a" * 64, transcript_digest="b" * 64,
-        verdict=None, receipt_path=None,
-        workspace_base_sha="c" * 40, attempt_dir="t-1",
+        version=1,
+        outcome=AttemptOutcome.ATTEMPTED,
+        code=AttemptCode.GRADE_FAILED,
+        message="m",
+        task="t",
+        command=("fake",),
+        command_exit=0,
+        patch_path="patch.diff",
+        transcript_path="transcript.txt",
+        patch_digest="a" * 64,
+        transcript_digest="b" * 64,
+        verdict=None,
+        receipt_path=None,
+        workspace_base_sha="c" * 40,
+        attempt_dir="t-1",
     )
     with pytest.raises(ValueError, match="verdict"):
         AttemptRecord(**{**kwargs, "verdict": Verdict.PASS})
@@ -584,18 +907,14 @@ def test_grade_failed_refuses_a_verdict_or_receipt() -> None:
 
 def test_record_round_trips_timeout(tmp_path: Path) -> None:
     path = tmp_path / "attempt.json"
-    write_attempt_record(
-        path, replace(_attempted(), timeout=900.0, attempt_dir="t-1")
-    )
+    write_attempt_record(path, replace(_attempted(), timeout=900.0, attempt_dir="t-1"))
     assert load_attempt_record(path).timeout == 900.0
 
 
 def test_v9_record_requires_a_timeout_value(tmp_path: Path) -> None:
     """A V9-generation file with a null timeout is corrupt, not legacy."""
     path = tmp_path / "attempt.json"
-    write_attempt_record(
-        path, replace(_attempted(), timeout=900.0, attempt_dir="t-1")
-    )
+    write_attempt_record(path, replace(_attempted(), timeout=900.0, attempt_dir="t-1"))
     data = json.loads(path.read_text())
     data["timeout"] = None
     path.write_text(json.dumps(data))
@@ -690,9 +1009,7 @@ def test_legacy_record_loads_with_both_fields_null(tmp_path: Path) -> None:
     """The success sibling for every refusal below: a stored record from an
     older generation (no rung/contract_digest keys) loads and does not raise."""
     path = tmp_path / "attempt.json"
-    write_attempt_record(
-        path, replace(_attempted(), timeout=900.0, attempt_dir="t-1")
-    )
+    write_attempt_record(path, replace(_attempted(), timeout=900.0, attempt_dir="t-1"))
     data = json.loads(path.read_text())
     assert "rung" not in data and "contract_digest" not in data
     record = load_attempt_record(path)

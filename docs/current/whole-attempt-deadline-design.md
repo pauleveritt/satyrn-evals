@@ -38,7 +38,8 @@ filesystem call.
 
 ## Durable outcome
 
-Persist deadline provenance in a new attempt-record `deadline` block:
+Persist the configured whole-attempt seconds as `attempt_timeout` on every
+bounded attempt record. On expiry, add a `deadline` block with its matching
 configured seconds, first-expired phase (`setup`, `command`, `preservation`,
 `grading`, or `cleanup`), observed elapsed seconds, and whether finalization
 retained a workspace. This provenance is separate from the execution code and
@@ -58,8 +59,11 @@ record durable before expiry retain their grading outcome; deadline provenance
 is an additional operational diagnostic, not a rewritten refusal.
 
 Cleanup runs last, after a receipt and matching record when grading was
-admitted. An expiry at that point retains the workspace, writes the deadline
-block, and preserves the existing execution and grading outcome. An
+admitted. If finalization after an expiry at any earlier phase cannot prove
+safe deletion, it retains the workspace and records that fact without changing
+the first-expired phase. An expiry observed during cleanup does the same. In
+both cases the deadline block preserves the existing execution and grading
+outcome. An
 `unavailable` receipt that was durable before cleanup expiry is therefore a
 completed, counted unavailable observation. Cleanup health is reported
 independently from verdict quality; neither stdout nor process status supplies
@@ -126,8 +130,7 @@ add telemetry, or choose a live executor, model, prompt, engine revision,
 schedule, budget, or stopping rule. It does not make an elapsed deadline a
 model-quality finding.
 
-**Stop gate — Astra review.** Approve the phase vocabulary, record shape,
-deadline start/end boundary, preservation behavior, and command-vs-whole-limit
-distinction before implementation. Only then may a focused implementation plan
-and tests begin. A later live run still needs an explicit frozen condition,
-budget, stopping rule, and evidence-review request.
+**Review policy.** Sol reviews implementation slices and recommendations as
+they are developed. Astra performs the final acceptance review, after focused
+checks pass and before any live run. A live run still needs an explicit frozen
+condition, budget, stopping rule, and evidence-review request.

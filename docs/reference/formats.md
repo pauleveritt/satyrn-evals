@@ -188,6 +188,7 @@ attempt.json      # always
   "command": ["python", "…/tests/integration/fake_attempt.py", "--patch", "…/src/satyrn_evals/tasks/format_number/fixtures/known-good.patch"],
   "command_exit": 0,
   "timeout": 900.0,
+  "attempt_timeout": 960.0,
   "patch_path": "patch.diff",
   "transcript_path": "transcript.txt",
   "patch_digest": "251a3d81e289f932d69bb1d93116fda757f47b9dcbdb11e9bc68aab7dd687ebc",
@@ -214,6 +215,40 @@ selected text and is **always** present on a new record, including the
 default contract. Records from before V11a load with both null and
 re-summarize preserving those explicit unknowns — a new record generation,
 not a rewrite of history (`version` stays `1`).
+
+When a whole-attempt limit was configured and expired, the record includes a
+`deadline` block. It is immutable provenance rather than verdict evidence:
+
+```json
+{
+  "timeout": 960.0,
+  "phase": "preservation",
+  "elapsed": 960.2,
+  "workspace_retained": true
+}
+```
+
+It records the configured whole-attempt seconds, the first lifecycle phase to
+observe expiry (`setup`, `command`, `preservation`, `grading`, or `cleanup`),
+the observed elapsed seconds, and whether finalization retained the workspace.
+`timeout` at the record top level remains the independent command timeout.
+`attempt_timeout` is the configured whole-attempt limit: it is present for
+every bounded attempt, including one that completes within budget. `deadline`
+is absent when that limit did not expire.
+`deadline.workspace_retained` and a non-null `retained_path` must agree.
+
+Before grading, expiry is the refusal code `DEADLINE_EXCEEDED`: `setup` has no
+completed workspace base SHA, command, or artifact evidence; `command` has a
+base SHA but no normal command exit; and `preservation` has both a base SHA and
+command exit.
+An available patch or transcript at `command` or `preservation` may have a
+null digest only when deadline finalization could not safely finish hashing;
+the path preserves that explicit missingness. All other persisted artifacts
+require their SHA-256 digest. Expiry in `grading` retains `GRADE_FAILED` until
+offline regrading. `GRADE_FAILED` may also carry cleanup provenance. Expiry in
+`grading` or `cleanup` can instead accompany an already completed `OK` record.
+Those later outcomes retain hook-derived verdict evidence; deadline provenance
+never supplies a verdict.
 
 A refusal keeps the same shape with `outcome: refused`, a precise `code`,
 `verdict` and `receipt_path` null, and `patch_path`/`transcript_path` null
