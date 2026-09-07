@@ -9,6 +9,8 @@ from satyrn_evals.attempt import attempt
 from satyrn_evals.attempt_record import AttemptCode, AttemptOutcome
 from satyrn_evals.capture import capture
 from satyrn_evals.capture_record import CaptureOutcome
+from satyrn_evals.census import build_arg_parser as build_census_parser
+from satyrn_evals.census import run_cli as run_census
 from satyrn_evals.errors import SatyrnError, UsageError
 from satyrn_evals.grade import grade
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, resolve_task
@@ -133,6 +135,8 @@ def main(argv: list[str] | None = None) -> int:
                 case _:
                     return 0
         args = parser.parse_args(argv)
+        if args.command == "census":
+            return run_census(args.runs_root, args.json_path)
         if args.command == "grade":
             task_dir = resolve_task(args.task, tasks_root=Path(args.tasks_root))
             receipt = grade(task_dir, Path(args.patch), Path(args.receipt))
@@ -302,3 +306,5 @@ session_p.add_argument(
     default=30.0,
     help="seconds for graceful adapter close (default: 30)",
 )
+
+build_census_parser(sub)
