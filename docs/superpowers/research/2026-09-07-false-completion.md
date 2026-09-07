@@ -178,9 +178,10 @@ only `assert None is not None`.
 
 ### 7.2 A control was already on disk, and this record failed to cite it
 
-`depth-3` at rung **R3** passes **12/12** — 6 cells at each of the two
-Gemma capability points — and **every** patch touches all three files
-including `models.py`:
+`depth-3` at rung **R3** passes **6/6 at each of the two Gemma capability
+points**, and **every** patch touches all three files including
+`models.py`. The comparison is **within that one batch**: the same night,
+the same reference arm, the same models read R1 at **0/6** and **0/6**:
 
 ```bash
 for d in ~/satyrn-smokes/2026-09-06-overnight-232554/*depth-3*R3*; do

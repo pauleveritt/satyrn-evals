@@ -36,8 +36,11 @@ plan.
 ## The one thing today established
 
 **`depth-3` is not a quality floor**, a label it carried from V11c until
-now. At rung R3 it reads **12/12** — six cells at each capability point,
-every patch touching all three files:
+now. **Within one batch, one reference arm, one night**, it reads R1
+**0/6** and R3 **6/6** at *each* of the two capability points — every R3
+patch touching all three files. (Cite it that way. An earlier draft of this
+brief paired V14b's R1 with the overnight R3 across two batches; the pooled
+numbers coincide, which is how a bad derivation survives a read.)
 
 ```bash
 for d in ~/satyrn-smokes/2026-09-06-overnight-232554/*depth-3*R3*; do
@@ -187,7 +190,8 @@ fast is how three hypotheses died.
 2. **Close the `public_suite` gap.** An offline authoring gate: red at
    base, green at known-good, per-seam coverage recorded. No model time.
 3. **Ask what R1→R3 actually buys, since it is the only controlled lever
-   with a measured effect** (0/12 → 12/12). It is already run for
+   with a measured effect** (0/6 → 6/6, within batch, at both capability
+   points). It is already run for
    `depth-3`; whether it generalises is a question the retained profile may
    partly answer for free before any batch.
 4. **W1.** Overdue on measured weight, and it is where withdrawn code —

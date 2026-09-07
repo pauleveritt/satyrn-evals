@@ -35,8 +35,9 @@ nobody closed at R1 is a two-line change.
 **Ask:** does the contract *describe* the defect, or only name a failing
 assertion? A floor that appears in every arm at once is a property of the
 task before it is a property of the agents — and on this suite the property
-that moves it is description, not verifiability: R1 reads 0/12 and R3, with
-the same blind suite, reads 12/12.
+that moves it is description, not verifiability. Within **one** batch, one
+reference arm, one night, `depth-3` reads R1 **0/6** and R3 **6/6** at
+*each* of the two capability points.
 
 **Check it:** run the task at a more explanatory rung before concluding
 anything about the agents.
