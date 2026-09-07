@@ -3,6 +3,7 @@
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -12,7 +13,10 @@ from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, load_manifest
 from satyrn_evals.overlay import assert_overlay_absent, load_overlay
 from satyrn_evals.workspace import (
     prepare_session_workspace,
+    prepare_workspace,
     release_session_workspace,
+    release_workspace,
+    run_prepared_command,
 )
 
 pytestmark = pytest.mark.integration
@@ -30,18 +34,55 @@ def test_prepare_gives_detached_worktree_and_base_sha(tmp_path: Path) -> None:
         base=_base(tmp_path), protected_paths=(tmp_path,)
     )
     try:
-        head = subprocess.run(
-            ["git", "rev-parse", "HEAD^{commit}"],
-            cwd=workspace.worktree,
-            capture_output=True,
-            check=True,
-            env={**os.environ, "GIT_CONFIG_NOSYSTEM": "1"},
-        ).stdout.decode().strip()
+        head = (
+            subprocess.run(
+                ["git", "rev-parse", "HEAD^{commit}"],
+                cwd=workspace.worktree,
+                capture_output=True,
+                check=True,
+                env={**os.environ, "GIT_CONFIG_NOSYSTEM": "1"},
+            )
+            .stdout.decode()
+            .strip()
+        )
         assert head == workspace.base_sha
         assert (workspace.worktree / "solution.py").is_file()
         assert workspace.parent.exists()  # released only by release()
     finally:
         release_session_workspace(workspace)
+    assert not workspace.parent.exists()
+
+
+def test_prepared_workspace_preserves_artifacts_until_explicit_release(
+    tmp_path: Path,
+) -> None:
+    artifact = tmp_path / "artifact.txt"
+    workspace = prepare_workspace(
+        base=_base(tmp_path),
+        protected_paths=(tmp_path,),
+        environment={
+            **os.environ,
+            "GIT_DIR": "/must-not-reach-workspace",
+            "SATYRN_TEST_ARTIFACT": str(artifact),
+        },
+    )
+    try:
+        assert "GIT_DIR" not in workspace._environment
+        assert workspace._environment["SATYRN_TEST_ARTIFACT"] == str(artifact)
+        result = run_prepared_command(
+            workspace,
+            command=[
+                sys.executable,
+                "-c",
+                "from pathlib import Path; import os; Path(os.environ['SATYRN_TEST_ARTIFACT']).write_text('kept')",
+            ],
+            timeout=5.0,
+        )
+        assert result.code.value == "OK"
+        assert artifact.read_text() == "kept"
+        assert workspace.parent.exists()
+    finally:
+        release_workspace(workspace)
     assert not workspace.parent.exists()
 
 
@@ -126,6 +167,19 @@ def test_release_skips_removal_when_cleanup_is_unsafe(tmp_path: Path) -> None:
     release_session_workspace(workspace)
     assert workspace.parent.exists()  # retained, not removed
     _shutil.rmtree(workspace.parent, ignore_errors=True)
+
+
+def test_neutral_release_returns_the_parent_when_cleanup_is_unsafe(
+    tmp_path: Path,
+) -> None:
+    workspace = prepare_workspace(
+        base=_base(tmp_path), protected_paths=(tmp_path,), environment=os.environ
+    )
+    workspace._state.process_cleanup_safe = False
+    assert release_workspace(workspace) == str(workspace.parent)
+    assert workspace.parent.exists()
+    assert workspace.worktree.exists()
+    shutil.rmtree(workspace.parent, ignore_errors=True)
 
 
 def test_hidden_overlay_absent_from_executor_worktree() -> None:

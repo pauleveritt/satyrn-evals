@@ -40,7 +40,9 @@ _GIT_SAFETY_CONFIG = (
     "-c",
     "core.symlinks=true",
 )
-GIT_SAFETY_CONFIG = _GIT_SAFETY_CONFIG  # V9: grade.py reuses the workspace git discipline
+GIT_SAFETY_CONFIG = (
+    _GIT_SAFETY_CONFIG  # V9: grade.py reuses the workspace git discipline
+)
 _FIXED_GIT_ENV = {
     "GIT_AUTHOR_NAME": "satyrn-evals",
     "GIT_AUTHOR_EMAIL": "satyrn-evals@localhost",
@@ -107,7 +109,9 @@ _WORKSPACE_POLICIES: dict[WorkspaceCode, _WorkspacePolicy] = {
     WorkspaceCode.REPEAT_LIMIT: _WorkspacePolicy(
         # Torn down by the repeated-call spending rule, so the same shape
         # as a timeout: no exit code, a base_sha, nothing retained.
-        _Presence.FORBIDDEN, _Presence.REQUIRED, _Presence.FORBIDDEN
+        _Presence.FORBIDDEN,
+        _Presence.REQUIRED,
+        _Presence.FORBIDDEN,
     ),
     WorkspaceCode.CLEANUP_FAILED: _WorkspacePolicy(
         _Presence.OPTIONAL, _Presence.OPTIONAL, _Presence.REQUIRED
@@ -159,7 +163,10 @@ class WorkspaceResult:
             raise ValueError(f"{self.code} workspace result requires base_sha")
         if policy.retained_path is _Presence.REQUIRED and self.retained_path is None:
             raise ValueError(f"{self.code} requires retained_path")
-        if policy.retained_path is _Presence.FORBIDDEN and self.retained_path is not None:
+        if (
+            policy.retained_path is _Presence.FORBIDDEN
+            and self.retained_path is not None
+        ):
             raise ValueError("only CLEANUP_FAILED may retain a path")
 
 
@@ -263,9 +270,13 @@ def snapshot_tree(root: Path) -> tuple[TreeEntry, ...]:
 
     def visit(directory: Path) -> None:
         try:
-            children = sorted(os.scandir(directory), key=lambda entry: os.fsencode(entry.name))
+            children = sorted(
+                os.scandir(directory), key=lambda entry: os.fsencode(entry.name)
+            )
         except OSError as exc:
-            raise _WorkspaceError(f"cannot enumerate task base {directory}: {exc}") from exc
+            raise _WorkspaceError(
+                f"cannot enumerate task base {directory}: {exc}"
+            ) from exc
         for child in children:
             path = Path(child.path)
             relative = path.relative_to(root)
@@ -275,7 +286,9 @@ def snapshot_tree(root: Path) -> tuple[TreeEntry, ...]:
                 mode = child.stat(follow_symlinks=False).st_mode
                 if stat.S_ISLNK(mode):
                     value = os.readlink(path)
-                    entries.append(TreeEntry(relative.as_posix(), TreeKind.SYMLINK, value))
+                    entries.append(
+                        TreeEntry(relative.as_posix(), TreeKind.SYMLINK, value)
+                    )
                 elif stat.S_ISDIR(mode):
                     visit(path)
                 elif stat.S_ISREG(mode):
@@ -287,7 +300,10 @@ def snapshot_tree(root: Path) -> tuple[TreeEntry, ...]:
                         f"task base contains unsupported file type: {relative.as_posix()}"
                     )
             except OSError as exc:
-                raise _WorkspaceError(f"cannot inspect task base entry {relative}: {exc}") from exc
+                raise _WorkspaceError(
+                    f"cannot inspect task base entry {relative}: {exc}"
+                ) from exc
+
     visit(root)
     return tuple(entries)
 
@@ -309,7 +325,11 @@ def _contains_path(root: Path, path: Path) -> bool:
             return True
         root_exists = strictly_exists(root_resolved)
         while cursor != cursor.parent:
-            if root_exists and strictly_exists(cursor) and cursor.samefile(root_resolved):
+            if (
+                root_exists
+                and strictly_exists(cursor)
+                and cursor.samefile(root_resolved)
+            ):
                 return True
             cursor = cursor.parent
         return False
@@ -423,7 +443,9 @@ def _safe_temp_parent(protected: Sequence[Path]) -> Path:
 def _local_env_vars(environment: Mapping[str, str]) -> set[str]:
     """Ask Git which variables can redirect repository discovery."""
     probe_environment = {
-        name: value for name, value in environment.items() if not name.startswith("GIT_")
+        name: value
+        for name, value in environment.items()
+        if not name.startswith("GIT_")
     }
     probe_environment["GIT_TERMINAL_PROMPT"] = "0"
     try:
@@ -435,7 +457,9 @@ def _local_env_vars(environment: Mapping[str, str]) -> set[str]:
             check=False,
         )
     except OSError as exc:
-        raise _WorkspaceError(f"cannot inspect Git environment variables: {exc}") from exc
+        raise _WorkspaceError(
+            f"cannot inspect Git environment variables: {exc}"
+        ) from exc
     if completed.returncode != 0:
         detail = os.fsdecode(completed.stderr).strip()
         raise _WorkspaceError(f"cannot inspect Git environment variables: {detail}")
@@ -582,14 +606,18 @@ def _prepare_repository(
     try:
         shutil.copytree(base, state.repository, symlinks=True, dirs_exist_ok=True)
     except OSError as exc:
-        raise _WorkspaceError(f"cannot copy task base into synthetic repository: {exc}") from exc
+        raise _WorkspaceError(
+            f"cannot copy task base into synthetic repository: {exc}"
+        ) from exc
     _git(state.repository, ("init", "-q"), environment)
     _git(state.repository, ("config", "commit.gpgSign", "false"), environment)
     _git(state.repository, ("config", "core.hooksPath", os.devnull), environment)
     _git(state.repository, ("config", "core.fsmonitor", "false"), environment)
     _git(state.repository, ("config", "core.symlinks", "true"), environment)
     _git(state.repository, ("add", "--force", "--all"), environment)
-    tree = os.fsdecode(_git(state.repository, ("write-tree",), environment).stdout).removesuffix("\n")
+    tree = os.fsdecode(
+        _git(state.repository, ("write-tree",), environment).stdout
+    ).removesuffix("\n")
     commit_env = dict(environment)
     commit_env.update(_FIXED_GIT_ENV)
     commit = os.fsdecode(
@@ -631,7 +659,9 @@ def _prepare_repository(
     if state.registration is not Registration.PRESENT:
         raise _WorkspaceError("Git did not confirm the attempt worktree registration")
     head = os.fsdecode(
-        _git(state.worktree, ("rev-parse", "--verify", "HEAD^{commit}"), environment).stdout
+        _git(
+            state.worktree, ("rev-parse", "--verify", "HEAD^{commit}"), environment
+        ).stdout
     ).removesuffix("\n")
     symbolic = _git(
         state.worktree,
@@ -657,7 +687,9 @@ def _prepare_repository(
         raise _WorkspaceError("attempt worktree is not clean at the synthetic base")
     actual = snapshot_tree(state.worktree)
     if actual != expected:
-        raise _WorkspaceError("Git materialization does not match the persisted task base")
+        raise _WorkspaceError(
+            "Git materialization does not match the persisted task base"
+        )
 
 
 def _group_gone(process_group: int) -> bool:
@@ -976,9 +1008,7 @@ def _run_command(
     return pending
 
 
-def _cleanup_worktree(
-    state: _WorkspaceState, environment: Mapping[str, str]
-) -> None:
+def _cleanup_worktree(state: _WorkspaceState, environment: Mapping[str, str]) -> None:
     remove_error: _WorkspaceError | None = None
     try:
         _git(
@@ -1040,14 +1070,7 @@ def run_workspace(
     default to off: a batch that did not ask for the rule runs exactly as
     it did before it existed.
     """
-    if not command:
-        raise ValueError("workspace command is empty")
-    if not math.isfinite(timeout) or timeout <= 0:
-        raise ValueError("workspace timeout must be a finite number greater than zero")
-    if not math.isfinite(teardown_grace) or teardown_grace <= 0:
-        raise ValueError(
-            "workspace teardown grace must be a finite number greater than zero"
-        )
+    _validate_command_limits(command, timeout, teardown_grace)
     pending: WorkspaceResult | None = None
     active_exception: BaseException | None = None
     state: _WorkspaceState | None = None
@@ -1096,7 +1119,10 @@ def run_workspace(
         raise
     finally:
         if state is not None and git_environment is not None:
-            if state.process_cleanup_safe and state.registration is not Registration.ABSENT:
+            if (
+                state.process_cleanup_safe
+                and state.registration is not Registration.ABSENT
+            ):
                 try:
                     _cleanup_worktree(state, git_environment)
                 except _CleanupError as exc:
@@ -1182,11 +1208,15 @@ def run_workspace(
 
 
 class WorkspacePrepareError(SatyrnError):
-    """Exit 3: the session workspace could not be prepared."""
+    """Exit 3: a prepared workspace could not be built."""
+
+    def __init__(self, message: str, retained_path: str | None = None) -> None:
+        super().__init__(message)
+        self.retained_path = retained_path
 
 
 class WorkspaceReleaseError(SatyrnError):
-    """Exit 3: the session workspace could not be confirmed cleaned up."""
+    """Exit 3: a prepared workspace could not be confirmed cleaned up."""
 
     def __init__(self, message: str, retained_path: str | None = None) -> None:
         super().__init__(message)
@@ -1194,12 +1224,12 @@ class WorkspaceReleaseError(SatyrnError):
 
 
 @dataclass(frozen=True, slots=True)
-class SessionWorkspace:
-    """A prepared detached worktree the session executor drives directly.
+class PreparedWorkspace:
+    """A prepared detached worktree that a caller releases explicitly.
 
-    Shares the V4 lifecycle's state machine (``_prepare_repository``,
-    ``_cleanup_worktree``) instead of forking it: the executor starts the
-    adapter once in ``worktree``, snapshots checkpoints, then releases.
+    It reuses the V4 lifecycle's repository construction, process isolation,
+    and cleanup state. The caller may preserve artifacts and write durable
+    evidence after ``run_prepared_command`` and before ``release_workspace``.
     """
 
     parent: Path
@@ -1210,55 +1240,137 @@ class SessionWorkspace:
     _environment: dict[str, str]
 
 
-def prepare_session_workspace(
+SessionWorkspace = PreparedWorkspace
+
+
+def _discard_failed_preparation(
+    state: _WorkspaceState | None,
+    parent: Path | None,
+    environment: Mapping[str, str] | None,
+) -> str | None:
+    """Best-effort cleanup that names a parent we cannot safely discard."""
+    try:
+        if (
+            state is not None
+            and environment is not None
+            and state.registration is not Registration.ABSENT
+        ):
+            _cleanup_worktree(state, environment)
+        candidate = state.parent if state is not None else parent
+        if candidate is not None and (
+            state is None
+            or (
+                state.process_cleanup_safe and state.registration is Registration.ABSENT
+            )
+        ):
+            _remove_parent(candidate)
+    except BaseException as exc:
+        return f"{type(exc).__name__}: {exc}"
+    return None
+
+
+def _validate_command_limits(
+    command: Sequence[str], timeout: float, teardown_grace: float
+) -> None:
+    """Reject invalid command work before a workspace or subprocess exists."""
+    if not command:
+        raise ValueError("workspace command is empty")
+    if not math.isfinite(timeout) or timeout <= 0:
+        raise ValueError("workspace timeout must be a finite number greater than zero")
+    if not math.isfinite(teardown_grace) or teardown_grace <= 0:
+        raise ValueError(
+            "workspace teardown grace must be a finite number greater than zero"
+        )
+
+
+def prepare_workspace(
     *,
     base: Path,
     protected_paths: Sequence[Path],
+    environment: Mapping[str, str],
     overlay: OverlaySpec | None = None,
-) -> SessionWorkspace:
-    """Reconstruct the synthetic repository and detached worktree for a session."""
-    environment = dict(os.environ)
-    routing_names = _local_env_vars(environment)
-    git_environment = clean_environment(environment, routing_names)
-    requested_protected = (base, *protected_paths)
-    git_protected = _git_protected_paths(requested_protected, git_environment)
-    parent = _safe_temp_parent((*requested_protected, *git_protected))
-    state = _WorkspaceState(
-        parent=parent,
-        repository=parent / "repo",
-        worktree=parent / "worktree",
-    )
+) -> PreparedWorkspace:
+    """Reconstruct a detached worktree and retain its cleaned environment."""
+    state: _WorkspaceState | None = None
+    parent: Path | None = None
+    git_environment: dict[str, str] | None = None
     try:
+        routing_names = _local_env_vars(environment)
+        git_environment = clean_environment(environment, routing_names)
+        requested_protected = (base, *protected_paths)
+        git_protected = _git_protected_paths(requested_protected, git_environment)
+        parent = _safe_temp_parent((*requested_protected, *git_protected))
+        state = _WorkspaceState(
+            parent=parent,
+            repository=parent / "repo",
+            worktree=parent / "worktree",
+        )
         _prepare_repository(base, state, git_environment)
         if overlay is not None:
             assert_overlay_absent(state.worktree, overlay)
-    except OverlayError:
-        # absence invariant refused (authoring defect): remove the fresh
-        # parent before propagating the OverlayError exit-2 authoring signal.
-        shutil.rmtree(parent, ignore_errors=True)
+        assert state.base_sha is not None
+        return PreparedWorkspace(
+            parent=parent,
+            repository=state.repository,
+            worktree=state.worktree,
+            base_sha=state.base_sha,
+            _state=state,
+            _environment=git_environment,
+        )
+    except OverlayError as exc:
+        if detail := _discard_failed_preparation(state, parent, git_environment):
+            retained = state.parent if state is not None else parent
+            _add_exception_note(exc, f"workspace retained at {retained}: {detail}")
         raise
+    except _RetainedCleanupError as exc:
+        raise WorkspacePrepareError(str(exc), os.fspath(exc.retained_path)) from exc
     except _WorkspaceError as exc:
-        shutil.rmtree(parent, ignore_errors=True)
+        if detail := _discard_failed_preparation(state, parent, git_environment):
+            retained = state.parent if state is not None else parent
+            raise WorkspacePrepareError(
+                f"{exc}; workspace retained at {retained}: {detail}",
+                os.fspath(retained) if retained is not None else None,
+            ) from exc
         raise WorkspacePrepareError(str(exc)) from exc
-    assert state.base_sha is not None
-    return SessionWorkspace(
-        parent=parent,
-        repository=state.repository,
-        worktree=state.worktree,
-        base_sha=state.base_sha,
-        _state=state,
-        _environment=git_environment,
+    except BaseException as exc:
+        if detail := _discard_failed_preparation(state, parent, git_environment):
+            retained = state.parent if state is not None else parent
+            _add_exception_note(exc, f"workspace retained at {retained}: {detail}")
+        raise
+
+
+def run_prepared_command(
+    workspace: PreparedWorkspace,
+    *,
+    command: Sequence[str],
+    timeout: float,
+    teardown_grace: float = DEFAULT_TEARDOWN_GRACE,
+    transcript: Path | None = None,
+    max_repeated_calls: int | None = None,
+) -> WorkspaceResult:
+    """Run one command while leaving the prepared workspace leased."""
+    _validate_command_limits(command, timeout, teardown_grace)
+    return _run_command(
+        command,
+        workspace._state,
+        workspace._environment,
+        timeout,
+        teardown_grace,
+        transcript=transcript,
+        max_repeated_calls=max_repeated_calls,
     )
 
 
-def release_session_workspace(workspace: SessionWorkspace) -> None:
-    """Clean the worktree and remove the parent; refuse an unconfirmed release."""
+def release_workspace(workspace: PreparedWorkspace) -> str | None:
+    """Clean a prepared worktree and remove its parent when that is safe."""
     state = workspace._state
+    if not state.process_cleanup_safe:
+        return os.fspath(state.parent)
     try:
         _cleanup_worktree(state, workspace._environment)
     except _CleanupError as exc:
         raise WorkspaceReleaseError(
-            f"session worktree cleanup is unconfirmed: {exc}",
+            f"workspace cleanup is unconfirmed: {exc}",
             os.fspath(state.parent),
         ) from exc
     if state.process_cleanup_safe and state.registration is Registration.ABSENT:
@@ -1266,6 +1378,32 @@ def release_session_workspace(workspace: SessionWorkspace) -> None:
             _remove_parent(state.parent)
         except OSError as exc:
             raise WorkspaceReleaseError(
-                f"cannot remove session workspace parent {state.parent}: {exc}",
+                f"cannot remove workspace parent {state.parent}: {exc}",
                 os.fspath(state.parent),
             ) from exc
+    return None
+
+
+def prepare_session_workspace(
+    *,
+    base: Path,
+    protected_paths: Sequence[Path],
+    overlay: OverlaySpec | None = None,
+) -> SessionWorkspace:
+    """Session compatibility wrapper around ``prepare_workspace``."""
+    return prepare_workspace(
+        base=base,
+        protected_paths=protected_paths,
+        environment=dict(os.environ),
+        overlay=overlay,
+    )
+
+
+def release_session_workspace(workspace: SessionWorkspace) -> None:
+    """Session compatibility wrapper around ``release_workspace``."""
+    try:
+        release_workspace(workspace)
+    except WorkspaceReleaseError as exc:
+        message = str(exc).replace("workspace cleanup", "session worktree cleanup")
+        message = message.replace("workspace parent", "session workspace parent")
+        raise WorkspaceReleaseError(message, exc.retained_path) from exc
