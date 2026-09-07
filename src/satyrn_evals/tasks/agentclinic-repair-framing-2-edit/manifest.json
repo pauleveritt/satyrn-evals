@@ -43,13 +43,5 @@
   "contracts": {
     "R1": "Repair the seeded bug in the AgentClinic complaints app. A separate acceptance suite, not present in this workspace, aborts at collection: models.complaints raises AttributeError: module 'models' has no attribute 'complaints'. The app import and public suite are healthy. Restore that compatibility. Your workspace has a runnable public suite under tests/ (uv run python -m pytest tests/); a fix must keep every existing behavior intact.",
     "R3": "Repair the seeded bug in the AgentClinic complaints app. A separate acceptance suite, not present in this workspace, aborts at collection because it expects the legacy seed list at models.complaints; the module raises AttributeError: module 'models' has no attribute 'complaints'. The app import and public suite are healthy. Restore that module-level compatibility without changing existing behavior. Your workspace has a runnable public suite under tests/ (uv run python -m pytest tests/); a fix must keep every existing behavior intact."
-  },
-  "public_suite": [
-    "uv",
-    "run",
-    "python",
-    "-m",
-    "pytest",
-    "tests/"
-  ]
+  }
 }

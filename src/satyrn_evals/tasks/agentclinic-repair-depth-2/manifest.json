@@ -45,13 +45,5 @@
     "R1": "Repair the seeded bug in the AgentClinic complaints app. A separate acceptance suite, not present in this workspace, reports three failing checks, test_home_html_element_declares_english_language, test_complaints_board_preserves_the_shared_layout, test_post_complaint_redirects_to_complaints_board: the first two raise AttributeError: 'NoneType' object has no attribute 'casefold', and the third fails assert 307 == 303. Your workspace has a runnable public suite under tests/ (uv run python -m pytest tests/); a fix must keep every existing behavior intact.",
     "R1b": "Repair the seeded bug in the AgentClinic complaints app. A separate acceptance suite, not present in this workspace, reports three failures: the home page's html element no longer declares its language, and the complaints board no longer preserves the shared layout \u2014 both raising AttributeError: 'NoneType' object has no attribute 'casefold' \u2014 and posting a complaint redirects with 307 where 303 is expected. Your workspace has a runnable public suite under tests/ (uv run python -m pytest tests/); a fix must keep every existing behavior intact.",
     "R3": "Repair the seeded bug in the AgentClinic complaints app. A separate acceptance suite, not present in this workspace, reports three failing checks, test_home_html_element_declares_english_language, test_complaints_board_preserves_the_shared_layout, test_post_complaint_redirects_to_complaints_board: a template change dropped the html lang attribute (the page errors with 'NoneType' object has no attribute 'casefold') and the POST response is a 307 Temporary Redirect where 303 is expected. The seeded defects are in app.py and the layout template; fix them so the language attribute is present and the redirect is a 303. Your workspace has a runnable public suite under tests/ (uv run python -m pytest tests/); a fix must keep every existing behavior intact."
-  },
-  "public_suite": [
-    "uv",
-    "run",
-    "python",
-    "-m",
-    "pytest",
-    "tests/"
-  ]
+  }
 }
