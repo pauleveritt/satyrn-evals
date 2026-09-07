@@ -81,6 +81,13 @@ V13 — the first evidence that `read,edit` *loses* on a repair task.
 > nothing on outcomes** — bands move when the engine moves, which is the
 > V16 proposal's argument arriving as evidence.
 >
+> **V13f replicated it on a fresh seed:** Baseline 12/12, Engine 12/12
+> again, so the runner result is not a one-batch artifact
+> (`~/satyrn-smokes/2026-09-07-v13f-replication-020810/RESULT.md`).
+> Envelope moved 2/12 → 6/12 with nothing changed, and across V13d/e/f
+> ranges 4, 2, 6 — **any Envelope conclusion at `n=12` is weak**, including
+> V13e's 2/12.
+>
 > **V13d (36 cells, three arms, one task) settled the unit and left the
 > mechanism open.** `plausible-wrong-fix` R1: Baseline **12/12**, Envelope
 > **4/12**, Engine **6/12**; locked cells 0/12, 3/12, 5/12 by a measure
