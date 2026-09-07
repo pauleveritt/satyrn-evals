@@ -30,14 +30,22 @@ def _completed(
 def test_snapshot_enumeration_and_entry_errors_are_named(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(workspace_module.os, "scandir", lambda _path: (_ for _ in ()).throw(OSError("scan")))
+    monkeypatch.setattr(
+        workspace_module.os,
+        "scandir",
+        lambda _path: (_ for _ in ()).throw(OSError("scan")),
+    )
     with pytest.raises(Exception, match="cannot enumerate.*scan"):
         workspace_module.snapshot_tree(tmp_path)
 
     monkeypatch.undo()
     link = tmp_path / "link"
     link.symlink_to("target")
-    monkeypatch.setattr(workspace_module.os, "readlink", lambda _path: (_ for _ in ()).throw(OSError("readlink")))
+    monkeypatch.setattr(
+        workspace_module.os,
+        "readlink",
+        lambda _path: (_ for _ in ()).throw(OSError("readlink")),
+    )
     with pytest.raises(Exception, match="cannot inspect.*readlink"):
         workspace_module.snapshot_tree(tmp_path)
 
@@ -89,7 +97,9 @@ def test_safe_temp_parent_fails_closed_on_identity_stat_error(
     protected.mkdir()
     original_stat = Path.stat
 
-    def fail_protected_stat(path: Path, *, follow_symlinks: bool = True) -> os.stat_result:
+    def fail_protected_stat(
+        path: Path, *, follow_symlinks: bool = True
+    ) -> os.stat_result:
         if path == protected:
             raise PermissionError("identity unavailable")
         return original_stat(path, follow_symlinks=follow_symlinks)
@@ -128,7 +138,9 @@ def test_safe_temp_parent_retries_allocation_and_postcheck(
     checks = iter((False, False, True, False, False))
     monkeypatch.setattr(workspace_module.tempfile, "gettempdir", lambda: "/candidate-a")
     monkeypatch.setattr(workspace_module.tempfile, "mkdtemp", fake_mkdtemp)
-    monkeypatch.setattr(workspace_module, "_contains_path", lambda _root, _path: next(checks))
+    monkeypatch.setattr(
+        workspace_module, "_contains_path", lambda _root, _path: next(checks)
+    )
     monkeypatch.setattr(workspace_module.shutil, "rmtree", lambda _path: None)
 
     parent = workspace_module._safe_temp_parent((tmp_path / "protected",))
@@ -182,7 +194,9 @@ def test_safe_temp_parent_handles_resolution_failure_after_allocation(
         allocated.mkdir(exist_ok=True)
         return os.fspath(allocated)
 
-    monkeypatch.setattr(workspace_module.tempfile, "gettempdir", lambda: os.fspath(root))
+    monkeypatch.setattr(
+        workspace_module.tempfile, "gettempdir", lambda: os.fspath(root)
+    )
     monkeypatch.setattr(
         workspace_module.tempfile,
         "mkdtemp",
@@ -216,7 +230,9 @@ def test_safe_temp_parent_preserves_baseexception_during_cleanup(
             raise primary
         return real_resolve(path, *args, **kwargs)  # type: ignore[arg-type]
 
-    monkeypatch.setattr(workspace_module.tempfile, "gettempdir", lambda: os.fspath(tmp_path))
+    monkeypatch.setattr(
+        workspace_module.tempfile, "gettempdir", lambda: os.fspath(tmp_path)
+    )
     monkeypatch.setattr(
         workspace_module.tempfile,
         "mkdtemp",
@@ -247,7 +263,9 @@ def test_safe_temp_parent_preserves_cleanup_baseexception_after_resolution_error
             raise OSError("resolve")
         return real_resolve(path, *args, **kwargs)  # type: ignore[arg-type]
 
-    monkeypatch.setattr(workspace_module.tempfile, "gettempdir", lambda: os.fspath(tmp_path))
+    monkeypatch.setattr(
+        workspace_module.tempfile, "gettempdir", lambda: os.fspath(tmp_path)
+    )
     monkeypatch.setattr(
         workspace_module.tempfile,
         "mkdtemp",
@@ -277,7 +295,9 @@ def test_safe_temp_parent_preserves_unsafe_cleanup_baseexception(
     allocated.mkdir()
     primary = KeyboardInterrupt()
     checks = iter((False, True))
-    monkeypatch.setattr(workspace_module.tempfile, "gettempdir", lambda: os.fspath(tmp_path))
+    monkeypatch.setattr(
+        workspace_module.tempfile, "gettempdir", lambda: os.fspath(tmp_path)
+    )
     monkeypatch.setattr(
         workspace_module.tempfile,
         "mkdtemp",
@@ -297,9 +317,7 @@ def test_safe_temp_parent_preserves_unsafe_cleanup_baseexception(
     assert any("retained" in note for note in primary.__notes__)
 
 
-@pytest.mark.parametrize(
-    "cleanup_error", [OSError("locked"), MemoryError("cleanup")]
-)
+@pytest.mark.parametrize("cleanup_error", [OSError("locked"), MemoryError("cleanup")])
 def test_safe_temp_parent_owns_postcheck_failure(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -316,7 +334,9 @@ def test_safe_temp_parent_owns_postcheck_failure(
             raise value
         return cast("bool", value)
 
-    monkeypatch.setattr(workspace_module.tempfile, "gettempdir", lambda: os.fspath(tmp_path))
+    monkeypatch.setattr(
+        workspace_module.tempfile, "gettempdir", lambda: os.fspath(tmp_path)
+    )
     monkeypatch.setattr(
         workspace_module.tempfile,
         "mkdtemp",
@@ -361,7 +381,9 @@ def test_safe_temp_parent_discards_postcheck_failure_and_retries(
             raise value
         return cast("bool", value)
 
-    monkeypatch.setattr(workspace_module.tempfile, "gettempdir", lambda: os.fspath(tmp_path))
+    monkeypatch.setattr(
+        workspace_module.tempfile, "gettempdir", lambda: os.fspath(tmp_path)
+    )
     monkeypatch.setattr(
         workspace_module.tempfile,
         "mkdtemp",
@@ -389,7 +411,9 @@ def test_safe_temp_parent_preserves_postcheck_baseexception(
             raise value
         return cast("bool", value)
 
-    monkeypatch.setattr(workspace_module.tempfile, "gettempdir", lambda: os.fspath(tmp_path))
+    monkeypatch.setattr(
+        workspace_module.tempfile, "gettempdir", lambda: os.fspath(tmp_path)
+    )
     monkeypatch.setattr(
         workspace_module.tempfile,
         "mkdtemp",
@@ -418,7 +442,9 @@ def test_safe_temp_parent_refuses_uncertain_case_alias(
     alias = tmp_path / "caseroot"
     if not alias.exists():
         pytest.skip("filesystem is case-sensitive")
-    monkeypatch.setattr(workspace_module.tempfile, "gettempdir", lambda: os.fspath(alias))
+    monkeypatch.setattr(
+        workspace_module.tempfile, "gettempdir", lambda: os.fspath(alias)
+    )
     monkeypatch.setattr(
         Path,
         "samefile",
@@ -556,6 +582,7 @@ def test_git_protected_paths_stops_at_filesystem_root(
         Path("/.git"),
     }
 
+
 def test_registration_lookup_failure_is_uncertain(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -564,7 +591,9 @@ def test_registration_lookup_failure_is_uncertain(
         "_registered_worktrees",
         lambda *_args: (_ for _ in ()).throw(workspace_module._WorkspaceError("bad")),
     )
-    assert workspace_module._worktree_registered(tmp_path, tmp_path / "work", {}) is None
+    assert (
+        workspace_module._worktree_registered(tmp_path, tmp_path / "work", {}) is None
+    )
 
 
 def test_prepare_repository_wraps_copy_failure(
@@ -653,7 +682,9 @@ def test_prepare_repository_fails_closed_on_verification(
     monkeypatch.setattr(workspace_module, "_git", selected_git)
     monkeypatch.setattr(workspace_module, "snapshot_tree", selected_snapshot)
     if mode == "registration":
-        monkeypatch.setattr(workspace_module, "_worktree_registered", lambda *_args: False)
+        monkeypatch.setattr(
+            workspace_module, "_worktree_registered", lambda *_args: False
+        )
     try:
         with pytest.raises(Exception, match=message):
             workspace_module._prepare_repository(base, state, {})
@@ -663,7 +694,9 @@ def test_prepare_repository_fails_closed_on_verification(
         if state.registration is not Registration.ABSENT:
             with pytest.MonkeyPatch.context() as cleanup_patch:
                 cleanup_patch.setattr(workspace_module, "_git", real_git)
-                cleanup_patch.setattr(workspace_module, "_worktree_registered", real_registered)
+                cleanup_patch.setattr(
+                    workspace_module, "_worktree_registered", real_registered
+                )
                 workspace_module._cleanup_worktree(state, {})
 
 
@@ -684,7 +717,9 @@ def test_group_observation_and_wait_paths(monkeypatch: pytest.MonkeyPatch) -> No
     assert not workspace_module._group_gone(7)
 
     observations = iter((False, True))
-    monkeypatch.setattr(workspace_module, "_group_gone", lambda _pid: next(observations))
+    monkeypatch.setattr(
+        workspace_module, "_group_gone", lambda _pid: next(observations)
+    )
     monkeypatch.setattr(workspace_module.time, "sleep", lambda _duration: None)
     times = iter((0.0, 0.0, 1.0))
     monkeypatch.setattr(workspace_module.time, "monotonic", lambda: next(times))
@@ -696,11 +731,12 @@ class _FakeProcess:
 
     def __init__(self, waits: list[int | BaseException]) -> None:
         self.waits = waits
+        self.wait_timeouts: list[float | None] = []
         self.terminated = False
         self.killed = False
 
     def wait(self, timeout: float | None = None) -> int:
-        del timeout
+        self.wait_timeouts.append(timeout)
         value = self.waits.pop(0)
         if isinstance(value, BaseException):
             raise value
@@ -715,6 +751,41 @@ class _FakeProcess:
 
 def _process(fake: _FakeProcess) -> subprocess.Popen[bytes]:
     return cast("subprocess.Popen[bytes]", fake)
+
+
+def test_posix_teardown_spends_one_shared_grace_period(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    process = _FakeProcess([0])
+    group_wait_cutoffs: list[float] = []
+    clock_values = iter((10.0, 10.1))
+
+    monkeypatch.setattr(workspace_module, "_is_posix", lambda: True)
+    monkeypatch.setattr(workspace_module.os, "killpg", lambda *_args: None)
+    monkeypatch.setattr(
+        workspace_module,
+        "_wait_until_group_gone",
+        lambda _pid, cutoff: group_wait_cutoffs.append(cutoff) or True,
+    )
+    monkeypatch.setattr(workspace_module.time, "monotonic", lambda: next(clock_values))
+
+    assert workspace_module._teardown_process(_process(process), 1.0) == (True, None)
+    assert group_wait_cutoffs == [10.5, 11.0]
+    assert process.wait_timeouts == [pytest.approx(0.9)]
+
+
+def test_windows_teardown_spends_one_shared_grace_period(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    process = _FakeProcess([subprocess.TimeoutExpired("x", 1), 0])
+    clock_values = iter((10.0, 10.1, 10.3))
+
+    monkeypatch.setattr(workspace_module, "_is_posix", lambda: False)
+    monkeypatch.setattr(workspace_module.time, "monotonic", lambda: next(clock_values))
+
+    assert workspace_module._teardown_process(_process(process), 0.5) == (True, None)
+    assert process.wait_timeouts == [pytest.approx(0.15), pytest.approx(0.2)]
+    assert process.terminated and process.killed
 
 
 def test_posix_teardown_records_signal_and_reap_failures(
@@ -777,9 +848,7 @@ def test_posix_teardown_handles_already_gone_and_kill_error(
 def test_windows_fallback_terminate_kill_and_reap_errors(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    process = _FakeProcess(
-        [subprocess.TimeoutExpired("x", 1), OSError("reap")]
-    )
+    process = _FakeProcess([subprocess.TimeoutExpired("x", 1), OSError("reap")])
     monkeypatch.setattr(workspace_module, "_is_posix", lambda: False)
 
     def bad_terminate() -> None:
@@ -839,8 +908,14 @@ def test_run_command_start_spool_timeout_and_unexpected_paths(
     state = _state(tmp_path / "timeout")
     state.base_sha = "a" * 40
     process = _FakeProcess([subprocess.TimeoutExpired("x", 1)])
-    monkeypatch.setattr(workspace_module.subprocess, "Popen", lambda *_args, **_kwargs: _process(process))
-    monkeypatch.setattr(workspace_module, "_teardown_process", lambda *_args: (False, "alive"))
+    monkeypatch.setattr(
+        workspace_module.subprocess,
+        "Popen",
+        lambda *_args, **_kwargs: _process(process),
+    )
+    monkeypatch.setattr(
+        workspace_module, "_teardown_process", lambda *_args: (False, "alive")
+    )
     result = workspace_module._run_command(("x",), state, {}, 1, 0.1)
     assert result.code is WorkspaceCode.CLEANUP_FAILED
     assert not state.process_cleanup_safe
@@ -849,8 +924,14 @@ def test_run_command_start_spool_timeout_and_unexpected_paths(
     state = _state(tmp_path / "unexpected")
     primary = KeyboardInterrupt()
     process = _FakeProcess([primary])
-    monkeypatch.setattr(workspace_module.subprocess, "Popen", lambda *_args, **_kwargs: _process(process))
-    monkeypatch.setattr(workspace_module, "_teardown_process", lambda *_args: (False, "alive"))
+    monkeypatch.setattr(
+        workspace_module.subprocess,
+        "Popen",
+        lambda *_args, **_kwargs: _process(process),
+    )
+    monkeypatch.setattr(
+        workspace_module, "_teardown_process", lambda *_args: (False, "alive")
+    )
     with pytest.raises(KeyboardInterrupt) as raised:
         workspace_module._run_command(("x",), state, {}, 1, 0.1)
     assert raised.value is primary
@@ -860,8 +941,14 @@ def test_run_command_start_spool_timeout_and_unexpected_paths(
     state = _state(tmp_path / "unexpected-safe")
     primary = KeyboardInterrupt()
     process = _FakeProcess([primary])
-    monkeypatch.setattr(workspace_module.subprocess, "Popen", lambda *_args, **_kwargs: _process(process))
-    monkeypatch.setattr(workspace_module, "_teardown_process", lambda *_args: (True, None))
+    monkeypatch.setattr(
+        workspace_module.subprocess,
+        "Popen",
+        lambda *_args, **_kwargs: _process(process),
+    )
+    monkeypatch.setattr(
+        workspace_module, "_teardown_process", lambda *_args: (True, None)
+    )
     with pytest.raises(KeyboardInterrupt) as raised:
         workspace_module._run_command(("x",), state, {}, 1, 0.1)
     assert raised.value is primary
@@ -871,7 +958,11 @@ def test_run_command_start_spool_timeout_and_unexpected_paths(
     state = _state(tmp_path / "unexpected-teardown")
     primary = KeyboardInterrupt()
     process = _FakeProcess([primary])
-    monkeypatch.setattr(workspace_module.subprocess, "Popen", lambda *_args, **_kwargs: _process(process))
+    monkeypatch.setattr(
+        workspace_module.subprocess,
+        "Popen",
+        lambda *_args, **_kwargs: _process(process),
+    )
     monkeypatch.setattr(
         workspace_module,
         "_teardown_process",
@@ -923,7 +1014,9 @@ def test_run_command_owns_partial_spools_and_preserves_wait_error(
         "Popen",
         lambda *_args, **_kwargs: _process(process),
     )
-    monkeypatch.setattr(workspace_module, "_teardown_process", lambda *_args: (True, None))
+    monkeypatch.setattr(
+        workspace_module, "_teardown_process", lambda *_args: (True, None)
+    )
     with pytest.raises(OSError) as raised:
         workspace_module._run_command(("x",), state, {}, 1, 0.1)
     assert raised.value is primary
@@ -1051,14 +1144,18 @@ def test_cleanup_worktree_error_variants(
     monkeypatch.setattr(
         workspace_module,
         "_git",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(workspace_module._WorkspaceError("remove")),
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            workspace_module._WorkspaceError("remove")
+        ),
     )
     monkeypatch.setattr(workspace_module, "_worktree_registered", lambda *_args: False)
     workspace_module._cleanup_worktree(state, {})
     assert state.registration is Registration.ABSENT
 
     state.registration = Registration.PRESENT
-    monkeypatch.setattr(workspace_module, "_git", lambda *_args, **_kwargs: _completed())
+    monkeypatch.setattr(
+        workspace_module, "_git", lambda *_args, **_kwargs: _completed()
+    )
     monkeypatch.setattr(workspace_module, "_worktree_registered", lambda *_args: True)
     with pytest.raises(Exception, match="retained") as raised:
         workspace_module._cleanup_worktree(state, {})
@@ -1097,7 +1194,9 @@ def test_run_workspace_cleanup_precedence_and_exception_identity(
     parent = tmp_path / "owned"
     parent.mkdir()
 
-    def prepare(_base: Path, state: workspace_module._WorkspaceState, _env: dict[str, str]) -> None:
+    def prepare(
+        _base: Path, state: workspace_module._WorkspaceState, _env: dict[str, str]
+    ) -> None:
         state.registration = Registration.PRESENT
         state.base_sha = "a" * 40
 
@@ -1122,7 +1221,9 @@ def test_run_workspace_cleanup_precedence_and_exception_identity(
     parent.mkdir()
     primary = KeyboardInterrupt()
 
-    def interrupt(_base: Path, state: workspace_module._WorkspaceState, _env: dict[str, str]) -> None:
+    def interrupt(
+        _base: Path, state: workspace_module._WorkspaceState, _env: dict[str, str]
+    ) -> None:
         state.registration = Registration.PRESENT
         raise primary
 
@@ -1146,7 +1247,9 @@ def test_run_workspace_secondary_baseexceptions_and_parent_failures(
     parent = tmp_path / "owned"
     parent.mkdir()
 
-    def present(_base: Path, state: workspace_module._WorkspaceState, _env: dict[str, str]) -> None:
+    def present(
+        _base: Path, state: workspace_module._WorkspaceState, _env: dict[str, str]
+    ) -> None:
         state.registration = Registration.PRESENT
 
     def run(*_args: Any, **_kwargs: Any) -> WorkspaceResult:
@@ -1286,7 +1389,9 @@ def test_run_workspace_active_secondary_cleanup_failures_become_notes(
         state.registration = Registration.PRESENT
         raise primary
 
-    _patch_workspace_setup(monkeypatch, parent, present_then_interrupt, lambda *_args: None)
+    _patch_workspace_setup(
+        monkeypatch, parent, present_then_interrupt, lambda *_args: None
+    )
     monkeypatch.setattr(
         workspace_module,
         "_cleanup_worktree",
@@ -1329,7 +1434,9 @@ def test_run_workspace_setup_failure_before_state_is_named(
     monkeypatch.setattr(
         workspace_module,
         "_local_env_vars",
-        lambda _env: (_ for _ in ()).throw(workspace_module._WorkspaceError("git unavailable")),
+        lambda _env: (_ for _ in ()).throw(
+            workspace_module._WorkspaceError("git unavailable")
+        ),
     )
     result = workspace_module.run_workspace(
         base=tmp_path, protected_paths=(), command=("x",), environment={}

@@ -717,8 +717,20 @@ def _wait_until_group_gone(process_group: int, deadline: float) -> bool:
 def _teardown_process(
     process: subprocess.Popen[bytes], grace: float
 ) -> tuple[bool, str | None]:
-    """Best-effort bounded teardown; safe means child reaped and group gone."""
+    """Best-effort teardown within one grace period.
+
+    The allowance begins with termination, rather than being granted afresh
+    for each signal, reap, and process-group observation.  Safe still means
+    that the direct child is reaped and (on POSIX) its process group is gone.
+    """
     details: list[str] = []
+    started = time.monotonic()
+    cutoff = started + grace
+    terminate_cutoff = started + grace / 2
+
+    def remaining(until: float = cutoff) -> float:
+        return max(0.0, until - time.monotonic())
+
     if _is_posix():
         try:
             os.killpg(process.pid, signal.SIGTERM)
@@ -726,7 +738,10 @@ def _teardown_process(
             pass
         except OSError as exc:
             details.append(f"cannot signal process group with SIGTERM: {exc}")
-        gone = _wait_until_group_gone(process.pid, time.monotonic() + grace)
+        # Reserve part of the one shared allowance for SIGKILL and reaping.
+        # Otherwise an exited direct child can remain a zombie in the process
+        # group until it is reaped, making disappearance impossible to prove.
+        gone = _wait_until_group_gone(process.pid, terminate_cutoff)
         if not gone:
             try:
                 os.killpg(process.pid, signal.SIGKILL)
@@ -740,7 +755,7 @@ def _teardown_process(
         except OSError as exc:
             details.append(f"cannot terminate command: {exc}")
         try:
-            process.wait(timeout=grace)
+            process.wait(timeout=remaining(terminate_cutoff))
         except subprocess.TimeoutExpired:
             try:
                 process.kill()
@@ -748,18 +763,14 @@ def _teardown_process(
                 details.append(f"cannot kill command: {exc}")
     reaped = True
     try:
-        process.wait(timeout=grace)
+        process.wait(timeout=remaining())
     except subprocess.TimeoutExpired:
         reaped = False
         details.append("direct child was not reaped")
     except OSError as exc:
         reaped = False
         details.append(f"cannot reap direct child: {exc}")
-    gone = (
-        _wait_until_group_gone(process.pid, time.monotonic() + grace)
-        if _is_posix()
-        else reaped
-    )
+    gone = _wait_until_group_gone(process.pid, cutoff) if _is_posix() else reaped
     if not gone:
         details.append("process group disappearance is unconfirmed")
     return reaped and gone, "; ".join(details) or None
