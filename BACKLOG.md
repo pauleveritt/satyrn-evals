@@ -38,6 +38,17 @@ refuses on reference-arm evidence alone — which `plausible-wrong-fix` did
 (Baseline 12/12 vs Engine 6/12, admitted by no rule because the V12
 profile ran the reference arm only).
 
+**The engine's `run_tests` tool is offered and never invoked** (2026-09-06,
+V13e smoke). Four uncounted cells on `plausible-wrong-fix`, engine
+`bc0434a`: **0 `run_tests` calls**, including one that succeeded in 20
+calls without running the suite. Wiring verified — contract carries
+`test_command`, prompt names the tool, no extension error — so this is
+affordance, not plumbing. Baseline runs `pytest` via `bash` ~4x a cell on
+the same task. Hypothesis: strong priors for `bash`, none for a novel
+name, and a prompt that says "Stop when the task is complete" without
+asking for verification. **Reopens as an engine design proposal** — rename,
+re-describe, or instruct verification — testable with uncounted cells.
+
 **The read-lock attractor has no explanation** (found 2026-09-06 across
 V13/V13b/V13c). A cell surveys the tree, then repeats one identical `read`
 until something stops it; **0 of 8** bare-Pi cells reaching a run of 5
@@ -309,18 +320,6 @@ exits 2 writing neither patch nor transcript, so evals records
 `REFUSED`/`NO_PATCH` with `transcript_path: None`. **Not** the PATH trap —
 the tests invoke it through `uv run --project` and the binary runs.
 **Reopens as a V12 entry gate**, since it is the real-engine attempt path.
-
-**Engine's loop breaker keys on repetition, not progress.** It trips on
-`CONSECUTIVE_BLOCK_LIMIT = 3` consecutive blocked repeats and fired 56
-times across the spike's 12 Engine cells, sharing the blind spot found in
-evals' own rule. Transferable evidence, measured on the reference arm
-over 231 cells: a patch-producing cell never exceeded **21** consecutive
-non-editing calls; failures reached **363**. The rules differ in kind —
-evals' terminates and tells the model nothing, Engine's intervenes.
-
-This sits here only because `satyrn-engine` is pinned at `25ca0be` and must
-stay byte-identical for the Engine arm; editing it would make V13's own
-preflight refuse. **Transfer it when the pin moves.**
 
 **The repeated-call rule catches repetition, not stalling** (found
 2026-09-06 in the abandoned R1b run). One cell made 264
