@@ -12,8 +12,10 @@ from satyrn_evals.attempt_record import (
     AttemptCode,
     AttemptOutcome,
     AttemptRecord,
+    DeadlinePhase,
     load_attempt_record,
 )
+from satyrn_evals.deadline import AttemptDeadline
 from satyrn_evals.errors import HookError, UsageError
 from satyrn_evals.receipt import Receipt, write_receipt
 from satyrn_evals.verdict import Verdict
@@ -783,6 +785,138 @@ def test_successful_grade_rewrites_the_record_ok(
     assert record.receipt_path == "receipt.json"
     loaded = load_attempt_record(attempt_dir / "attempt.json")
     assert loaded.code is AttemptCode.OK and loaded.verdict is Verdict.PASS
+
+
+@pytest.mark.parametrize("verdict", [Verdict.PASS, Verdict.FAIL, Verdict.UNAVAILABLE])
+def test_grading_deadline_reconciles_a_matching_durable_receipt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, verdict: Verdict
+) -> None:
+    monkeypatch.setattr(attempt_module, "grade", _grade_boom)
+    record, attempt_dir = _run_attempt(
+        tmp_path, monkeypatch, GOOD_PATCH.encode(), TRANSCRIPT.encode()
+    )
+    write_receipt(
+        attempt_dir / "receipt.json",
+        Receipt(record.task, record.patch_digest or "", verdict, "", None),
+    )
+
+    class Clock:
+        now = 0.0
+
+        def __call__(self) -> float:
+            return self.now
+
+    clock = Clock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+    clock.now = 1.0
+    finalized = attempt_module._finalize_deadline_from_record(
+        attempt_dir, deadline, _FakeLease({})
+    )
+
+    assert finalized.code is AttemptCode.OK
+    assert finalized.verdict is verdict
+    assert finalized.deadline is not None
+    assert finalized.deadline.phase is DeadlinePhase.GRADING
+    assert finalized.retained_path == "/tmp/fake-prepared-workspace"
+    assert load_attempt_record(attempt_dir / "attempt.json") == finalized
+
+
+def test_grading_deadline_never_promotes_mismatched_receipt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(attempt_module, "grade", _grade_boom)
+    record, attempt_dir = _run_attempt(
+        tmp_path, monkeypatch, GOOD_PATCH.encode(), TRANSCRIPT.encode()
+    )
+    write_receipt(
+        attempt_dir / "receipt.json",
+        Receipt("wrong-task", record.patch_digest or "", Verdict.PASS, "", None),
+    )
+
+    class Clock:
+        now = 0.0
+
+        def __call__(self) -> float:
+            return self.now
+
+    clock = Clock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+    clock.now = 1.0
+    finalized = attempt_module._finalize_deadline_from_record(
+        attempt_dir, deadline, _FakeLease({})
+    )
+
+    assert finalized.code is AttemptCode.GRADE_FAILED
+    assert finalized.verdict is None
+    assert finalized.deadline is not None
+
+
+def test_grading_deadline_keeps_grade_failed_when_receipt_read_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(attempt_module, "grade", _grade_boom)
+    _record, attempt_dir = _run_attempt(
+        tmp_path, monkeypatch, GOOD_PATCH.encode(), TRANSCRIPT.encode()
+    )
+    receipt_path = attempt_dir / "receipt.json"
+    receipt_path.write_text("{}")
+    original_read_text = Path.read_text
+
+    def fail_receipt(path: Path, *args: object, **kwargs: object) -> str:
+        if path == receipt_path:
+            raise OSError("receipt disappeared")
+        return original_read_text(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", fail_receipt)
+
+    class Clock:
+        now = 0.0
+
+        def __call__(self) -> float:
+            return self.now
+
+    clock = Clock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+    clock.now = 1.0
+    finalized = attempt_module._finalize_deadline_from_record(
+        attempt_dir, deadline, _FakeLease({})
+    )
+
+    assert finalized.code is AttemptCode.GRADE_FAILED
+    assert finalized.deadline is not None
+    assert load_attempt_record(attempt_dir / "attempt.json") == finalized
+
+
+def test_within_budget_refusal_records_configured_attempt_timeout(
+    tmp_path: Path,
+) -> None:
+    tasks_root = tmp_path / "tasks"
+    task_dir = _task(tasks_root)
+    attempt_dir = tmp_path / "attempt"
+    attempt_dir.mkdir()
+
+    class Clock:
+        def __call__(self) -> float:
+            return 0.0
+
+    record = attempt_module._finish_attempt(
+        workspace=WorkspaceResult(WorkspaceCode.OK, "done", 0, "b" * 40),
+        task_dir=task_dir,
+        attempt_dir=attempt_dir,
+        patch_path=attempt_dir / "patch.diff",
+        transcript_path=attempt_dir / "transcript.txt",
+        manifest=attempt_module.load_manifest(task_dir),
+        effective_command=["fake-agent"],
+        timeout=30.0,
+        rung=None,
+        digest="a" * 64,
+        deadline=AttemptDeadline(10.0, clock=Clock()),
+    )
+
+    assert record.code is AttemptCode.NO_PATCH
+    assert record.attempt_timeout == 10.0
+    assert record.deadline is None
+    assert load_attempt_record(attempt_dir / "attempt.json") == record
 
 
 def test_attempt_grades_and_records_before_releasing_workspace(

@@ -8,6 +8,7 @@ TRANSCRIPT are where the command writes its delivery.
 """
 
 import hashlib
+import json
 import os
 import stat
 import sys
@@ -21,8 +22,12 @@ from satyrn_evals.attempt_record import (
     AttemptCode,
     AttemptOutcome,
     AttemptRecord,
+    DeadlinePhase,
+    DeadlineProvenance,
+    load_attempt_record,
     write_attempt_record,
 )
+from satyrn_evals.deadline import AttemptDeadline, AttemptDeadlineExceeded
 from satyrn_evals.engine_contract import (
     render_engine_contract,
     write_engine_contract,
@@ -34,6 +39,7 @@ from satyrn_evals.model_error import infrastructure_failure
 from satyrn_evals.overlay import load_overlay
 from satyrn_evals.patch import parse_patch_paths
 from satyrn_evals.receipt import patch_digest
+from satyrn_evals.verdict import Verdict
 from satyrn_evals.workspace import (
     DEFAULT_TIMEOUT,
     PreparedWorkspace,
@@ -342,6 +348,59 @@ def _release_after_exception(
             _add_exception_note(error, f"{message}; retained at {retained_path}")
 
 
+def _finalize_deadline_from_record(
+    attempt_dir: Path,
+    deadline: AttemptDeadline,
+    workspace: PreparedWorkspace,
+) -> AttemptRecord:
+    """Add expiry provenance and reconcile an already-durable receipt.
+
+    A receipt is verdict evidence only when its task and patch digest match
+    the pre-grade record.  Otherwise the durable GRADE_FAILED state remains
+    regradeable rather than manufacturing an outcome from process status.
+    """
+    record = load_attempt_record(attempt_dir / "attempt.json")
+    receipt_path = attempt_dir / "receipt.json"
+    if record.code is AttemptCode.GRADE_FAILED and receipt_path.is_file():
+        try:
+            data = json.loads(receipt_path.read_text(encoding="utf-8"))
+            verdict = Verdict(data["verdict"])
+            matches = (
+                data["task"] == record.task
+                and data["patch_digest"] == record.patch_digest
+            )
+        except KeyError, TypeError, ValueError, json.JSONDecodeError, OSError:
+            matches = False
+        if matches:
+            record = replace(
+                record,
+                code=AttemptCode.OK,
+                message="attempt recorded and graded before deadline finalization",
+                verdict=verdict,
+                receipt_path="receipt.json",
+            )
+    expiry: AttemptDeadlineExceeded
+    try:
+        deadline.remaining(DeadlinePhase.GRADING)
+    except AttemptDeadlineExceeded as caught:
+        expiry = caught
+    else:
+        raise AssertionError("deadline finalization requires an expired deadline")
+    record = replace(
+        record,
+        attempt_timeout=deadline.timeout,
+        deadline=DeadlineProvenance(
+            deadline.timeout,
+            expiry.phase,
+            expiry.elapsed,
+            workspace_retained=True,
+        ),
+        retained_path=os.fspath(workspace.parent),
+    )
+    write_attempt_record(attempt_dir / "attempt.json", record)
+    return record
+
+
 def _record_release_retention(
     record: AttemptRecord,
     *,
@@ -377,6 +436,7 @@ def _finish_attempt(
     timeout: float,
     rung: str | None,
     digest: str,
+    deadline: AttemptDeadline | None = None,
 ) -> AttemptRecord:
     """Preserve, grade, and record artifacts after the workspace is settled."""
     command_exit = workspace.command_exit
@@ -463,6 +523,7 @@ def _finish_attempt(
             workspace_base_sha=workspace.base_sha,
             retained_path=workspace.retained_path,
             attempt_dir=attempt_dir.name,
+            attempt_timeout=deadline.timeout if deadline is not None else None,
         )
         write_attempt_record(attempt_dir / "attempt.json", record)
         return record
@@ -490,10 +551,17 @@ def _finish_attempt(
         contract_digest=digest,
         workspace_base_sha=workspace.base_sha,
         attempt_dir=attempt_dir.name,
+        attempt_timeout=deadline.timeout if deadline is not None else None,
     )
     write_attempt_record(attempt_dir / "attempt.json", base_record)
     try:
-        receipt = grade(task_dir, patch_path, attempt_dir / "receipt.json")
+        receipt = (
+            grade(task_dir, patch_path, attempt_dir / "receipt.json", deadline=deadline)
+            if deadline is not None
+            else grade(task_dir, patch_path, attempt_dir / "receipt.json")
+        )
+        if deadline is not None:
+            deadline.remaining(DeadlinePhase.GRADING)
     except SatyrnError as exc:
         record = replace(base_record, message=f"{base_record.message}: {exc}")
         write_attempt_record(attempt_dir / "attempt.json", record)
