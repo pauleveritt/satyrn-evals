@@ -81,6 +81,18 @@ V13 — the first evidence that `read,edit` *loses* on a repair task.
 > nothing on outcomes** — bands move when the engine moves, which is the
 > V16 proposal's argument arriving as evidence.
 >
+> **V14b: the runner generalizes, and Engine clearly beats Baseline on one
+> task.** Three harder tasks, Baseline and Engine interleaved at `n=12`,
+> the runner used in **36/36** Engine cells: `misleading-locus`
+> **4/12 vs 11/12** (p = 0.005), `depth-2` **6/12 vs 8/12**, `depth-3`
+> **0/12 both** — the quality floor does not move even with a runner.
+> Engine costs **1.6x** less per success on `depth-2` and **3.9x** less on
+> `misleading-locus`. Caution recorded beside it: Baseline's
+> `misleading-locus` rate reads 0.50, 0.58 and 0.33 across batches, so this
+> batch caught its low end. What is *not* cross-batch is that Baseline
+> locked in 8 of 12 cells here and Engine in 1
+> (`~/satyrn-smokes/2026-09-07-v14b-133236/RESULT.md`).
+>
 > **V14a tested E9's corrective message and it failed (outcome C).** Told
 > that an anchor was missing because its `new_text` is already applied,
 > the model re-sent the same edit in **16 of 28** events — a **57%**
