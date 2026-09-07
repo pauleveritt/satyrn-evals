@@ -162,7 +162,8 @@ premise two committed documents already refuted — the record existed and
 was never retrieved. Four silent-zero incidents are recorded there in
 detail; read them before trusting a suspiciously clean result. If you find
 a new failure mode worth keeping, add it to this repository's own lessons
-file the same way, indexed by symptom.
+file the same way, indexed by symptom: `docs/development/lessons.md`,
+created 2026-09-07 and seeded with the four modes found here.
 
 ## Provenance
 

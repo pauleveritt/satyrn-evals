@@ -11,6 +11,7 @@ being prerequisite reading for a first evaluation.
 ../architecture
 ../contributing
 arm-substrate
+lessons
 ../sdd
 ../superpowers/index
 ```
