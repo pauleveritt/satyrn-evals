@@ -77,9 +77,10 @@ def test_engine_file_loads_with_read_edit_and_the_pinned_commit() -> None:
     # for -- it failed when the pin was bumped and had to be updated on
     # purpose. 25ca0be was the repaired Engine commit V11c and V13 ran
     # against; b977941 adds the edit-schema fix that V13 found
-    # (973 refused calls, five lost cells); bc0434a adds E7's run_tests
-    # tool, which is why the digest set gained runner.ts and orchestrator.ts.
-    assert commit.startswith("bc0434a")
+    # (973 refused calls, five lost cells); bc0434a added E7's runner and
+    # 8f1deb3 renamed it to bash, which is why the digest set covers
+    # runner.ts and orchestrator.ts as well as the two original extensions.
+    assert commit.startswith("8f1deb3")
     assert len(commit) == 40
     assert set(arm.pins.digests) == {
         "engine.ts",
