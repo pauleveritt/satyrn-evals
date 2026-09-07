@@ -11,7 +11,9 @@ from pathlib import Path
 
 import satyrn_evals
 from satyrn_evals import oracle_hook
+from satyrn_evals.attempt_record import DeadlinePhase
 from satyrn_evals.contamination import evidence_dict, scan_patch
+from satyrn_evals.deadline import AttemptDeadline, AttemptDeadlineExceeded
 from satyrn_evals.errors import (
     ApplyError,
     HookError,
@@ -35,6 +37,25 @@ from satyrn_evals.verdict import (
 from satyrn_evals.workspace import GIT_SAFETY_CONFIG, clean_git_environment
 
 
+def _run_grading_subprocess(
+    argv: list[str], *, deadline: AttemptDeadline | None = None, **kwargs: object
+) -> subprocess.CompletedProcess[bytes]:
+    """Run one grading-owned subprocess without accepting work after expiry."""
+    if deadline is None:
+        return subprocess.run(argv, **kwargs)  # type: ignore[arg-type]
+    try:
+        result = subprocess.run(
+            argv, timeout=deadline.remaining(DeadlinePhase.GRADING), **kwargs
+        )
+    except subprocess.TimeoutExpired:
+        deadline.expire(DeadlinePhase.GRADING)
+    except OSError, subprocess.CalledProcessError:
+        deadline.remaining(DeadlinePhase.GRADING)
+        raise
+    deadline.remaining(DeadlinePhase.GRADING)
+    return result
+
+
 def grade(
     task_dir: Path,
     patch_path: Path,
@@ -45,6 +66,7 @@ def grade(
     expected: tuple[str, ...] | None = None,
     enforce_allowlist: bool = True,
     auto_overlay: bool = True,
+    deadline: AttemptDeadline | None = None,
 ) -> Receipt:
     """Grade PATCH against TASK, write the receipt, return it.
 
@@ -69,11 +91,11 @@ def grade(
     against explicitly declared selectors with no overlay.
     Detection never changes a verdict or an exit code.
     """
+    if deadline is not None:
+        deadline.remaining(DeadlinePhase.GRADING)
     manifest = load_manifest(task_dir)
     auto_overlay = (
-        auto_overlay
-        and overlay is None
-        and manifest.oracle_visibility == "hidden"
+        auto_overlay and overlay is None and manifest.oracle_visibility == "hidden"
     )
     if auto_overlay:
         overlay = load_overlay(task_dir, manifest)
@@ -92,7 +114,12 @@ def grade(
         if enforce_allowlist:
             check_allowlist(paths, manifest.source_paths)
         hook, resolved_versions = _run_oracle(
-            manifest, task_dir, patch_text, overlay=overlay, selectors=selectors
+            manifest,
+            task_dir,
+            patch_text,
+            overlay=overlay,
+            selectors=selectors,
+            deadline=deadline,
         )
         verdict = compute_verdict(
             hook,
@@ -149,6 +176,8 @@ def grade(
         contamination=contamination,
         resolved_versions=resolved_versions,
     )
+    if deadline is not None:
+        deadline.remaining(DeadlinePhase.GRADING)
     write_receipt(receipt_path, receipt)
     return receipt
 
@@ -171,7 +200,9 @@ def _hook_import_path(work: Path, package_dir: Path) -> Path:
     return shim
 
 
-def _materialize_project_env(work: Path, tmp: Path, base: Path) -> Path | None:
+def _materialize_project_env(
+    work: Path, tmp: Path, base: Path, *, deadline: AttemptDeadline | None = None
+) -> Path | None:
     """Relocated project env at tmp/project-env, uv sync --locked in work.
 
     Returns the env root when the base is a locked uv project (pyproject.toml
@@ -185,35 +216,54 @@ def _materialize_project_env(work: Path, tmp: Path, base: Path) -> Path | None:
     env = dict(os.environ)
     env["UV_PROJECT_ENVIRONMENT"] = os.fspath(env_root)
     try:
-        subprocess.run(
+        _run_grading_subprocess(
             ["uv", "sync", "--locked"],
-            cwd=work, env=env, capture_output=True, check=True,
+            cwd=work,
+            env=env,
+            capture_output=True,
+            check=True,
+            deadline=deadline,
         )
+    except AttemptDeadlineExceeded:
+        raise
     except (OSError, subprocess.CalledProcessError) as e:
         raise OracleError(f"cannot materialize task environment: {e}") from e
     return env_root
 
 
-def _apply_patch(work: Path, patch_text: str, git_env: dict[str, str]) -> None:
+def _apply_patch(
+    work: Path,
+    patch_text: str,
+    git_env: dict[str, str],
+    *,
+    deadline: AttemptDeadline | None = None,
+) -> None:
     """git init + apply under grading's cleaned environment (T8)."""
     try:
-        subprocess.run(
+        _run_grading_subprocess(
             ["git", *GIT_SAFETY_CONFIG, "init", "-q"],
-            cwd=work, env=git_env, check=True, capture_output=True,
+            cwd=work,
+            env=git_env,
+            check=True,
+            capture_output=True,
+            deadline=deadline,
         )
+    except AttemptDeadlineExceeded:
+        raise
     except (OSError, subprocess.CalledProcessError) as e:
         raise ApplyError(f"cannot run git: {e}") from e
-    applied = subprocess.run(
+    applied = _run_grading_subprocess(
         ["git", *GIT_SAFETY_CONFIG, "apply", "-"],
         input=os.fsencode(patch_text),
         cwd=work,
         env=git_env,
         capture_output=True,
+        deadline=deadline,
     )
+    if deadline is not None:
+        deadline.remaining(DeadlinePhase.GRADING)
     if applied.returncode != 0:
-        raise ApplyError(
-            "patch did not apply: " + os.fsdecode(applied.stderr).strip()
-        )
+        raise ApplyError("patch did not apply: " + os.fsdecode(applied.stderr).strip())
 
 
 def _run_oracle(
@@ -223,6 +273,7 @@ def _run_oracle(
     *,
     overlay: OverlaySpec | None = None,
     selectors: tuple[str, ...] = (),
+    deadline: AttemptDeadline | None = None,
 ) -> tuple[HookResult, dict[str, str] | None]:
     """Run the oracle and return (hook result, resolved-version attestation).
 
@@ -233,17 +284,29 @@ def _run_oracle(
     """
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp) / "work"
+        if deadline is not None:
+            deadline.remaining(DeadlinePhase.GRADING)
         shutil.copytree(task_dir / "base", work, symlinks=True)
-        git_env = clean_git_environment(dict(os.environ))
-        _apply_patch(work, patch_text, git_env)
+        if deadline is not None:
+            deadline.remaining(DeadlinePhase.GRADING)
+        git_env = clean_git_environment(
+            dict(os.environ), deadline=deadline, phase=DeadlinePhase.GRADING
+        )
+        _apply_patch(work, patch_text, git_env, deadline=deadline)
         if overlay is not None:
+            if deadline is not None:
+                deadline.remaining(DeadlinePhase.GRADING)
             materialize_overlay(overlay, work)
+            if deadline is not None:
+                deadline.remaining(DeadlinePhase.GRADING)
         fd, hook_path = tempfile.mkstemp(
             prefix="satyrn-hook-", suffix=".json", dir=os.fspath(tmp)
         )
         os.close(fd)
         os.unlink(hook_path)  # reserve a unique name; a silent oracle leaves NO file
-        env_root = _materialize_project_env(work, Path(tmp), task_dir / "base")
+        env_root = _materialize_project_env(
+            work, Path(tmp), task_dir / "base", deadline=deadline
+        )
         env = dict(os.environ)
         env[oracle_hook.RESULT_ENV] = hook_path
         if env_root is not None:
@@ -261,18 +324,35 @@ def _run_oracle(
             )
         run_started = time.time()
         try:
-            subprocess.run(
-                [*manifest.oracle, *selectors], cwd=work, env=env, capture_output=True
+            _run_grading_subprocess(
+                [*manifest.oracle, *selectors],
+                cwd=work,
+                env=env,
+                capture_output=True,
+                deadline=deadline,
             )
+        except AttemptDeadlineExceeded:
+            raise
         except OSError as e:
             raise OracleError(f"oracle failed to start: {e}") from e
         frozen: dict[str, str] | None = None
         if env_root is not None:
             try:
-                freeze = subprocess.run(
-                    ["uv", "pip", "freeze", "--python", os.fspath(env_root / "bin" / "python")],
-                    capture_output=True, check=True, text=True,
+                freeze = _run_grading_subprocess(
+                    [
+                        "uv",
+                        "pip",
+                        "freeze",
+                        "--python",
+                        os.fspath(env_root / "bin" / "python"),
+                    ],
+                    capture_output=True,
+                    check=True,
+                    text=True,
+                    deadline=deadline,
                 )
+            except AttemptDeadlineExceeded:
+                raise
             except (OSError, subprocess.CalledProcessError) as e:
                 raise OracleError(f"cannot attest task environment: {e}") from e
             frozen = parse_freeze(freeze.stdout)

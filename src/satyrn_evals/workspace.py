@@ -243,7 +243,12 @@ def clean_environment(
     return cleaned
 
 
-def clean_git_environment(environment: Mapping[str, str]) -> dict[str, str]:
+def clean_git_environment(
+    environment: Mapping[str, str],
+    *,
+    deadline: AttemptDeadline | None = None,
+    phase: DeadlinePhase = DeadlinePhase.SETUP,
+) -> dict[str, str]:
     """Copy an environment minus Git's repository-routing state (T8).
 
     Probes the routing variables exactly as the workspace runner does
@@ -253,7 +258,7 @@ def clean_git_environment(environment: Mapping[str, str]) -> dict[str, str]:
     redirect where evals' own git commands run.
     """
     try:
-        routing_names = _local_env_vars(environment)
+        routing_names = _local_env_vars(environment, deadline=deadline, phase=phase)
     except _WorkspaceError as exc:
         # A probe failure (git absent or misbehaving) is an operational
         # grading failure, not a workspace setup failure: grade()'s except
@@ -446,6 +451,7 @@ def _local_env_vars(
     environment: Mapping[str, str],
     *,
     deadline: AttemptDeadline | None = None,
+    phase: DeadlinePhase = DeadlinePhase.SETUP,
 ) -> set[str]:
     """Ask Git which variables can redirect repository discovery."""
     probe_environment = {
@@ -455,9 +461,7 @@ def _local_env_vars(
     }
     probe_environment["GIT_TERMINAL_PROMPT"] = "0"
     try:
-        remaining = (
-            deadline.remaining(DeadlinePhase.SETUP) if deadline is not None else None
-        )
+        remaining = deadline.remaining(phase) if deadline is not None else None
         completed = subprocess.run(
             ["git", *_GIT_SAFETY_CONFIG, "rev-parse", "--local-env-vars"],
             env=probe_environment,
@@ -468,15 +472,15 @@ def _local_env_vars(
         )
     except subprocess.TimeoutExpired:
         assert deadline is not None
-        deadline.expire(DeadlinePhase.SETUP)
+        deadline.expire(phase)
     except OSError as exc:
         if deadline is not None:
-            deadline.remaining(DeadlinePhase.SETUP)
+            deadline.remaining(phase)
         raise _WorkspaceError(
             f"cannot inspect Git environment variables: {exc}"
         ) from exc
     if deadline is not None:
-        deadline.remaining(DeadlinePhase.SETUP)
+        deadline.remaining(phase)
     if completed.returncode != 0:
         detail = os.fsdecode(completed.stderr).strip()
         raise _WorkspaceError(f"cannot inspect Git environment variables: {detail}")
