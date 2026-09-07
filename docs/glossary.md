@@ -236,7 +236,16 @@ smoke
 task
   A bundled development task: {term}`manifest`, base state, and a known-good
   fixture patch — a known-broken fixture patch when the task ships one.
-  Selected under the {term}`grader fixture` rule.
+  A task serves one of two jobs and is selected under the matching rule.
+  As a {term}`grader fixture` it need only grade offline and
+  deterministically; it bakes in no pathology. As a **diagnostic workload**
+  it is better read as *a pathology the arms handle differently*: its value
+  is that it reliably induces a named failure, and that the compared arms
+  diverge on it. `misleading-locus` induces the read-lock attractor in bare
+  Pi 8 times in 12 and in the Engine arm once; `depth-3` induces a quality
+  floor that **both** arms suffer equally, and so discriminates nothing.
+  A task therefore stops being informative when the product stops falling
+  for its pathology.
 
 tripwire
   The audit hook in the test root that raises on any subprocess spawn

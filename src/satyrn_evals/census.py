@@ -51,7 +51,14 @@ KNOWN_TOOL_NAMES = frozenset({"read", "bash", "edit", "write", "run_tests"})
 
 _SCHEMA_REFUSAL_MARKER = "Validation failed for tool"
 _TOOL_NOT_FOUND_RE = re.compile(r"^Tool\s+\S+\s+not found\b")
-_NOOP_EDIT_RE = re.compile(r"no change|no matching text", re.IGNORECASE)
+# Corrected 2026-09-07: the first version matched only "no change|no matching
+# text", which caught 851 of pi's "No changes made" results and **none** of
+# its 1,813 "Could not find the exact text" ones -- so `noop_edit`
+# undercounted by roughly two thirds wherever pi's own edit tool refused.
+_NOOP_EDIT_RE = re.compile(
+    r"no change|no matching text|could not find the exact text",
+    re.IGNORECASE,
+)
 
 #: Naming threshold for the two run-length pathologies: a run of 1 is just
 #: "a tool call happened" and is not worth naming a cell over. Count-type
@@ -94,7 +101,12 @@ class CellCensus:
         magnitude = self.magnitude(name)
         if name == "v10_unmeasured":
             return bool(magnitude)
-        if name in ("read_lock", "stall"):
+        # `stall` is reported as a magnitude but never names a cell:
+        # measured 2026-09-07, it was nonzero in every cell of every batch,
+        # and a presence flag that is always true names nothing. Its
+        # magnitude is also confounded on retained cells, where the engine
+        # reported no-op edits as applied and so reset the run.
+        if name == "read_lock":
             return magnitude >= _RUN_LENGTH_NAMING_FLOOR
         return magnitude > 0
 
