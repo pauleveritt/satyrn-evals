@@ -1,208 +1,231 @@
-# Brief for the next agent — after V15 was refuted
+# Brief for the next agent — after three hypotheses died in one day
+
+**Revised 2026-09-07, later the same day.** The first version of this brief
+proposed a seam-visibility experiment. That hypothesis is dead too; it is
+recorded, with what killed it, in
+[false completion §7](2026-09-07-false-completion.md). This revision
+replaces the direction and keeps the discipline.
 
 **Read first:** `BRIEF.md`, `ROADMAP.md`, `CLAUDE.md`,
-`docs/superpowers/research/2026-08-16-harvest-index.md`, and
-[the V15 premise correction](2026-09-07-v15-premise-correction.md). Then
-this. Every number below carries the command that recomputes it.
+[the harvest index](2026-08-16-harvest-index.md),
+[`docs/development/lessons.md`](../../development/lessons.md),
+[the V15 premise correction](2026-09-07-v15-premise-correction.md), and
+[false completion](2026-09-07-false-completion.md) — the last one **banner
+and §7 first**, since its body is refuted.
 
 ## Why you exist
 
-V15 — "a second application with graded tasks that express coordination" —
-was proposed on 2026-09-07 and **refuted the same day, before a single cell
-was spent.** Its premise was that the suite is five single-anchor repairs
-with nothing to coordinate. The fixtures say otherwise, and so does a
-re-score of 96 cells that already existed.
+On 2026-09-07 three hypotheses were proposed and all three were refuted,
+**at zero inference cost**, against roughly one batch of machine time
+saved:
 
-What replaced the premise is better than the premise was. On `depth-3`,
-both arms stop with two of three seams unfixed — **because the only test
-suite they can run cannot see those seams.** They finish on `4 passed`, and
-one Engine cell says so in its own words:
+1. **V15's premise** — "five single-anchor repairs leave an engine nothing
+   to coordinate." The fixtures refute it: `depth-2` ⊂ `depth-3` is a
+   byte-identical nested 2/3-seam ladder that V14b already ran.
+2. **A controlled seam-count ladder** — its missing rung already ships as
+   `plausible-wrong-fix`, and both its endpoints are pinned (12/12 twice,
+   0/12 twice).
+3. **False completion / seam visibility** — killed by two equally invisible
+   seams closing at 13/23 and 0/23, and by `depth-3` at R3 reading **12/12**
+   with the same blind suite.
 
-> "`test_complaint_model_contract_is_preserved`: Verified by running the
-> test suite. The `Complaint` model in `models.py` remains intact. […] All
-> tests passed successfully."
+Nothing new was built and no task was authored. **That is the result, and
+it is a good one** — but it means you inherit an open direction, not a
+plan.
 
-That is not a coordination failure. It is an agent stopping correctly
-against an instrument that cannot see the target.
+## The one thing today established
 
-**Your job: find out whether seam visibility is the mechanism.** If it is,
-it reframes a task the project has called a quality floor since V11c, and
-it points at an engine change (what an agent verifies against) rather than
-a content change (build a bigger app).
+**`depth-3` is not a quality floor**, a label it carried from V11c until
+now. At rung R3 it reads **12/12** — six cells at each capability point,
+every patch touching all three files:
 
-## What is established, and what is not
+```bash
+for d in ~/satyrn-smokes/2026-09-06-overnight-232554/*depth-3*R3*; do
+  echo "== $(basename $d)"; grep -h '^+++ b/' $d/cell-*/*/patch.diff | sort | uniq -c
+done
+```
 
-**Established, verified at source this session.**
+Same base, same seeded defects, same workspace suite; **only the contract
+text differs.** R3 says "the model's stored complaint timestamp lost its
+timezone"; R1 says `assert None is not None`. That is a controlled,
+within-task, two-rung result already on disk, and its significance for the
+"floor" label was never drawn until today.
 
-- `depth-2` ⊂ `depth-3`: their `app.py` and `templates/base.html` hunks are
-  byte-identical, and `depth-3`'s `known-broken.patch` equals `depth-2`'s
-  `known-good.patch`. A 1/2/3-seam nested ladder already ships.
-- `plausible-wrong-fix` **is** the missing rung-1: `diff -r` over its
-  `base/` and `depth-3`'s differs only in the two un-seeded defects and the
-  package name.
-- `depth-3`'s public suite has four tests and **none** matches
-  `lang|tzinfo|timezone`. Two of its three graded seams are unobservable
-  from inside the workspace.
-- In V14b, **0 of 23** retained patches touch `models.py`, in both arms,
-  while **24 of 24** transcripts mention it and the R1 contract names its
-  failing check.
-- `seams_closed` re-score (`scripts/rescore_seams.py`): degenerate at 1
-  seam (reads 1.000 for an arm that passed 4/12), identical to the verdict
-  at 2 seams, and **0.515 vs 0.500** at 3.
+## What we trust in the instrument, and what we do not
 
-**Not established. Do not write these down as findings.**
+Assembled from what actually got exercised. This is the most useful thing
+in this brief; read it before designing anything.
 
-- **That visibility causes the stop.** It is a hypothesis fitted to four
-  tasks with everything confounded. It is the reason this brief exists, not
-  a result.
-- **That `depth-3` is easy.** The withdrawn label was "quality floor". The
-  replacement is "we do not know", not "trivial".
-- **Anything about coordination.** No task has ever isolated it, V15 did
-  not build one, and the retained data cannot answer it.
+### Trusted, and demonstrated rather than argued
 
-## Traps, from eight wrong calls in three days
+- **The verdict.** Hook-written, never stdout or an exit code
+  (`BRIEF.md` rule 4). Every task's evidence floor is gated per-task in
+  `tests/test_agentclinic_manifests.py`: known-good accepted, known-broken
+  rejected.
+- **Capture separate from grading** — `BRIEF.md` rule 3, and the property
+  that paid for itself today. A brand-new measure (per-seam closure) was
+  computed over **96 retained cells with zero re-runs**, and it is what
+  refuted hypothesis 3. This is the single most-validated thing in the
+  repository. Lean on it.
+- **The strict tally.** Refuses a malformed batch rather than shrinking a
+  denominator, and model identity is checked from each transcript's own
+  `message.model` (`scripts/tally.py:155-227`), not the requested argv.
+- **Per-cell pass/fail counts, within one interleaved batch.**
+- **The gates.** They caught real errors this session: `lint-docs` refused
+  an over-long phase row rather than letting the planning surface drift.
 
-The first six are recorded in the V15 brief this one supersedes. Two are
-new, both made on 2026-09-07 by the agent that wrote this file:
+### Not trusted — two were demonstrated broken today
+
+- **`attempt.json.code` as a behavioural signal.** `OK` means "a patch and
+  transcript existed and grading ran" (`attempt.py:270`). It is
+  **arm-asymmetric**: a Baseline lock reaches Evals' tripwire and codes
+  `REPEAT_LIMIT`; an Engine lock is cut by the engine's own breaker, exits
+  0, and codes `OK`. Any per-arm statistic over these codes compares
+  different things.
+- **`census` `anchor_refusal` and `noop_edit`.** Structurally arm-specific
+  vocabularies printed in adjacent columns of a per-arm table
+  ([premise correction §4](2026-09-07-v15-premise-correction.md)).
+- **`read_lock`.** Its cause is untested — recorded in `BACKLOG.md` and
+  `ARCHIVE.md` — and it is task-specific: 8/1 on `misleading-locus`, 0/0 on
+  both multi-file tasks in the same batch.
+- **`stall`** — a magnitude with no denominator, recorded as such.
+- **Any cross-batch count.** Demonstrated twice today, most cleanly:
+  Baseline touched all three `depth-3` seams in 2/12 cells in V13c and 0/11
+  in V14b — same task, same rung, identical arm configuration.
+
+### The gap nobody has looked at
+
+**Nothing ever runs a task's `public_suite`.** It is validated as a list of
+command strings and emitted into the engine contract
+(`manifest.py:53-76`, `engine_contract.py:93-95`) — and that is all. No
+check that it is red at base, green at known-good, or covers any particular
+seam.
+
+```bash
+grep -rn "public_suite" src/satyrn_evals/*.py
+```
+
+That matters because the workspace suite is what the agent uses to decide
+it is finished, and it is the one artifact in the task the harness holds no
+opinion about. A miswritten public suite would be invisible to every gate.
+**This is a real, cheap, offline instrument gap** — no model, no network,
+integration tier only.
+
+### The uncomfortable summary
+
+`BRIEF.md` opens with "Diagnosis first, claims much later." **The claims
+layer is the trustworthy half and the diagnostic layer is not.** The
+verdict, the tally and the retention property have all been exercised hard
+and hold. Almost every behavioural signal is either untested, task-specific
+or arm-asymmetric. Whatever direction you choose, that inversion is the
+honest starting point.
+
+## Traps, from ten wrong calls in three days
+
+Six are in the superseded V15 brief. Four are from 2026-09-07, all made by
+the agent that wrote this file:
 
 7. **"More seams means more to read, so Engine's read-lock resistance pays
-   off more."** Refuted by the very batch cited for it: `read_lock` is
-   Baseline 8 / Engine 1 on the one-file task and **0/0** on both
-   multi-file tasks. A finding from one task, stated generally.
-8. **Proposing to author `depth-1`.** It already ships as
-   `plausible-wrong-fix`. Nobody had run `diff -r` over the two `base/`
-   trees.
+   off more."** Refuted by the batch cited for it: `read_lock` is 8/1 on
+   the one-file task and **0/0** on both multi-file tasks.
+8. **Proposing to author `depth-1`.** It ships as `plausible-wrong-fix`.
+   Nobody had run `diff -r` over the two `base/` trees.
+9. **"Invisible seams cause the agent to stop early."** Refuted by two
+   equally invisible seams at 13/23 and 0/23, and by R3's 12/12.
+10. **Reading `OK` as "terminated voluntarily."** It means grading ran. The
+    field's own assignment site says "Never the exit code."
 
-Every one of the eight has the same shape: **a real number with an untested
-causal story attached.** Both new ones were caught by an adversary told to
-attack and given the evidence directly — not by the context that formed the
-belief. Budget for that reviewer; it has now caught more than any
-implementation step.
+All ten share one shape: **a real number with an untested causal story
+attached.** Numbers 7, 9 and 10 were each refuted by evidence *already on
+disk and already read* in the same session. Re-deriving is not the same as
+re-reading, and the failure is invisible from inside the sentence that
+repeats it.
 
-A third near-miss worth recording: `seams_closed` was proposed as a power
-gain and is worthless on two of three rungs. It cost nothing because it was
-computed over retained cells **before** anything was authored. That is the
-discipline `BRIEF.md` rule 3 was built to buy — use it.
+**The adversary caught 7, 8, 9 and 10.** It has now caught more than any
+other activity in this project. Told to attack, handed the evidence
+directly, and kept out of the context that formed the belief, it is the
+highest-yield thing you can spend tokens on. Budget for it *before* a
+batch, never only after.
 
 ## Rules that bind you
 
-Everything in `CLAUDE.md` still binds. The ones this cycle nearly broke:
+All of `CLAUDE.md`. The ones this cycle nearly broke or did break:
 
-- **Cross-batch counts are not comparable.** Demonstrated again here:
-  Baseline touched all three `depth-3` seams in 2/12 cells in V13c and
-  0/11 in V14b, same task, same rung, identical arm configuration.
+- **Search the rungs before naming a mechanism.** R0/R1/R3 are a control
+  that is already run. `grep -rn "R3" ROADMAP.md` costs nothing and would
+  have killed hypothesis 3 before it was written.
 - **Read the gate's exit code, unpiped.** `just gates | tail` swallowed a
-  gate's status this session. The `lint-docs` cap gate also refused an
-  over-long phase row — let it.
-- **A detector must discriminate in both directions.** `scripts/rescore_seams.py`'s
-  seam-map validator reported no violations over 96 cells; that is only
-  evidence because it was shown to fire on a hand-built known-bad.
-- **`n=12` is the working size, `n=6` cannot carry a band**, and outcome
-  differences of the size seen here need ~100/arm. Prefer within-batch
-  contrasts and the cost axis.
+  status this session.
+- **A detector must discriminate in both directions**, and a **structural
+  zero is not an observation** — a statistic that cannot fire on one arm is
+  not evidence about that arm.
+- **`n=12` is the working size**; outcome differences of the size seen here
+  need ~100/arm.
 - **Never edit the tree while a batch runs.** Use a worktree.
 
 ## What not to build
 
-- **No second application.** V15's case for one is refuted; the V16 §6
-  stopping rule that would call for one has not fired.
-- **Do not author `depth-1`.** It exists.
-- **No new instrument.** The census exists and its limits are recorded.
-  `scripts/rescore_seams.py` is a one-off with no test and is a W1 deletion
-  candidate.
-- **No admission machinery** until a task needs it.
+- **No second application.** V15's case is refuted; V16 §6's stopping rule
+  has not fired.
+- **No `depth-1`, no `depth-3-visible`.** The first exists; the second
+  tests a dead hypothesis.
+- **No new census detector** until something uses it.
+- **No admission machinery**, no new framework.
 
 Weight, recomputed 2026-09-07: `src` (excluding vendored tasks) **9,660**,
-`scripts`+`arms` **2,096**, `tests` **22,953** — all grown since
-`ROADMAP.md` recorded them, and W1 has still never run.
+`scripts`+`arms` **2,096**, `tests` **22,953**. W1 has still never run.
 
-## First moves
+## Candidate directions, none chosen
 
-1. **Spend nothing first.** Before proposing a batch, grep the retained
-   transcripts for cells that justify stopping by citing the test suite.
-   If failing cells routinely say "all tests pass", the hypothesis
-   strengthens for free; if they do not, it weakens and the batch is not
-   worth running.
-2. **Then the one experiment worth cells.** Author
-   `agentclinic-repair-depth-3-visible`: identical to `depth-3` in base
-   defects, overlay, `expected_test_ids` and every contract rung, differing
-   **only** in that its `base/tests/test_app.py` covers the `lang` and
-   `tzinfo` seams. Run `depth-3` and `depth-3-visible` in **one interleaved
-   batch**, both arms, `n=12` — 48 cells, roughly an hour.
-   - **Freeze this before the batch:** if visibility is the mechanism,
-     `depth-3-visible` moves off 0/12 in **both** arms. If it stays at
-     0/12, visibility is not the mechanism and `depth-3` is genuinely hard.
-     Both outcomes are publishable; the null is the more interesting one.
-   - **State the caveat in the protocol, not after:** the variant also
-     changes how much text is in the workspace. The R1 contract is held
-     identical, so *information* is held and only *verifiability* moves,
-     but the workspace is not byte-identical and the write-up must say so.
-3. **Post the design proposal and wait** (`CLAUDE.md`). This is a new
-   phase; that instruction is self-contained and applies even to a
-   subagent.
+Deliberately unranked, because choosing is the maintainer's and choosing
+fast is how three hypotheses died.
+
+1. **Trust the diagnostic layer, or stop reporting it.** The census is the
+   project's diagnosis instrument and half its columns are not
+   cross-arm-readable. Either fix what the per-arm table means, or narrow
+   it to what survives. Cheapest of the four; re-scorable; blocks nothing.
+2. **Close the `public_suite` gap.** An offline authoring gate: red at
+   base, green at known-good, per-seam coverage recorded. No model time.
+3. **Ask what R1→R3 actually buys, since it is the only controlled lever
+   with a measured effect** (0/12 → 12/12). It is already run for
+   `depth-3`; whether it generalises is a question the retained profile may
+   partly answer for free before any batch.
+4. **W1.** Overdue on measured weight, and it is where withdrawn code —
+   including `scripts/rescore_seams.py`, which has no test — is removed.
 
 ## The Opus / Sonnet / Fable split
 
-The V15 brief's finding held again, more sharply: **roughly two-thirds of
-the hours were delegatable and none of the errors were.** Both new wrong
-calls were reasoning about evidence. Both catches were adversarial review.
-Zero implementation defects occurred, because no implementation happened.
+Held again, more sharply: **roughly two-thirds of the hours were
+delegatable and none of the errors were.** All four new wrong calls were
+reasoning about evidence. All four catches were adversarial review. Zero
+implementation defects, because almost no implementation happened.
 
 | work | who | why |
 |---|---|---|
-| Read the evidence, choose the measure, freeze the criterion | **Opus** | All eight recorded errors live here |
-| Write the spec with acceptance stated up front | **Opus** | Sonnet's output quality tracks spec precision almost exactly |
-| Author `depth-3-visible` | **Sonnet** | Bounded and mechanical — see the spec sketch below |
-| Fix the census cross-arm columns (§4 of the correction) | **Sonnet**, shape decided by **Opus** | The code is small; *what the columns should mean* is a measurement call |
+| Read evidence, choose the measure, freeze the criterion | **Opus** | All ten recorded errors live here |
+| Write the spec with acceptance stated up front | **Opus** | Sonnet's quality tracks spec precision almost exactly |
+| Implement against that spec | **Sonnet** | High reliability, and it finds spec gaps |
 | Review the diff | **Opus** | Cheap, and verify at source rather than accepting a report |
-| Attack the protocol **before** cells are spent | **Fable** | It killed two plans this session at a fraction of a batch's cost |
-| Attack the reading **after** the result | **Fable** | Must not be the context that formed the belief |
-| Run the batch | **maintainer** | Budgeted inference, frozen checkout, quiet machine |
+| Attack the hypothesis **before** cells are spent | **Fable** | It has killed three plans for a fraction of one batch |
+| Attack the reading **after** a result | **Fable** | Must not be the context that formed the belief |
+| Run any batch | **maintainer** | Budgeted inference, frozen checkout, quiet machine |
 
-**The Sonnet spec sketch, stated now so its boundedness is visible.** Copy
-`agentclinic-repair-depth-3` to `agentclinic-repair-depth-3-visible`;
-change **only** `base/tests/test_app.py` (add one test asserting
-`<html lang="en">` and one asserting `Complaint().timestamp.tzinfo is not
-None`), plus the package name in `base/pyproject.toml` and `base/uv.lock`.
-Every other file must be byte-identical to `depth-3`'s.
-
-Acceptance, given to Sonnet up front:
-
-- `diff -r` between the two task directories reports **only** the four
-  expected files.
-- `just gates` exits 0, read unpiped.
-- `tests/test_agentclinic_manifests.py` and `tests/test_rung_ladder.py`
-  pass for the new task.
-- The new public tests are **red** against the new task's own `base/` and
-  **green** after its `known-good.patch` applies — a refusal test and its
-  sibling success test (`BRIEF.md` rule 6).
-- V5d smoke before any budgeted batch.
-- *If the spec is wrong, stop and report rather than improvise.*
-
-**Two rules that made delegation work, unchanged.** Give Sonnet the
-acceptance criteria before it writes anything, and it will tell you the
-spec is wrong instead of improvising. And never let a subagent's report
-substitute for your own verification — every load-bearing claim in the
-correction document was re-derived by hand before it was written down, and
-one review claim that could not be checked locally is recorded as
-unverified rather than repeated.
-
-**The role you cannot collapse is the adversary.** Told to attack, handed
-the evidence, and kept out of the context that formed the belief, it found
-in two passes: that the ladder already existed, that the pathology was
-symmetric, that the proposed new task already shipped, and — while trying
-to break a claim that in fact held — the seam-visibility mechanism that is
-now the whole of the next phase. Not one of those came from reading a
-record. All of them came from opening a file.
+Directions 1 and 2 above are the most Sonnet-shaped work available: both
+are bounded, offline, and testable with acceptance criteria stated up
+front. Neither needs a model to run. Give Sonnet the acceptance criteria
+before it writes anything and it will tell you the spec is wrong instead of
+improvising — and never let its report substitute for your own check at
+source.
 
 ## Open items this cycle did not close
 
-- **`BACKLOG.md` owes V15 a reopen condition.** Its old trigger is gone and
-  no new one was written. The V16 spec §7 already flagged that the
-  selection rules owe one too.
-- **The census cross-arm defect** (correction §4) is unfixed. Re-scorable,
-  so it blocks nothing.
+- **`BACKLOG.md` owes V15 a reopen condition.** Its old trigger is gone.
+  V16 §7 already flagged that the selection rules owe one too.
+- **The census cross-arm defect** is unfixed. Re-scorable, blocks nothing.
 - **`scripts/rescore_seams.py` has no committed test.** It owes one or it
-  should be deleted.
-- **Nothing is committed.** `ROADMAP.md` is modified; the correction and
-  the script are untracked. Commits are maintainer-controlled.
+  should be deleted. It is the tool that refuted hypothesis 3, so it earned
+  its keep once; that is not the same as earning a permanent place.
+- **`arms/engine.json`'s `tools` list may mis-describe the arm** — an
+  unverified review claim that Engine receives `bash` through `runner.ts`.
+  Checking it is a `CLAUDE.md` condition-(d) obligation before the next
+  batch.
