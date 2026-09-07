@@ -61,84 +61,22 @@ Baseline 2/6 and 3/6 — descriptive, `n=6` carries no threshold
 better.** Envelope's restricted surface also cost it against Baseline in
 V13 — the first evidence that `read,edit` *loses* on a repair task.
 
-> **Recorded 2026-09-06, and it changes how a probe may be designed.**
-> Baseline on `depth-2` R1 measured 7/12 in the V13 batch and 2/6 in the
-> V13a batch — same arm, task, rung and model, different batch, with
-> `temperature` unpinned for every arm. V13a was first designed as
-> Engine-only read against V13's Baseline; that design would have compared
-> Engine 4/6 against Baseline 7/12 and concluded the opposite of what the
-> interleaved batch shows. **Counts are compared within an interleaved
-> batch or not at all.**
+> **The V13 series (V13–V13d) is recorded in**
+> [`ARCHIVE.md`](ARCHIVE.md) — the null and the mutator schema defect,
+> the fix and its verification, the temperature pin and the check that
+> could not fail, the `n=6` suite re-inventory, and the read-lock
+> attribution that came back underpowered.
 >
-> **Pinned the same day, and it is a re-baseline.** Every arm now records
-> `temperature: 1.0`, pi's `models.json` sends it through the model entry's
-> `samplingParams`, and preflight 0c checks the two against each other —
-> refusing an arm that pins none, a config that sends none, and the case
-> where *both* are absent, which is not agreement but nobody having decided.
-> **Every batch before this pin ran at the server's own unrecorded default
-> and is not comparable across it**: V11c, the V12 profile, V13 and V13a are
-> all pre-pin. 1.0 was chosen as the value most likely to match what was
-> already running — for continuity, not tuned — and that continuity is
-> assumed, not measured. The correction that made it possible: preflight
-> read `settings.json`'s `temperature`, a key **pi never reads**, so both
-> sides of that comparison were always `None` — a check that could not fail,
-> inside the check whose job is to catch those.
->
-> **V13b is the first post-pin batch, and headroom survived.** Baseline and
-> Engine interleaved, `n=12` per arm on both headroom tasks at R1, 48 cells,
-> temperature verified on both sides: **`depth-2` Baseline 7/12 vs Engine
-> 9/12; `misleading-locus` Baseline 7/12 vs Engine 9/12**, both p = 0.333
-> descriptive. All four arm/task cells sit strictly inside 0–12, so these
-> are the reference bands for post-pin work
-> (`~/satyrn-smokes/2026-09-06-v13b-184301/RESULT.md`). The predeclared
-> continuity flag did **not** fire — weak evidence, declared weak in
-> advance, and no confirmation that 1.0 is what the server had been running.
-> **`n=6` is too small to carry a band:** `depth-2` Baseline read 7/12 here
-> and 7/12 in the pre-pin V13 batch, against V13a's 2/6 — the `n=6` reading
-> was the outlier. Zero schema refusals across 24 Engine cells; the loop
-> stays gone.
->
-> **V13c re-inventoried the suite post-pin on two axes (72 cells), and the
-> headroom inventory was an artifact of `n=6`.** `plausible-wrong-fix`,
-> recorded as saturated at Baseline 6/6, is the **most discriminating task
-> in the suite**: Baseline 12/12 against **Engine 6/12**, and cost-to-succeed
-> separating at p = 0.00005. **A task at ceiling for one arm can be the most
-> informative task in the suite** — the middle-band rule read on the
-> reference arm alone would have discarded it. `depth-3` is a confirmed
-> quality floor (0/12 both arms, 10 and 9 patches) that still carries
-> failure shapes; `framing-2-edit` carries the least (11/12 vs 12/12, costs
-> overlapping at p = 0.560).
-> Result: `~/satyrn-smokes/2026-09-06-v13c-200158/RESULT.md`.
->
-> **Corrected 2026-09-06, same day, before it was acted on.** This first
-> read as a mechanism running "end to end": no test runner → re-reads →
-> breaker blocks → terminate → `NO_PATCH`. **Two of its three links are
-> refuted by cells in the same batches.** Eight bare-Pi cells across V13,
-> V13b and V13c reached an identical-read run of ≥5 before any edit and
-> **0 of 8 ever edited** — so the breaker converts a doomed cell into a
-> faster failure and does not cost the patch. And the five Baseline
-> `REPEAT_LIMIT` cells on `misleading-locus` run `pytest` as their *second*
-> call and lock anyway, with Baseline locking 5/12 there against Engine's
-> 0/12 — the opposite sign to the runner hypothesis. What stands: the
-> terminate path ended all six cells and none attempted an edit; the lock
-> is a sampled read-lock attractor whose rate varies by task and arm, and
-> **its cause is untested**. Candidates that differ between the arms:
-> the wrapper prompt, the tool surface, and the breaker's injected message.
->
-> **A second measurement axis is a candidate, and its unit is undecided.**
-> On V13b's 48 cells the outcome contrast was p = 0.333 while
-> cost-to-succeed in **tool calls** separated at p = 0.00009. But every one
-> of those call p-values is the **floor** — the smallest the exact test can
-> emit at that `n`, meaning complete separation and nothing about
-> magnitude — and the same cells measured in **tokens** read p = 0.247 on
-> `plausible-wrong-fix`, 0.057 on `depth-2` and 0.036 on
-> `misleading-locus`. On `plausible-wrong-fix` the call separation is the
-> tool surface: Baseline spends one `bash` turn where Engine spends three
-> `read` turns, and the token medians are 11,659 against 12,048. **A unit
-> that reads the same cells at 0.00005 and 0.247 is not ready to be frozen
-> into the tally.** Cost is **conditional on success** and never pooled
-> with how often you win; the unconditional figure — total cost divided by
-> successes — belongs beside it.
+> **V13e (36 cells, three arms) — outcome A: the runner closes the deficit.**
+> With a model-invocable suite (engine `88b3855`), Engine reads **12/12**,
+> equalling Baseline's 12/12, against Envelope's 2/12 — and at **5.0 calls
+> and 6,353 tokens** per success against Baseline's 6.2 and 11,568. The
+> tool was used in 12/12 cells. Both arms are at ceiling, so **Engine did
+> not beat Baseline; it stopped losing**, and the only remaining difference
+> is cost. `~/satyrn-smokes/2026-09-06-v13e-011042/RESULT.md`.
+> **The task that was this morning's most discriminating now discriminates
+> nothing on outcomes** — bands move when the engine moves, which is the
+> V16 proposal's argument arriving as evidence.
 >
 > **V13d (36 cells, three arms, one task) settled the unit and left the
 > mechanism open.** `plausible-wrong-fix` R1: Baseline **12/12**, Envelope
