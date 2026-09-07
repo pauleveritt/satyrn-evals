@@ -25,42 +25,77 @@ both.
 ## "Every arm failed the same way, so the task must be hard"
 
 `depth-3` read 0/12 in both arms across two batches and was recorded as a
-quality floor from V11c until 2026-09-07. It is not hard. Its graded
-acceptance suite checks four things; the suite the agent can actually run
-in its workspace checks one. Two of three seams are unobservable from
-inside the task, and the seam nobody closed is a two-line change the
-contract names explicitly.
+quality floor from V11c until 2026-09-07. It is not hard: at rung **R3** it
+reads **12/12**, every patch touching all three files. The base, the seeded
+defects and the workspace test suite are identical at both rungs. Only the
+contract text differs — R3 says "the model's stored complaint timestamp
+lost its timezone", R1 says `assert None is not None` — and the seam that
+nobody closed at R1 is a two-line change.
 
-**Ask:** can the agent *verify* the thing being graded, using only what is
-in its workspace? A floor that appears in every arm at once is a property
-of the task before it is a property of the agents.
+**Ask:** does the contract *describe* the defect, or only name a failing
+assertion? A floor that appears in every arm at once is a property of the
+task before it is a property of the agents — and on this suite the property
+that moves it is description, not verifiability: R1 reads 0/12 and R3, with
+the same blind suite, reads 12/12.
 
-**Check it:** compare the task's `expected_test_ids` against what its
-`base/tests/` can actually detect.
+**Check it:** run the task at a more explanatory rung before concluding
+anything about the agents.
 
 Record:
 [V15 premise correction](../superpowers/research/2026-09-07-v15-premise-correction.md) §7.
 
 ---
 
-## "The agent said it was done, and it was wrong"
+## "The contrast is so clean it must be the mechanism"
 
-**False completion.** Distinct from the read-lock attractor, and its mirror
-image: rather than never stopping, the agent stops early and declares
-success. In one interleaved batch, **33 of 34 failing cells** on tasks with
-an unobservable seam terminated *voluntarily* (`OK`) with their public
-suite green, against **0 of 9** on the task whose seam that suite can see.
-Both arms equally.
+**The entry that used to sit here was wrong, and its error is the lesson.**
+It named *false completion* — agents stopping early because their workspace
+suite could not observe the graded seam — on a contrast of 33/34 against
+0/9. It was refuted the same day, before any cell was spent, on three
+grounds:
 
-Every mechanism this project has measured — loop breaker, bounded mutator,
-model-invocable test runner — targets an agent that will not stop. Nothing
-targets one that stops too soon, and no census detector names it.
+- **Two equally invisible seams closed at 13/23 and 0/23** in the very
+  batch the claim was built from. Visibility cannot produce that spread.
+  What differed was the contract: one seam's acceptance test *names its own
+  defect*, the other's reads `assert None is not None`.
+- **A control was already on disk.** `depth-3` at rung R3 passes **12/12**
+  with the same blind suite, every patch touching all three files. Only the
+  contract text changed. `ROADMAP.md` already recorded that R3 ceilings
+  almost everywhere, and the author had read that line the same session.
+- **The statistic did not mean what it was read to mean.** See the next
+  entry.
 
-**Ask:** of the failing cells, how many exited `OK`? A high count is not
-reassuring; it means they believed they were finished.
+**Ask:** before naming a mechanism from a contrast, search the retained
+batches for a cell that varies your proposed cause while holding the rest.
+This project's rungs are exactly that control and they are already run.
+`grep -rn "R3" ROADMAP.md` costs nothing.
 
-Record:
-[False completion](../superpowers/research/2026-09-07-false-completion.md).
+Records:
+[False completion](../superpowers/research/2026-09-07-false-completion.md)
+(refuted — read its §7 first).
+
+---
+
+## "The exit code says the agent finished"
+
+`AttemptCode.OK` means *a patch and a transcript existed and grading ran*.
+It says nothing about why the agent stopped — `attempt.py:270` states
+outright, "Never the exit code (BRIEF rule 4)." Reading it as "terminated
+voluntarily" put a wrong mechanism into a committed record.
+
+It is also **arm-asymmetric**, which is worse. A Baseline lock reaches
+Evals' repeat tripwire and is coded `REPEAT_LIMIT`; an Engine lock is cut
+by the engine's *own* loop breaker, exits 0, and is coded `OK` whenever any
+edit had landed. One `depth-3` cell ended `"customType": "loop_broken",
+"terminate": true` after nine identical edits and was counted as a
+voluntary stop.
+
+**Ask:** does this field mean what its name suggests, in *both* arms? Read
+the assignment site. For stopping behaviour the evidence is the
+transcript's own `stopReason`, never the attempt code.
+
+Records:
+[False completion](../superpowers/research/2026-09-07-false-completion.md) §7.3.
 
 ---
 

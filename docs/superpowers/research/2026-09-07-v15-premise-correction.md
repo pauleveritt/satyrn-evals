@@ -241,6 +241,16 @@ data that already existed.
 
 ## 7. The seams are invisible to the only oracle the model can run
 
+> **Amended 2026-09-07, later the same day.** Everything asserted below
+> about *what the suite can see* is correct and stands. The causal reading
+> — that invisibility is why the cells stop — was carried into a separate
+> record and **refuted**: two equally invisible seams close at 13/23 and
+> 0/23, and `depth-3` at R3 passes 12/12 with the same blind suite. The
+> discriminator is contract **description**, not **verifiability**. See
+> [false completion](2026-09-07-false-completion.md) §7. Consequence 1
+> below (this is not a quality floor) survives and is strengthened;
+> consequence 3 (the visibility hypothesis) is dead.
+
 Added after a second adversarial review, which attacked the follow-up plan
 and found the mechanism instead. **This supersedes the reading in §2**:
 what looks like a coordination failure is a model stopping correctly on a

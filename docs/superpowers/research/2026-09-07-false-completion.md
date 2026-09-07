@@ -1,5 +1,16 @@
 # False completion: the agent stops, satisfied, while graded-failing
 
+> **REFUTED 2026-09-07, the same day, by an adversarial review — see §7.**
+> The observations in §1 are sound and the arithmetic holds. **The
+> mechanism, the name, and the experiment this record proposed are all
+> wrong**, and the text is kept unedited beneath this banner because a
+> correction is recorded, not edited away (`CLAUDE.md`). Two things kill
+> it: `depth-3` at rung **R3** passes **12/12** with the same blind public
+> suite, and inside the very batch this record was built from, two
+> *equally invisible* seams closed at **13/23** and **0/23**. The
+> discriminator is how well the contract **describes** the defect, not
+> whether the workspace can **verify** it. Do not cite §2, §3 or §5.
+
 **Recorded 2026-09-07.** A second failure mode, distinct from the read-lock
 attractor and not addressed by any mechanism this project has measured. No
 model ran to find it; it is computed from cells already on disk. Every
@@ -141,3 +152,86 @@ record.
 says a term earns its place when the phase that needs it lands, and that
 phase has not landed. It is a glossary candidate, recorded as one rather
 than added.
+
+## 7. What refuted this, recorded the same day
+
+An adversary was asked to attack this record before any cell was spent. It
+succeeded on three independent grounds, each verified at source before
+being written down here.
+
+### 7.1 Two equally invisible seams close at wildly different rates
+
+Recomputed over the same 23 graded `depth-3` cells this record was built
+from:
+
+| seam | visible to the workspace suite? | closed |
+|---|---|---|
+| `app.py` (307 → 303) | yes | **22 / 23** |
+| `templates/base.html` (`lang`) | **no** | **13 / 23** |
+| `models.py` (tz-aware timestamp) | **no** | **0 / 23** |
+
+Both unobservable seams are unobservable in exactly the same way.
+Visibility cannot produce 13/23 against 0/23. What differs is the R1
+contract: it names `test_home_html_element_declares_english_language` —
+a test name that describes its own defect — and gives the timestamp seam
+only `assert None is not None`.
+
+### 7.2 A control was already on disk, and this record failed to cite it
+
+`depth-3` at rung **R3** passes **12/12** — 6 cells at each of the two
+Gemma capability points — and **every** patch touches all three files
+including `models.py`:
+
+```bash
+for d in ~/satyrn-smokes/2026-09-06-overnight-232554/*depth-3*R3*; do
+  echo "== $(basename $d)"
+  grep -h '^+++ b/' $d/cell-*/*/patch.diff | sort | uniq -c
+done
+```
+
+Same base, same seeded defects, **same blind public suite**; only the
+contract text differs. R3 states the defect in words — "the model's stored
+complaint timestamp lost its timezone" — and names where the defects live.
+`ROADMAP.md:26-28` already recorded that R3 ceilings almost everywhere.
+The evidence that refutes this record was read by its author earlier the
+same session and not connected. That is `BRIEF.md` rule 7 for the third
+time in one day.
+
+### 7.3 `OK` does not mean "voluntary"
+
+The central framing — "terminated voluntarily (`OK`)" — misreads the
+attempt code. `AttemptCode.OK` means *a patch and transcript existed and
+grading ran*; `attempt.py:270` says in terms, **"Never the exit code
+(BRIEF rule 4)."** It carries no information about whether the agent chose
+to stop.
+
+Worse, it is **arm-asymmetric**: a Baseline lock reaches Evals' repeat
+tripwire and is coded `REPEAT_LIMIT`, while an Engine lock is cut by the
+engine's *own* loop breaker, exits 0, and is coded `OK` whenever any edit
+had landed. The review found `depth-3/cell-008-engine` ending with
+`"customType": "loop_broken", "terminate": true` after nine identical
+edits — a harness kill this record counted as a voluntary stop, and in
+fact the single "RED" cell §1 lists as its exception. So §2's claim that
+the two modes "do not co-occur" is false, and any criterion built on the
+attempt code measures different things in the two arms.
+
+### 7.4 The control arm was structurally empty
+
+§4 claimed to satisfy `BRIEF.md` rule 8. It does not. `misleading-locus`
+has **no graded-fail cell** — its nine non-pass cells are all refusals — so
+the statistic "code == `OK` among non-pass" cannot fire there at all. That
+is a structural zero read as an observation, which is the shape recorded in
+[the V15 premise correction](2026-09-07-v15-premise-correction.md) §4 and
+in `docs/development/lessons.md` by the same author, one entry earlier.
+
+### 7.5 What survives
+
+- `depth-3` **is not a quality floor.** This is now much better supported
+  than by anything in this record: R3 reads 12/12 with all three seams
+  closed.
+- The public suite **is** blind to two of three graded seams, and failing
+  cells **do** end on a green suite. Both are facts; neither carries the
+  causal weight put on them.
+- The withdrawn V15a experiment — a `depth-3-visible` variant — **is not
+  run.** It was designed to test a mechanism the R3 cells had already
+  falsified, and its most likely outcome was uninformative besides.
