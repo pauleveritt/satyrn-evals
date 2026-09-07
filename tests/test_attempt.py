@@ -17,7 +17,12 @@ from satyrn_evals.attempt_record import (
 from satyrn_evals.errors import HookError, UsageError
 from satyrn_evals.receipt import Receipt, write_receipt
 from satyrn_evals.verdict import Verdict
-from satyrn_evals.workspace import WorkspaceCode, WorkspaceResult
+from satyrn_evals.workspace import (
+    WorkspaceCode,
+    WorkspacePrepareError,
+    WorkspaceReleaseError,
+    WorkspaceResult,
+)
 
 GOOD_PATCH = (
     "diff --git a/solution.py b/solution.py\n"
@@ -29,6 +34,47 @@ GOOD_PATCH = (
     "+    return n * 2\n"
 )
 TRANSCRIPT = "read the task; wrote the fix\n"
+
+
+class _FakeLease:
+    """Default-tier stand-in for the neutral prepared-workspace boundary."""
+
+    def __init__(self, prepared: dict[str, Any]) -> None:
+        self.prepared = prepared
+        self.parent = Path("/tmp/fake-prepared-workspace")
+
+
+def _install_workspace_double(
+    monkeypatch: pytest.MonkeyPatch,
+    run: Any,
+    *,
+    release: Any | None = None,
+) -> None:
+    """Adapt former ``run_workspace`` doubles to the explicit lease seam."""
+    leases: list[_FakeLease] = []
+
+    def prepare(**kwargs: Any) -> _FakeLease:
+        lease = _FakeLease(kwargs)
+        leases.append(lease)
+        return lease
+
+    def run_prepared(lease: _FakeLease, **kwargs: Any) -> WorkspaceResult:
+        return run(
+            base=lease.prepared["base"],
+            protected_paths=lease.prepared["protected_paths"],
+            environment=lease.prepared["environment"],
+            overlay=lease.prepared["overlay"],
+            **kwargs,
+        )
+
+    def release_prepared(lease: _FakeLease) -> str | None:
+        if release is None:
+            return None
+        return release(lease)
+
+    monkeypatch.setattr(attempt_module, "prepare_workspace", prepare)
+    monkeypatch.setattr(attempt_module, "run_prepared_command", run_prepared)
+    monkeypatch.setattr(attempt_module, "release_workspace", release_prepared)
 
 
 def _cells(output: Path) -> list[Path]:
@@ -95,7 +141,7 @@ def _run_attempt(
             "b" * 40,
         )
 
-    monkeypatch.setattr(attempt_module, "run_workspace", fake_run_workspace)
+    _install_workspace_double(monkeypatch, fake_run_workspace)
     output = tmp_path / "attempts"
     record = attempt_module.attempt(
         task="t",
@@ -184,7 +230,7 @@ def test_attempt_start_failure_removes_fresh_attempt_dir(
             "b" * 40,
         )
 
-    monkeypatch.setattr(attempt_module, "run_workspace", cannot_start)
+    _install_workspace_double(monkeypatch, cannot_start)
     output = tmp_path / "attempts"
     with pytest.raises(UsageError, match="cannot start"):
         attempt_module.attempt(
@@ -194,6 +240,71 @@ def test_attempt_start_failure_removes_fresh_attempt_dir(
     # content-addressed contract directory is an input, not an artifact.
     assert _cells(output) == []
     assert list(output.rglob("attempt.json")) == []
+
+
+def test_command_unavailable_releases_before_removing_attempt_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+    output = tmp_path / "attempts"
+    released: list[bool] = []
+
+    def cannot_start(**_kwargs: object) -> WorkspaceResult:
+        return WorkspaceResult(
+            WorkspaceCode.COMMAND_UNAVAILABLE,
+            "attempt command cannot start",
+            None,
+            "b" * 40,
+        )
+
+    def release(_lease: _FakeLease) -> None:
+        assert len(_cells(output)) == 1
+        released.append(True)
+        return None
+
+    _install_workspace_double(monkeypatch, cannot_start, release=release)
+    with pytest.raises(UsageError, match="cannot start"):
+        attempt_module.attempt(
+            task="t", tasks_root=tasks_root, output=output, command=["missing-agent"]
+        )
+    assert released == [True]
+    assert _cells(output) == []
+
+
+def test_command_unavailable_release_error_names_the_recovery_lease(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+
+    def cannot_start(**_kwargs: object) -> WorkspaceResult:
+        return WorkspaceResult(
+            WorkspaceCode.COMMAND_UNAVAILABLE,
+            "attempt command cannot start",
+            None,
+            "b" * 40,
+        )
+
+    primary = MemoryError("release")
+    _install_workspace_double(
+        monkeypatch,
+        cannot_start,
+        release=lambda _lease: (_ for _ in ()).throw(primary),
+    )
+    with pytest.raises(MemoryError) as raised:
+        attempt_module.attempt(
+            task="t",
+            tasks_root=tasks_root,
+            output=tmp_path / "attempts",
+            command=["missing-agent"],
+        )
+
+    assert raised.value is primary
+    assert primary.__notes__ == [
+        "command start failed and workspace release is unconfirmed; "
+        "retained at /tmp/fake-prepared-workspace"
+    ]
 
 
 def test_attempt_uses_an_external_temporary_uv_environment(
@@ -212,7 +323,7 @@ def test_attempt_uses_an_external_temporary_uv_environment(
         assert not environment_root.is_relative_to(task_dir)
         return WorkspaceResult(WorkspaceCode.OK, "ok", 0, "b" * 40)
 
-    monkeypatch.setattr(attempt_module, "run_workspace", fake_workspace)
+    _install_workspace_double(monkeypatch, fake_workspace)
     attempt_module.attempt(
         task="t",
         tasks_root=tasks_root,
@@ -297,7 +408,7 @@ def test_attempt_records_workspace_refusal(
             retained,
         )
 
-    monkeypatch.setattr(attempt_module, "run_workspace", refused)
+    _install_workspace_double(monkeypatch, refused)
     output = tmp_path / "attempts"
     record = attempt_module.attempt(
         task="t", tasks_root=tasks_root, output=output, command=["fake-agent"]
@@ -308,6 +419,36 @@ def test_attempt_records_workspace_refusal(
     assert record.command_exit is None
     assert record.workspace_base_sha == "b" * 40
     assert record.retained_path == retained
+
+
+def test_preparation_retention_becomes_a_durable_cleanup_refusal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A preparation lease that cannot be cleaned is never silently lost."""
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+    monkeypatch.setattr(
+        attempt_module,
+        "prepare_workspace",
+        lambda **_kwargs: (_ for _ in ()).throw(
+            WorkspacePrepareError("repository setup failed", "/tmp/retained")
+        ),
+    )
+    monkeypatch.setattr(
+        attempt_module,
+        "run_prepared_command",
+        lambda *_args, **_kwargs: pytest.fail("command must not start"),
+    )
+
+    record = attempt_module.attempt(
+        task="t",
+        tasks_root=tasks_root,
+        output=tmp_path / "attempts",
+        command=["fake-agent"],
+    )
+
+    assert record.code is AttemptCode.CLEANUP_FAILED
+    assert record.retained_path == "/tmp/retained"
 
 
 def test_workspace_refusal_rejects_unhandled_code() -> None:
@@ -352,7 +493,7 @@ def test_artifact_read_failure_cannot_hide_workspace_result(
             retained,
         )
 
-    monkeypatch.setattr(attempt_module, "run_workspace", run)
+    _install_workspace_double(monkeypatch, run)
     output = tmp_path / "attempts"
     record = attempt_module.attempt(
         task="t", tasks_root=tasks_root, output=output, command=["fake-agent"]
@@ -377,9 +518,8 @@ def test_artifact_baseexception_preserves_cleanup_recovery_evidence(
     _task(tasks_root)
     retained = "/tmp/retained-worktree"
 
-    monkeypatch.setattr(
-        attempt_module,
-        "run_workspace",
+    _install_workspace_double(
+        monkeypatch,
         lambda **_kwargs: WorkspaceResult(
             WorkspaceCode.CLEANUP_FAILED,
             "workspace cleanup failed",
@@ -412,9 +552,8 @@ def test_artifact_baseexception_without_cleanup_evidence_is_unchanged(
     tasks_root = tmp_path / "tasks"
     _task(tasks_root)
     primary = KeyboardInterrupt()
-    monkeypatch.setattr(
-        attempt_module,
-        "run_workspace",
+    _install_workspace_double(
+        monkeypatch,
         lambda **_kwargs: WorkspaceResult(
             WorkspaceCode.OK, "attempt command completed", 0, "b" * 40
         ),
@@ -461,7 +600,7 @@ def test_post_workspace_baseexception_preserves_cleanup_recovery_evidence(
             retained,
         )
 
-    monkeypatch.setattr(attempt_module, "run_workspace", run)
+    _install_workspace_double(monkeypatch, run)
     if failure == "digest":
         monkeypatch.setattr(
             attempt_module,
@@ -503,7 +642,7 @@ def test_transcript_read_failure_is_typed(
             "b" * 40,
         )
 
-    monkeypatch.setattr(attempt_module, "run_workspace", run)
+    _install_workspace_double(monkeypatch, run)
     record = attempt_module.attempt(
         task="t",
         tasks_root=tasks_root,
@@ -534,7 +673,7 @@ def test_patch_absence_precedes_transcript_read_failure(
             "b" * 40,
         )
 
-    monkeypatch.setattr(attempt_module, "run_workspace", run)
+    _install_workspace_double(monkeypatch, run)
     output = tmp_path / "attempts"
     record = attempt_module.attempt(
         task="t", tasks_root=tasks_root, output=output, command=["fake-agent"]
@@ -576,7 +715,7 @@ def test_attempt_appends_opaque_engine_contract_once(
         observed.extend(kwargs["command"])
         return WorkspaceResult(WorkspaceCode.OK, "ok", 0, "b" * 40)
 
-    monkeypatch.setattr(attempt_module, "run_workspace", fake_workspace)
+    _install_workspace_double(monkeypatch, fake_workspace)
     record = attempt_module.attempt(
         task="t",
         tasks_root=tasks_root,
@@ -646,6 +785,205 @@ def test_successful_grade_rewrites_the_record_ok(
     assert loaded.code is AttemptCode.OK and loaded.verdict is Verdict.PASS
 
 
+def test_attempt_grades_and_records_before_releasing_workspace(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The lease is not released until receipt and matching record are durable."""
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+    output = tmp_path / "attempts"
+    observed: list[str] = []
+
+    def run(**kwargs: Any) -> WorkspaceResult:
+        environment = kwargs["environment"]
+        Path(environment[attempt_module.PATCH_ENV]).write_text(GOOD_PATCH)
+        Path(environment[attempt_module.TRANSCRIPT_ENV]).write_text(TRANSCRIPT)
+        return WorkspaceResult(WorkspaceCode.OK, "done", 0, "b" * 40)
+
+    def grade_before_release(*args: Path) -> Receipt:
+        receipt = Receipt("t", "a" * 64, Verdict.PASS, "ok", None)
+        write_receipt(args[2], receipt)
+        return receipt
+
+    def release(_lease: _FakeLease) -> None:
+        attempt_dir = _cells(output)[0]
+        record = load_attempt_record(attempt_dir / "attempt.json")
+        assert record.code is AttemptCode.OK
+        assert record.receipt_path == "receipt.json"
+        assert (attempt_dir / "receipt.json").is_file()
+        observed.append("released")
+        return None
+
+    _install_workspace_double(monkeypatch, run, release=release)
+    monkeypatch.setattr(attempt_module, "grade", grade_before_release)
+    record = attempt_module.attempt(
+        task="t", tasks_root=tasks_root, output=output, command=["fake-agent"]
+    )
+
+    assert record.code is AttemptCode.OK
+    assert observed == ["released"]
+
+
+@pytest.mark.parametrize(
+    "release",
+    [
+        lambda _lease: "/tmp/unsafe-worktree",
+        lambda _lease: (_ for _ in ()).throw(
+            WorkspaceReleaseError("workspace cleanup is unconfirmed", "/tmp/locked")
+        ),
+    ],
+)
+def test_late_workspace_retention_keeps_graded_evidence_regradeable(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    release: Any,
+) -> None:
+    """A late cleanup problem must not replace receipt-derived truth."""
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+
+    def run(**kwargs: Any) -> WorkspaceResult:
+        environment = kwargs["environment"]
+        Path(environment[attempt_module.PATCH_ENV]).write_text(GOOD_PATCH)
+        Path(environment[attempt_module.TRANSCRIPT_ENV]).write_text(TRANSCRIPT)
+        return WorkspaceResult(WorkspaceCode.OK, "done", 0, "b" * 40)
+
+    _install_workspace_double(monkeypatch, run, release=release)
+    monkeypatch.setattr(attempt_module, "grade", _grade_pass)
+    output = tmp_path / "attempts"
+    record = attempt_module.attempt(
+        task="t", tasks_root=tasks_root, output=output, command=["fake-agent"]
+    )
+
+    assert record.code is AttemptCode.OK
+    assert record.verdict is Verdict.PASS
+    assert record.receipt_path == "receipt.json"
+    assert record.retained_path in {"/tmp/unsafe-worktree", "/tmp/locked"}
+    assert load_attempt_record(_cells(output)[0] / "attempt.json") == record
+
+
+def test_late_retention_keeps_a_grade_failure_regradeable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+
+    def run(**kwargs: Any) -> WorkspaceResult:
+        environment = kwargs["environment"]
+        Path(environment[attempt_module.PATCH_ENV]).write_text(GOOD_PATCH)
+        Path(environment[attempt_module.TRANSCRIPT_ENV]).write_text(TRANSCRIPT)
+        return WorkspaceResult(WorkspaceCode.OK, "done", 0, "b" * 40)
+
+    _install_workspace_double(
+        monkeypatch, run, release=lambda _lease: "/tmp/unsafe-worktree"
+    )
+    monkeypatch.setattr(attempt_module, "grade", _grade_boom)
+    record = attempt_module.attempt(
+        task="t",
+        tasks_root=tasks_root,
+        output=tmp_path / "attempts",
+        command=["fake-agent"],
+    )
+
+    assert record.code is AttemptCode.GRADE_FAILED
+    assert record.retained_path == "/tmp/unsafe-worktree"
+    assert record.receipt_path is None
+
+
+def test_late_release_baseexception_names_the_recovery_lease(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A late release crash does not hide its already-durable evidence."""
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+
+    def run(**kwargs: Any) -> WorkspaceResult:
+        environment = kwargs["environment"]
+        Path(environment[attempt_module.PATCH_ENV]).write_text(GOOD_PATCH)
+        Path(environment[attempt_module.TRANSCRIPT_ENV]).write_text(TRANSCRIPT)
+        return WorkspaceResult(WorkspaceCode.OK, "done", 0, "b" * 40)
+
+    primary = MemoryError("release")
+    _install_workspace_double(
+        monkeypatch,
+        run,
+        release=lambda _lease: (_ for _ in ()).throw(primary),
+    )
+    monkeypatch.setattr(attempt_module, "grade", _grade_pass)
+    output = tmp_path / "attempts"
+    with pytest.raises(MemoryError) as raised:
+        attempt_module.attempt(
+            task="t", tasks_root=tasks_root, output=output, command=["fake-agent"]
+        )
+
+    assert raised.value is primary
+    assert primary.__notes__ == [
+        "workspace release is unconfirmed; retained at /tmp/fake-prepared-workspace; "
+        f"the durable attempt record remains at {_cells(output)[0] / 'attempt.json'}"
+    ]
+    assert (
+        load_attempt_record(_cells(output)[0] / "attempt.json").code is AttemptCode.OK
+    )
+
+
+def test_command_baseexception_releases_the_prepared_workspace(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+    primary = KeyboardInterrupt()
+    released: list[bool] = []
+
+    def run(*_args: object, **_kwargs: object) -> WorkspaceResult:
+        raise primary
+
+    def release(_lease: _FakeLease) -> None:
+        released.append(True)
+        return None
+
+    _install_workspace_double(monkeypatch, run, release=release)
+    with pytest.raises(KeyboardInterrupt) as raised:
+        attempt_module.attempt(
+            task="t",
+            tasks_root=tasks_root,
+            output=tmp_path / "attempts",
+            command=["fake-agent"],
+        )
+    assert raised.value is primary
+    assert released == [True]
+
+
+def test_primary_command_error_keeps_the_lease_path_when_release_also_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Release failure is evidence attached to, never replacing, the primary."""
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+    primary = KeyboardInterrupt()
+
+    def run(*_args: object, **_kwargs: object) -> WorkspaceResult:
+        raise primary
+
+    _install_workspace_double(
+        monkeypatch,
+        run,
+        release=lambda _lease: (_ for _ in ()).throw(MemoryError("release")),
+    )
+    with pytest.raises(KeyboardInterrupt) as raised:
+        attempt_module.attempt(
+            task="t",
+            tasks_root=tasks_root,
+            output=tmp_path / "attempts",
+            command=["fake-agent"],
+        )
+
+    assert raised.value is primary
+    assert primary.__notes__ == [
+        "workspace release raised MemoryError: release; "
+        "retained at /tmp/fake-prepared-workspace"
+    ]
+
+
 def test_default_attempt_timeout_is_900_seconds() -> None:
     from satyrn_evals.workspace import DEFAULT_TIMEOUT
 
@@ -691,7 +1029,7 @@ def _attempt_with_rung(
         Path(env[attempt_module.TRANSCRIPT_ENV]).write_bytes(TRANSCRIPT.encode())
         return WorkspaceResult(WorkspaceCode.OK, "done", 0, "b" * 40)
 
-    monkeypatch.setattr(attempt_module, "run_workspace", fake_run_workspace)
+    _install_workspace_double(monkeypatch, fake_run_workspace)
     monkeypatch.setattr(
         attempt_module,
         "grade",
@@ -815,7 +1153,7 @@ def _two_attempts(
         Path(env[attempt_module.TRANSCRIPT_ENV]).write_bytes(TRANSCRIPT.encode())
         return WorkspaceResult(WorkspaceCode.OK, "done", 0, "b" * 40)
 
-    monkeypatch.setattr(attempt_module, "run_workspace", fake_run_workspace)
+    _install_workspace_double(monkeypatch, fake_run_workspace)
     monkeypatch.setattr(attempt_module, "grade", _fake_grade)
     output = tmp_path / "attempts"
     records = [
@@ -905,7 +1243,7 @@ def test_hand_authored_engine_contract_keeps_todays_behaviour(
         Path(env[attempt_module.TRANSCRIPT_ENV]).write_bytes(TRANSCRIPT.encode())
         return WorkspaceResult(WorkspaceCode.OK, "done", 0, "b" * 40)
 
-    monkeypatch.setattr(attempt_module, "run_workspace", fake_run_workspace)
+    _install_workspace_double(monkeypatch, fake_run_workspace)
     monkeypatch.setattr(
         attempt_module,
         "grade",

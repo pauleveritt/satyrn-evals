@@ -1302,7 +1302,10 @@ def prepare_workspace(
         parent = _safe_temp_parent((*requested_protected, *git_protected))
         state = _WorkspaceState(
             parent=parent,
-            repository=parent / "repo",
+            # Preserve the legacy workspace topology.  The executable engine
+            # seam can observe its current repository's parent layout, so the
+            # neutral lease must not rename this internal directory.
+            repository=parent / "seed",
             worktree=parent / "worktree",
         )
         _prepare_repository(base, state, git_environment)

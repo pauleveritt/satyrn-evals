@@ -187,9 +187,12 @@ cells disagree.
 
 On POSIX, timeout handling terminates and reaps the command process group
 before removing the worktree. Cleanup that cannot be confirmed becomes
-`CLEANUP_FAILED`, and `attempt.json` names the retained path. The command is
-trusted and runs with the user's permissions; the worktree is not a security
-sandbox. Windows is outside the V4 proof.
+`CLEANUP_FAILED` before grading, and `attempt.json` names the retained path.
+Cleanup after a receipt keeps the `OK` or `GRADE_FAILED` record and its
+regradeable evidence; it records the retained path without replacing the
+receipt-derived outcome. Either kind of retention returns exit code 3. The
+command is trusted and runs with the user's permissions; the worktree is not a
+security sandbox. Windows is outside the V4 proof.
 
 ### Exit codes
 
@@ -197,7 +200,7 @@ sandbox. Windows is outside the V4 proof.
 |------|---------|
 | 0 | Attempted and graded; the attempt record says `verdict: pass` or `fail` |
 | 2 | Usage error — unknown {term}`task`, missing/empty command, command cannot start |
-| 3 | Artifact, workspace, timeout, or cleanup refusal; or verdict `unavailable` |
+| 3 | Artifact, workspace, timeout, or cleanup refusal; a retained workspace; or verdict `unavailable` |
 
 The attempt record and the {term}`receipt` — not the exit code — are
 the result. The exit code is coarse by design.

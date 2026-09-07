@@ -237,6 +237,13 @@ every bounded attempt, including one that completes within budget. `deadline`
 is absent when that limit did not expire.
 `deadline.workspace_retained` and a non-null `retained_path` must agree.
 
+Cleanup runs after the final record and any receipt. If safe cleanup cannot be
+confirmed without a whole-attempt expiry, a completed `OK` or `GRADE_FAILED`
+record keeps that primary outcome and names the workspace in `retained_path`;
+its message records the cleanup problem. The CLI reports that retention as an
+operational failure, but the hook-derived receipt remains available for offline
+regrading. `CLEANUP_FAILED` remains the pre-grade operational outcome.
+
 Before grading, expiry is the refusal code `DEADLINE_EXCEEDED`: `setup` has no
 completed workspace base SHA, command, or artifact evidence; `command` has a
 base SHA but no normal command exit; and `preservation` has both a base SHA and

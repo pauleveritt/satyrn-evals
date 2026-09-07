@@ -156,6 +156,40 @@ def test_attempt_grade_failed_exits_3_and_prints_message(
     assert "boom" in capsys.readouterr().err
 
 
+def test_attempt_cli_reports_a_retained_graded_workspace(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from satyrn_evals.attempt_record import (
+        AttemptCode,
+        AttemptOutcome,
+        AttemptRecord,
+    )
+    from satyrn_evals.verdict import Verdict
+
+    record = AttemptRecord(
+        version=1,
+        outcome=AttemptOutcome.ATTEMPTED,
+        code=AttemptCode.OK,
+        message="attempt recorded and graded; workspace cleanup was unsafe",
+        task="t",
+        command=("fake",),
+        command_exit=0,
+        patch_path="patch.diff",
+        transcript_path="transcript.txt",
+        patch_digest="a" * 64,
+        transcript_digest="b" * 64,
+        verdict=Verdict.PASS,
+        receipt_path="receipt.json",
+        timeout=900.0,
+        workspace_base_sha="c" * 40,
+        retained_path="/tmp/retained",
+        attempt_dir="t-1",
+    )
+    monkeypatch.setattr(cli_module, "attempt", lambda **kw: record)
+    assert cli_module.main(["attempt", "t", "--", "cmd"]) == 3
+    assert "workspace retained at /tmp/retained" in capsys.readouterr().err
+
+
 # --- P4b Task 2: summarize/regrade CLI dispatch and exit codes ---
 
 

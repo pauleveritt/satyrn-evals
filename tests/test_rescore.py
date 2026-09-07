@@ -252,15 +252,17 @@ def test_regrade_turns_a_grade_failed_cell_ok(
     out = tmp_path / "run"
     write_cell(out, "format_number-1",
                record(code=AttemptCode.GRADE_FAILED, verdict=None,
-                      receipt_path=None))
+                      receipt_path=None, retained_path="/tmp/retained"))
     monkeypatch.setattr(rescore_module, "grade", _fake_grade(Verdict.PASS))
     rewritten = regrade_attempt(out / "format_number-1", tasks_root=_bundled())
     assert rewritten is not None
     assert rewritten.code is AttemptCode.OK
     assert rewritten.verdict is Verdict.PASS
     assert rewritten.receipt_path == "receipt.json"
+    assert rewritten.retained_path == "/tmp/retained"
     loaded = load_attempt_record(out / "format_number-1" / "attempt.json")
     assert loaded.code is AttemptCode.OK and loaded.verdict is Verdict.PASS
+    assert loaded.retained_path == "/tmp/retained"
     # the mock wrote the receipt exactly where the record names it
     assert (out / "format_number-1" / "receipt.json").is_file()
 

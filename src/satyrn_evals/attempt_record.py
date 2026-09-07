@@ -130,7 +130,10 @@ _ATTEMPT_POLICIES: dict[AttemptCode, _AttemptPolicy] = {
         AttemptOutcome.ATTEMPTED,
         _Presence.REQUIRED,
         _Presence.REQUIRED,
-        _Presence.FORBIDDEN,
+        # Cleanup is deliberately later than grading.  If its safety cannot
+        # be confirmed, keep the hook-derived outcome and receipt, and name
+        # the retained workspace as independent recovery provenance.
+        _Presence.OPTIONAL,
         _ArtifactPolicy.BOTH,
         _Presence.REQUIRED,
         _Presence.REQUIRED,
@@ -214,7 +217,7 @@ _ATTEMPT_POLICIES: dict[AttemptCode, _AttemptPolicy] = {
         AttemptOutcome.ATTEMPTED,
         _Presence.REQUIRED,
         _Presence.REQUIRED,
-        _Presence.FORBIDDEN,
+        _Presence.OPTIONAL,
         _ArtifactPolicy.BOTH,
     ),
     AttemptCode.DEADLINE_EXCEEDED: _AttemptPolicy(

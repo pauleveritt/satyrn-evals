@@ -89,6 +89,12 @@ def main(argv: list[str] | None = None) -> int:
             )
             if record.code is AttemptCode.GRADE_FAILED:
                 print(f"satyrn-evals: {record.message}", file=sys.stderr)
+            if record.retained_path is not None:
+                print(
+                    f"satyrn-evals: workspace retained at {record.retained_path}",
+                    file=sys.stderr,
+                )
+                return 3
             if record.outcome is AttemptOutcome.REFUSED:
                 return 3
             return 0 if record.verdict in (Verdict.PASS, Verdict.FAIL) else 3

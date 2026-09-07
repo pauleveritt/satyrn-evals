@@ -802,6 +802,16 @@ def test_cleanup_record_invariants() -> None:
         AttemptRecord(**values)  # type: ignore[arg-type]
 
 
+@pytest.mark.parametrize("code", [AttemptCode.OK, AttemptCode.GRADE_FAILED])
+def test_completed_outcome_can_carry_late_cleanup_retention(code: AttemptCode) -> None:
+    """Late cleanup does not make a receipt-derived outcome ungradeable."""
+    record = _valid_v4_record(code)
+    if code is AttemptCode.GRADE_FAILED:
+        record = replace(record, verdict=None, receipt_path=None)
+    retained = replace(record, retained_path="/tmp/retained")
+    assert retained.retained_path == "/tmp/retained"
+
+
 def test_v7_roundtrip_carries_attempt_dir(tmp_path) -> None:
     """A V7-shape record round-trips with its recorded attempt identity."""
     record = replace(_attempted(), attempt_dir="format_number-1725000000000000")

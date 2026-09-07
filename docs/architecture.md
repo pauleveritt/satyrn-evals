@@ -155,9 +155,13 @@ model sees equal to the text on record; keying the path by content keeps
 every cell of a run recording one command, which is what lets the batch
 summarize. When the command times out, evals terminates
 and reaps its POSIX process group before Git cleanup. If cleanup cannot prove
-the worktree registration absent, the attempt is refused as `CLEANUP_FAILED`
-and the record names the retained recovery path. This is process and workspace
-hygiene, not a security sandbox; Windows is outside the V4 proof.
+the worktree registration absent before grading, the attempt is refused as
+`CLEANUP_FAILED` and the record names the retained recovery path. Cleanup is
+normally later than the final record and receipt: a late retention keeps an
+`OK` or `GRADE_FAILED` record, its hook-derived evidence, and its regrade path,
+then records the retained recovery path separately. The command reports that
+retention as operational failure. This is process and workspace hygiene, not a
+security sandbox; Windows is outside the V4 proof.
 
 ## Testing: two tiers and the tripwire
 

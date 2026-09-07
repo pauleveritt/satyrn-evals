@@ -36,9 +36,14 @@ from satyrn_evals.patch import parse_patch_paths
 from satyrn_evals.receipt import patch_digest
 from satyrn_evals.workspace import (
     DEFAULT_TIMEOUT,
+    PreparedWorkspace,
     WorkspaceCode,
+    WorkspacePrepareError,
+    WorkspaceReleaseError,
     WorkspaceResult,
-    run_workspace,
+    prepare_workspace,
+    release_workspace,
+    run_prepared_command,
 )
 
 TASK_NAME_ENV = "SATYRN_TASK_NAME"
@@ -185,45 +190,179 @@ def attempt(
             )
         )
 
+    workspace_lease: PreparedWorkspace | None = None
     with TemporaryDirectory(prefix="satyrn-evals-uv-") as environment_root:
         env["UV_PROJECT_ENVIRONMENT"] = environment_root
-        workspace = run_workspace(
-            base=task_dir / "base",
-            protected_paths=(task_dir, output, Path.cwd()),
-            command=effective_command,
-            environment=env,
-            timeout=timeout,
-            transcript=transcript_path,
-            max_repeated_calls=max_repeated_calls,
-            overlay=(
-                load_overlay(task_dir, manifest)
-                if manifest.oracle_visibility == "hidden"
-                else None
-            ),
-        )
-    if workspace.code is WorkspaceCode.COMMAND_UNAVAILABLE:
-        attempt_dir.rmdir()  # usage writes nothing; artifacts cannot exist before start
-        raise UsageError(workspace.message)
-    try:
-        return _finish_attempt(
-            workspace=workspace,
-            task_dir=task_dir,
-            attempt_dir=attempt_dir,
-            patch_path=patch_path,
-            transcript_path=transcript_path,
-            manifest=manifest,
-            effective_command=effective_command,
-            timeout=timeout,
-            rung=selected_rung,
-            digest=digest,
-        )
-    except BaseException as exc:
-        if workspace.code is WorkspaceCode.CLEANUP_FAILED:
-            _add_exception_note(
-                exc,
-                f"{workspace.message}; retained at {workspace.retained_path}",
+        try:
+            workspace_lease = prepare_workspace(
+                base=task_dir / "base",
+                protected_paths=(task_dir, output, Path.cwd()),
+                environment=env,
+                overlay=(
+                    load_overlay(task_dir, manifest)
+                    if manifest.oracle_visibility == "hidden"
+                    else None
+                ),
             )
-        raise
+        except WorkspacePrepareError as exc:
+            # Keep the legacy observable outcome: setup failures make a
+            # durable WORKSPACE_FAILED record rather than escaping after the
+            # attempt directory has been allocated.
+            workspace = WorkspaceResult(
+                (
+                    WorkspaceCode.CLEANUP_FAILED
+                    if exc.retained_path is not None
+                    else WorkspaceCode.WORKSPACE_FAILED
+                ),
+                str(exc),
+                None,
+                None,
+                exc.retained_path,
+            )
+        else:
+            try:
+                workspace = run_prepared_command(
+                    workspace_lease,
+                    command=effective_command,
+                    timeout=timeout,
+                    transcript=transcript_path,
+                    max_repeated_calls=max_repeated_calls,
+                )
+            except BaseException as exc:
+                _release_after_exception(workspace_lease, exc)
+                raise
+        if workspace.code is WorkspaceCode.COMMAND_UNAVAILABLE:
+            try:
+                retained_path, release_message = _release_attempt_workspace(
+                    workspace_lease
+                )
+            except BaseException as exc:
+                assert workspace_lease is not None
+                _add_exception_note(
+                    exc,
+                    "command start failed and workspace release is unconfirmed; "
+                    f"retained at {workspace_lease.parent}",
+                )
+                raise
+            workspace_lease = None
+            if retained_path is None:
+                attempt_dir.rmdir()
+                raise UsageError(workspace.message)
+            workspace = WorkspaceResult(
+                WorkspaceCode.CLEANUP_FAILED,
+                f"{release_message}; displaced {workspace.code}: {workspace.message}",
+                None,
+                workspace.base_sha,
+                retained_path,
+            )
+        try:
+            record = _finish_attempt(
+                workspace=workspace,
+                task_dir=task_dir,
+                attempt_dir=attempt_dir,
+                patch_path=patch_path,
+                transcript_path=transcript_path,
+                manifest=manifest,
+                effective_command=effective_command,
+                timeout=timeout,
+                rung=selected_rung,
+                digest=digest,
+            )
+        except BaseException as exc:
+            if workspace_lease is not None:
+                _release_after_exception(workspace_lease, exc)
+            if workspace.code is WorkspaceCode.CLEANUP_FAILED:
+                _add_exception_note(
+                    exc,
+                    f"{workspace.message}; retained at {workspace.retained_path}",
+                )
+            raise
+        try:
+            retained_path, release_message = _release_attempt_workspace(workspace_lease)
+        except BaseException as exc:
+            if workspace_lease is not None:
+                _add_exception_note(
+                    exc,
+                    "workspace release is unconfirmed; "
+                    f"retained at {workspace_lease.parent}; "
+                    f"the durable attempt record remains at "
+                    f"{attempt_dir / 'attempt.json'}",
+                )
+            raise
+        if retained_path is not None:
+            record = _record_release_retention(
+                record,
+                retained_path=retained_path,
+                release_message=release_message,
+            )
+            try:
+                write_attempt_record(attempt_dir / "attempt.json", record)
+            except BaseException as exc:
+                _add_exception_note(
+                    exc,
+                    f"{release_message}; retained at {retained_path}; "
+                    f"the prior durable attempt record remains at "
+                    f"{attempt_dir / 'attempt.json'}",
+                )
+                raise
+        return record
+
+
+def _release_attempt_workspace(
+    workspace: PreparedWorkspace | None,
+) -> tuple[str | None, str | None]:
+    """Release a lease after durable attempt evidence, naming any retention."""
+    if workspace is None:
+        return None, None
+    try:
+        retained_path = release_workspace(workspace)
+    except WorkspaceReleaseError as exc:
+        if exc.retained_path is None:
+            raise
+        return exc.retained_path, str(exc)
+    if retained_path is None:
+        return None, None
+    return retained_path, "workspace cleanup was unsafe"
+
+
+def _release_after_exception(
+    workspace: PreparedWorkspace, error: BaseException
+) -> None:
+    """Release after a primary failure without allowing cleanup to hide it."""
+    try:
+        retained_path, message = _release_attempt_workspace(workspace)
+    except BaseException as release_error:
+        _add_exception_note(
+            error,
+            f"workspace release raised {type(release_error).__name__}: {release_error}; "
+            f"retained at {workspace.parent}",
+        )
+    else:
+        if retained_path is not None:
+            _add_exception_note(error, f"{message}; retained at {retained_path}")
+
+
+def _record_release_retention(
+    record: AttemptRecord,
+    *,
+    retained_path: str,
+    release_message: str | None,
+) -> AttemptRecord:
+    """Keep a graded outcome regradeable when late cleanup retains its lease."""
+    message = f"{record.message}; {release_message}; retained at {retained_path}"
+    if record.code in (AttemptCode.OK, AttemptCode.GRADE_FAILED):
+        return replace(record, message=message, retained_path=retained_path)
+    # No gradeable outcome exists before a refusal.  Preserve any available
+    # artifacts but retain the established cleanup-failure precedence.
+    return replace(
+        record,
+        outcome=AttemptOutcome.REFUSED,
+        code=AttemptCode.CLEANUP_FAILED,
+        message=f"{release_message}; displaced {record.code}: {record.message}",
+        verdict=None,
+        receipt_path=None,
+        retained_path=retained_path,
+    )
 
 
 def _finish_attempt(
