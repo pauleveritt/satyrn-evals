@@ -419,9 +419,13 @@ class AttemptRecord:
                 AttemptCode.PATCH_INVALID: frozenset({DeadlinePhase.CLEANUP}),
                 AttemptCode.TRANSCRIPT_MISSING: frozenset({DeadlinePhase.CLEANUP}),
                 AttemptCode.TRANSCRIPT_EMPTY: frozenset({DeadlinePhase.CLEANUP}),
-                AttemptCode.WORKSPACE_FAILED: frozenset({DeadlinePhase.CLEANUP}),
+                AttemptCode.WORKSPACE_FAILED: frozenset(
+                    {DeadlinePhase.PRESERVATION, DeadlinePhase.CLEANUP}
+                ),
                 AttemptCode.MODEL_ERROR: frozenset({DeadlinePhase.CLEANUP}),
-                AttemptCode.CLEANUP_FAILED: frozenset({DeadlinePhase.CLEANUP}),
+                AttemptCode.CLEANUP_FAILED: frozenset(
+                    {DeadlinePhase.PRESERVATION, DeadlinePhase.CLEANUP}
+                ),
             }
             if self.deadline.phase not in allowed_phases.get(self.code, frozenset()):
                 raise ValueError(

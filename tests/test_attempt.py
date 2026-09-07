@@ -44,6 +44,7 @@ class _FakeLease:
     def __init__(self, prepared: dict[str, Any]) -> None:
         self.prepared = prepared
         self.parent = Path("/tmp/fake-prepared-workspace")
+        self.base_sha = "b" * 40
 
 
 def _install_workspace_double(
@@ -917,6 +918,255 @@ def test_within_budget_refusal_records_configured_attempt_timeout(
     assert record.attempt_timeout == 10.0
     assert record.deadline is None
     assert load_attempt_record(attempt_dir / "attempt.json") == record
+
+
+class _Clock:
+    def __init__(self) -> None:
+        self.now = 0.0
+
+    def __call__(self) -> float:
+        return self.now
+
+
+def _bounded_attempt(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    deadline: AttemptDeadline,
+) -> AttemptRecord:
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+    return attempt_module._attempt(
+        task="t",
+        tasks_root=tasks_root,
+        output=tmp_path / "attempts",
+        command=["fake-agent"],
+        timeout=30.0,
+        deadline=deadline,
+    )
+
+
+def test_private_deadline_setup_expiry_writes_refusal_before_command(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    clock = _Clock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+    launched = False
+
+    def prepare(**_kwargs: Any) -> _FakeLease:
+        clock.now = 1.0
+        with pytest.raises(TimeoutError) as caught:
+            deadline.remaining(DeadlinePhase.SETUP)
+        raise WorkspacePrepareError("deadline", deadline=caught.value)
+
+    def run(**_kwargs: Any) -> WorkspaceResult:
+        nonlocal launched
+        launched = True
+        raise AssertionError("command must not launch")
+
+    _install_workspace_double(monkeypatch, run)
+    monkeypatch.setattr(attempt_module, "prepare_workspace", prepare)
+    record = _bounded_attempt(tmp_path, monkeypatch, deadline)
+
+    assert not launched
+    assert record.code is AttemptCode.DEADLINE_EXCEEDED
+    assert record.deadline is not None
+    assert record.deadline.phase is DeadlinePhase.SETUP
+    assert record.retained_path is None
+
+
+def test_private_deadline_after_setup_error_still_writes_setup_refusal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    clock = _Clock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+
+    def prepare(**_kwargs: Any) -> _FakeLease:
+        clock.now = 1.0
+        raise WorkspacePrepareError("repository setup failed")
+
+    _install_workspace_double(monkeypatch, lambda **_kwargs: pytest.fail("launched"))
+    monkeypatch.setattr(attempt_module, "prepare_workspace", prepare)
+    record = _bounded_attempt(tmp_path, monkeypatch, deadline)
+
+    assert record.code is AttemptCode.DEADLINE_EXCEEDED
+    assert record.deadline is not None
+    assert record.deadline.phase is DeadlinePhase.SETUP
+
+
+def test_private_deadline_after_setup_error_keeps_latched_provenance(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class BetweenSetupClock(_Clock):
+        def __call__(self) -> float:
+            observed = self.now
+            if observed == 0.5:
+                self.now = 1.0
+            return observed
+
+    clock = BetweenSetupClock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+
+    def prepare(**_kwargs: Any) -> _FakeLease:
+        clock.now = 0.5
+        raise WorkspacePrepareError("repository setup failed")
+
+    _install_workspace_double(monkeypatch, lambda **_kwargs: pytest.fail("launched"))
+    monkeypatch.setattr(attempt_module, "prepare_workspace", prepare)
+    record = _bounded_attempt(tmp_path, monkeypatch, deadline)
+
+    assert record.code is AttemptCode.WORKSPACE_FAILED
+    assert record.deadline is not None
+    assert record.deadline.phase is DeadlinePhase.PRESERVATION
+    assert record.retained_path is None
+
+
+def test_private_deadline_command_expiry_retains_available_artifacts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    clock = _Clock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+
+    def run(**kwargs: Any) -> WorkspaceResult:
+        environment = kwargs["environment"]
+        Path(environment[attempt_module.PATCH_ENV]).write_text(GOOD_PATCH)
+        Path(environment[attempt_module.TRANSCRIPT_ENV]).write_text(TRANSCRIPT)
+        clock.now = 1.0
+        deadline.remaining(DeadlinePhase.COMMAND)
+        raise AssertionError("unreachable")
+
+    _install_workspace_double(monkeypatch, run)
+    record = _bounded_attempt(tmp_path, monkeypatch, deadline)
+
+    assert record.code is AttemptCode.DEADLINE_EXCEEDED
+    assert record.deadline is not None
+    assert record.deadline.phase is DeadlinePhase.COMMAND
+    assert record.patch_digest is not None and record.transcript_digest is not None
+    assert record.retained_path == "/tmp/fake-prepared-workspace"
+
+
+def test_private_deadline_precedes_command_unavailable_cleanup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    clock = _Clock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+    released = False
+
+    def run(**_kwargs: Any) -> WorkspaceResult:
+        clock.now = 1.0
+        return WorkspaceResult(
+            WorkspaceCode.COMMAND_UNAVAILABLE, "agent missing", None, "b" * 40
+        )
+
+    def release(_lease: _FakeLease) -> str | None:
+        nonlocal released
+        released = True
+        return None
+
+    _install_workspace_double(monkeypatch, run, release=release)
+    record = _bounded_attempt(tmp_path, monkeypatch, deadline)
+
+    assert not released
+    assert record.code is AttemptCode.DEADLINE_EXCEEDED
+    assert record.deadline is not None
+    assert record.deadline.phase is DeadlinePhase.COMMAND
+    assert record.retained_path == "/tmp/fake-prepared-workspace"
+
+
+def test_private_deadline_preservation_expiry_retains_artifacts_without_grading(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class PreservationClock(_Clock):
+        def __call__(self) -> float:
+            observed = self.now
+            if observed == 0.5:
+                self.now = 1.0
+            return observed
+
+    clock = PreservationClock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+    graded = False
+
+    def run(**kwargs: Any) -> WorkspaceResult:
+        environment = kwargs["environment"]
+        Path(environment[attempt_module.PATCH_ENV]).write_text(GOOD_PATCH)
+        Path(environment[attempt_module.TRANSCRIPT_ENV]).write_text(TRANSCRIPT)
+        clock.now = 0.5
+        return WorkspaceResult(WorkspaceCode.OK, "done", 0, "b" * 40)
+
+    def grade(*_args: Path) -> Receipt:
+        nonlocal graded
+        graded = True
+        raise AssertionError("grading must not start after preservation expiry")
+
+    _install_workspace_double(monkeypatch, run)
+    monkeypatch.setattr(attempt_module, "grade", grade)
+    record = _bounded_attempt(tmp_path, monkeypatch, deadline)
+
+    assert not graded
+    assert record.code is AttemptCode.DEADLINE_EXCEEDED
+    assert record.deadline is not None
+    assert record.deadline.phase is DeadlinePhase.PRESERVATION
+    assert record.patch_digest is not None and record.transcript_digest is not None
+    assert record.retained_path == "/tmp/fake-prepared-workspace"
+
+
+def test_private_deadline_preservation_keeps_command_timeout_authority(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class PreservationClock(_Clock):
+        def __call__(self) -> float:
+            observed = self.now
+            if observed == 0.5:
+                self.now = 1.0
+            return observed
+
+    clock = PreservationClock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+
+    def run(**kwargs: Any) -> WorkspaceResult:
+        environment = kwargs["environment"]
+        Path(environment[attempt_module.PATCH_ENV]).write_text(GOOD_PATCH)
+        Path(environment[attempt_module.TRANSCRIPT_ENV]).write_text(TRANSCRIPT)
+        clock.now = 0.5
+        return WorkspaceResult(
+            WorkspaceCode.COMMAND_TIMEOUT, "command timed out", None, "b" * 40
+        )
+
+    _install_workspace_double(monkeypatch, run)
+    record = _bounded_attempt(tmp_path, monkeypatch, deadline)
+
+    assert record.code is AttemptCode.COMMAND_TIMEOUT
+    assert record.deadline is not None
+    assert record.deadline.phase is DeadlinePhase.PRESERVATION
+    assert record.retained_path == "/tmp/fake-prepared-workspace"
+
+
+def test_private_deadline_preservation_keeps_null_exit_workspace_authority(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class PreservationClock(_Clock):
+        def __call__(self) -> float:
+            observed = self.now
+            if observed == 0.5:
+                self.now = 1.0
+            return observed
+
+    clock = PreservationClock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+
+    def run(**_kwargs: Any) -> WorkspaceResult:
+        clock.now = 0.5
+        return WorkspaceResult(
+            WorkspaceCode.WORKSPACE_FAILED, "spool failed", None, None
+        )
+
+    _install_workspace_double(monkeypatch, run)
+    record = _bounded_attempt(tmp_path, monkeypatch, deadline)
+
+    assert record.code is AttemptCode.WORKSPACE_FAILED
+    assert record.deadline is not None
+    assert record.deadline.phase is DeadlinePhase.PRESERVATION
+    assert record.retained_path == "/tmp/fake-prepared-workspace"
 
 
 def test_attempt_grades_and_records_before_releasing_workspace(

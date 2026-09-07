@@ -29,6 +29,7 @@ from satyrn_evals.attempt_record import (
 )
 from satyrn_evals.deadline import AttemptDeadline, AttemptDeadlineExceeded
 from satyrn_evals.engine_contract import (
+    engine_contract_path,
     render_engine_contract,
     write_engine_contract,
 )
@@ -141,6 +142,29 @@ def attempt(
     rung: str | None = None,
     max_repeated_calls: int | None = None,
 ) -> AttemptRecord:
+    """Run an unbounded attempt through the stable public API."""
+    return _attempt(
+        task=task,
+        tasks_root=tasks_root,
+        output=output,
+        command=command,
+        timeout=timeout,
+        rung=rung,
+        max_repeated_calls=max_repeated_calls,
+    )
+
+
+def _attempt(
+    *,
+    task: str,
+    tasks_root: Path,
+    output: Path,
+    command: list[str],
+    timeout: float = DEFAULT_TIMEOUT,
+    rung: str | None = None,
+    max_repeated_calls: int | None = None,
+    deadline: AttemptDeadline | None = None,
+) -> AttemptRecord:
     """Run COMMAND against TASK, preserve patch + transcript, grade, and record.
 
     Usage errors (unknown task, empty command, command cannot start) raise
@@ -173,6 +197,7 @@ def attempt(
     env["PATH"] = str(Path(sys.executable).parent) + os.pathsep + env.get("PATH", "")
 
     effective_command = list(command)
+    rendered_contract: bytes | None = None
     if manifest.engine_contract is not None:
         # A hand-authored contract keeps today's behaviour exactly.
         effective_command.append(
@@ -182,19 +207,29 @@ def attempt(
         # Generated from manifest + selected rung, written once at a path
         # keyed by the SHA-256 of its own bytes so every cell of a run
         # records the same command (proposal correction 8).
-        effective_command.append(
-            os.fspath(
-                write_engine_contract(
-                    output,
-                    render_engine_contract(
-                        task_dir,
-                        manifest,
-                        rung=selected_rung,
-                        contract_text=contract_text,
-                    ),
-                )
-            )
+        rendered_contract = render_engine_contract(
+            task_dir, manifest, rung=selected_rung, contract_text=contract_text
         )
+        effective_command.append(
+            os.fspath(engine_contract_path(output, rendered_contract))
+        )
+    if deadline is not None:
+        try:
+            deadline.remaining(DeadlinePhase.SETUP)
+        except AttemptDeadlineExceeded:
+            return _write_deadline_refusal(
+                attempt_dir=attempt_dir,
+                patch_path=patch_path,
+                transcript_path=transcript_path,
+                manifest=manifest,
+                effective_command=effective_command,
+                timeout=timeout,
+                rung=selected_rung,
+                digest=digest,
+                deadline=deadline,
+            )
+    if rendered_contract is not None:
+        write_engine_contract(output, rendered_contract)
 
     workspace_lease: PreparedWorkspace | None = None
     with TemporaryDirectory(prefix="satyrn-evals-uv-") as environment_root:
@@ -209,8 +244,38 @@ def attempt(
                     if manifest.oracle_visibility == "hidden"
                     else None
                 ),
+                deadline=deadline,
             )
         except WorkspacePrepareError as exc:
+            if exc.deadline is not None:
+                return _write_deadline_refusal(
+                    attempt_dir=attempt_dir,
+                    patch_path=patch_path,
+                    transcript_path=transcript_path,
+                    manifest=manifest,
+                    effective_command=effective_command,
+                    timeout=timeout,
+                    rung=selected_rung,
+                    digest=digest,
+                    deadline=deadline,
+                    retained_path=exc.retained_path,
+                )
+            if deadline is not None:
+                try:
+                    deadline.remaining(DeadlinePhase.SETUP)
+                except AttemptDeadlineExceeded:
+                    return _write_deadline_refusal(
+                        attempt_dir=attempt_dir,
+                        patch_path=patch_path,
+                        transcript_path=transcript_path,
+                        manifest=manifest,
+                        effective_command=effective_command,
+                        timeout=timeout,
+                        rung=selected_rung,
+                        digest=digest,
+                        deadline=deadline,
+                        retained_path=exc.retained_path,
+                    )
             # Keep the legacy observable outcome: setup failures make a
             # durable WORKSPACE_FAILED record rather than escaping after the
             # attempt directory has been allocated.
@@ -233,6 +298,25 @@ def attempt(
                     timeout=timeout,
                     transcript=transcript_path,
                     max_repeated_calls=max_repeated_calls,
+                    deadline=deadline,
+                )
+                if deadline is not None:
+                    deadline.remaining(DeadlinePhase.COMMAND)
+            except AttemptDeadlineExceeded:
+                assert deadline is not None
+                return _write_deadline_refusal(
+                    attempt_dir=attempt_dir,
+                    patch_path=patch_path,
+                    transcript_path=transcript_path,
+                    manifest=manifest,
+                    effective_command=effective_command,
+                    timeout=timeout,
+                    rung=selected_rung,
+                    digest=digest,
+                    deadline=deadline,
+                    command_exit=None,
+                    workspace_base_sha=workspace_lease.base_sha,
+                    retained_path=os.fspath(workspace_lease.parent),
                 )
             except BaseException as exc:
                 _release_after_exception(workspace_lease, exc)
@@ -261,6 +345,54 @@ def attempt(
                 workspace.base_sha,
                 retained_path,
             )
+        if deadline is not None:
+            try:
+                deadline.remaining(DeadlinePhase.PRESERVATION)
+            except AttemptDeadlineExceeded:
+                if workspace_lease is None:
+                    _finish_attempt(
+                        workspace=workspace,
+                        task_dir=task_dir,
+                        attempt_dir=attempt_dir,
+                        patch_path=patch_path,
+                        transcript_path=transcript_path,
+                        manifest=manifest,
+                        effective_command=effective_command,
+                        timeout=timeout,
+                        rung=selected_rung,
+                        digest=digest,
+                    )
+                    return _retain_expired_record(attempt_dir, deadline, None)
+                if workspace.code is not WorkspaceCode.OK:
+                    _finish_attempt(
+                        workspace=workspace,
+                        task_dir=task_dir,
+                        attempt_dir=attempt_dir,
+                        patch_path=patch_path,
+                        transcript_path=transcript_path,
+                        manifest=manifest,
+                        effective_command=effective_command,
+                        timeout=timeout,
+                        rung=selected_rung,
+                        digest=digest,
+                    )
+                    return _retain_expired_record(
+                        attempt_dir, deadline, workspace_lease.parent
+                    )
+                return _write_deadline_refusal(
+                    attempt_dir=attempt_dir,
+                    patch_path=patch_path,
+                    transcript_path=transcript_path,
+                    manifest=manifest,
+                    effective_command=effective_command,
+                    timeout=timeout,
+                    rung=selected_rung,
+                    digest=digest,
+                    deadline=deadline,
+                    command_exit=workspace.command_exit,
+                    workspace_base_sha=workspace.base_sha,
+                    retained_path=os.fspath(workspace_lease.parent),
+                )
         try:
             record = _finish_attempt(
                 workspace=workspace,
@@ -273,6 +405,9 @@ def attempt(
                 timeout=timeout,
                 rung=selected_rung,
                 digest=digest,
+                # Grading expiry reconciliation is the next slice.  This
+                # private path deliberately admits only pre-grade work.
+                deadline=None,
             )
         except BaseException as exc:
             if workspace_lease is not None:
@@ -329,6 +464,90 @@ def _release_attempt_workspace(
     if retained_path is None:
         return None, None
     return retained_path, "workspace cleanup was unsafe"
+
+
+def _write_deadline_refusal(
+    *,
+    attempt_dir: Path,
+    patch_path: Path,
+    transcript_path: Path,
+    manifest: TaskManifest,
+    effective_command: list[str],
+    timeout: float,
+    rung: str | None,
+    digest: str,
+    deadline: AttemptDeadline,
+    command_exit: int | None = None,
+    workspace_base_sha: str | None = None,
+    retained_path: str | None = None,
+) -> AttemptRecord:
+    """Finalize a pre-grade expiry from whatever evidence is already local."""
+    expiry: AttemptDeadlineExceeded
+    try:
+        deadline.remaining(DeadlinePhase.PRESERVATION)
+    except AttemptDeadlineExceeded as caught:
+        expiry = caught
+    else:
+        raise AssertionError("deadline refusal requires an expired deadline")
+    patch_bytes, _patch_error = _read_artifact(patch_path, "patch")
+    transcript_bytes, _transcript_error = _read_artifact(transcript_path, "transcript")
+    record = AttemptRecord(
+        version=1,
+        outcome=AttemptOutcome.REFUSED,
+        code=AttemptCode.DEADLINE_EXCEEDED,
+        message=str(expiry),
+        task=manifest.name,
+        command=tuple(effective_command),
+        command_exit=command_exit,
+        patch_path="patch.diff" if patch_bytes is not None else None,
+        transcript_path="transcript.txt" if transcript_bytes is not None else None,
+        patch_digest=patch_digest(patch_bytes) if patch_bytes is not None else None,
+        transcript_digest=(
+            patch_digest(transcript_bytes) if transcript_bytes is not None else None
+        ),
+        verdict=None,
+        receipt_path=None,
+        timeout=timeout,
+        rung=rung,
+        contract_digest=digest,
+        workspace_base_sha=workspace_base_sha,
+        retained_path=retained_path,
+        attempt_dir=attempt_dir.name,
+        attempt_timeout=deadline.timeout,
+        deadline=DeadlineProvenance(
+            deadline.timeout,
+            expiry.phase,
+            expiry.elapsed,
+            workspace_retained=retained_path is not None,
+        ),
+    )
+    write_attempt_record(attempt_dir / "attempt.json", record)
+    return record
+
+
+def _retain_expired_record(
+    attempt_dir: Path, deadline: AttemptDeadline, retained_path: Path | None
+) -> AttemptRecord:
+    """Add latched expiry provenance without displacing an earlier outcome."""
+    try:
+        deadline.remaining(DeadlinePhase.PRESERVATION)
+    except AttemptDeadlineExceeded as caught:
+        expiry = caught
+    else:
+        raise AssertionError("deadline retention requires an expired deadline")
+    record = replace(
+        load_attempt_record(attempt_dir / "attempt.json"),
+        attempt_timeout=deadline.timeout,
+        deadline=DeadlineProvenance(
+            deadline.timeout,
+            expiry.phase,
+            expiry.elapsed,
+            workspace_retained=retained_path is not None,
+        ),
+        retained_path=os.fspath(retained_path) if retained_path is not None else None,
+    )
+    write_attempt_record(attempt_dir / "attempt.json", record)
+    return record
 
 
 def _release_after_exception(
