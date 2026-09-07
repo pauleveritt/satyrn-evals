@@ -37,11 +37,15 @@ def test_capture_requires_revert() -> None:
 
 
 def test_grade_tasks_root_unknown_task_is_usage(tmp_path) -> None:
-    assert main(["grade", "--tasks-root", str(tmp_path), "no_such_task", "x.patch"]) == 2
+    assert (
+        main(["grade", "--tasks-root", str(tmp_path), "no_such_task", "x.patch"]) == 2
+    )
 
 
 def test_attempt_split_keeps_flags_and_command() -> None:
-    flags, command = split_attempt_argv(["t", "--tasks-root", "R", "--", "cmd", "--flag", "x"])
+    flags, command = split_attempt_argv(
+        ["t", "--tasks-root", "R", "--", "cmd", "--flag", "x"]
+    )
     assert flags == ["t", "--tasks-root", "R"]
     assert command == ["cmd", "--flag", "x"]
 
@@ -74,7 +78,9 @@ def test_attempt_unknown_task_is_usage(tmp_path) -> None:
 
 
 @pytest.mark.parametrize("value", ["0", "-1", "nan", "inf", "not-a-number"])
-def test_attempt_timeout_rejects_nonpositive_nonfinite_and_malformed(value: str) -> None:
+def test_attempt_timeout_rejects_nonpositive_nonfinite_and_malformed(
+    value: str,
+) -> None:
     with pytest.raises(Exception, match="finite number greater than zero"):
         positive_finite_timeout(value)
 
@@ -92,17 +98,25 @@ def test_run_requires_command() -> None:
     assert main(["run", "format_number"]) == 2
 
 
+def test_run_requires_explicit_planned_denominator() -> None:
+    with pytest.raises(SystemExit):
+        main(["run", "format_number", "--", "cmd"])
+
+
 @pytest.mark.parametrize("value", ["0", "-1", "abc"])
 def test_run_n_rejects_non_positive_and_malformed(value: str) -> None:
     with pytest.raises(argparse.ArgumentTypeError, match="integer greater than zero"):
         positive_int(value)
 
 
-def test_run_cli_dispatch(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("n", [1, 2])
+def test_run_cli_dispatches_an_explicit_planned_denominator(
+    n: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
     seen: dict[str, object] = {}
     monkeypatch.setattr(cli_module, "run", lambda **kw: seen.update(kw))
-    assert cli_module.main(["run", "format_number", "--n", "2", "--", "cmd"]) == 0
-    assert seen["n"] == 2 and seen["task"] == "format_number"
+    assert cli_module.main(["run", "format_number", "--n", str(n), "--", "cmd"]) == 0
+    assert seen["n"] == n and seen["task"] == "format_number"
 
 
 def test_run_cli_rejects_nonpositive_n() -> None:
@@ -120,14 +134,22 @@ def test_attempt_grade_failed_exits_3_and_prints_message(
     )
 
     record = AttemptRecord(
-        version=1, outcome=AttemptOutcome.ATTEMPTED,
+        version=1,
+        outcome=AttemptOutcome.ATTEMPTED,
         code=AttemptCode.GRADE_FAILED,
         message="attempt preserved and admitted; grading did not complete: boom",
-        task="t", command=("fake",), command_exit=0,
-        patch_path="patch.diff", transcript_path="transcript.txt",
-        patch_digest="a" * 64, transcript_digest="b" * 64,
-        verdict=None, receipt_path=None, timeout=900.0,
-        workspace_base_sha="c" * 40, attempt_dir="t-1",
+        task="t",
+        command=("fake",),
+        command_exit=0,
+        patch_path="patch.diff",
+        transcript_path="transcript.txt",
+        patch_digest="a" * 64,
+        transcript_digest="b" * 64,
+        verdict=None,
+        receipt_path=None,
+        timeout=900.0,
+        workspace_base_sha="c" * 40,
+        attempt_dir="t-1",
     )
     monkeypatch.setattr(cli_module, "attempt", lambda **kw: record)
     assert cli_module.main(["attempt", "t", "--", "cmd"]) == 3
@@ -140,16 +162,15 @@ def test_attempt_grade_failed_exits_3_and_prints_message(
 def test_summarize_cli_writes_summary(tmp_path: Path, monkeypatch) -> None:
     seen: dict[str, object] = {}
     monkeypatch.setattr(
-        cli_module, "summarize_output",
+        cli_module,
+        "summarize_output",
         lambda output, **kw: seen.update(output=str(output), **kw),
     )
     assert cli_module.main(["summarize", str(tmp_path)]) == 0
     assert seen["output"] == str(tmp_path)
 
 
-def test_summarize_cli_usage_error_exits_2(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_summarize_cli_usage_error_exits_2(tmp_path: Path, monkeypatch) -> None:
     def refuse(output, **kw):
         raise UsageError(f"no {SUMMARY_NAME} under {output}")
 
@@ -162,10 +183,11 @@ def test_regrade_cli_dispatches(
 ) -> None:
     seen: dict[str, object] = {}
     monkeypatch.setattr(
-        cli_module, "regrade_attempt",
-        lambda attempt_dir, **kw: seen.update(
-            attempt_dir=str(attempt_dir), **kw
-        ) or object(),  # non-None: graded leg, no no-op note
+        cli_module,
+        "regrade_attempt",
+        lambda attempt_dir, **kw: (
+            seen.update(attempt_dir=str(attempt_dir), **kw) or object()
+        ),  # non-None: graded leg, no no-op note
     )
     assert cli_module.main(["regrade", str(tmp_path)]) == 0
     assert seen["attempt_dir"] == str(tmp_path)
@@ -175,17 +197,15 @@ def test_regrade_cli_dispatches(
 def test_regrade_cli_noop_exits_0_with_note(
     tmp_path: Path, monkeypatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(cli_module, "regrade_attempt",
-                        lambda attempt_dir, **kw: None)
+    monkeypatch.setattr(cli_module, "regrade_attempt", lambda attempt_dir, **kw: None)
     assert cli_module.main(["regrade", str(tmp_path)]) == 0
     assert "nothing" in capsys.readouterr().err
 
 
-def test_regrade_cli_usage_error_exits_2(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_regrade_cli_usage_error_exits_2(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(
-        cli_module, "regrade_attempt",
+        cli_module,
+        "regrade_attempt",
         lambda attempt_dir, **kw: (_ for _ in ()).throw(
             UsageError("no attempt record")
         ),
@@ -193,11 +213,10 @@ def test_regrade_cli_usage_error_exits_2(
     assert cli_module.main(["regrade", str(tmp_path)]) == 2
 
 
-def test_regrade_cli_operational_error_exits_3(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_regrade_cli_operational_error_exits_3(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(
-        cli_module, "regrade_attempt",
+        cli_module,
+        "regrade_attempt",
         lambda attempt_dir, **kw: (_ for _ in ()).throw(
             SatyrnError("regrade: verdict unavailable")
         ),
@@ -229,12 +248,15 @@ def test_attempt_cli_passes_rung_through(monkeypatch: pytest.MonkeyPatch) -> Non
 def test_run_cli_passes_rung_through(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: dict[str, object] = {}
     monkeypatch.setattr(cli_module, "run", lambda **kw: seen.update(kw))
-    assert cli_module.main(
-        ["run", "format_number", "--n", "2", "--rung", "R1", "--", "cmd"]
-    ) == 0
+    assert (
+        cli_module.main(
+            ["run", "format_number", "--n", "2", "--rung", "R1", "--", "cmd"]
+        )
+        == 0
+    )
     assert seen["rung"] == "R1"
     assert seen["command"] == ["cmd"]
 
 
 def test_run_cli_rung_defaults_to_none() -> None:
-    assert parser.parse_args(["run", "task"]).rung is None
+    assert parser.parse_args(["run", "task", "--n", "1"]).rung is None

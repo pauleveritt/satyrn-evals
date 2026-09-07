@@ -22,7 +22,11 @@ from satyrn_evals.session_record import SessionCode
 from satyrn_evals.verdict import Verdict
 from satyrn_evals.workspace import DEFAULT_TIMEOUT
 
-_EXIT_CODES: dict[Verdict, int] = {Verdict.PASS: 0, Verdict.FAIL: 0, Verdict.UNAVAILABLE: 3}
+_EXIT_CODES: dict[Verdict, int] = {
+    Verdict.PASS: 0,
+    Verdict.FAIL: 0,
+    Verdict.UNAVAILABLE: 3,
+}
 
 
 def positive_finite_timeout(value: str) -> float:
@@ -142,17 +146,17 @@ def main(argv: list[str] | None = None) -> int:
             receipt = grade(task_dir, Path(args.patch), Path(args.receipt))
             return _EXIT_CODES[receipt.verdict]
         if args.command == "summarize":
-            summarize_output(
-                Path(args.output), tasks_root=Path(args.tasks_root)
-            )
+            summarize_output(Path(args.output), tasks_root=Path(args.tasks_root))
             return 0
         if args.command == "regrade":
-            if regrade_attempt(
-                Path(args.attempt_dir), tasks_root=Path(args.tasks_root)
-            ) is None:
+            if (
+                regrade_attempt(
+                    Path(args.attempt_dir), tasks_root=Path(args.tasks_root)
+                )
+                is None
+            ):
                 print(
-                    "satyrn-evals: regrade: nothing to grade "
-                    "(refusal record)",
+                    "satyrn-evals: regrade: nothing to grade (refusal record)",
                     file=sys.stderr,
                 )
             return 0
@@ -182,7 +186,9 @@ grade_p.add_argument(
     "--receipt", default="receipt.json", help="receipt path (default: receipt.json)"
 )
 grade_p.add_argument(
-    "--tasks-root", default=str(DEFAULT_TASKS_ROOT), help="task root (default: bundled tasks)"
+    "--tasks-root",
+    default=str(DEFAULT_TASKS_ROOT),
+    help="task root (default: bundled tasks)",
 )
 
 capture_p = sub.add_parser(
@@ -192,17 +198,23 @@ capture_p.add_argument("--revert", required=True, help="the fixing commit SHA")
 capture_p.add_argument("--repo", default=".", help="source repository (default: cwd)")
 capture_p.add_argument("--name", help="task name (default: slug of the fix subject)")
 capture_p.add_argument("--contract", help="task contract (default: fix subject)")
-capture_p.add_argument("--output", default="tasks", help="output directory (default: ./tasks)")
+capture_p.add_argument(
+    "--output", default="tasks", help="output directory (default: ./tasks)"
+)
 
 attempt_p = sub.add_parser(
     "attempt", help="run an attempt command, preserve patch + transcript, grade offline"
 )
 attempt_p.add_argument("task", help="task name")
 attempt_p.add_argument(
-    "--tasks-root", default=str(DEFAULT_TASKS_ROOT), help="task root (default: bundled tasks)"
+    "--tasks-root",
+    default=str(DEFAULT_TASKS_ROOT),
+    help="task root (default: bundled tasks)",
 )
 attempt_p.add_argument(
-    "--output", default="attempts", help="attempt output directory (default: ./attempts)"
+    "--output",
+    default="attempts",
+    help="attempt output directory (default: ./attempts)",
 )
 attempt_p.add_argument(
     "--rung",
@@ -222,12 +234,10 @@ attempt_p.add_argument(
     help=f"command timeout in seconds (default: {DEFAULT_TIMEOUT:g})",
 )
 
-run_p = sub.add_parser(
-    "run", help="run an attempt command n times and write a summary"
-)
+run_p = sub.add_parser("run", help="run an attempt command n times and write a summary")
 run_p.add_argument("task", help="task name")
 run_p.add_argument(
-    "--n", type=positive_int, default=8, help="attempts per run (default: 8)"
+    "--n", type=positive_int, required=True, help="planned attempts per run"
 )
 run_p.add_argument(
     "--tasks-root",
@@ -268,9 +278,7 @@ summarize_p.add_argument(
 regrade_p = sub.add_parser(
     "regrade", help="re-grade a preserved attempt and rewrite its record"
 )
-regrade_p.add_argument(
-    "attempt_dir", help="attempt directory (holds attempt.json)"
-)
+regrade_p.add_argument("attempt_dir", help="attempt directory (holds attempt.json)")
 regrade_p.add_argument(
     "--tasks-root",
     default=str(DEFAULT_TASKS_ROOT),
@@ -283,10 +291,14 @@ session_p = sub.add_parser(
 )
 session_p.add_argument("task", help="task name")
 session_p.add_argument(
-    "--tasks-root", default=str(DEFAULT_TASKS_ROOT), help="task root (default: bundled tasks)"
+    "--tasks-root",
+    default=str(DEFAULT_TASKS_ROOT),
+    help="task root (default: bundled tasks)",
 )
 session_p.add_argument(
-    "--output", default="sessions", help="session output directory (default: ./sessions)"
+    "--output",
+    default="sessions",
+    help="session output directory (default: ./sessions)",
 )
 session_p.add_argument(
     "--start-timeout",

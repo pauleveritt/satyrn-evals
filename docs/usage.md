@@ -249,14 +249,16 @@ grading as `attempt`; it adds repetition and aggregation, not another engine
 integration.
 
 ```console
-satyrn-evals run TASK [--n N] [--rung KEY] [--tasks-root DIR] [--output DIR] [--timeout SECONDS]
+satyrn-evals run TASK --n N [--rung KEY] [--tasks-root DIR] [--output DIR] [--timeout SECONDS]
     [--max-repeated-calls N] -- COMMAND...
 ```
 
 - `TASK`, `--tasks-root`, `--timeout`, `--max-repeated-calls`, and
   `-- COMMAND...` have the same
   meaning as for `attempt`.
-- `--n N` — a positive number of attempts; default `8`.
+- `--n N` — required positive number of planned attempts. State it explicitly
+  so the recorded denominator is deliberate rather than inherited from a
+  command default.
 - `--rung KEY` — as for `attempt`, applied to every cell. An unknown rung is
   refused **before the first attempt**, so the refusal preserves nothing and
   is fixed by repairing the flag and re-running.
@@ -279,7 +281,7 @@ completed short run.
 For example:
 
 ```console
-$ satyrn-evals run local-pings --n 8 --timeout 900 --output runs/engine -- \
+$ satyrn-evals run local-pings --n 1 --timeout 900 --output runs/engine -- \
     /src/satyrn-engine/.venv/bin/satyrn-engine attempt
 ```
 
