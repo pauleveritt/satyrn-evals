@@ -33,6 +33,15 @@ Not asked: whether the read lock is explained — it is not
   show a `run_tests` call that executed the suite and returned output, not
   merely the absence of an error.
 
+> **Amendment, 2026-09-06, before any budgeted cell.** The tool is named
+> **`bash`** and takes a `command` argument, not `run_tests` with none, and
+> `--tools` now carries its name. The first smoke found the parameterless
+> tool was never reachable at all — `--tools read,edit` gates
+> extension-registered tools, so every call answered `Tool bash not found`.
+> Outcome **D below is therefore already answered**: with the tool
+> reachable, three uncounted smoke cells called it 3 times each and ran the
+> suite twice each. Rows A–C stand unchanged, read against Engine's 6/12.
+
 ## 3. The consequence table, predeclared
 
 Reference: V13d Engine 6/12 (`n=12`, same task, same rung, pre-runner).
