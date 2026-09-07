@@ -65,9 +65,12 @@ the cheapest deterministic regression test that covers the reproducible
 component. That test can show the component now handles the saved evidence; a
 subsequent bounded live attempt is needed to learn whether a model chooses a
 better sequence. Measure setup, command, and grading durations before proposing
-cache reuse, model reuse, or concurrency changes. A whole-attempt deadline is
-not yet implemented: it needs a separate design that bounds setup, command,
-preservation, grading, and cleanup without losing evidence.
+cache reuse, model reuse, or concurrency changes. Use `--attempt-timeout` when
+the development question needs a bound on the complete setup, command,
+preservation, grading, and cleanup lifecycle; it remains independent of the
+executor command timeout. A route claiming feedback within 10–15 minutes must
+name that whole-attempt limit explicitly. Deadline provenance is operational
+evidence, not a verdict or success-rate finding.
 
 `local-pings` remains useful for grading, smoke, and regression use. Its past
 diagnostic interpretation is historical evidence, not a current selection

@@ -10,11 +10,17 @@ order (V10 spec §4).
 """
 
 import json
+import math
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from satyrn_evals.attempt_record import AttemptCode, AttemptOutcome, AttemptRecord
+from satyrn_evals.attempt_record import (
+    AttemptCode,
+    AttemptOutcome,
+    AttemptRecord,
+    DeadlineProvenance,
+)
 from satyrn_evals.contamination import CheckResult, overall
 from satyrn_evals.verdict import Verdict
 
@@ -51,13 +57,18 @@ class Summary:
     # rung is null only when the default `contract` was exported (spec §5).
     rung: str | None = None
     contract_digest: str | None = None
+    attempt_timeout: float | None = None
+    deadline_provenance: dict[str, dict] | None = None
 
     def __post_init__(self) -> None:
         if self.n < 0 or self.attempted < 0 or self.refused < 0:
             raise ValueError("counts must be non-negative")
         if self.attempted + self.refused != self.n:
             raise ValueError("attempted + refused must equal n")
-        if set(self.code_counts) != _ATTEMPT_CODES or set(self.verdict_counts) != _VERDICTS:
+        if (
+            set(self.code_counts) != _ATTEMPT_CODES
+            or set(self.verdict_counts) != _VERDICTS
+        ):
             raise ValueError("counts must hold one key per AttemptCode and per Verdict")
         if self.timeouts != self.code_counts[AttemptCode.COMMAND_TIMEOUT.value]:
             raise ValueError("timeouts must equal code_counts[COMMAND_TIMEOUT]")
@@ -72,6 +83,48 @@ class Summary:
             ):
                 raise ValueError("flagged + clean + unmeasured must equal graded")
         _validate_pathology(self.pathology, set(self.cells))
+        if self.attempt_timeout is not None and (
+            type(self.attempt_timeout) not in (int, float)
+            or not math.isfinite(self.attempt_timeout)
+            or self.attempt_timeout <= 0
+        ):
+            raise ValueError("attempt_timeout must be a positive finite number or null")
+        if self.deadline_provenance is not None:
+            if self.attempt_timeout is None or not self.deadline_provenance:
+                raise ValueError("deadline_provenance requires a bounded summary")
+            if not isinstance(self.deadline_provenance, dict):
+                raise ValueError("deadline_provenance must be a mapping")
+            names = list(self.deadline_provenance)
+            if names != [
+                name for name in self.cells if name in self.deadline_provenance
+            ]:
+                raise ValueError("deadline_provenance must follow cell order")
+            required = {
+                "timeout",
+                "phase",
+                "elapsed",
+                "workspace_retained",
+                "patch_digest_missing",
+                "transcript_digest_missing",
+            }
+            for block in self.deadline_provenance.values():
+                if not isinstance(block, dict) or set(block) != required:
+                    raise ValueError("deadline provenance has an invalid wire shape")
+                provenance = DeadlineProvenance(
+                    block["timeout"],
+                    block["phase"],
+                    block["elapsed"],
+                    block["workspace_retained"],
+                )
+                if provenance.timeout != self.attempt_timeout:
+                    raise ValueError(
+                        "deadline provenance timeout must match attempt_timeout"
+                    )
+                if (
+                    type(block["patch_digest_missing"]) is not bool
+                    or type(block["transcript_digest_missing"]) is not bool
+                ):
+                    raise ValueError("deadline provenance missingness must be boolean")
 
 
 def _cell_outcome(receipt: dict) -> str:
@@ -85,8 +138,7 @@ def _cell_outcome(receipt: dict) -> str:
     if (finding := receipt.get("contamination")) is None:
         return "unmeasured"
     results = [
-        CheckResult(check["check"], check["outcome"], ())
-        for check in finding["checks"]
+        CheckResult(check["check"], check["outcome"], ()) for check in finding["checks"]
     ]
     return overall(results)
 
@@ -121,10 +173,7 @@ def absent_pathology(cells: Sequence[AttemptCell]) -> dict[str, dict]:
     (rescore.compute_pathology, P3a Task 2) replaces this with real
     measured/unmeasured blocks on the run/summarize write paths.
     """
-    return {
-        name: {"measured": False, "reason": "absent"}
-        for name, _, _ in cells
-    }
+    return {name: {"measured": False, "reason": "absent"} for name, _, _ in cells}
 
 
 def compute_summary(
@@ -138,6 +187,7 @@ def compute_summary(
     task = cells[0][1].task
     command = cells[0][1].command
     timeout = cells[0][1].timeout
+    attempt_timeout = cells[0][1].attempt_timeout
     if timeout is None:
         raise ValueError(
             f"cell {cells[0][0]} has no recorded timeout "
@@ -147,7 +197,13 @@ def compute_summary(
     digest = cells[0][1].contract_digest
     for name, record, _ in cells[1:]:
         if record.task != task:
-            raise ValueError(f"mixed tasks in cells ({task!r} vs {record.task!r} at {name})")
+            raise ValueError(
+                f"mixed tasks in cells ({task!r} vs {record.task!r} at {name})"
+            )
+        if record.attempt_timeout != attempt_timeout:
+            raise ValueError(
+                f"mixed attempt timeouts ({attempt_timeout!r} vs {record.attempt_timeout!r} at {name})"
+            )
         if record.command != command:
             raise ValueError(f"mixed commands in cells ({name})")
         if record.timeout is None:
@@ -185,6 +241,19 @@ def compute_summary(
         for receipt in graded:
             tally[_cell_outcome(receipt)] += 1
         contamination = tally
+    deadline_provenance = {
+        name: {
+            **asdict(record.deadline),
+            "patch_digest_missing": (
+                record.patch_path is not None and record.patch_digest is None
+            ),
+            "transcript_digest_missing": (
+                record.transcript_path is not None and record.transcript_digest is None
+            ),
+        }
+        for name, record, _ in cells
+        if record.deadline is not None
+    }
     return Summary(
         n=n,
         attempted=attempted,
@@ -195,6 +264,7 @@ def compute_summary(
         task=task,
         command=list(command),
         timeout=timeout,
+        attempt_timeout=attempt_timeout,
         oracle_visibility=oracle_visibility,
         cells=[name for name, _, _ in cells],
         contamination=contamination,
@@ -202,6 +272,7 @@ def compute_summary(
         pathology={name: pathology[name] for name, _, _ in cells},
         rung=rung,
         contract_digest=digest,
+        deadline_provenance=deadline_provenance or None,
     )
 
 
@@ -209,4 +280,8 @@ def write_summary(path: Path, summary: Summary) -> None:
     data = asdict(summary)
     if summary.contamination is None:
         data.pop("contamination")
+    if summary.attempt_timeout is None:
+        data.pop("attempt_timeout")
+    if summary.deadline_provenance is None:
+        data.pop("deadline_provenance")
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")

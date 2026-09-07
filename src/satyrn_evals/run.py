@@ -34,6 +34,7 @@ from pathlib import Path
 from types import FrameType
 
 from satyrn_evals.attempt import DEFAULT_TIMEOUT, attempt, resolve_contract
+from satyrn_evals.deadline import validate_attempt_timeout
 from satyrn_evals.errors import OverlayError, SatyrnError, UsageError
 from satyrn_evals.manifest import load_manifest, resolve_task
 from satyrn_evals.rescore import compute_pathology, pathology_context
@@ -118,11 +119,19 @@ def _write_aborted(
         # failed, absent blocks are only a construction scaffold and the
         # pathology key is dropped from the wire payload below.
         blocks = pathology if pathology is not None else absent_pathology(cells)
-        payload = asdict(compute_summary(
-            cells, oracle_visibility=oracle_visibility, pathology=blocks,
-        ))
+        payload = asdict(
+            compute_summary(
+                cells,
+                oracle_visibility=oracle_visibility,
+                pathology=blocks,
+            )
+        )
         if payload["contamination"] is None:
             payload.pop("contamination")
+        if payload["attempt_timeout"] is None:
+            payload.pop("attempt_timeout")
+        if payload["deadline_provenance"] is None:
+            payload.pop("deadline_provenance")
         if pathology is None:
             payload.pop("pathology")  # binder failed: error names it
         data.update(payload)
@@ -142,11 +151,14 @@ def run(
     timeout: float = DEFAULT_TIMEOUT,
     rung: str | None = None,
     max_repeated_calls: int | None = None,
+    attempt_timeout: float | None = None,
 ) -> Summary:
     if n < 1:
         raise UsageError("run requires a positive --n")
     if not command:
         raise UsageError("run command is required: run TASK [flags] -- COMMAND...")
+    if attempt_timeout is not None:
+        attempt_timeout = validate_attempt_timeout(attempt_timeout)
     task_dir = resolve_task(task, tasks_root=tasks_root)
     manifest = load_manifest(task_dir)
     # An unknown rung must cost no cells: resolve it here, before the first
@@ -167,23 +179,26 @@ def run(
     try:
         with _abort_on_signals():
             for _ in range(n):
-                record = attempt(
-                    task=task, tasks_root=tasks_root, output=output,
-                    command=command, timeout=timeout, rung=rung,
+                attempt_kwargs: dict[str, object] = dict(
+                    task=task,
+                    tasks_root=tasks_root,
+                    output=output,
+                    command=command,
+                    timeout=timeout,
+                    rung=rung,
                     max_repeated_calls=max_repeated_calls,
                 )
+                if attempt_timeout is not None:
+                    attempt_kwargs["attempt_timeout"] = attempt_timeout
+                record = attempt(**attempt_kwargs)  # type: ignore[arg-type]
                 if record.attempt_dir is None:
                     raise RuntimeError(
                         "attempt record does not name its attempt directory"
                     )
                 receipt: dict | None = None
                 if record.receipt_path is not None:
-                    receipt_path = (
-                        output / record.attempt_dir / record.receipt_path
-                    )
-                    receipt = json.loads(
-                        receipt_path.read_text(encoding="utf-8")
-                    )
+                    receipt_path = output / record.attempt_dir / record.receipt_path
+                    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
                 cells.append((record.attempt_dir, record, receipt))
     except BaseException as exc:
         # never lose the tally over completed cells (T1) — but never as a
@@ -196,13 +211,16 @@ def run(
         if cells:
             try:
                 pathology = compute_pathology(
-                    output, cells, task_dir=task_dir, manifest=manifest,
-                    overlay=overlay, visible_texts=visible_texts,
+                    output,
+                    cells,
+                    task_dir=task_dir,
+                    manifest=manifest,
+                    overlay=overlay,
+                    visible_texts=visible_texts,
                 )
             except BaseException as bind_exc:  # never mask the abort
                 binder_error = (
-                    f"pathology unavailable: "
-                    f"{type(bind_exc).__name__}: {bind_exc}"
+                    f"pathology unavailable: {type(bind_exc).__name__}: {bind_exc}"
                 )
         _write_aborted(
             output,
@@ -217,8 +235,12 @@ def run(
         )
         raise
     pathology = compute_pathology(
-        output, cells, task_dir=task_dir, manifest=manifest,
-        overlay=overlay, visible_texts=visible_texts,
+        output,
+        cells,
+        task_dir=task_dir,
+        manifest=manifest,
+        overlay=overlay,
+        visible_texts=visible_texts,
     )
     summary = compute_summary(
         cells,

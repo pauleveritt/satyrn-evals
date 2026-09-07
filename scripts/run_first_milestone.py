@@ -82,7 +82,7 @@ def _schedule(recipe: dict) -> dict:
         "rung": recipe["rung"],
         "contract_digest": _contract_digest(recipe),
         "configuration_digest": _digest({"recipe": recipe, "command": command}),
-        "limits": recipe["limits"],
+        "limits": {**recipe["limits"], "attempt_timeout_seconds": None},
         "model": fixture["model"],
         "server_model": fixture["model"],
         "cells": [
@@ -129,6 +129,10 @@ def _completed(cell: dict, output: Path, schedule: dict) -> bool:
         try:
             record = load_attempt_record(path.parent / attempt_dir / "attempt.json")
             if record.timeout != schedule["limits"]["command_timeout_seconds"]:
+                return False
+            if record.attempt_timeout != schedule["limits"].get(
+                "attempt_timeout_seconds"
+            ):
                 return False
             if record.receipt_path is None or record.verdict is None:
                 return False
@@ -243,6 +247,7 @@ def execute(output: Path, *, resume: bool = False) -> None:
                 command=cell["command"],
                 n=1,
                 timeout=schedule["limits"]["command_timeout_seconds"],
+                attempt_timeout=schedule["limits"].get("attempt_timeout_seconds"),
                 rung=schedule["rung"],
             )
         except BaseException as error:

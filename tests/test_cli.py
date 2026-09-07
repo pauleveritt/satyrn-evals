@@ -94,6 +94,28 @@ def test_attempt_timeout_default_tracks_workspace_default() -> None:
     assert args.timeout == DEFAULT_TIMEOUT
 
 
+def test_attempt_whole_timeout_defaults_off_and_accepts_positive_value() -> None:
+    assert parser.parse_args(["attempt", "task"]).attempt_timeout is None
+    assert (
+        parser.parse_args(
+            ["attempt", "task", "--attempt-timeout", "12"]
+        ).attempt_timeout
+        == 12.0
+    )
+
+
+def test_run_whole_timeout_is_dispatched(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, object] = {}
+    monkeypatch.setattr(cli_module, "run", lambda **kwargs: seen.update(kwargs))
+    assert (
+        main(
+            ["run", "format_number", "--n", "1", "--attempt-timeout", "12", "--", "cmd"]
+        )
+        == 0
+    )
+    assert seen["attempt_timeout"] == 12.0
+
+
 def test_run_requires_command() -> None:
     assert main(["run", "format_number"]) == 2
 

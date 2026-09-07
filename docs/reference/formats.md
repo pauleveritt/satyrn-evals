@@ -301,7 +301,9 @@ names that cause.
 | `timeouts` | equals `code_counts["COMMAND_TIMEOUT"]` |
 | `task` | the task name from the attempt records |
 | `command` | the effective attempt command from the records (including any engine-contract suffix) |
-| `timeout` | the attempt timeout in seconds |
+| `timeout` | the command timeout in seconds |
+| `attempt_timeout` | optional whole-attempt timeout in seconds; omitted for an unbounded run |
+| `deadline_provenance` | affected-cell subset in `cells` order: expiry phase, elapsed seconds, retention state, and explicit artifact-digest missingness; each block's timeout equals `attempt_timeout`; omitted when no cell expired |
 | `rung` | the contract rung every cell ran at, null for the default contract or a pre-V11a batch |
 | `contract_digest` | the sha256 of the exact contract text every cell exported, null for a pre-V11a batch |
 | `pathology` | per-cell block keyed by the cell names in `cells` order: each a measured count set or `{"measured": false, "reason": …}`; absent or unparseable/unknown-vocabulary/structurally-unsound transcripts are `unmeasured`, never zero. Measured cells include `loop_broken`, the number of Engine `entry_appended` events whose `entry.customType` is `loop_broken`. Hidden-oracle runs add `overlay_windows` to measured cells; visible-oracle runs carry no overlay key. Count definitions and the reason set are in the [archived V10 record](https://github.com/pauleveritt/satyrn-evals/blob/d900325/docs/superpowers/specs/2026-09-04-v10-transcript-pathology-counts-design.md). |

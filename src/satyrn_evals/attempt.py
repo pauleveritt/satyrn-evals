@@ -141,6 +141,7 @@ def attempt(
     timeout: float = DEFAULT_TIMEOUT,
     rung: str | None = None,
     max_repeated_calls: int | None = None,
+    attempt_timeout: float | None = None,
 ) -> AttemptRecord:
     """Run an unbounded attempt through the stable public API."""
     return _attempt(
@@ -151,6 +152,7 @@ def attempt(
         timeout=timeout,
         rung=rung,
         max_repeated_calls=max_repeated_calls,
+        attempt_timeout=attempt_timeout,
     )
 
 
@@ -164,6 +166,7 @@ def _attempt(
     rung: str | None = None,
     max_repeated_calls: int | None = None,
     deadline: AttemptDeadline | None = None,
+    attempt_timeout: float | None = None,
 ) -> AttemptRecord:
     """Run COMMAND against TASK, preserve patch + transcript, grade, and record.
 
@@ -178,6 +181,8 @@ def _attempt(
     digest = contract_digest(contract_text)
     if not command:
         raise UsageError("attempt command is empty")
+    if deadline is None and attempt_timeout is not None:
+        deadline = AttemptDeadline(attempt_timeout)
     output = Path(os.path.abspath(output))
     output.mkdir(parents=True, exist_ok=True)
     attempt_dir = output / attempt_dir_name(manifest.name, datetime.now(UTC))

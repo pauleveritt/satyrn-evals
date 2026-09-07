@@ -106,7 +106,7 @@ worktree reconstructed from the task base, preserve the patch and transcript
 the command delivers, and grade the preserved patch offline.
 
 ```console
-satyrn-evals attempt TASK [--tasks-root DIR] [--output DIR] [--rung KEY] [--timeout SECONDS]
+satyrn-evals attempt TASK [--tasks-root DIR] [--output DIR] [--rung KEY] [--timeout SECONDS] [--attempt-timeout SECONDS]
     [--max-repeated-calls N] -- COMMAND...
 ```
 
@@ -122,6 +122,9 @@ An unknown key, or `--rung` against a task with no `contracts`, is a usage
 error naming the available keys. **The command never sees `--rung`** — the
 rung reaches it only as the exported contract text.
 - `--timeout SECONDS` — a positive finite command deadline; default `900`.
+- `--attempt-timeout SECONDS` — optional positive finite deadline spanning
+  setup, command, preservation, grading, and cleanup. It is independent of
+  `--timeout` and defaults to unbounded.
 - `--max-repeated-calls N` — stop the command after `N` identical
 consecutive tool calls; **off by default**. A spending rule, not a nudge:
 the command is torn down exactly as the timeout tears it down and is sent
@@ -252,11 +255,11 @@ grading as `attempt`; it adds repetition and aggregation, not another engine
 integration.
 
 ```console
-satyrn-evals run TASK --n N [--rung KEY] [--tasks-root DIR] [--output DIR] [--timeout SECONDS]
+satyrn-evals run TASK --n N [--rung KEY] [--tasks-root DIR] [--output DIR] [--timeout SECONDS] [--attempt-timeout SECONDS]
     [--max-repeated-calls N] -- COMMAND...
 ```
 
-- `TASK`, `--tasks-root`, `--timeout`, `--max-repeated-calls`, and
+- `TASK`, `--tasks-root`, `--timeout`, `--attempt-timeout`, `--max-repeated-calls`, and
   `-- COMMAND...` have the same
   meaning as for `attempt`.
 - `--n N` — required positive number of planned attempts. State it explicitly

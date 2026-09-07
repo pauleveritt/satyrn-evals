@@ -13,7 +13,13 @@ from pathlib import Path
 
 import pytest
 
-from satyrn_evals.attempt_record import AttemptCode, AttemptOutcome, AttemptRecord
+from satyrn_evals.attempt_record import (
+    AttemptCode,
+    AttemptOutcome,
+    AttemptRecord,
+    DeadlinePhase,
+    DeadlineProvenance,
+)
 from satyrn_evals.summary import (
     AttemptCell,
     Summary,
@@ -34,7 +40,9 @@ def make_record(
     command_exit: int | None = 0,
     timeout: float = 123.0,
 ) -> AttemptRecord:
-    outcome = AttemptOutcome.ATTEMPTED if verdict is not None else AttemptOutcome.REFUSED
+    outcome = (
+        AttemptOutcome.ATTEMPTED if verdict is not None else AttemptOutcome.REFUSED
+    )
     attempted = verdict is not None
     return AttemptRecord(
         version=1,
@@ -90,9 +98,7 @@ def _receipt_dict(
     return {
         "contamination": {
             "visibility": "hidden",
-            "checks": [
-                {"check": c, "outcome": o, "evidence": []} for c, o in checks
-            ],
+            "checks": [{"check": c, "outcome": o, "evidence": []} for c, o in checks],
         }
     }
 
@@ -147,9 +153,7 @@ def test_compute_summary_tallies_verdicts_over_attempted_only() -> None:
 
 
 def test_summary_names_cells_and_visibility() -> None:
-    summary = _compute(
-        [_cell("task-1"), _cell("task-2")], oracle_visibility="visible"
-    )
+    summary = _compute([_cell("task-1"), _cell("task-2")], oracle_visibility="visible")
     assert summary.cells == ["task-1", "task-2"]
     assert summary.oracle_visibility == "visible"
     assert summary.contamination is None
@@ -164,7 +168,9 @@ def test_hidden_summary_counts_and_invariant() -> None:
             receipt=_receipt_dict((("grader_content_in_patch", "flagged"),)),
         ),
         _cell("task-3", receipt={}),  # pre-V7 receipt: no key
-        _cell("task-4", code=AttemptCode.NO_PATCH, verdict=None, receipt=None),  # refused
+        _cell(
+            "task-4", code=AttemptCode.NO_PATCH, verdict=None, receipt=None
+        ),  # refused
     ]
     summary = _compute(cells, oracle_visibility="hidden")
     assert summary.contamination == {
@@ -253,10 +259,10 @@ def test_write_summary_omits_contamination_when_visible(tmp_path: Path) -> None:
     assert data["task"] == "format_number"
     assert data["command"] == ["fake"]
     assert data["timeout"] == 123.0
+    assert "attempt_timeout" not in data
+    assert "deadline_provenance" not in data
     # pathology is always on the wire (V10 spec §4), even for visible runs
-    assert data["pathology"] == {
-        "task-1": {"measured": False, "reason": "absent"}
-    }
+    assert data["pathology"] == {"task-1": {"measured": False, "reason": "absent"}}
 
 
 def test_write_summary_includes_contamination_when_hidden(tmp_path: Path) -> None:
@@ -353,7 +359,9 @@ def test_summary_names_its_arm_from_the_records() -> None:
 
 
 def test_compute_summary_refuses_cells_without_a_timeout() -> None:
-    record = dataclasses.replace(make_record(AttemptCode.OK, Verdict.PASS), timeout=None)
+    record = dataclasses.replace(
+        make_record(AttemptCode.OK, Verdict.PASS), timeout=None
+    )
     with pytest.raises(ValueError, match="timeout"):
         _compute([("t-1", record, None)], oracle_visibility="visible")
 
@@ -374,24 +382,21 @@ def test_compute_summary_refuses_mixed_task_on_a_later_cell() -> None:
     a = make_record(AttemptCode.OK, Verdict.PASS)
     b = dataclasses.replace(a, task="other-task")
     with pytest.raises(ValueError, match="mixed tasks"):
-        _compute([("t-1", a, None), ("t-2", b, None)],
-                        oracle_visibility="visible")
+        _compute([("t-1", a, None), ("t-2", b, None)], oracle_visibility="visible")
 
 
 def test_compute_summary_refuses_a_later_cell_without_a_timeout() -> None:
     a = make_record(AttemptCode.OK, Verdict.PASS)
     b = dataclasses.replace(a, timeout=None)
     with pytest.raises(ValueError, match="has no recorded timeout"):
-        _compute([("t-1", a, None), ("t-2", b, None)],
-                        oracle_visibility="visible")
+        _compute([("t-1", a, None), ("t-2", b, None)], oracle_visibility="visible")
 
 
 def test_compute_summary_refuses_mixed_timeouts() -> None:
     a = make_record(AttemptCode.OK, Verdict.PASS)
     b = dataclasses.replace(a, timeout=456.0)
     with pytest.raises(ValueError, match="mixed timeouts"):
-        _compute([("t-1", a, None), ("t-2", b, None)],
-                        oracle_visibility="visible")
+        _compute([("t-1", a, None), ("t-2", b, None)], oracle_visibility="visible")
 
 
 def test_summary_pathology_requires_every_cell_key() -> None:
@@ -462,9 +467,7 @@ _R1_DIGEST = "1" * 64
 _R3_DIGEST = "3" * 64
 
 
-def _rung_cell(
-    name: str, *, rung: str | None, digest: str | None
-) -> AttemptCell:
+def _rung_cell(name: str, *, rung: str | None, digest: str | None) -> AttemptCell:
     record = dataclasses.replace(
         make_record(AttemptCode.OK, Verdict.PASS),
         rung=rung,
@@ -523,3 +526,76 @@ def test_summary_json_carries_both_new_fields() -> None:
     data = dataclasses.asdict(summary)
     assert data["rung"] == "R1"
     assert data["contract_digest"] == _R1_DIGEST
+
+
+def test_summary_writes_bounded_attempt_timeout_and_refuses_mixed_values(
+    tmp_path: Path,
+) -> None:
+    first = dataclasses.replace(
+        make_record(AttemptCode.OK, Verdict.PASS),
+        attempt_timeout=12.0,
+        contract_digest="d" * 64,
+        attempt_dir="task-1",
+    )
+    summary = _compute([("task-1", first, None)])
+    path = tmp_path / "summary.json"
+    write_summary(path, summary)
+    assert json.loads(path.read_text())["attempt_timeout"] == 12.0
+    second = dataclasses.replace(first, attempt_timeout=13.0, attempt_dir="task-2")
+    with pytest.raises(ValueError, match="mixed attempt timeouts"):
+        _compute([("task-1", first, None), ("task-2", second, None)])
+
+
+def test_summary_reports_deadline_provenance_and_digest_missingness() -> None:
+    record = AttemptRecord(
+        version=1,
+        outcome=AttemptOutcome.REFUSED,
+        code=AttemptCode.DEADLINE_EXCEEDED,
+        message="deadline",
+        task="format_number",
+        command=("fake",),
+        command_exit=0,
+        patch_path="patch.diff",
+        transcript_path="transcript.txt",
+        patch_digest=None,
+        transcript_digest=None,
+        verdict=None,
+        receipt_path=None,
+        timeout=30.0,
+        attempt_timeout=12.0,
+        deadline=DeadlineProvenance(12.0, DeadlinePhase.PRESERVATION, 12.0, True),
+        workspace_base_sha="c" * 40,
+        retained_path="/tmp/retained",
+        attempt_dir="task-1",
+        contract_digest="d" * 64,
+    )
+    summary = _compute([("task-1", record, None)])
+    assert summary.deadline_provenance == {
+        "task-1": {
+            "timeout": 12.0,
+            "phase": DeadlinePhase.PRESERVATION,
+            "elapsed": 12.0,
+            "workspace_retained": True,
+            "patch_digest_missing": True,
+            "transcript_digest_missing": True,
+        }
+    }
+
+
+def test_summary_rejects_malformed_deadline_provenance() -> None:
+    summary = _compute([_cell("task-1")])
+    with pytest.raises(ValueError):
+        dataclasses.replace(
+            summary,
+            attempt_timeout=12.0,
+            deadline_provenance={
+                "task-1": {
+                    "timeout": 12.0,
+                    "phase": "not-a-phase",
+                    "elapsed": 1.0,
+                    "workspace_retained": "yes",
+                    "patch_digest_missing": 1,
+                    "transcript_digest_missing": False,
+                }
+            },
+        )

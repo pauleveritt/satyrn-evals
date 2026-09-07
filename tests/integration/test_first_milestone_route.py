@@ -37,7 +37,10 @@ def test_fixture_route_completes_two_predeclared_cells_and_regrades(
     assert len(schedule["cells"]) == 2
     assert schedule["model"] == "fixture/agentclinic-executor-v1"
     assert schedule["configuration_digest"]
-    assert schedule["limits"] == {"command_timeout_seconds": 30}
+    assert schedule["limits"] == {
+        "command_timeout_seconds": 30,
+        "attempt_timeout_seconds": None,
+    }
     assert state["status"] == "complete"
     assert result["cells"] == 2
     assert result["per_arm"]["fixture"]["verdict_counts"]["pass"] == 2

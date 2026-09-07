@@ -84,6 +84,7 @@ def main(argv: list[str] | None = None) -> int:
                 output=Path(args.output),
                 command=command,
                 timeout=args.timeout,
+                attempt_timeout=args.attempt_timeout,
                 max_repeated_calls=args.max_repeated_calls,
                 rung=args.rung,
             )
@@ -112,6 +113,7 @@ def main(argv: list[str] | None = None) -> int:
                 command=command,
                 n=args.n,
                 timeout=args.timeout,
+                attempt_timeout=args.attempt_timeout,
                 max_repeated_calls=args.max_repeated_calls,
                 rung=args.rung,
             )
@@ -218,6 +220,12 @@ attempt_p.add_argument(
     help="task root (default: bundled tasks)",
 )
 attempt_p.add_argument(
+    "--attempt-timeout",
+    type=positive_finite_timeout,
+    default=None,
+    help="whole-attempt timeout in seconds (default: off)",
+)
+attempt_p.add_argument(
     "--output",
     default="attempts",
     help="attempt output directory (default: ./attempts)",
@@ -244,6 +252,12 @@ run_p = sub.add_parser("run", help="run an attempt command n times and write a s
 run_p.add_argument("task", help="task name")
 run_p.add_argument(
     "--n", type=positive_int, required=True, help="planned attempts per run"
+)
+run_p.add_argument(
+    "--attempt-timeout",
+    type=positive_finite_timeout,
+    default=None,
+    help="whole-attempt timeout in seconds (default: off)",
 )
 run_p.add_argument(
     "--tasks-root",

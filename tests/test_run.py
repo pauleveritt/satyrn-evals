@@ -83,8 +83,13 @@ def _fake_attempt(
     """
 
     def fake(
-        *, task: str, tasks_root: Path, output: Path, command: list[str],
-        timeout: float, rung: str | None = None,
+        *,
+        task: str,
+        tasks_root: Path,
+        output: Path,
+        command: list[str],
+        timeout: float,
+        rung: str | None = None,
         max_repeated_calls: int | None = None,
     ) -> AttemptRecord:
         output.mkdir(parents=True, exist_ok=True)
@@ -93,11 +98,10 @@ def _fake_attempt(
         cell_dir.mkdir()
         (cell_dir / "receipt.json").write_text(receipt_text, encoding="utf-8")
         if transcript is not None:
-            (cell_dir / "transcript.txt").write_text(
-                transcript, encoding="utf-8"
-            )
-        record = ok_record(name, task=task, command=tuple(command),
-                           timeout=timeout, rung=rung)
+            (cell_dir / "transcript.txt").write_text(transcript, encoding="utf-8")
+        record = ok_record(
+            name, task=task, command=tuple(command), timeout=timeout, rung=rung
+        )
         write_attempt_record(cell_dir / "attempt.json", record)
         return record
 
@@ -116,8 +120,12 @@ def test_run_calls_attempt_n_times_and_writes_summary(
 
     monkeypatch.setattr(run_module, "attempt", recording_fake)
     summary = run_module.run(
-        task="format_number", tasks_root=DEFAULT_TASKS_ROOT, output=tmp_path,
-        command=["fake"], n=2, timeout=1.5,
+        task="format_number",
+        tasks_root=DEFAULT_TASKS_ROOT,
+        output=tmp_path,
+        command=["fake"],
+        n=2,
+        timeout=1.5,
     )
     assert len(calls) == 2
     assert summary.n == 2 and summary.attempted == 2 and summary.refused == 0
@@ -140,7 +148,8 @@ def test_run_names_cells_from_recorded_attempt_dirs(
     assert all(name.startswith("format_number-") for name in summary.cells)
     # cell names are the record's own identities and match the on-disk dirs
     assert sorted(summary.cells) == sorted(
-        p.name for p in (tmp_path / "out").iterdir()
+        p.name
+        for p in (tmp_path / "out").iterdir()
         if p.name.startswith("format_number-")
     )
     assert summary.oracle_visibility == "visible"
@@ -161,8 +170,11 @@ def test_run_tolerates_sibling_entries_in_the_output_dir(
     (output / "other-task-1").mkdir()
     monkeypatch.setattr(run_module, "attempt", _fake_attempt())
     summary = run_module.run(
-        task="format_number", tasks_root=DEFAULT_TASKS_ROOT, output=output,
-        command=["fake"], n=2,
+        task="format_number",
+        tasks_root=DEFAULT_TASKS_ROOT,
+        output=output,
+        command=["fake"],
+        n=2,
     )
     assert len(summary.cells) == 2
     assert all(name.startswith("format_number-") for name in summary.cells)
@@ -171,9 +183,7 @@ def test_run_tolerates_sibling_entries_in_the_output_dir(
     assert (output / "summary.json").exists()
 
 
-def test_run_on_hidden_task_tallies_contamination(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_run_on_hidden_task_tallies_contamination(tmp_path: Path, monkeypatch) -> None:
     """Default-tier sibling: run() against a hidden manifest still tallies.
 
     The hidden task's manifest marks the oracle hidden, so run() must produce
@@ -181,9 +191,9 @@ def test_run_on_hidden_task_tallies_contamination(
     non-spawning double writes graded, contamination-bearing receipts). The
     spawning end-to-end twin lives in tests/integration/test_run.py.
     """
-    monkeypatch.setattr(run_module, "attempt", _fake_attempt(
-        receipt_text=_CLEAN_RECEIPT
-    ))
+    monkeypatch.setattr(
+        run_module, "attempt", _fake_attempt(receipt_text=_CLEAN_RECEIPT)
+    )
     summary = run_module.run(
         task=HIDDEN_TASK_NAME,
         tasks_root=DEFAULT_TASKS_ROOT,
@@ -194,7 +204,10 @@ def test_run_on_hidden_task_tallies_contamination(
     assert summary.oracle_visibility == "hidden"
     assert summary.contamination is not None
     assert summary.contamination == {
-        "graded": 2, "flagged": 0, "clean": 2, "unmeasured": 0
+        "graded": 2,
+        "flagged": 0,
+        "clean": 2,
+        "unmeasured": 0,
     }
     assert summary.contamination["graded"] == (
         summary.contamination["flagged"]
@@ -213,9 +226,7 @@ def test_run_refuses_when_attempt_names_no_directory(
         return replace(ok_record("x"), attempt_dir=None)
 
     monkeypatch.setattr(run_module, "attempt", silent_attempt)
-    with pytest.raises(
-        RuntimeError, match="does not name its attempt directory"
-    ):
+    with pytest.raises(RuntimeError, match="does not name its attempt directory"):
         run_module.run(
             task="format_number",
             tasks_root=DEFAULT_TASKS_ROOT,
@@ -230,8 +241,14 @@ def test_run_rejects_a_nonpositive_n_directly(tmp_path: Path) -> None:
     from satyrn_evals.run import run
 
     with pytest.raises(UsageError, match="positive --n"):
-        run(task="format_number", tasks_root=tmp_path, output=tmp_path,
-            command=["whatever"], n=0, timeout=5.0)
+        run(
+            task="format_number",
+            tasks_root=tmp_path,
+            output=tmp_path,
+            command=["whatever"],
+            n=0,
+            timeout=5.0,
+        )
 
 
 def test_run_rejects_an_empty_command_directly(tmp_path: Path) -> None:
@@ -239,19 +256,65 @@ def test_run_rejects_an_empty_command_directly(tmp_path: Path) -> None:
     from satyrn_evals.run import run
 
     with pytest.raises(UsageError, match="run command is required"):
-        run(task="format_number", tasks_root=tmp_path, output=tmp_path,
-            command=[], n=1, timeout=5.0)
+        run(
+            task="format_number",
+            tasks_root=tmp_path,
+            output=tmp_path,
+            command=[],
+            n=1,
+            timeout=5.0,
+        )
 
 
 def test_run_summary_names_the_arm(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(run_module, "attempt", _fake_attempt())
     summary = run_module.run(
-        task="format_number", tasks_root=DEFAULT_TASKS_ROOT,
-        output=tmp_path / "out", command=["fake"], n=1, timeout=123.0,
+        task="format_number",
+        tasks_root=DEFAULT_TASKS_ROOT,
+        output=tmp_path / "out",
+        command=["fake"],
+        n=1,
+        timeout=123.0,
     )
     assert summary.task == "format_number"
     assert summary.command == ["fake"]
     assert summary.timeout == 123.0
+
+
+def test_run_rejects_invalid_attempt_timeout_without_output(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="finite number greater than zero"):
+        run_module.run(
+            task="format_number",
+            tasks_root=DEFAULT_TASKS_ROOT,
+            output=tmp_path / "out",
+            command=["fake"],
+            n=1,
+            attempt_timeout=0,
+        )
+    assert not (tmp_path / "out").exists()
+
+
+def test_run_passes_bounded_timeout_to_each_attempt(
+    tmp_path: Path, monkeypatch
+) -> None:
+    seen: list[float] = []
+    fake = _fake_attempt()
+
+    def bounded(**kwargs):
+        seen.append(kwargs["attempt_timeout"])
+        kwargs.pop("attempt_timeout")
+        return fake(**kwargs)
+
+    monkeypatch.setattr(run_module, "attempt", bounded)
+    run_module.run(
+        task="format_number",
+        tasks_root=DEFAULT_TASKS_ROOT,
+        output=tmp_path / "out",
+        command=["fake"],
+        n=2,
+        attempt_timeout=12.0,
+    )
+    assert seen == [12.0, 12.0]
 
 
 def test_run_counts_a_grade_failed_cell_and_continues(
@@ -280,16 +343,19 @@ def test_run_counts_a_grade_failed_cell_and_continues(
             code=AttemptCode.GRADE_FAILED,
             verdict=None,
             receipt_path=None,
-            message=("attempt preserved and admitted; "
-                     "grading did not complete: boom"),
+            message=("attempt preserved and admitted; grading did not complete: boom"),
         )
         write_attempt_record(cell / "attempt.json", record)
         return record
 
     monkeypatch.setattr(run_module, "attempt", fake)
     summary = run_module.run(
-        task="format_number", tasks_root=DEFAULT_TASKS_ROOT,
-        output=tmp_path / "out", command=["fake"], n=2, timeout=123.0,
+        task="format_number",
+        tasks_root=DEFAULT_TASKS_ROOT,
+        output=tmp_path / "out",
+        command=["fake"],
+        n=2,
+        timeout=123.0,
     )
     assert summary.n == 2 and summary.attempted == 2
     assert summary.code_counts["GRADE_FAILED"] == 1
@@ -298,9 +364,7 @@ def test_run_counts_a_grade_failed_cell_and_continues(
     assert (tmp_path / "out" / "summary.json").exists()
 
 
-def test_run_writes_an_aborted_marker_and_reraises(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_run_writes_an_aborted_marker_and_reraises(tmp_path: Path, monkeypatch) -> None:
     """B1: an internal bug aborts WITHOUT writing summary.json.
 
     The partial batch is recorded in aborted.json (requested/completed/
@@ -327,8 +391,12 @@ def test_run_writes_an_aborted_marker_and_reraises(
     output = tmp_path / "out"
     with pytest.raises(OSError, match="boom"):
         run_module.run(
-            task="format_number", tasks_root=DEFAULT_TASKS_ROOT,
-            output=output, command=["fake"], n=3, timeout=123.0,
+            task="format_number",
+            tasks_root=DEFAULT_TASKS_ROOT,
+            output=output,
+            command=["fake"],
+            n=3,
+            timeout=123.0,
         )
     # no summary.json: an aborted batch is never presented as complete
     assert not (output / "summary.json").exists()
@@ -345,6 +413,7 @@ def test_run_aborts_before_any_cell_writes_a_zero_completed_marker(
     tmp_path: Path, monkeypatch
 ) -> None:
     """An abort before any cell completes still writes the marker."""
+
     def raises_first(**_kwargs):
         raise RuntimeError("boom before start")
 
@@ -352,8 +421,12 @@ def test_run_aborts_before_any_cell_writes_a_zero_completed_marker(
     output = tmp_path / "out"
     with pytest.raises(RuntimeError, match="boom"):
         run_module.run(
-            task="format_number", tasks_root=DEFAULT_TASKS_ROOT,
-            output=output, command=["fake"], n=4, timeout=123.0,
+            task="format_number",
+            tasks_root=DEFAULT_TASKS_ROOT,
+            output=output,
+            command=["fake"],
+            n=4,
+            timeout=123.0,
         )
     assert not (output / "summary.json").exists()
     marker = json.loads((output / "aborted.json").read_text())
@@ -387,13 +460,20 @@ def test_run_abort_on_a_hidden_task_keeps_the_contamination_tally(
     output = tmp_path / "out"
     with pytest.raises(OSError, match="boom"):
         run_module.run(
-            task=HIDDEN_TASK_NAME, tasks_root=DEFAULT_TASKS_ROOT,
-            output=output, command=["fake"], n=3, timeout=123.0,
+            task=HIDDEN_TASK_NAME,
+            tasks_root=DEFAULT_TASKS_ROOT,
+            output=output,
+            command=["fake"],
+            n=3,
+            timeout=123.0,
         )
     marker = json.loads((output / "aborted.json").read_text())
     assert marker["oracle_visibility"] == "hidden"
     assert marker["contamination"] == {
-        "graded": 1, "flagged": 0, "clean": 1, "unmeasured": 0
+        "graded": 1,
+        "flagged": 0,
+        "clean": 1,
+        "unmeasured": 0,
     }
 
 
@@ -406,8 +486,12 @@ def test_run_completion_replaces_a_stale_aborted_marker(
     (output / "aborted.json").write_text('{"requested": 8, "completed": 2}')
     monkeypatch.setattr(run_module, "attempt", _fake_attempt())
     summary = run_module.run(
-        task="format_number", tasks_root=DEFAULT_TASKS_ROOT,
-        output=output, command=["fake"], n=1, timeout=123.0,
+        task="format_number",
+        tasks_root=DEFAULT_TASKS_ROOT,
+        output=output,
+        command=["fake"],
+        n=1,
+        timeout=123.0,
     )
     assert summary.n == 1
     assert not (output / "aborted.json").exists()
@@ -419,26 +503,28 @@ def test_run_completion_replaces_a_stale_aborted_marker(
 # turn one, an identical edit twice across turns two/three, a text-only
 # final turn, and the agent terminal. Mirror of tests/test_pathology.py's
 # GOOD.
-GOOD_TRANSCRIPT = "\n".join([
-    '{"type": "session", "version": 3, "cwd": "/w"}',
-    '{"type": "agent_start"}',
-    '{"type": "turn_start"}',
-    '{"type": "tool_execution_start", "toolCallId": "1", "toolName": "read", "args": {"path": "app.py"}}',
-    '{"type": "tool_execution_end", "toolCallId": "1", "toolName": "read", "result": {}}',
-    '{"type": "tool_execution_start", "toolCallId": "2", "toolName": "read", "args": {"path": "tests/test_app.py"}}',
-    '{"type": "tool_execution_end", "toolCallId": "2", "toolName": "read", "result": {}}',
-    '{"type": "turn_end", "message": {"role": "assistant", "content": []}}',
-    '{"type": "turn_start"}',
-    '{"type": "tool_execution_start", "toolCallId": "3", "toolName": "edit", "args": {"path": "app.py", "edits": [{"oldText": "a", "newText": "b"}]}}',
-    '{"type": "tool_execution_end", "toolCallId": "3", "toolName": "edit", "result": {}}',
-    '{"type": "turn_end", "message": {"role": "assistant", "content": []}}',
-    '{"type": "turn_start"}',
-    '{"type": "tool_execution_start", "toolCallId": "4", "toolName": "edit", "args": {"path": "app.py", "edits": [{"oldText": "a", "newText": "b"}]}}',
-    '{"type": "tool_execution_end", "toolCallId": "4", "toolName": "edit", "result": {}}',
-    '{"type": "turn_end", "message": {"role": "assistant", "content": [{"type": "text", "text": "done"}]}}',
-    '{"type": "agent_end"}',
-    '{"type": "agent_settled"}',
-])
+GOOD_TRANSCRIPT = "\n".join(
+    [
+        '{"type": "session", "version": 3, "cwd": "/w"}',
+        '{"type": "agent_start"}',
+        '{"type": "turn_start"}',
+        '{"type": "tool_execution_start", "toolCallId": "1", "toolName": "read", "args": {"path": "app.py"}}',
+        '{"type": "tool_execution_end", "toolCallId": "1", "toolName": "read", "result": {}}',
+        '{"type": "tool_execution_start", "toolCallId": "2", "toolName": "read", "args": {"path": "tests/test_app.py"}}',
+        '{"type": "tool_execution_end", "toolCallId": "2", "toolName": "read", "result": {}}',
+        '{"type": "turn_end", "message": {"role": "assistant", "content": []}}',
+        '{"type": "turn_start"}',
+        '{"type": "tool_execution_start", "toolCallId": "3", "toolName": "edit", "args": {"path": "app.py", "edits": [{"oldText": "a", "newText": "b"}]}}',
+        '{"type": "tool_execution_end", "toolCallId": "3", "toolName": "edit", "result": {}}',
+        '{"type": "turn_end", "message": {"role": "assistant", "content": []}}',
+        '{"type": "turn_start"}',
+        '{"type": "tool_execution_start", "toolCallId": "4", "toolName": "edit", "args": {"path": "app.py", "edits": [{"oldText": "a", "newText": "b"}]}}',
+        '{"type": "tool_execution_end", "toolCallId": "4", "toolName": "edit", "result": {}}',
+        '{"type": "turn_end", "message": {"role": "assistant", "content": [{"type": "text", "text": "done"}]}}',
+        '{"type": "agent_end"}',
+        '{"type": "agent_settled"}',
+    ]
+)
 
 
 def test_run_summary_carries_real_pathology_for_completed_cells(
@@ -449,16 +535,19 @@ def test_run_summary_carries_real_pathology_for_completed_cells(
     fake = _fake_attempt(transcript=GOOD_TRANSCRIPT)
     monkeypatch.setattr(run_module, "attempt", fake)
     run_module.run(
-        task="format_number", tasks_root=DEFAULT_TASKS_ROOT, output=output,
-        command=["fake"], n=2, timeout=1.5,
+        task="format_number",
+        tasks_root=DEFAULT_TASKS_ROOT,
+        output=output,
+        command=["fake"],
+        n=2,
+        timeout=1.5,
     )
     summary = json.loads((output / "summary.json").read_text(encoding="utf-8"))
     assert set(summary["pathology"]) == set(summary["cells"])
-    assert all(
-        block["measured"] is True for block in summary["pathology"].values()
-    )
+    assert all(block["measured"] is True for block in summary["pathology"].values())
     assert summary["pathology"][summary["cells"][0]]["tool_calls"] == {
-        "read": 2, "edit": 2,
+        "read": 2,
+        "edit": 2,
     }
 
 
@@ -470,13 +559,18 @@ def test_run_summary_marks_fake_cells_without_transcripts_absent(
     output = tmp_path / "runs"
     monkeypatch.setattr(run_module, "attempt", _fake_attempt())
     run_module.run(
-        task="format_number", tasks_root=DEFAULT_TASKS_ROOT, output=output,
-        command=["fake"], n=1, timeout=1.5,
+        task="format_number",
+        tasks_root=DEFAULT_TASKS_ROOT,
+        output=output,
+        command=["fake"],
+        n=1,
+        timeout=1.5,
     )
     summary = json.loads((output / "summary.json").read_text(encoding="utf-8"))
     cell = summary["cells"][0]
     assert summary["pathology"][cell] == {
-        "measured": False, "reason": "absent",
+        "measured": False,
+        "reason": "absent",
     }
 
 
@@ -492,8 +586,12 @@ def test_abort_marker_never_masks_the_primary_exception(
     monkeypatch.setattr(run_module, "attempt", failing_fake)
     with pytest.raises(RuntimeError, match="boom"):
         run_module.run(
-            task="format_number", tasks_root=DEFAULT_TASKS_ROOT,
-            output=output, command=["fake"], n=2, timeout=1.5,
+            task="format_number",
+            tasks_root=DEFAULT_TASKS_ROOT,
+            output=output,
+            command=["fake"],
+            n=2,
+            timeout=1.5,
         )
     marker = json.loads((output / "aborted.json").read_text(encoding="utf-8"))
     assert "boom" in marker["error"]
@@ -516,7 +614,13 @@ def test_abort_binder_failure_never_masks_the_primary_exception(
         return base(**kwargs)
 
     def broken_binder(
-        output, cells, *, task_dir, manifest, overlay=None, visible_texts=None,
+        output,
+        cells,
+        *,
+        task_dir,
+        manifest,
+        overlay=None,
+        visible_texts=None,
     ):
         raise RuntimeError("binder broke")
 
@@ -524,8 +628,12 @@ def test_abort_binder_failure_never_masks_the_primary_exception(
     monkeypatch.setattr(run_module, "compute_pathology", broken_binder)
     with pytest.raises(RuntimeError, match="boom"):
         run_module.run(
-            task="format_number", tasks_root=DEFAULT_TASKS_ROOT,
-            output=output, command=["fake"], n=2, timeout=1.5,
+            task="format_number",
+            tasks_root=DEFAULT_TASKS_ROOT,
+            output=output,
+            command=["fake"],
+            n=2,
+            timeout=1.5,
         )
     marker = json.loads((output / "aborted.json").read_text(encoding="utf-8"))
     assert "boom" in marker["error"]
@@ -552,8 +660,12 @@ def test_abort_marker_carries_pathology_when_binder_succeeds(
     monkeypatch.setattr(run_module, "attempt", flaky)
     with pytest.raises(OSError, match="boom"):
         run_module.run(
-            task="format_number", tasks_root=DEFAULT_TASKS_ROOT,
-            output=output, command=["fake"], n=2, timeout=1.5,
+            task="format_number",
+            tasks_root=DEFAULT_TASKS_ROOT,
+            output=output,
+            command=["fake"],
+            n=2,
+            timeout=1.5,
         )
     marker = json.loads((output / "aborted.json").read_text(encoding="utf-8"))
     assert marker["completed"] == 1
@@ -618,8 +730,12 @@ def test_run_refuses_a_broken_overlay_before_any_attempt(
     output = tmp_path / "out"
     with pytest.raises(SatyrnError, match="overlay") as excinfo:
         run_module.run(
-            task="hidden-task", tasks_root=tmp_path, output=output,
-            command=["fake"], n=2, timeout=1.5,
+            task="hidden-task",
+            tasks_root=tmp_path,
+            output=output,
+            command=["fake"],
+            n=2,
+            timeout=1.5,
         )
     assert excinfo.value.exit_code == 3
     assert calls["n"] == 0  # refused before the first attempt
@@ -652,8 +768,12 @@ def test_run_then_summarize_recovers_after_overlay_repair(
     monkeypatch.setattr(run_module, "attempt", counting_fake)
     output = tmp_path / "out"
     run_module.run(
-        task="hidden-task", tasks_root=tmp_path, output=output,
-        command=["fake"], n=1, timeout=1.5,
+        task="hidden-task",
+        tasks_root=tmp_path,
+        output=output,
+        command=["fake"],
+        n=1,
+        timeout=1.5,
     )
     own = (output / "summary.json").read_bytes()
     assert "pathology" in json.loads(own.decode())
@@ -682,8 +802,12 @@ def test_run_then_summarize_is_byte_identical_with_pathology(
         run_module, "attempt", _fake_attempt(transcript=GOOD_TRANSCRIPT)
     )
     run_module.run(
-        task="format_number", tasks_root=DEFAULT_TASKS_ROOT, output=output,
-        command=["fake"], n=2, timeout=1.5,
+        task="format_number",
+        tasks_root=DEFAULT_TASKS_ROOT,
+        output=output,
+        command=["fake"],
+        n=2,
+        timeout=1.5,
     )
     own = (output / "summary.json").read_bytes()
     summarize_output(output, tasks_root=DEFAULT_TASKS_ROOT)
@@ -701,8 +825,12 @@ def test_summarize_enriches_a_pre_v10_summary(tmp_path: Path, monkeypatch) -> No
         run_module, "attempt", _fake_attempt(transcript=GOOD_TRANSCRIPT)
     )
     run_module.run(
-        task="format_number", tasks_root=DEFAULT_TASKS_ROOT, output=output,
-        command=["fake"], n=2, timeout=1.5,
+        task="format_number",
+        tasks_root=DEFAULT_TASKS_ROOT,
+        output=output,
+        command=["fake"],
+        n=2,
+        timeout=1.5,
     )
     path = output / "summary.json"
     own = path.read_bytes()
@@ -742,15 +870,17 @@ def _task_with_contracts(tmp_path: Path, contracts: dict[str, str]) -> Path:
     return tasks_root
 
 
-def test_run_passes_the_rung_to_every_attempt(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_run_passes_the_rung_to_every_attempt(tmp_path: Path, monkeypatch) -> None:
     tasks_root = _task_with_contracts(tmp_path, {"R1": "bare", "R3": "Fix it."})
     monkeypatch.setattr(run_module, "attempt", _fake_attempt())
     output = tmp_path / "out"
     summary = run_module.run(
-        task="rungs", tasks_root=tasks_root, output=output,
-        command=["fake"], n=2, rung="R1",
+        task="rungs",
+        tasks_root=tasks_root,
+        output=output,
+        command=["fake"],
+        n=2,
+        rung="R1",
     )
     assert len(summary.cells) == 2
     rungs = [
@@ -768,8 +898,11 @@ def test_run_without_a_rung_records_the_default_contract(
     monkeypatch.setattr(run_module, "attempt", _fake_attempt())
     output = tmp_path / "out"
     summary = run_module.run(
-        task="rungs", tasks_root=tasks_root, output=output,
-        command=["fake"], n=2,
+        task="rungs",
+        tasks_root=tasks_root,
+        output=output,
+        command=["fake"],
+        n=2,
     )
     assert all(
         load_attempt_record(output / name / "attempt.json").rung is None
@@ -791,8 +924,12 @@ def test_run_refuses_an_unknown_rung_before_the_first_attempt(
     output = tmp_path / "out"
     with pytest.raises(UsageError, match="R1, R3"):
         run_module.run(
-            task="rungs", tasks_root=tasks_root, output=output,
-            command=["fake"], n=2, rung="R9",
+            task="rungs",
+            tasks_root=tasks_root,
+            output=output,
+            command=["fake"],
+            n=2,
+            rung="R9",
         )
     assert calls == []
     assert not output.exists()
@@ -804,6 +941,10 @@ def test_run_refuses_a_rung_on_a_task_with_no_contracts(
     monkeypatch.setattr(run_module, "attempt", _fake_attempt())
     with pytest.raises(UsageError, match="declares no contracts"):
         run_module.run(
-            task="format_number", tasks_root=DEFAULT_TASKS_ROOT,
-            output=tmp_path / "out", command=["fake"], n=1, rung="R1",
+            task="format_number",
+            tasks_root=DEFAULT_TASKS_ROOT,
+            output=tmp_path / "out",
+            command=["fake"],
+            n=1,
+            rung="R1",
         )
