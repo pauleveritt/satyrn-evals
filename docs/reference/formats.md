@@ -23,10 +23,10 @@ reference](../usage.md); goal-oriented instructions live in the
 |------|---------|
 | `name` | the {term}`task` name; must match its directory |
 | `contract` | the task statement, handed to the {term}`attempt command` as `SATYRN_TASK_CONTRACT` |
-| `contracts` | optional {term}`contract rung` map, `{rung key: text}`; an open map with no enum of rung names in code |
-| `oracle` | the {term}`oracle` command; its {term}`hook result` — never its stdout or exit code — decides the {term}`verdict` |
-| `expected_test_ids` | the test IDs the {term}`oracle` must execute, no more and no fewer |
-| `source_paths` | the {term}`allowlist`: the only paths a {term}`patch` may touch |
+| `contracts` | optional contract rung map, `{rung key: text}`; an open map with no enum of rung names in code |
+| `oracle` | the oracle command; its {term}`hook result` — never its stdout or exit code — decides the {term}`verdict` |
+| `expected_test_ids` | the test IDs the oracle must execute, no more and no fewer |
+| `source_paths` | the {term}`allowlist`: the only paths a patch may touch |
 | `fixtures` | `known_good` (required) and `known_broken` (optional) patch paths |
 | `provenance` | captured tasks only: `repo`, `base_sha`, `fix_sha` |
 | `engine_contract` | optional and engine-owned: Evals validates only its safe task-relative path and never parses its contents. A task without it gets a **generated** contract instead (below) |
@@ -49,17 +49,17 @@ exports:
   production code, so a new rung is an authoring change, not a code change.
 - `contract` stays the default and is what an attempt without `--rung`
   exports. On the six `agentclinic-repair-*` tasks it is equal to `R3`.
-- For a hidden-{term}`oracle` task, the grader-only path check runs over
+- For a hidden-oracle task, the grader-only path check runs over
   `contract` **and every rung value**: a rung naming the overlay directory or
   one of its files is refused at load, with the message naming the rung. This
   is why an R1 digest carries **bare** hidden function names
   (`test_post_complaint_redirects_to_complaints_board`) and never the
   `<file>::<test>` node-id form `expected_test_ids` uses.
 
-**A stated limit.** The rung labels are *unverified authoring claims*. Only
-R1 and R3 ship, so the R0→R3 monotonicity gate collapses to a two-point
-`R1 ≤ R3` check, and no run in this phase measures it. R0 and R2, and the
-restored four-point check, are a V12 entry gate.
+**A stated limit.** Rung labels describe authored prompt variants; they do not
+establish that a task is qualified for a comparison. Qualification records the
+requirements, public feedback, hidden oracle coverage, and plausible partial
+repairs for the condition under study.
 
 ### The generated Engine contract
 
@@ -73,6 +73,13 @@ task: "… the selected contract text …"
 writable_paths:
   - "app.py"
   - "templates/*"
+test_command:
+  - "uv"
+  - "run"
+  - "python"
+  - "-m"
+  - "pytest"
+  - "tests/"
 ```
 
 - Both `id` and `task` are required — Engine requires `id` as well as `task`.
@@ -87,6 +94,9 @@ writable_paths:
   appended to the command. The path is deterministic on purpose: a fresh
   per-attempt path would change the recorded command, and a summary refuses
   mixed commands, so the batch would not summarize.
+- When the manifest declares `public_suite`, the generated contract includes
+  `test_command` derived from that command. A manifest without a public suite
+  has no `test_command` field.
 
 Engine's acceptance of the generated shape is proven by an integration-tier
 row that runs the real `satyrn-engine check` over all six tasks at both
@@ -94,7 +104,7 @@ rungs; `id` stability is a claim about this generator, not about Engine.
 
 Tasks resolve from a tasks root: the bundled tasks that ship in the wheel by
 default, or a directory of captured tasks via `--tasks-root`. A captured task
-writes its {term}`capture record` beside the task directory, as
+writes its capture record beside the task directory, as
 `<tasks-root>/<name>.capture.json`.
 
 ## Receipt
@@ -115,7 +125,7 @@ Written by `grade`, and by `attempt` and `run` for every gradeable patch:
 }
 ```
 
-`patch_digest` is the sha256 of the {term}`patch` file, so a {term}`receipt`
+`patch_digest` is the sha256 of the patch file, so a {term}`receipt`
 names the exact input it graded — re-scoreable without re-running anything.
 `evidence` is the {term}`hook result` verbatim: the executed test IDs are
 exactly the manifest's `expected_test_ids`, and the counts name every
@@ -166,7 +176,7 @@ receipt.json      # written only when grading ran
 attempt.json      # always
 ```
 
-`attempt.json` — the {term}`attempt record`:
+`attempt.json` — the attempt record:
 
 ```json
 {
@@ -198,7 +208,7 @@ no normal child exit was observed. `patch_digest` is the sha256 of the
 persisted `patch.diff`, the same value the {term}`receipt` records — one
 source, no drift. `timeout` is the attempt command's timeout in seconds;
 records written by V9 always carry it, and older generations load without
-it. `rung` is the selected {term}`contract rung` key, null when the default
+it. `rung` is the selected contract rung key, null when the default
 `contract` was exported; `contract_digest` is the sha256 of the exact
 selected text and is **always** present on a new record, including the
 default contract. Records from before V11a load with both null and
@@ -210,9 +220,9 @@ A refusal keeps the same shape with `outcome: refused`, a precise `code`,
 for an artifact that never existed; artifacts that do exist are persisted
 even on refusal, so the record names exactly what was preserved.
 
-An admitted attempt whose grading did not complete is recorded with code
-`GRADE_FAILED`: outcome `attempted`, no verdict, no receipt — the patch and
-transcript are preserved and the cell is visible to `regrade`. The record is
+An attempt whose grading did not complete is recorded with code `GRADE_FAILED`:
+outcome `attempted`, no verdict, no receipt — the patch and transcript are
+preserved and the cell is visible to `regrade`. The record is
 written before grading starts, so a grading failure never leaves an invisible
 cell:
 
@@ -225,13 +235,14 @@ cell:
 }
 ```
 
-Refusal is a preservation failure; `unavailable` is a grading failure.
-Refusal = the artifacts were incomplete (`NO_PATCH`, `PATCH_INVALID`,
-`TRANSCRIPT_MISSING`, `TRANSCRIPT_EMPTY`) or the run failed outside the
-command (`WORKSPACE_FAILED`, `COMMAND_TIMEOUT`, `CLEANUP_FAILED`) — no
-{term}`receipt`, nothing complete to grade. `unavailable` = the patch was
-well-formed but couldn't be graded (doesn't apply, touches non-allowlisted
-paths, no trustworthy {term}`hook result`) — the receipt names the cause.
+Refusal and evidence retention are independent. A refusal can retain a patch,
+transcript, or other diagnostic evidence even when it has no receipt. It can
+also mean that an artifact was incomplete (`NO_PATCH`, `PATCH_INVALID`,
+`TRANSCRIPT_MISSING`, `TRANSCRIPT_EMPTY`) or work failed outside the command
+(`WORKSPACE_FAILED`, `COMMAND_TIMEOUT`, `CLEANUP_FAILED`). `unavailable` means
+a delivered patch could not be graded (it does not apply, touches a
+non-allowlisted path, or has no trustworthy {term}`hook result`); the receipt
+names that cause.
 
 ## Run summary
 
@@ -241,7 +252,7 @@ paths, no trustworthy {term}`hook result`) — the receipt names the cause.
 | Field | Meaning |
 |------|---------|
 | `n` | the requested attempt count; `attempted + refused = n` |
-| `attempted` | attempts whose command ran and delivered a complete, gradeable patch (an admitted cell, whether grading completed or was recorded as `GRADE_FAILED`) |
+| `attempted` | attempts whose command ran and delivered a complete, gradeable patch (whether grading completed or was recorded as `GRADE_FAILED`) |
 | `refused` | attempts refused (artifact, workspace, timeout, or cleanup) |
 | `code_counts` | one key per attempt code (`OK` plus every refusal code, counting outcomes) |
 | `verdict_counts` | one key per verdict (`pass`, `fail`, `unavailable`) |
@@ -249,9 +260,9 @@ paths, no trustworthy {term}`hook result`) — the receipt names the cause.
 | `task` | the task name from the attempt records |
 | `command` | the effective attempt command from the records (including any engine-contract suffix) |
 | `timeout` | the attempt timeout in seconds |
-| `rung` | the {term}`contract rung` every cell ran at, null for the default contract or a pre-V11a batch |
+| `rung` | the contract rung every cell ran at, null for the default contract or a pre-V11a batch |
 | `contract_digest` | the sha256 of the exact contract text every cell exported, null for a pre-V11a batch |
-| `pathology` | per-cell block keyed by the cell names in `cells` order: each a measured count set or `{"measured": false, "reason": …}`; absent or unparseable/unknown-vocabulary/structurally-unsound transcripts are `unmeasured`, never zero. Measured cells include `loop_broken`, the number of Engine `entry_appended` events whose `entry.customType` is `loop_broken`. Hidden-oracle runs add `overlay_windows` to measured cells; visible-oracle runs carry no overlay key. Count definitions and the reason set: the V10 spec (`docs/superpowers/specs/2026-09-04-v10-transcript-pathology-counts-design.md` §3) |
+| `pathology` | per-cell block keyed by the cell names in `cells` order: each a measured count set or `{"measured": false, "reason": …}`; absent or unparseable/unknown-vocabulary/structurally-unsound transcripts are `unmeasured`, never zero. Measured cells include `loop_broken`, the number of Engine `entry_appended` events whose `entry.customType` is `loop_broken`. Hidden-oracle runs add `overlay_windows` to measured cells; visible-oracle runs carry no overlay key. Count definitions and the reason set are in the [archived V10 record](https://github.com/pauleveritt/satyrn-evals/blob/d900325/docs/superpowers/specs/2026-09-04-v10-transcript-pathology-counts-design.md). |
 
 A summary refuses a mixed batch: cells at different rungs, or cells at the
 same rung whose contract digests differ, are refused exactly as mixed tasks,
@@ -289,8 +300,9 @@ and never a change to any exit code.
 
 ## Hook result
 
-The JSON the {term}`oracle` writes through the pytest plugin at a path only
-grading knows — reserved, unlinked before the run, and rejected as stale.
-It records executed test IDs, per-test outcomes, and counts. `verdict.py`
-treats a missing, stale, unparseable, or internally inconsistent file as
-`unavailable`, never `pass`.
+The JSON the oracle writes through the pytest plugin at a grading-reserved path
+that is unlinked before the run and rejected as stale. The oracle process sees
+that path, so the result is checked for freshness and shape, not authorship;
+see [trust boundaries](../topics/trust-boundaries.md). It records executed test
+IDs, per-test outcomes, and counts. `verdict.py` treats a missing, stale,
+unparseable, or internally inconsistent file as `unavailable`, never `pass`.

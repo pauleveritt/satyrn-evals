@@ -21,19 +21,14 @@ serves a live-rebuilding copy at http://127.0.0.1:8003.
 
 ## Repository conventions
 
-- **Spec-driven development.** Every real feature has a design spec and
-  implementation plan under `docs/superpowers/specs/` and
-  `docs/superpowers/plans/` before the code — see
-  [`sdd.md`](sdd.md). Commit timing is maintainer-controlled; plan tasks do
-  not require automatic checkpoint commits.
+- **Proportionate planning.** Use the current design and plan for work that
+  changes an evaluation condition, evidence boundary, task contract, or result
+  interpretation. Small reversible changes need no planning ceremony — see
+  [`sdd.md`](sdd.md). Commit timing is maintainer-controlled.
 - **Verify, don't assert.** A claim (a fix works, a test is non-vacuous, a
   refusal fires) gets demonstrated — stash the fix and show the new test
   fails first, or write the exploit and run it — not just stated.
-- **No machinery ahead of the contract it serves.** Build what a real task
-  needs, not what might be needed later. Deferred ideas go to
-  `ROADMAP.md`'s Backlog, never into the current phase.
-- **Concept budget.** New jargon is a real cost. If a change needs a term a
-  contributor doing this a few hours a week can't quickly absorb, prefer
-  cutting the term over keeping it — see `ROADMAP.md`'s concept budget.
+- **Build against a concrete need.** Keep deferred work in `BACKLOG.md` and
+  historical rationale in the archive.
 - **A refusal test has a sibling success test**, so rejection cannot pass
   vacuously.

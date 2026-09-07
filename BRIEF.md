@@ -1,167 +1,88 @@
-# Brief: satyrn-evals
+# Brief: Satyrn Evals
 
-**Read this first. Do not re-brainstorm the project.** The design in this file
-and in `ROADMAP.md` is the output of a long, twice-reviewed design session.
-Brainstorm *within* a phase; do not reopen the phase list or the architecture.
+## North star
 
-## What we are building
+Given an engine change, run meaningful development tasks, preserve every
+attempt, and determine which required behaviours improved or regressed and at
+what cost. Keep enough headroom to test the next hypothesis.
 
-**satyrn-evals** lets a contributor capture a Python development task, invoke
-an attempt command, preserve what happened, and grade the result offline — so
-they can find problems and work on engine fixes.
+Satyrn Evals captures a task, invokes an attempt command, persists the patch
+and transcript, and grades the saved evidence offline. The engine seam is an
+executable command so the suite can be developed with a fake command and does
+not import engine internals.
 
-It owns: task capture and task manifests; known-good and known-broken
-fixtures; patch application, oracle execution and grading; transcript, patch,
-receipt and conditions recording; summaries of failure reasons and thrashing
-behavior.
+Headroom belongs to a task, prompt, model, engine, and budget together. It is
+not a permanent task label. A task that currently passes can expose a
+regression; a task that currently fails can test a targeted improvement. A
+prompt change is a different evaluation condition. Do not draw a component
+claim from a product comparison: use matched controls that differ only in the
+component when component attribution is the question.
 
-It does **not** import engine internals. **Its engine seam is an executable
-command.** A fake command must satisfy the same seam, so eval development
-never waits for the real engine.
+## Invariants
 
-## Diagnosis first, claims much later
+1. **Preserve before judging.** Persist the patch and transcript before
+   grading or cleanup. Grade and re-score only retained evidence, so a grading
+   or reporting repair does not require another model run.
+2. **Use independent verdict evidence.** The verdict comes from an oracle test
+   hook, never stdout or an exit status. The result path is not bound to the
+   oracle process, so model code imported by that process can forge a
+   shape-valid result; the current mitigation and limit are in
+   [trust boundaries](docs/topics/trust-boundaries.md).
+3. **State the population.** Report explicit denominators, missing cells, and
+   unmeasured diagnostics. Do not silently shrink a denominator or read an
+   arm-specific detector as an arm-neutral rate.
+4. **Freeze execution before spending budget.** Record the task, prompt,
+   model, engine revision, tool surface, budget, schedule, and stopping rules
+   before a budgeted run. Keep completed cells on interruption and state the
+   rule for incomplete cells.
+5. **Prove checks in both directions.** A grader accepts a known-good fixture
+   and rejects a known-broken fixture. A refusal test has a sibling success
+   test. The default tier runs without model, network, or subprocess; real
+   Git, materialization, an attempt command, and oracle execution belong to
+   marked integration checks.
 
-This is the decision that governs everything else.
+## Development feedback policy
 
-A contributor asking *"did my engine fix help, and if not, why"* needs to know
-what broke and where. They do not need a confidence interval. The prior
-project conflated these and produced a 6,065-line harness measuring a 340-line
-engine, whose durable output was about five sentences.
+Target useful development feedback within 10–15 minutes. Use the cheapest
+check that can answer the current question:
 
-**In scope now:** capture, attempt, offline grading, n=8, a diagnostic summary.
+| Question | Cheapest useful check |
+| --- | --- |
+| Did a specific software defect change? | Deterministic regression test; no model. |
+| Does the complete execution path work? | One bounded attempt. |
+| Is a change promising enough to investigate? | Two attempts per matched configuration on one relevant qualified task. |
+| Does an improvement survive repetition or broader conditions? | A separately planned confirmation run. |
 
-**Deferred to a claims layer, with a later consumer:** pre-registration,
-confidence intervals, condition enforcement, cells and digest pinning, void
-and retry accounting, the pilot/confirmatory distinction, model canaries, A/B
-publication machinery.
+Small runs are triage, not success-rate, causal, or headroom conclusions. A
+two-minute command budget answers a different question from a fifteen-minute
+budget; keep their conditions and results separate. Before choosing a short
+budget or repeated-call limit, check representative retained attempts to make
+sure the relevant behavior occurs within it. Do not use a repeated-call limit
+when recovery from repetition is the question.
 
-Record drift; do not abort a diagnostic batch because conditions changed.
-**Never compare wall-clock time between contiguous arms** — two figures in the
-prior repository were retracted for exactly that. Summaries use counts.
+Declare development budgets and stopping rules before a live run. Stop remaining
+launches on an established infrastructure failure (wrong model, missing
+executable, invalid task setup, or broken artifact path), retain the partial
+batch, and repair it. An ordinary failed repair is a valid observation and does
+not justify an improvised retry. Each expensive failure should yield a cheap
+deterministic regression test for the reproducible component; that test proves
+the component handles the saved request or artifact, not that a model will make
+better choices.
 
-## Provenance
+Measure setup, command, and grading durations before optimizing infrastructure.
+Short-run promises require a bound around the whole attempt, not merely a
+model-command timeout. Keep task workspaces isolated; investigate cache reuse,
+model reuse, or accelerator concurrency only after those measurements identify
+the limiting stage.
 
-Seeded from research at `github.com/pauleveritt/local-ai-pi`, commit
-`8588ba4`, specifically
-`docs/superpowers/research/2026-08-16-two-repo-rewrite-and-python-engine.md`
-and `docs/superpowers/handoff/HARVEST-INDEX.md`. **That repository is
-evidence, not source.** Do not transplant `harness/`. Re-earn each behavior
-from the named fixture and incident recorded in the harvest index.
+## What comes next
 
-## The trap we are avoiding
+The current milestone qualifies only `agentclinic-repair-depth-3` at R3 and
+proves one repeatable synthetic route from a frozen execution description to
+retained, re-scorable results. Its design and plan live in `docs/current/`.
+`ROADMAP.md` says what is active and what remains outside this repository's
+immediate control.
 
-The prior harness grew two systems under one name — with two different
-`run_suite` functions and two different `_out_of_scope` helpers — three
-results formats, eight grading-rule versions, and a conditions record with 13
-fields and 5 back-compatibility sentinels because every added field
-invalidated every stored checkpoint. Its measurement apparatus became the
-subject: seven instrument defects found in one external review, four
-silent-zero incidents, and a checker framework cut from 862 lines to 380 and
-then mostly deleted.
-
-Consequences: one phase at a time; no machinery ahead of the contract it
-serves; a concept budget and a repository-weight budget from phase one.
-
-## Binding rules
-
-1. **Verify, don't assert.** Carry the command that recomputes a number, not
-   the number alone.
-2. **The evidence floor.** No grader is done until it has accepted a
-   known-good input and rejected a known-broken one, each asserted by naming
-   the fixture.
-3. **Capture is separate from grading.** Every attempt persists its patch and
-   transcript *before* cleanup, and grading reads those artifacts. Every
-   grading defect in the prior project was re-scored without re-running a
-   model. **This property matters more than any capture shape.**
-4. **The verdict never comes from stdout or an exit code.** Predecessor
-   graders were defeated by `addopts = --collect-only` and an import-time
-   `os._exit(0)`. Results are written by a test hook, outside model-controlled
-   output.
-
-   > **Recorded amendment (V9, 2026-09-04).** A stated limit beside this rule:
-   > the result file's path is in the oracle's environment, and the loader
-   > checks shape, internal consistency, and freshness only. Model code
-   > imported at collection time — which runs in the oracle's process — can
-   > write a shape-valid, fresh result file and exit 0 without running the
-   > tests, forging a pass. Standing mitigations: the path is reserved and
-   > unlinked before the run, the graded tree is grading's private copy, and
-   > the oracle's stdout/exit code are never read. There is no binding of the
-   > result to the process that produced it; that is the seam's stated limit,
-   > not a fixed property. See the V9 design spec §9 and the trust-boundaries
-   > topic.
-5. **Default tests use no model, no network, no subprocess**, enforced
-   mechanically by a planted-spawn tripwire that fails the build. Real Git,
-   environment materialization, model invocation and oracle execution live in
-   a marked integration tier that does not run in CI.
-6. **A refusal test has a sibling success test.** Most of this code tests
-   rejection, and rejection is the default outcome of most failures.
-7. **Cite, don't recall.** No claim about a prior result enters a plan, a spec,
-   or a roadmap without a `file:line` citation checked at the time of writing.
-   Earned the hard way: one false claim — "the Engine arm has never been run
-   against a floored task" — was corrected in a research document and then
-   restated three more times in later documents, including once four paragraphs
-   above the `ROADMAP.md` text that already refuted it. Restating a conclusion
-   is not the same as re-deriving it, and the failure mode is invisible from
-   inside the sentence that repeats it.
-8. **A detector must discriminate, in both directions.** Every check must be
-   shown to fire on a known-bad drawn from the *current* batch and stay silent
-   on a known-good from the same batch. Five instrument defects in one spike
-   shared one shape: an absence of signal reported as a finding — a void hiding
-   a fail, a preflight that could not fail, a verdict computed over zero cells,
-   a detector that fired on 104 of 128 cells, and an arm protected from a
-   harness defect its rivals were exposed to.
-
-## Two selection rules, because there are two jobs
-
-Conflating these picks the wrong artifact for both.
-
-**A grader fixture** proves the grading machinery discriminates. No model
-runs, so headroom is irrelevant. It must grade **offline and
-deterministically, with no network and no third-party dependencies.**
-
-**A diagnostic workload** must be able to show a difference between the arms
-under comparison. It requires a **baseline probe** — the baseline attempt
-command at n=4–6, recorded once as a property of the task. The middle-band
-bar applies to the arms under comparison, not to the reference arm alone: a
-task is admissible when its probe records at least one pair of those arms
-in different successful-attempt bands, with the metric and stopping rule
-fixed before the run and successful-attempt outcome, retained-patch production, and
-conditional retained-patch quality kept separate. A task is smoke only when
-its reference arm sits at or near ceiling. A task at the floor is a
-capability wall only when no arm under comparison is recorded above it and no
-retained patch passes a preservation-safe oracle; a completion floor whose
-retained patches pass is what an engine change exists to move.
-
-> **Recorded amendment (V5a, 2026-09-02).** The paragraph above supersedes
-> the prior wording: "A task at or near ceiling is smoke only. A task at the
-> floor is a capability wall, not something an engine change moves. Diagnosis
-> lives in between." The corrected probes falsified the floor sentence: bare
-> Pi recorded 0/4 successful attempts on `local-pings` while retained patches
-> passed a fresh preservation suite, and the Engine composite then recorded
-> 2/4; the pilot recorded Engine 6/6 against a 0/6 Baseline on
-> `stringified-annotations`. Decision and per-arm index:
-> `docs/superpowers/specs/2026-09-02-v5a-admission-rule-design.md`.
-
-The four deterministic capture checks prove a task is **valid** — un-done at
-base, and winnable. They say nothing about **discriminating power**. The prior
-project spent 64 attempts to learn that three of its four tasks carried no
-comparative information.
-
-## The unsolved problem
-
-Nothing in the prior repository reliably produced tasks in the middle band.
-Every suite it built saturated, and the two tasks that discriminated were
-found by running batches, not by design. **A suite with headroom is design
-work that this project still owes**, and the diagnostic summary is only
-informative on tasks whose baseline can move. See `ROADMAP.md`.
-
-> **Recorded amendment (V5a, 2026-09-02).** "Middle band" is read on the
-> arms under comparison, not on the bare-Pi reference alone — see the
-> diagnostic-workload amendment above and the V5a design spec. Two probed
-> tasks (`local-pings`, `stringified-annotations`) are admissible under that
-> reading; suite-headroom design work remains owed for the rest.
-
-## Where to start
-
-`ROADMAP.md`, phase V1. Brainstorm V1's details treating this brief and the
-phase list as settled. Build the fast-tier tripwire first.
+Historical specifications, run interpretations, and withdrawn ideas are in
+`archive/`. They are evidence to retrieve for a named question, not policy to
+apply by default.

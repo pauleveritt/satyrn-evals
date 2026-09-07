@@ -1,26 +1,38 @@
 # Run a diagnostic batch
 
-Use this guide when one attempt is not enough to reveal a failure pattern.
-`run` repeats the same attempt command, preserves every attempt, and writes a
-counts-only summary.
+Use this guide after a deterministic reproducer establishes the specific
+software question. `run` repeats one attempt command, preserves every attempt,
+and writes a counts-only summary. Target useful development feedback in
+10–15 minutes: begin with one bounded attempt, then use two attempts for each
+matched configuration on one relevant qualified task only when the question is
+whether a change is promising enough to investigate.
 
-Before a budgeted diagnostic run on a materially distinct command, adapter, or
-runtime path, perform one uncounted real-model smoke attempt and read its
-attempt record — and the receipt, when grading ran. The smoke confirms that
-the path starts the model. `NO_PATCH` and `COMMAND_TIMEOUT` may still pass the
-smoke, but only on positive evidence the model started; a silent path is a
-failed smoke.
+Declare the budget and stopping rule before a live run. An established
+infrastructure failure (for example, a wrong model, unavailable executable,
+invalid task setup, or broken artifact path) stops the remaining launches;
+retain the partial batch. An ordinary failed repair remains a counted
+observation, not a reason for an improvised retry. Small runs are triage, not
+success-rate, headroom, or causal conclusions. A broader confirmation needs a
+separate plan and a fresh run.
 
 ## Run the batch
 
 Run from your Evals checkout; add `--tasks-root tasks` for a captured task.
 
 ```console
-$ uv run satyrn-evals run TASK_NAME --n 8 --output runs/engine -- \
+$ uv run satyrn-evals run TASK_NAME --n 1 --output runs/engine -- \
     /absolute/path/to/attempt-command ARGUMENTS
 ```
 
-The command completes all eight attempts, including refusals, and writes
+Always state `--n` explicitly: the example asks whether one complete path
+works. For a matched two-configuration triage screen, use `--n 2` for each
+configuration after checking representative retained attempts show the relevant
+behavior within the selected command budget. A two-minute command budget and a
+fifteen-minute command budget answer different questions; keep their results
+separate. Do not use a repeated-call limit when recovery from repetition is the
+question.
+
+The command completes the declared attempts, including refusals, and writes
 `runs/engine/summary.json`. Read its `attempted`, `refused`, `code_counts`,
 `verdict_counts`, and `timeouts` fields. Individual attempt directories remain
 available for inspection.
@@ -43,13 +55,23 @@ records on disk. A cell whose grading failed mid-run is recorded with code
 ## Interpret it as diagnosis
 
 The summary tells you what outcomes occurred and how often. It is not a
-confidence interval or an A/B publication claim. Use a task only as a
-diagnostic workload when it has recorded headroom under the admission rule;
-`run` does not enforce admission.
+confidence interval or an A/B publication claim. Before using it to evaluate
+an engine change, qualify the task's requirements and checks, freeze the
+condition, and state the comparison the result can support. `run` does not
+perform those decisions.
 
-The bundled `local-pings` task is retained for grading, smoke, and regression
-use, but was de-admitted as a diagnostic workload. Do not use it as evidence
-that an engine change helped without a newly qualifying probe.
+Use retained requests, patches, and transcripts from expensive failures to add
+the cheapest deterministic regression test that covers the reproducible
+component. That test can show the component now handles the saved evidence; a
+subsequent bounded live attempt is needed to learn whether a model chooses a
+better sequence. Measure setup, command, and grading durations before proposing
+cache reuse, model reuse, or concurrency changes. A whole-attempt deadline is
+not yet implemented: it needs a separate design that bounds setup, command,
+preservation, grading, and cleanup without losing evidence.
+
+`local-pings` remains useful for grading, smoke, and regression use. Its past
+diagnostic interpretation is historical evidence, not a current selection
+rule.
 
 For the full `run` interface, see the [`run` reference](../usage.md#run);
 `summary.json`'s fields are documented in [task and artifact

@@ -1,8 +1,8 @@
 # V10 pathology fixtures
 
 Synthetic-but-faithful Pi stream-JSON (version 3) documents in the
-vocabulary the V10 spec pins (§1 of
-`docs/superpowers/specs/2026-09-04-v10-transcript-pathology-counts-design.md`).
+vocabulary the [archived V10 record](https://github.com/pauleveritt/satyrn-evals/blob/d900325/docs/superpowers/specs/2026-09-04-v10-transcript-pathology-counts-design.md)
+pins (§1).
 Synthesized from the verified schema, **not** byte-copied from the
 preserved V8 smoke transcript (the deep review's §11 sample).
 

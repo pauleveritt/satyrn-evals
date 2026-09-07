@@ -73,10 +73,10 @@ before running an untrusted command.
 
 ## Current status
 
-`grade`, `capture`, `attempt`, `run`, and `session` are available; V6 session
-eval is complete (2026-09-04). The
-[roadmap](https://github.com/pauleveritt/satyrn-evals/blob/main/ROADMAP.md)
-has the complete phase history and current design work.
+`grade`, `capture`, `attempt`, `run`, `summarize`, `regrade`, `session`, and
+`census` are available. The [CLI reference](usage.md) is the complete command
+surface. Current instrument work is described in the
+[roadmap](https://github.com/pauleveritt/satyrn-evals/blob/main/ROADMAP.md) and [first-milestone documents](current/index.md).
 
 ```{toctree}
 :maxdepth: 2

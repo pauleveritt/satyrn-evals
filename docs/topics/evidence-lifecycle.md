@@ -35,9 +35,9 @@ mean that no meaningful test actually ran.
 
 `run` repeats attempts and aggregates outcomes into counts. Those counts are
 diagnostic: they show which refusal codes, verdicts, and timeouts occurred.
-They are not a statistical comparison by themselves. A task needs a qualifying
-baseline probe before it can serve as a diagnostic workload for an engine
-change.
+They are not a statistical comparison by themselves. An engine evaluation
+also needs qualified requirements and checks, a frozen condition, and a
+comparison that supports the intended claim.
 
 For the precise vocabulary, use the [glossary](../glossary.md). For the
 implementation shape, see [architecture](../architecture.md).

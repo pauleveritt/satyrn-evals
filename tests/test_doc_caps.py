@@ -20,8 +20,7 @@ from lint_docs import (  # noqa: E402  # type: ignore[missing-import]  # tools/ 
     BACKLOG_ENTRY_CAP,
     DIRECTION_CAP,
     FILE_CAPS,
-    GRANDFATHERED,
-    ROOT,
+    GLOB_CAPS,
     STATUS_CAP,
     UNCAPPED,
     check,
@@ -53,6 +52,17 @@ def test_over_cap_roadmap_is_refused(tmp_path: Path) -> None:
     failures = check(tmp_path).failures
 
     assert any("ROADMAP.md" in f and "> 400" in f for f in failures), failures
+
+
+def test_over_cap_current_plan_is_refused(tmp_path: Path) -> None:
+    current = tmp_path / "docs" / "current"
+    current.mkdir(parents=True)
+    _write(current, "first-milestone-plan.md", "# Plan\n" + "\n" * 500)
+
+    failures = check(tmp_path).failures
+
+    assert ("docs/current/*-plan.md", 400) in GLOB_CAPS
+    assert any("first-milestone-plan.md" in f and "> 400" in f for f in failures), failures
 
 
 def test_over_cap_backlog_entry_is_refused(tmp_path: Path) -> None:
@@ -151,17 +161,6 @@ def test_archive_is_not_in_the_cap_table(tmp_path: Path) -> None:
     assert "ARCHIVE.md" not in FILE_CAPS
 
 
-def test_grandfathered_paths_all_exist() -> None:
-    """Every grandfathered path is a real document in *this* repository.
-
-    Copying this file between the two repositories silently carried the other
-    one's set across, which both exempted documents that do not exist here and
-    stopped exempting the ones that do.
-    """
-    missing = [p for p in GRANDFATHERED if not (ROOT / p).exists()]
-
-    assert missing == [], missing
-
 
 def test_trailing_whitespace_is_refused(tmp_path: Path) -> None:
     (tmp_path / "docs").mkdir()
@@ -184,13 +183,11 @@ def test_blank_line_at_eof_is_refused(tmp_path: Path) -> None:
     assert any("ROADMAP.md" in f and "blank line at EOF" in f for f in failures), failures
 
 
-def test_clean_documents_and_the_preserved_record_are_accepted(tmp_path: Path) -> None:
-    """The success sibling: clean files draw no complaint, and the preserved
-    research record is exempt rather than failing forever."""
-    (tmp_path / "docs" / "superpowers" / "research").mkdir(parents=True)
+def test_clean_documents_are_accepted(tmp_path: Path) -> None:
+    """The success sibling: clean active documents draw no complaint."""
+    (tmp_path / "docs").mkdir()
     (tmp_path / "docs" / "guides").mkdir(parents=True)
     _write(tmp_path, "README.md", "# Clean\n\nNo trailing spaces.\n")
     _write(tmp_path, "docs/guides/x.md", "# Guides\n\nClean too.\n")
-    _write(tmp_path, "docs/superpowers/research/old.md", "History.   \n\n")
 
     assert check(tmp_path).failures == []

@@ -1,15 +1,16 @@
 # CLI reference
 
-The CLI ships four commands: `grade`, `capture`, `attempt`, and `run`. This
-page is the complete interface reference. For outcome-oriented instructions,
-use the [guides](guides/index.md); for a first successful result, use the
-[tutorial](tutorials/see-one-verdict.md). See the [glossary](glossary.md) for
-the vocabulary.
+The CLI ships eight commands: `grade`, `capture`, `attempt`, `run`,
+`summarize`, `regrade`, `session`, and `census`. This page is the complete
+interface reference. For outcome-oriented instructions, use the
+[guides](guides/index.md); for a first successful result, use the
+[tutorial](tutorials/see-one-verdict.md). The [glossary](glossary.md) is
+optional lookup material.
 
 ## grade
 
-Apply a {term}`patch` to a bundled {term}`task`'s base state, run the
-task's {term}`oracle`, and record the {term}`verdict` in a
+Apply a patch to a bundled {term}`task`'s base state, run the
+task's oracle, and record the {term}`verdict` in a
 {term}`receipt` — offline and deterministically, with no model and no
 network.
 
@@ -20,19 +21,19 @@ satyrn-evals grade TASK PATCH [--receipt PATH] [--tasks-root DIR]
 - `TASK` — a {term}`task` name. `format_number` is the first bundled task:
   a small pure-Python function task with known-good and known-broken
   fixture patches.
-- `PATCH` — path to a unified-diff {term}`patch` file.
+- `PATCH` — path to a unified-diff patch file.
 - `--receipt PATH` — where the {term}`receipt` is written; default `receipt.json`
   in the current directory.
 - `--tasks-root DIR` — where to find tasks; default: the bundled tasks that
   ship in the wheel. Point it at a captured-task directory to grade a
-  {term}`capture record`'s output.
+  capture record's output.
 
 ### Exit codes
 
 | Code | Meaning |
 |------|---------|
 | 0 | Grading completed; the {term}`receipt` says `pass` or `fail` |
-| 2 | Usage error — unknown task, unreadable {term}`patch`, bad arguments |
+| 2 | Usage error — unknown task, unreadable patch, bad arguments |
 | 3 | Operational failure — the {term}`receipt` says `unavailable` and names the cause |
 
 The {term}`verdict` never comes from stdout or the exit code. Read the
@@ -52,18 +53,18 @@ $ python -c "import json; print(json.load(open('r.json'))['verdict'])"
 pass
 ```
 
-A {term}`patch` that does not apply, or an {term}`oracle` that produces no
+A patch that does not apply, or an oracle that produces no
 trustworthy {term}`hook result`, records `unavailable` and exits 3 — never
 a clean zero that proved nothing.
 
 ## capture
 
 Turn a real fixing commit in a repository into a {term}`task` — manifest,
-base state, and a known-good {term}`patch` — winnable by construction, in
+base state, and a known-good patch — winnable by construction, in
 minutes. The task's base is the fix's parent tree; the known-good patch is
-the fix diff restricted to non-test source paths; the {term}`oracle`
+the fix diff restricted to non-test source paths; the oracle
 runs only the tests that fail at base and pass with the fix (the
-{term}`discriminating set`).
+discriminating set).
 
 ```console
 satyrn-evals capture --revert SHA [--repo PATH] [--name NAME] [--contract TEXT] [--output DIR]
@@ -83,10 +84,10 @@ satyrn-evals capture --revert SHA [--repo PATH] [--name NAME] [--contract TEXT] 
 
 Four deterministic checks run during capture (source preflight, base
 oracle runs, un-done at base, winnable); a failed check refuses with a
-precise `code` in the {term}`capture record`. Exit codes: `0` captured,
+precise `code` in the capture record. Exit codes: `0` captured,
 `2` usage error, `3` refusal.
 
-The {term}`capture record` — `<output>/<name>.capture.json`, its fields, and
+The capture record — `<output>/<name>.capture.json`, its fields, and
 its refusal codes — is documented in [task and artifact
 formats](reference/formats.md#capture-record); the exit code stays coarse by
 design.
@@ -115,7 +116,7 @@ exactly as `grade`'s.
 ship in the wheel.
 - `--output DIR` — the directory under which the attempt directory is
 created; default `./attempts/`.
-- `--rung KEY` — which {term}`contract rung` from the manifest's `contracts`
+- `--rung KEY` — which contract rung from the manifest's `contracts`
 map to export as `SATYRN_TASK_CONTRACT`; default: the manifest's `contract`.
 An unknown key, or `--rung` against a task with no `contracts`, is a usage
 error naming the available keys. **The command never sees `--rung`** — the
@@ -194,14 +195,14 @@ sandbox. Windows is outside the V4 proof.
 
 | Code | Meaning |
 |------|---------|
-| 0 | Attempted and graded; the {term}`attempt record` says `verdict: pass` or `fail` |
+| 0 | Attempted and graded; the attempt record says `verdict: pass` or `fail` |
 | 2 | Usage error — unknown {term}`task`, missing/empty command, command cannot start |
 | 3 | Artifact, workspace, timeout, or cleanup refusal; or verdict `unavailable` |
 
-The {term}`attempt record` and the {term}`receipt` — not the exit code — are
+The attempt record and the {term}`receipt` — not the exit code — are
 the result. The exit code is coarse by design.
 
-The attempt directory and the {term}`attempt record` — its fields, the
+The attempt directory and the attempt record — its fields, the
 refusal codes, and the refusal/`unavailable` distinction — are documented in
 [task and artifact formats](reference/formats.md#attempt-directory-and-record).
 
@@ -216,7 +217,7 @@ $ echo $?
 0
 ```
 
-Verdict `pass` — read the {term}`attempt record` or the {term}`receipt` in
+Verdict `pass` — read the attempt record or the {term}`receipt` in
 the attempt directory. Every path the command touches is absolute: its cwd
 is a disposable worktree.
 
@@ -241,9 +242,8 @@ $ satyrn-evals attempt agentclinic-repair-plausible-wrong-fix --rung R1 \
 
 ## run
 
-Repeat an {term}`attempt command` for one {term}`task` — typically an admitted
-one, though `run` does not enforce admission — preserving each attempt and
-writing a counts-only diagnostic summary. `run` uses the
+Repeat an {term}`attempt command` for one {term}`task`, preserving each
+attempt and writing a counts-only diagnostic summary. `run` uses the
 same command seam, worktree isolation, artifact preservation, and offline
 grading as `attempt`; it adds repetition and aggregation, not another engine
 integration.
@@ -283,13 +283,14 @@ $ satyrn-evals run local-pings --n 8 --timeout 900 --output runs/engine -- \
     /src/satyrn-engine/.venv/bin/satyrn-engine attempt
 ```
 
-The example uses `local-pings` — a bundled fixture task currently
-de-admitted as a diagnostic workload (2026-09-03). `run` does not enforce
-admission, so the example stands for smoke or regression use.
+The example uses `local-pings`, a bundled fixture task suitable for smoke or
+regression use. A result intended to evaluate an engine change needs its
+condition qualified and frozen outside the `run` command.
 
-Transcript-derived telemetry such as tool calls, repeat, churn, and context
-is not yet included: it requires an engine-side emitter so evals does not
-parse the engine's private transcript format.
+The summary includes the currently supported, schema-aware pathology counts.
+Broader tool-call, repeat, churn, and context telemetry remains deferred until
+an engine-side emitter can supply it without Evals parsing a private transcript
+format.
 
 ## summarize
 
@@ -336,3 +337,49 @@ is printed and the command exits `0`. Exit codes: `0` — graded pass or
 fail (or nothing to grade); `2` — not an attempt directory, identity
 mismatch, or unknown task; `3` — verdict unavailable or an unreadable
 record.
+
+## session
+
+Drive one ordered conversation through an adapter, retain a checkpoint after
+each reached prompt, and grade those saved checkpoints offline. Session is a
+separate interface for adapters that implement its event protocol; it is not a
+replacement for `attempt` or `run`.
+
+```console
+satyrn-evals session TASK [--tasks-root DIR] [--output DIR]
+    [--start-timeout SECONDS] [--step-timeout SECONDS]
+    [--close-timeout SECONDS] -- ADAPTER...
+```
+
+- `TASK` and `--tasks-root DIR` identify the task as for `attempt`.
+- `--output DIR` stores the session directory; default `./sessions/`.
+- `--start-timeout SECONDS`, `--step-timeout SECONDS`, and
+  `--close-timeout SECONDS` bound adapter start, each prompt, and graceful
+  close; their defaults are 60, 600, and 30 seconds.
+- `ADAPTER...` is the required executable adapter command. Everything after
+  `--` is passed to it verbatim.
+
+Every session that starts writes `session-record.json`, including adapter,
+timeout, and cleanup failures. The record and its retained checkpoint patches,
+snapshots, transcript, and receipts—not adapter stdout or exit status—are the
+evidence to inspect. Exit `3` reports workspace, cleanup, or grading
+unavailability; other terminal product outcomes still leave their record.
+
+## census
+
+Scan retained run transcripts for named pathologies. It is a diagnostic view
+over existing evidence: it launches no attempt command, grades nothing, and
+does not establish a verdict or an evaluation conclusion.
+
+```console
+satyrn-evals census RUNS_ROOT [RUNS_ROOT ...] [--json PATH]
+```
+
+- `RUNS_ROOT` — one or more run-output roots to scan.
+- `--json PATH` — optionally write the full per-cell census record.
+
+The observed-file denominator is the `transcript.txt` files that exist below
+the supplied roots; a missing transcript creates no census cell and is not
+silently counted as zero. For an existing transcript outside the supported
+vocabulary, `v10_unmeasured` makes that limit explicit. Other detector zeros
+describe only the files scanned, not proof that absent evidence is clean.

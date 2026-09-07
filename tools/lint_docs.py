@@ -1,8 +1,4 @@
-"""Enforce the document caps in `docs/sdd.md`.
-
-Caps alone do not work: a predecessor's `ROADMAP.md` reached roughly 1,000
-lines, about 800 of them Backlog, under rules that capped cells and plans but
-never the file. This checker is the other half.
+"""Enforce the active-document checks described in `docs/sdd.md`.
 
 No model, no network, no subprocess — it fits the default test tier and runs
 from `just lint-docs`.
@@ -21,34 +17,19 @@ FILE_CAPS: dict[str, int] = {
     "ROADMAP.md": 400,
     "BACKLOG.md": 400,
 }
-# Deliberately absent from FILE_CAPS. `ARCHIVE.md` is where the roadmap's
-# overflow goes; capping it would only create a third file for the same
-# history. `tests/test_doc_caps.py` pins the exemption so a later tidy cannot
-# add it here silently — the same treatment the Excludes column already has.
+# Deliberately absent from FILE_CAPS. The historical archive lives outside the
+# Sphinx tree and is not an active planning surface.
 UNCAPPED: frozenset[str] = frozenset({"ARCHIVE.md"})
 GLOB_CAPS: tuple[tuple[str, int], ...] = (
-    ("docs/superpowers/specs/*.md", 400),
-    ("docs/superpowers/plans/*.md", 400),
+    ("docs/current/*-design.md", 400),
+    ("docs/current/*-plan.md", 400),
 )
-# Documents that predate the caps. A sibling project hit the same wall and
-# recorded the right answer: closed plans are not retrofitted, because the cap
-# exists to stop a *live* document growing, and rewriting finished history is
-# churn with no reader. New documents get no exemption.
-GRANDFATHERED: frozenset[str] = frozenset({
-    "docs/superpowers/specs/2026-08-18-v2-capture-by-revert-design.md",
-    "docs/superpowers/plans/2026-08-16-v1-grade.md",
-    "docs/superpowers/plans/2026-08-18-v2-capture-by-revert.md",
-    "docs/superpowers/plans/2026-08-18-v3-attempt-persistence.md",
-})
 
 DIRECTION_CAP = 900
 STATUS_CAP = 1_000
 BACKLOG_ENTRY_CAP = 1_200
 
-# Live documents only. `docs/superpowers/research/` is the preserved record —
-# the same reasoning as GRANDFATHERED, taken one step further: a whitespace
-# check that fails forever on committed history is a check that gets deleted.
-WHITESPACE_SKIP_PARTS = frozenset({"_build", ".venv", "node_modules", "research"})
+WHITESPACE_SKIP_PARTS = frozenset({"_build", ".venv", "node_modules"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,8 +40,8 @@ class Report:
         for line in self.failures:
             print(f"  {line}")
         if self.failures:
-            print(f"\nlint-docs: {len(self.failures)} over cap. "
-                  "See docs/sdd.md, 'Document caps'.")
+            print(f"\nlint-docs: {len(self.failures)} active-document check failures. "
+                  "See docs/sdd.md.")
             return 1
         print("lint-docs: all documents within cap")
         return 0
@@ -171,8 +152,6 @@ def check(root: Path = ROOT) -> Report:
 
     for pattern, cap in GLOB_CAPS:
         for path in sorted(root.glob(pattern)):
-            if path.relative_to(root).as_posix() in GRANDFATHERED:
-                continue
             n = len(path.read_text().splitlines())
             if n > cap:
                 failures.append(f"{path.relative_to(root)}: {n} lines > {cap}")

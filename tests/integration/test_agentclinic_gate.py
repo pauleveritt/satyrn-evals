@@ -16,11 +16,13 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
 
-from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
+from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, load_manifest
+from satyrn_evals.verdict import load_hook_result
 
 pytestmark = pytest.mark.integration
 
@@ -92,6 +94,127 @@ def _run_base_with_hook(state: str, tmp_path: Path) -> dict:
          "satyrn_evals.oracle_hook", "-q", "test_acceptance.py"],
         cwd=d, env=env, capture_output=True)
     return json.loads(hook.read_text())
+
+
+def _qualification_record() -> dict:
+    path = _task("depth-3") / "qualification.json"
+    return json.loads(path.read_text())
+
+
+def _run_qualification_suite(
+    task_dir: Path,
+    tmp_path: Path,
+    *,
+    argv: list[str],
+    patch: Path | None,
+    include_hidden_overlay: bool,
+) -> dict:
+    """Run one declared suite in a fresh task copy and validate fresh hook data.
+
+    The public route uses its manifest argv unchanged. Its plugin enters through
+    the environment, as it does for qualification, rather than by changing the
+    command the solver is entitled to run.
+    """
+    import satyrn_evals
+    from satyrn_evals.grade import _hook_import_path
+    from satyrn_evals.overlay import load_overlay, materialize_overlay
+
+    tmp_path.mkdir(parents=True)
+    work = tmp_path / "work"
+    shutil.copytree(task_dir / "base", work)
+    if patch is not None:
+        subprocess.run(
+            ["git", "init", "-q"], cwd=work, check=True, capture_output=True
+        )
+        subprocess.run(
+            ["git", "apply", "-"],
+            input=patch.read_bytes(),
+            cwd=work,
+            check=True,
+            capture_output=True,
+        )
+    if include_hidden_overlay:
+        materialize_overlay(load_overlay(task_dir, load_manifest(task_dir)), work)
+    subprocess.run(["uv", "sync", "--locked"], cwd=work, check=True, capture_output=True)
+    hook_path = tmp_path / "hook.json"
+    env = dict(os.environ)
+    env["SATYRN_ORACLE_RESULT"] = str(hook_path)
+    env["PYTEST_PLUGINS"] = "satyrn_evals.oracle_hook"
+    env["PATH"] = os.fspath(work / ".venv" / "bin") + os.pathsep + env.get("PATH", "")
+    env["PYTHONPATH"] = os.fspath(
+        _hook_import_path(work, Path(satyrn_evals.__file__).resolve().parent)
+    )
+    started = time.time()
+    subprocess.run(argv, cwd=work, env=env, capture_output=True)
+    hook = load_hook_result(hook_path, started)
+    return {
+        "executed_test_ids": list(hook.executed_test_ids),
+        "outcomes": hook.outcomes,
+        "collect_errors": list(hook.collect_errors),
+    }
+
+
+def _nonpassing_ids(data: dict) -> list[str]:
+    return sorted(test_id for test_id, outcome in data["outcomes"].items() if outcome != "passed")
+
+
+def test_depth_3_r3_qualification_witnesses_match_the_authored_record(
+    tmp_path: Path,
+) -> None:
+    """The three R3 witnesses are fresh hook evidence, not command status."""
+    task_dir = _task("depth-3")
+    manifest = load_manifest(task_dir)
+    record = _qualification_record()
+
+    assert record["task"] == manifest.name
+    assert record["rung"] == "R3"
+    assert "public_command" not in record
+    assert manifest.public_suite
+    assert {behavior["assessment"] for behavior in record["behaviors"]} == {"justified"}
+    assert {
+        check
+        for behavior in record["behaviors"]
+        for check in behavior["hidden_checks"]
+    } == set(manifest.expected_test_ids)
+
+    for witness in record["witnesses"]:
+        patch = task_dir / witness["patch"] if witness["patch"] else None
+        public = _run_qualification_suite(
+            task_dir,
+            tmp_path / witness["id"] / "public",
+            argv=list(manifest.public_suite),
+            patch=patch,
+            include_hidden_overlay=False,
+        )
+        hidden = _run_qualification_suite(
+            task_dir,
+            tmp_path / witness["id"] / "hidden",
+            argv=[*manifest.oracle, *manifest.expected_test_ids],
+            patch=patch,
+            include_hidden_overlay=True,
+        )
+
+        assert public["collect_errors"] == [], witness["id"]
+        assert public["executed_test_ids"], witness["id"]
+        assert public["executed_test_ids"] == sorted(witness["public"]["expected_executed_ids"])
+        assert "skipped" not in public["outcomes"].values(), witness["id"]
+        assert _nonpassing_ids(public) == witness["public"]["expected_nonpassing_ids"]
+        assert hidden["collect_errors"] == [], witness["id"]
+        assert hidden["executed_test_ids"], witness["id"]
+        assert hidden["executed_test_ids"] == sorted(manifest.expected_test_ids)
+        assert "skipped" not in hidden["outcomes"].values(), witness["id"]
+        assert _nonpassing_ids(hidden) == sorted(witness["hidden_expected_nonpassing_ids"])
+
+
+def test_depth_3_r3_record_maps_the_declared_omission_to_its_hidden_check() -> None:
+    record = _qualification_record()
+    behaviors = {behavior["id"]: behavior for behavior in record["behaviors"]}
+    incomplete = next(witness for witness in record["witnesses"] if witness["id"] == "partial-no-303")
+
+    assert incomplete["omits_behavior_ids"] == ["see-other-redirect"]
+    omitted = behaviors["see-other-redirect"]
+    assert incomplete["hidden_expected_nonpassing_ids"] == omitted["hidden_checks"]
+    assert incomplete["public"]["expected_nonpassing_ids"] == omitted["public_tests"]
 
 
 @pytest.mark.parametrize("state", ASSERTION_STATES)

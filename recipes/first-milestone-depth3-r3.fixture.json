@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "task": "agentclinic-repair-depth-3",
+  "rung": "R3",
+  "seed": 2026090701,
+  "n": 2,
+  "fixture": {
+    "executor": "tests/integration/fake_first_milestone_executor.py",
+    "patch": "src/satyrn_evals/tasks/agentclinic-repair-depth-3/fixtures/known-good.patch",
+    "model": "fixture/agentclinic-executor-v1"
+  },
+  "limits": {"command_timeout_seconds": 30}
+}

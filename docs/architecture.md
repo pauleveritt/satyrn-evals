@@ -15,15 +15,15 @@ PATCH ──► parse ──► allowlist ──► copy base ──► git appl
 `grade()` in `src/satyrn_evals/grade.py`:
 
 1. **Load the manifest** — `manifest.py` validates the {term}`task`'s
-   {term}`manifest` (`manifest.json`): contract, {term}`oracle` command,
-   expected test IDs, source {term}`allowlist`, fixture {term}`patch`
+   `manifest` (`manifest.json`): contract, oracle command,
+   expected test IDs, source {term}`allowlist`, fixture patch
    paths.
 2. **Read and vet the patch** — `patch.py` parses the unified diff,
    extracts the touched paths, and checks the {term}`allowlist`; a
-   {term}`patch` touching anything else is rejected before anything runs.
+   patch touching anything else is rejected before anything runs.
 3. **Materialize and apply** — the {term}`task`'s base state is copied to a
-   temp directory, `git init` + `git apply` apply the {term}`patch`.
-4. **Run the oracle** — the {term}`manifest`'s {term}`oracle` command (for
+   temp directory, `git init` + `git apply` apply the patch.
+4. **Run the oracle** — the `manifest`'s oracle command (for
    `format_number`, `python -m pytest -p satyrn_evals.oracle_hook`) runs
    in the workspace with a *unique, reserved-but-unlinked* hook-result
    path in its environment. The hook's `pytest_sessionfinish` writes the
@@ -31,12 +31,12 @@ PATCH ──► parse ──► allowlist ──► copy base ──► git appl
 5. **Load and validate the hook result** — `verdict.py` rejects a missing,
    stale, unparseable, or internally inconsistent file as `unavailable`.
 6. **Compute the verdict** — executed test IDs must equal the
-   {term}`manifest`'s expected IDs; any skip means `unavailable`; any
+   `manifest`'s expected IDs; any skip means `unavailable`; any
    failure or error means `fail`; all pass means `pass`.
 7. **Write the receipt** — `receipt.py`; the CLI maps the {term}`verdict`
    to an exit code (0 / 2 / 3).
 
-The {term}`oracle`'s stdout and exit code are discarded. The
+The oracle's stdout and exit code are discarded. The
 {term}`receipt` — not the process result — is what a caller reads.
 
 ## Why the verdict comes from a hook file
@@ -46,14 +46,16 @@ nothing: `addopts = --collect-only` made pytest collect without running a
 single test, and an import-time `os._exit(0)` killed the process before
 anything ran. Both produce exit code 0.
 
-The defense is structural, not behavioral:
+The defense checks the evidence it receives rather than trusting a process
+status:
 
-- the {term}`oracle` command is fixed in the {term}`manifest`, and the
-  {term}`allowlist` stops a {term}`patch` from adding `addopts` or
-  replacing the hook;
-- the hook writes to a path the {term}`patch` cannot predict — and the
-  path is unlinked before the oracle runs, so a silent oracle leaves *no*
-  file;
+- the oracle command and expected IDs are fixed in the `manifest`; the
+  {term}`allowlist` limits patch writes to declared paths, but does not make
+  tests immutable when a manifest deliberately allows `tests/`;
+- the hook result path is reserved and unlinked before the oracle runs, so a
+  silent oracle leaves *no* file. The oracle process receives the path, which
+  is a documented authorship limit rather than a claim that a patch cannot
+  forge it;
 - a missing, stale, empty, or inconsistent file is `unavailable`, never
   `pass`;
 - the executed-vs-expected-ID guard means "tests ran" is checked, not
@@ -63,7 +65,7 @@ The defense is structural, not behavioral:
 
 | Module | Responsibility |
 |--------|----------------|
-| `cli.py` | argparse, the `grade`, `capture`, `attempt`, and `run` commands, exit-code mapping |
+| `cli.py` | argparse and exit-code mapping for `grade`, `capture`, `attempt`, `run`, `summarize`, `regrade`, `session`, and `census` |
 | `grade.py` | orchestration: materialize, apply, run oracle, write receipt |
 | `capture.py` | orchestration: pin, preflight, derive, worktree, materialize, verify, cleanup, record |
 | `capture_record.py` | the durable capture artifact (E3-shaped JSON) |
@@ -73,8 +75,8 @@ The defense is structural, not behavioral:
 | `summary.py` | the durable run artifact: `summary.json` computed from attempt records |
 | `workspace.py` | reconstruct a private Git repository; own detached-worktree, process, and cleanup lifecycles |
 | `diff_filter.py` | parse NUL-safe Git change metadata; classify both rename paths with the test-path rule |
-| `discriminating.py` | the {term}`discriminating set` and the recorded oracle |
-| `manifest.py` | load/validate the {term}`task` {term}`manifest`; resolve tasks by name |
+| `discriminating.py` | the discriminating set and the recorded oracle |
+| `manifest.py` | load/validate the {term}`task` `manifest`; resolve tasks by name |
 | `patch.py` | parse unified diffs; enforce the source {term}`allowlist` |
 | `verdict.py` | load/validate the hook result; compute the verdict |
 | `receipt.py` | the durable grading artifact (JSON) |
@@ -102,12 +104,12 @@ base, and winnable):
 2. **Base oracle runs** — a full-suite run in the worktree at `PARENT`
    produces a hook result with no collection errors (missing dependencies
    refuse honestly as `ORACLE_ENV`).
-3. **Un-done at base** — the {term}`discriminating set` (fail at base ∩
+3. **Un-done at base** — the discriminating set (fail at base ∩
    pass with the fix) is non-empty.
-4. **Winnable** — the recorded {term}`oracle` (the discriminating IDs
+4. **Winnable** — the recorded oracle (the discriminating IDs
    baked in) passes every one of them.
 
-A failed check writes a {term}`capture record` with `outcome: refused` and
+A failed check writes a capture record with `outcome: refused` and
 a precise `code`; the exit code stays coarse (`0` captured, `2` usage, `3`
 refusal). The three oracle runs reuse V1's hook-result machinery: a unique
 reserved-but-unlinked hook path, the run-start timestamp, and the
@@ -136,7 +138,7 @@ paths inside the attempt directory), reads the delivered patch and
 transcript from those paths, refuses on incomplete artifacts with one of
 four codes (`NO_PATCH`, `PATCH_INVALID`, `TRANSCRIPT_MISSING`,
 `TRANSCRIPT_EMPTY`), grades the delivered patch with the same `grade()` V1
-uses, and writes the {term}`attempt record`. The outcome is artifact-driven:
+uses, and writes the attempt record. The outcome is artifact-driven:
 the command's exit code is recorded as `command_exit` but never trusted.
 Preservation precedes cleanup — the delivered artifacts live in the attempt
 directory, outside the workspace, so a grading defect can be fixed and
@@ -146,7 +148,7 @@ An Engine-capable manifest may name a task-relative `engine_contract`.
 Evals validates that it is a regular file reached without symlinks, then
 appends its absolute path to the executable argv. The file contents remain
 opaque: Engine owns their schema. A task without the field gets a contract
-**generated** from its own manifest plus the selected {term}`contract rung`,
+**generated** from its own manifest plus the selected contract rung,
 written once under the output root at a path keyed by the sha256 of the
 rendered bytes and appended the same way. Generating it keeps the text the
 model sees equal to the text on record; keying the path by content keeps
@@ -160,23 +162,20 @@ hygiene, not a security sandbox; Windows is outside the V4 proof.
 ## Testing: two tiers and the tripwire
 
 - **Default tier** — no model, no network, no subprocess, enforced by the
-  {term}`tripwire`: a CPython audit hook in `tests/conftest.py` that
+  tripwire: a CPython audit hook in `tests/conftest.py` that
   raises on any spawn. Weakening it fails the build.
 - **Integration tier** — marked `integration` and excluded from the
   default run: real Git/worktree operations, oracle subprocesses, process
-  groups, and the real Engine E5 seam, plus the
-  {term}`evidence floor`: the bundled {term}`task`'s known-good
-  {term}`patch` is accepted and its known-broken {term}`patch` rejected,
-  each asserted by naming the fixture.
+  groups, and the real Engine seam. The evidence-floor requirement from
+  BRIEF invariant 5 accepts a bundled {term}`task`'s known-good
+  patch and rejects its known-broken patch, each asserted by
+  naming the fixture.
 
 Every refusal test has a sibling success test, so rejection cannot pass
 vacuously.
 
 ## Current boundary
 
-The diagnostic loop and {term}`baseline probe` admission are available in V5.
-V6 session evaluation is complete (2026-09-04). The claims
-layer—pre-registration, confidence intervals, condition enforcement, and A/B
-publication—remains deliberately deferred until a consumer needs it.
-
-One phase at a time; no machinery ahead of the contract it serves.
+The diagnostic loop and session evaluation are available. Current work
+qualifies task conditions and a recoverable execution route before another
+engine comparison. See [the roadmap](https://github.com/pauleveritt/satyrn-evals/blob/main/ROADMAP.md) for the active milestone.
