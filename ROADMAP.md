@@ -73,7 +73,10 @@ V13 — the first evidence that `read,edit` *loses* on a repair task.
 > and 6,353 tokens** per success against Baseline's 6.2 and 11,568. The
 > tool was used in 12/12 cells. Both arms are at ceiling, so **Engine did
 > not beat Baseline; it stopped losing**, and the only remaining difference
-> is cost. `~/satyrn-smokes/2026-09-06-v13e-011042/RESULT.md`.
+> is cost — which holds under `totalTokens` too (21,580 against 13,521).
+> The within-batch contrast is *Engine-with-runner* against bare Pi; the
+> runner's isolated effect is the cross-batch 6/12 → 12/12 step, which is
+> indicative only. `~/satyrn-smokes/2026-09-06-v13e-011042/RESULT.md`.
 > **The task that was this morning's most discriminating now discriminates
 > nothing on outcomes** — bands move when the engine moves, which is the
 > V16 proposal's argument arriving as evidence.
