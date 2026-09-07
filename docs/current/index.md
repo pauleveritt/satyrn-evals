@@ -11,6 +11,8 @@ past artifact. Archived material does not set current policy.
   implementation sequence and acceptance witnesses.
 - [Whole-attempt deadline design](whole-attempt-deadline-design.md) defines
   the next bounded-live-work prerequisite. It does not authorize a live run.
+- [Whole-attempt deadline plan](whole-attempt-deadline-plan.md) sequences the
+  implementation and verification of that prerequisite.
 
 The design owns policy. The plan owns the ordered work; it does not create a
 second policy source.
@@ -19,4 +21,5 @@ second policy source.
 :hidden:
 
 whole-attempt-deadline-design
+whole-attempt-deadline-plan
 ```
