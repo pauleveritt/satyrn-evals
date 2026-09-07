@@ -61,6 +61,13 @@ class AttemptDeadline:
         phase = DeadlinePhase(phase)
         elapsed = self._clock() - self._started
         if elapsed >= self.timeout:
-            self._expired = AttemptDeadlineExceeded(phase, max(elapsed, self.timeout))
-            raise self._expired
+            self.expire(phase, elapsed=elapsed)
         return self.timeout - elapsed
+
+    def expire(self, phase: DeadlinePhase, *, elapsed: float | None = None) -> None:
+        """Latch expiry observed by a subprocess bounded with remaining time."""
+        if self._expired is None:
+            phase = DeadlinePhase(phase)
+            observed = self._clock() - self._started if elapsed is None else elapsed
+            self._expired = AttemptDeadlineExceeded(phase, max(observed, self.timeout))
+        raise self._expired

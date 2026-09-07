@@ -442,7 +442,11 @@ def _safe_temp_parent(protected: Sequence[Path]) -> Path:
     raise _WorkspaceError(f"cannot allocate a safe temporary directory: {detail}")
 
 
-def _local_env_vars(environment: Mapping[str, str]) -> set[str]:
+def _local_env_vars(
+    environment: Mapping[str, str],
+    *,
+    deadline: AttemptDeadline | None = None,
+) -> set[str]:
     """Ask Git which variables can redirect repository discovery."""
     probe_environment = {
         name: value
@@ -451,17 +455,28 @@ def _local_env_vars(environment: Mapping[str, str]) -> set[str]:
     }
     probe_environment["GIT_TERMINAL_PROMPT"] = "0"
     try:
+        remaining = (
+            deadline.remaining(DeadlinePhase.SETUP) if deadline is not None else None
+        )
         completed = subprocess.run(
             ["git", *_GIT_SAFETY_CONFIG, "rev-parse", "--local-env-vars"],
             env=probe_environment,
             stdin=subprocess.DEVNULL,
             capture_output=True,
             check=False,
+            **({"timeout": remaining} if remaining is not None else {}),
         )
+    except subprocess.TimeoutExpired:
+        assert deadline is not None
+        deadline.expire(DeadlinePhase.SETUP)
     except OSError as exc:
+        if deadline is not None:
+            deadline.remaining(DeadlinePhase.SETUP)
         raise _WorkspaceError(
             f"cannot inspect Git environment variables: {exc}"
         ) from exc
+    if deadline is not None:
+        deadline.remaining(DeadlinePhase.SETUP)
     if completed.returncode != 0:
         detail = os.fsdecode(completed.stderr).strip()
         raise _WorkspaceError(f"cannot inspect Git environment variables: {detail}")
@@ -475,6 +490,7 @@ def _git(
     *,
     input_bytes: bytes | None = None,
     allowed: tuple[int, ...] = (0,),
+    timeout: float | None = None,
 ) -> subprocess.CompletedProcess[bytes]:
     """Run one eval-owned Git command with the shared safety boundary."""
     try:
@@ -486,6 +502,7 @@ def _git(
             input=input_bytes,
             capture_output=True,
             check=False,
+            timeout=timeout,
         )
     except OSError as exc:
         raise _WorkspaceError(f"cannot run git {' '.join(args)}: {exc}") from exc
@@ -495,13 +512,50 @@ def _git(
     return completed
 
 
+def _deadline_git(
+    root: Path,
+    args: Sequence[str],
+    environment: Mapping[str, str],
+    *,
+    deadline: AttemptDeadline | None,
+    phase: DeadlinePhase,
+    input_bytes: bytes | None = None,
+    allowed: tuple[int, ...] = (0,),
+) -> subprocess.CompletedProcess[bytes]:
+    """Run Git without starting or accepting work after whole expiry."""
+    if deadline is None:
+        return _git(root, args, environment, input_bytes=input_bytes, allowed=allowed)
+    try:
+        completed = _git(
+            root,
+            args,
+            environment,
+            input_bytes=input_bytes,
+            allowed=allowed,
+            timeout=deadline.remaining(phase),
+        )
+    except subprocess.TimeoutExpired:
+        deadline.expire(phase)
+    except _WorkspaceError:
+        deadline.remaining(phase)
+        raise
+    deadline.remaining(phase)
+    return completed
+
+
 def _registered_worktrees(
-    repository: Path, environment: Mapping[str, str]
+    repository: Path,
+    environment: Mapping[str, str],
+    *,
+    deadline: AttemptDeadline | None = None,
+    phase: DeadlinePhase = DeadlinePhase.SETUP,
 ) -> tuple[Path, ...]:
-    output = _git(
+    output = _deadline_git(
         repository,
         ("worktree", "list", "--porcelain", "-z"),
         environment,
+        deadline=deadline,
+        phase=phase,
     ).stdout
     fields = os.fsdecode(output).split("\0")
     return tuple(
@@ -512,7 +566,10 @@ def _registered_worktrees(
 
 
 def _git_protected_paths(
-    paths: Sequence[Path], environment: Mapping[str, str]
+    paths: Sequence[Path],
+    environment: Mapping[str, str],
+    *,
+    deadline: AttemptDeadline | None = None,
 ) -> tuple[Path, ...]:
     """Discover enclosing Git worktrees and administration directories."""
     protected: dict[Path, None] = {}
@@ -528,10 +585,12 @@ def _git_protected_paths(
             continue
         inspected.add(cursor)
         while True:
-            top_result = _git(
+            top_result = _deadline_git(
                 cursor,
                 ("rev-parse", "--show-toplevel"),
                 environment,
+                deadline=deadline,
+                phase=DeadlinePhase.SETUP,
                 allowed=(0, 128),
             )
             top = (
@@ -539,10 +598,12 @@ def _git_protected_paths(
                 if top_result.returncode == 0
                 else None
             )
-            git_dir_result = _git(
+            git_dir_result = _deadline_git(
                 cursor,
                 ("rev-parse", "--absolute-git-dir"),
                 environment,
+                deadline=deadline,
+                phase=DeadlinePhase.SETUP,
                 allowed=(0, 128),
             )
             if git_dir_result.returncode != 0:
@@ -559,7 +620,13 @@ def _git_protected_paths(
             protected[git_dir] = None
             raw_common = Path(
                 os.fsdecode(
-                    _git(cursor, ("rev-parse", "--git-common-dir"), environment).stdout
+                    _deadline_git(
+                        cursor,
+                        ("rev-parse", "--git-common-dir"),
+                        environment,
+                        deadline=deadline,
+                        phase=DeadlinePhase.SETUP,
+                    ).stdout
                 ).removesuffix("\n")
             )
             common = (
@@ -568,7 +635,12 @@ def _git_protected_paths(
                 else (cursor / raw_common).resolve()
             )
             protected[common] = None
-            for worktree in _registered_worktrees(repository, environment):
+            worktrees = (
+                _registered_worktrees(repository, environment, deadline=deadline)
+                if deadline is not None
+                else _registered_worktrees(repository, environment)
+            )
+            for worktree in worktrees:
                 protected[worktree] = None
             if repository == repository.parent:
                 break
@@ -577,10 +649,21 @@ def _git_protected_paths(
 
 
 def _worktree_registered(
-    repository: Path, worktree: Path, environment: Mapping[str, str]
+    repository: Path,
+    worktree: Path,
+    environment: Mapping[str, str],
+    *,
+    deadline: AttemptDeadline | None = None,
+    phase: DeadlinePhase = DeadlinePhase.SETUP,
 ) -> bool | None:
     try:
-        registered = _registered_worktrees(repository, environment)
+        registered = (
+            _registered_worktrees(
+                repository, environment, deadline=deadline, phase=phase
+            )
+            if deadline is not None
+            else _registered_worktrees(repository, environment)
+        )
     except _WorkspaceError:
         return None
     return worktree.resolve() in registered
@@ -595,10 +678,17 @@ def _prepare_repository(
     base: Path,
     state: _WorkspaceState,
     environment: Mapping[str, str],
+    *,
+    deadline: AttemptDeadline | None = None,
 ) -> None:
+    phase = DeadlinePhase.SETUP
+    if deadline is not None:
+        deadline.remaining(phase)
     if os.path.lexists(base / ".git"):
         raise _WorkspaceError("task base must not contain top-level .git metadata")
     expected = snapshot_tree(base)
+    if deadline is not None:
+        deadline.remaining(phase)
     try:
         state.repository.mkdir()
     except OSError as exc:
@@ -611,38 +701,61 @@ def _prepare_repository(
         raise _WorkspaceError(
             f"cannot copy task base into synthetic repository: {exc}"
         ) from exc
-    _git(state.repository, ("init", "-q"), environment)
-    _git(state.repository, ("config", "commit.gpgSign", "false"), environment)
-    _git(state.repository, ("config", "core.hooksPath", os.devnull), environment)
-    _git(state.repository, ("config", "core.fsmonitor", "false"), environment)
-    _git(state.repository, ("config", "core.symlinks", "true"), environment)
-    _git(state.repository, ("add", "--force", "--all"), environment)
+    if deadline is not None:
+        deadline.remaining(phase)
+    for args in (
+        ("init", "-q"),
+        ("config", "commit.gpgSign", "false"),
+        ("config", "core.hooksPath", os.devnull),
+        ("config", "core.fsmonitor", "false"),
+        ("config", "core.symlinks", "true"),
+        ("add", "--force", "--all"),
+    ):
+        _deadline_git(
+            state.repository,
+            args,
+            environment,
+            deadline=deadline,
+            phase=phase,
+        )
     tree = os.fsdecode(
-        _git(state.repository, ("write-tree",), environment).stdout
+        _deadline_git(
+            state.repository,
+            ("write-tree",),
+            environment,
+            deadline=deadline,
+            phase=phase,
+        ).stdout
     ).removesuffix("\n")
     commit_env = dict(environment)
     commit_env.update(_FIXED_GIT_ENV)
     commit = os.fsdecode(
-        _git(
+        _deadline_git(
             state.repository,
             ("commit-tree", tree),
             commit_env,
+            deadline=deadline,
+            phase=phase,
             input_bytes=b"satyrn-evals synthetic base\n",
         ).stdout
     ).removesuffix("\n")
-    _git(
+    _deadline_git(
         state.repository,
         ("symbolic-ref", "HEAD", "refs/heads/satyrn-base"),
         environment,
+        deadline=deadline,
+        phase=phase,
     )
-    _git(
+    _deadline_git(
         state.repository,
         ("update-ref", "refs/heads/satyrn-base", commit),
         environment,
+        deadline=deadline,
+        phase=phase,
     )
     state.base_sha = commit
     state.begin_add()
-    _git(
+    _deadline_git(
         state.repository,
         (
             "-c",
@@ -654,26 +767,43 @@ def _prepare_repository(
             commit,
         ),
         environment,
+        deadline=deadline,
+        phase=phase,
     )
-    state.observe_registration(
-        _worktree_registered(state.repository, state.worktree, environment)
+    registered = (
+        _worktree_registered(
+            state.repository,
+            state.worktree,
+            environment,
+            deadline=deadline,
+            phase=phase,
+        )
+        if deadline is not None
+        else _worktree_registered(state.repository, state.worktree, environment)
     )
+    state.observe_registration(registered)
     if state.registration is not Registration.PRESENT:
         raise _WorkspaceError("Git did not confirm the attempt worktree registration")
     head = os.fsdecode(
-        _git(
-            state.worktree, ("rev-parse", "--verify", "HEAD^{commit}"), environment
+        _deadline_git(
+            state.worktree,
+            ("rev-parse", "--verify", "HEAD^{commit}"),
+            environment,
+            deadline=deadline,
+            phase=phase,
         ).stdout
     ).removesuffix("\n")
-    symbolic = _git(
+    symbolic = _deadline_git(
         state.worktree,
         ("symbolic-ref", "--quiet", "HEAD"),
         environment,
+        deadline=deadline,
+        phase=phase,
         allowed=(0, 1),
     )
     if head != commit or symbolic.returncode != 1:
         raise _WorkspaceError("attempt worktree is not detached at the synthetic base")
-    status_result = _git(
+    status_result = _deadline_git(
         state.worktree,
         (
             "--no-optional-locks",
@@ -684,10 +814,16 @@ def _prepare_repository(
             "--ignore-submodules=none",
         ),
         environment,
+        deadline=deadline,
+        phase=phase,
     )
     if status_result.stdout:
         raise _WorkspaceError("attempt worktree is not clean at the synthetic base")
+    if deadline is not None:
+        deadline.remaining(phase)
     actual = snapshot_tree(state.worktree)
+    if deadline is not None:
+        deadline.remaining(phase)
     if actual != expected:
         raise _WorkspaceError(
             "Git materialization does not match the persisted task base"
@@ -1058,19 +1194,35 @@ def _run_command(
     return pending
 
 
-def _cleanup_worktree(state: _WorkspaceState, environment: Mapping[str, str]) -> None:
+def _cleanup_worktree(
+    state: _WorkspaceState,
+    environment: Mapping[str, str],
+    *,
+    deadline: AttemptDeadline | None = None,
+) -> None:
     remove_error: _WorkspaceError | None = None
     try:
-        _git(
+        _deadline_git(
             state.repository,
             ("worktree", "remove", "--force", os.fspath(state.worktree)),
             environment,
+            deadline=deadline,
+            phase=DeadlinePhase.CLEANUP,
         )
     except _WorkspaceError as exc:
         remove_error = exc
-    state.observe_registration(
-        _worktree_registered(state.repository, state.worktree, environment)
+    registered = (
+        _worktree_registered(
+            state.repository,
+            state.worktree,
+            environment,
+            deadline=deadline,
+            phase=DeadlinePhase.CLEANUP,
+        )
+        if deadline is not None
+        else _worktree_registered(state.repository, state.worktree, environment)
     )
+    state.observe_registration(registered)
     if state.registration is not Registration.ABSENT:
         detail = f": {remove_error}" if remove_error is not None else ""
         raise _CleanupError(
@@ -1260,9 +1412,15 @@ def run_workspace(
 class WorkspacePrepareError(SatyrnError):
     """Exit 3: a prepared workspace could not be built."""
 
-    def __init__(self, message: str, retained_path: str | None = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        retained_path: str | None = None,
+        deadline: AttemptDeadlineExceeded | None = None,
+    ) -> None:
         super().__init__(message)
         self.retained_path = retained_path
+        self.deadline = deadline
 
 
 class WorkspaceReleaseError(SatyrnError):
@@ -1297,15 +1455,19 @@ def _discard_failed_preparation(
     state: _WorkspaceState | None,
     parent: Path | None,
     environment: Mapping[str, str] | None,
+    *,
+    deadline: AttemptDeadline | None = None,
 ) -> str | None:
     """Best-effort cleanup that names a parent we cannot safely discard."""
     try:
+        if deadline is not None:
+            deadline.remaining(DeadlinePhase.SETUP)
         if (
             state is not None
             and environment is not None
             and state.registration is not Registration.ABSENT
         ):
-            _cleanup_worktree(state, environment)
+            _cleanup_worktree(state, environment, deadline=deadline)
         candidate = state.parent if state is not None else parent
         if candidate is not None and (
             state is None
@@ -1313,10 +1475,28 @@ def _discard_failed_preparation(
                 state.process_cleanup_safe and state.registration is Registration.ABSENT
             )
         ):
+            if deadline is not None:
+                deadline.remaining(DeadlinePhase.SETUP)
             _remove_parent(candidate)
+    except AttemptDeadlineExceeded:
+        raise
     except BaseException as exc:
         return f"{type(exc).__name__}: {exc}"
     return None
+
+
+def _expired_preparation(
+    error: AttemptDeadlineExceeded,
+    state: _WorkspaceState | None,
+    parent: Path | None,
+) -> WorkspacePrepareError:
+    """Make expiry before a returned lease durable and conservatively retained."""
+    retained = state.parent if state is not None else parent
+    return WorkspacePrepareError(
+        str(error),
+        os.fspath(retained) if retained is not None else None,
+        deadline=error,
+    )
 
 
 def _validate_command_limits(
@@ -1339,17 +1519,33 @@ def prepare_workspace(
     protected_paths: Sequence[Path],
     environment: Mapping[str, str],
     overlay: OverlaySpec | None = None,
+    deadline: AttemptDeadline | None = None,
 ) -> PreparedWorkspace:
     """Reconstruct a detached worktree and retain its cleaned environment."""
     state: _WorkspaceState | None = None
     parent: Path | None = None
     git_environment: dict[str, str] | None = None
     try:
-        routing_names = _local_env_vars(environment)
+        if deadline is not None:
+            deadline.remaining(DeadlinePhase.SETUP)
+            routing_names = _local_env_vars(environment, deadline=deadline)
+        else:
+            routing_names = _local_env_vars(environment)
         git_environment = clean_environment(environment, routing_names)
+        if deadline is not None:
+            deadline.remaining(DeadlinePhase.SETUP)
         requested_protected = (base, *protected_paths)
-        git_protected = _git_protected_paths(requested_protected, git_environment)
+        if deadline is not None:
+            git_protected = _git_protected_paths(
+                requested_protected, git_environment, deadline=deadline
+            )
+        else:
+            git_protected = _git_protected_paths(requested_protected, git_environment)
+        if deadline is not None:
+            deadline.remaining(DeadlinePhase.SETUP)
         parent = _safe_temp_parent((*requested_protected, *git_protected))
+        if deadline is not None:
+            deadline.remaining(DeadlinePhase.SETUP)
         state = _WorkspaceState(
             parent=parent,
             # Preserve the legacy workspace topology.  The executable engine
@@ -1358,9 +1554,16 @@ def prepare_workspace(
             repository=parent / "seed",
             worktree=parent / "worktree",
         )
-        _prepare_repository(base, state, git_environment)
+        if deadline is not None:
+            _prepare_repository(base, state, git_environment, deadline=deadline)
+        else:
+            _prepare_repository(base, state, git_environment)
         if overlay is not None:
+            if deadline is not None:
+                deadline.remaining(DeadlinePhase.SETUP)
             assert_overlay_absent(state.worktree, overlay)
+            if deadline is not None:
+                deadline.remaining(DeadlinePhase.SETUP)
         assert state.base_sha is not None
         return PreparedWorkspace(
             parent=parent,
@@ -1370,15 +1573,33 @@ def prepare_workspace(
             _state=state,
             _environment=git_environment,
         )
+    except AttemptDeadlineExceeded as exc:
+        raise _expired_preparation(exc, state, parent) from exc
     except OverlayError as exc:
-        if detail := _discard_failed_preparation(state, parent, git_environment):
+        try:
+            detail = _discard_failed_preparation(
+                state, parent, git_environment, deadline=deadline
+            )
+        except AttemptDeadlineExceeded as deadline_error:
+            raise _expired_preparation(
+                deadline_error, state, parent
+            ) from deadline_error
+        if detail:
             retained = state.parent if state is not None else parent
             _add_exception_note(exc, f"workspace retained at {retained}: {detail}")
         raise
     except _RetainedCleanupError as exc:
         raise WorkspacePrepareError(str(exc), os.fspath(exc.retained_path)) from exc
     except _WorkspaceError as exc:
-        if detail := _discard_failed_preparation(state, parent, git_environment):
+        try:
+            detail = _discard_failed_preparation(
+                state, parent, git_environment, deadline=deadline
+            )
+        except AttemptDeadlineExceeded as deadline_error:
+            raise _expired_preparation(
+                deadline_error, state, parent
+            ) from deadline_error
+        if detail:
             retained = state.parent if state is not None else parent
             raise WorkspacePrepareError(
                 f"{exc}; workspace retained at {retained}: {detail}",
@@ -1386,7 +1607,17 @@ def prepare_workspace(
             ) from exc
         raise WorkspacePrepareError(str(exc)) from exc
     except BaseException as exc:
-        if detail := _discard_failed_preparation(state, parent, git_environment):
+        try:
+            detail = _discard_failed_preparation(
+                state, parent, git_environment, deadline=deadline
+            )
+        except AttemptDeadlineExceeded as deadline_error:
+            retained = state.parent if state is not None else parent
+            _add_exception_note(
+                exc, f"workspace retained at {retained}: {deadline_error}"
+            )
+            raise exc from deadline_error
+        if detail:
             retained = state.parent if state is not None else parent
             _add_exception_note(exc, f"workspace retained at {retained}: {detail}")
         raise
@@ -1416,13 +1647,25 @@ def run_prepared_command(
     )
 
 
-def release_workspace(workspace: PreparedWorkspace) -> str | None:
+def release_workspace(
+    workspace: PreparedWorkspace,
+    *,
+    deadline: AttemptDeadline | None = None,
+) -> str | None:
     """Clean a prepared worktree and remove its parent when that is safe."""
     state = workspace._state
+    if deadline is not None:
+        deadline.remaining(DeadlinePhase.CLEANUP)
     if not state.process_cleanup_safe:
         return os.fspath(state.parent)
     try:
-        _cleanup_worktree(state, workspace._environment)
+        if deadline is not None:
+            deadline.remaining(DeadlinePhase.CLEANUP)
+            _cleanup_worktree(state, workspace._environment, deadline=deadline)
+        else:
+            _cleanup_worktree(state, workspace._environment)
+    except AttemptDeadlineExceeded:
+        raise
     except _CleanupError as exc:
         raise WorkspaceReleaseError(
             f"workspace cleanup is unconfirmed: {exc}",
@@ -1430,6 +1673,8 @@ def release_workspace(workspace: PreparedWorkspace) -> str | None:
         ) from exc
     if state.process_cleanup_safe and state.registration is Registration.ABSENT:
         try:
+            if deadline is not None:
+                deadline.remaining(DeadlinePhase.CLEANUP)
             _remove_parent(state.parent)
         except OSError as exc:
             raise WorkspaceReleaseError(

@@ -763,6 +763,399 @@ class _FakeClock:
         return self.now
 
 
+def test_setup_deadline_expiry_starts_no_subprocess(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    clock = _FakeClock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+    clock.now = 1.0
+    called = False
+
+    def unexpected(*_args: object, **_kwargs: object) -> set[str]:
+        nonlocal called
+        called = True
+        return set()
+
+    monkeypatch.setattr(workspace_module, "_local_env_vars", unexpected)
+
+    with pytest.raises(workspace_module.WorkspacePrepareError) as caught:
+        workspace_module.prepare_workspace(
+            base=tmp_path,
+            protected_paths=(),
+            environment={},
+            deadline=deadline,
+        )
+
+    assert caught.value.deadline is not None
+    assert caught.value.deadline.phase is DeadlinePhase.SETUP
+    assert caught.value.retained_path is None
+    assert not called
+
+
+def test_setup_deadline_expiry_retains_parent_without_later_work(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    clock = _FakeClock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+    parent = tmp_path / "retained"
+    prepared = False
+
+    monkeypatch.setattr(
+        workspace_module, "_local_env_vars", lambda *_args, **_kwargs: set()
+    )
+    monkeypatch.setattr(
+        workspace_module, "_git_protected_paths", lambda *_args, **_kwargs: ()
+    )
+
+    def allocate(*_args: object) -> Path:
+        parent.mkdir()
+        clock.now = 1.0
+        return parent
+
+    def unexpected_prepare(*_args: object, **_kwargs: object) -> None:
+        nonlocal prepared
+        prepared = True
+
+    monkeypatch.setattr(workspace_module, "_safe_temp_parent", allocate)
+    monkeypatch.setattr(workspace_module, "_prepare_repository", unexpected_prepare)
+
+    with pytest.raises(workspace_module.WorkspacePrepareError) as caught:
+        workspace_module.prepare_workspace(
+            base=tmp_path,
+            protected_paths=(),
+            environment={},
+            deadline=deadline,
+        )
+
+    assert caught.value.deadline is not None
+    assert caught.value.retained_path == str(parent)
+    assert parent.is_dir()
+    assert not prepared
+
+
+def test_setup_deadline_expiry_stops_error_recovery_cleanup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    clock = _FakeClock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+    parent = tmp_path / "retained"
+    cleaned = False
+
+    monkeypatch.setattr(
+        workspace_module, "_local_env_vars", lambda *_args, **_kwargs: set()
+    )
+    monkeypatch.setattr(
+        workspace_module, "_git_protected_paths", lambda *_args, **_kwargs: ()
+    )
+    monkeypatch.setattr(
+        workspace_module, "_safe_temp_parent", lambda *_args: parent.mkdir() or parent
+    )
+
+    def fail_after_deadline(*_args: object, **_kwargs: object) -> None:
+        clock.now = 1.0
+        raise workspace_module._WorkspaceError("git failed")
+
+    def unexpected_cleanup(*_args: object, **_kwargs: object) -> None:
+        nonlocal cleaned
+        cleaned = True
+
+    monkeypatch.setattr(workspace_module, "_prepare_repository", fail_after_deadline)
+    monkeypatch.setattr(workspace_module, "_cleanup_worktree", unexpected_cleanup)
+
+    with pytest.raises(workspace_module.WorkspacePrepareError) as caught:
+        workspace_module.prepare_workspace(
+            base=tmp_path,
+            protected_paths=(),
+            environment={},
+            deadline=deadline,
+        )
+
+    assert caught.value.deadline is not None
+    assert caught.value.retained_path == str(parent)
+    assert parent.is_dir()
+    assert not cleaned
+
+
+def test_setup_deadline_wins_a_git_failure_observed_after_subprocess(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    clock = _FakeClock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+
+    def git(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        clock.now = 1.0
+        raise workspace_module._WorkspaceError("git failed")
+
+    monkeypatch.setattr(workspace_module, "_git", git)
+
+    with pytest.raises(AttemptDeadlineExceeded) as caught:
+        workspace_module._deadline_git(
+            Path("."),
+            ("status",),
+            {},
+            deadline=deadline,
+            phase=DeadlinePhase.SETUP,
+        )
+
+    assert caught.value.phase is DeadlinePhase.SETUP
+
+
+def test_setup_deadline_wins_a_local_environment_failure_after_subprocess(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    clock = _FakeClock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+
+    def run(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        clock.now = 1.0
+        return _completed(returncode=1, stderr=b"git failed")
+
+    monkeypatch.setattr(workspace_module.subprocess, "run", run)
+
+    with pytest.raises(AttemptDeadlineExceeded) as caught:
+        workspace_module._local_env_vars({}, deadline=deadline)
+
+    assert caught.value.phase is DeadlinePhase.SETUP
+
+
+def test_setup_deadline_wins_a_local_environment_os_error_after_subprocess(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    clock = _FakeClock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+
+    def run(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        clock.now = 1.0
+        raise OSError("git missing")
+
+    monkeypatch.setattr(workspace_module.subprocess, "run", run)
+
+    with pytest.raises(AttemptDeadlineExceeded) as caught:
+        workspace_module._local_env_vars({}, deadline=deadline)
+
+    assert caught.value.phase is DeadlinePhase.SETUP
+
+
+def test_setup_recovery_deadline_does_not_replace_primary_exception(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    parent = tmp_path / "retained"
+    clock = _FakeClock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+    primary = KeyboardInterrupt()
+
+    monkeypatch.setattr(
+        workspace_module, "_local_env_vars", lambda *_args, **_kwargs: set()
+    )
+    monkeypatch.setattr(
+        workspace_module, "_git_protected_paths", lambda *_args, **_kwargs: ()
+    )
+    monkeypatch.setattr(
+        workspace_module,
+        "_safe_temp_parent",
+        lambda *_args: parent.mkdir() or parent,
+    )
+
+    def interrupt(
+        _base: Path,
+        state: workspace_module._WorkspaceState,
+        _environment: object,
+        **_kwargs: object,
+    ) -> None:
+        state.registration = Registration.PRESENT
+        raise primary
+
+    monkeypatch.setattr(workspace_module, "_prepare_repository", interrupt)
+    monkeypatch.setattr(
+        workspace_module,
+        "_cleanup_worktree",
+        lambda *_args, **_kwargs: deadline.expire(DeadlinePhase.SETUP),
+    )
+
+    with pytest.raises(KeyboardInterrupt) as caught:
+        workspace_module.prepare_workspace(
+            base=tmp_path,
+            protected_paths=(),
+            environment={},
+            deadline=deadline,
+        )
+
+    assert caught.value is primary
+    assert primary.__notes__ == [
+        f"workspace retained at {parent}: "
+        "whole-attempt deadline exceeded during setup at 1s"
+    ]
+
+
+def test_setup_deadline_allows_a_within_budget_prepared_workspace(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    parent = tmp_path / "prepared"
+    clock = _FakeClock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+
+    monkeypatch.setattr(
+        workspace_module, "_local_env_vars", lambda *_args, **_kwargs: set()
+    )
+    monkeypatch.setattr(
+        workspace_module, "_git_protected_paths", lambda *_args, **_kwargs: ()
+    )
+    monkeypatch.setattr(
+        workspace_module, "_safe_temp_parent", lambda *_args: parent.mkdir() or parent
+    )
+
+    def prepare(
+        _base: Path,
+        state: workspace_module._WorkspaceState,
+        _environment: object,
+        **_kwargs: object,
+    ) -> None:
+        state.base_sha = "a" * 40
+
+    monkeypatch.setattr(workspace_module, "_prepare_repository", prepare)
+
+    workspace = workspace_module.prepare_workspace(
+        base=tmp_path,
+        protected_paths=(),
+        environment={},
+        deadline=deadline,
+    )
+
+    assert workspace.parent == parent
+
+
+def test_cleanup_deadline_expiry_starts_no_cleanup_work(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state = _state(tmp_path)
+    state.base_sha = "a" * 40
+    state.registration = Registration.PRESENT
+    workspace = workspace_module.PreparedWorkspace(
+        parent=state.parent,
+        repository=state.repository,
+        worktree=state.worktree,
+        base_sha=state.base_sha,
+        _state=state,
+        _environment={},
+    )
+    clock = _FakeClock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+    clock.now = 1.0
+    called = False
+
+    def unexpected(*_args: object, **_kwargs: object) -> None:
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr(workspace_module, "_cleanup_worktree", unexpected)
+
+    with pytest.raises(AttemptDeadlineExceeded) as caught:
+        workspace_module.release_workspace(workspace, deadline=deadline)
+
+    assert caught.value.phase is DeadlinePhase.CLEANUP
+    assert state.parent.is_dir()
+    assert not called
+
+
+def test_cleanup_deadline_expiry_is_observed_before_unsafe_retention(
+    tmp_path: Path,
+) -> None:
+    state = _state(tmp_path)
+    state.base_sha = "a" * 40
+    state.process_cleanup_safe = False
+    workspace = workspace_module.PreparedWorkspace(
+        parent=state.parent,
+        repository=state.repository,
+        worktree=state.worktree,
+        base_sha=state.base_sha,
+        _state=state,
+        _environment={},
+    )
+    clock = _FakeClock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+    clock.now = 1.0
+
+    with pytest.raises(AttemptDeadlineExceeded) as caught:
+        workspace_module.release_workspace(workspace, deadline=deadline)
+
+    assert caught.value.phase is DeadlinePhase.CLEANUP
+    assert state.parent.is_dir()
+
+
+def test_cleanup_deadline_expiry_retains_parent_without_later_subprocess(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state = _state(tmp_path)
+    state.base_sha = "a" * 40
+    state.registration = Registration.PRESENT
+    workspace = workspace_module.PreparedWorkspace(
+        parent=state.parent,
+        repository=state.repository,
+        worktree=state.worktree,
+        base_sha=state.base_sha,
+        _state=state,
+        _environment={},
+    )
+    deadline = AttemptDeadline(1.0, clock=_FakeClock())
+    observed_registration = False
+
+    monkeypatch.setattr(
+        workspace_module,
+        "_deadline_git",
+        lambda *_args, **_kwargs: deadline.expire(DeadlinePhase.CLEANUP),
+    )
+
+    def unexpected_registration(*_args: object, **_kwargs: object) -> bool:
+        nonlocal observed_registration
+        observed_registration = True
+        return False
+
+    monkeypatch.setattr(
+        workspace_module, "_worktree_registered", unexpected_registration
+    )
+
+    with pytest.raises(AttemptDeadlineExceeded):
+        workspace_module.release_workspace(workspace, deadline=deadline)
+
+    assert state.parent.is_dir()
+    assert not observed_registration
+
+
+def test_cleanup_deadline_allows_a_within_budget_release(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state = _state(tmp_path)
+    state.base_sha = "a" * 40
+    state.registration = Registration.ABSENT
+    workspace = workspace_module.PreparedWorkspace(
+        parent=state.parent,
+        repository=state.repository,
+        worktree=state.worktree,
+        base_sha=state.base_sha,
+        _state=state,
+        _environment={},
+    )
+    removed = False
+
+    def remove(parent: Path) -> None:
+        nonlocal removed
+        assert parent == state.parent
+        removed = True
+
+    monkeypatch.setattr(
+        workspace_module, "_cleanup_worktree", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(workspace_module, "_remove_parent", remove)
+
+    assert (
+        workspace_module.release_workspace(
+            workspace, deadline=AttemptDeadline(1.0, clock=_FakeClock())
+        )
+        is None
+    )
+    assert removed
+
+
 def test_command_deadline_expiry_before_launch_starts_no_process(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

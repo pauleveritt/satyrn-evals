@@ -70,6 +70,17 @@ def test_deadline_prevents_a_new_productive_phase_after_expiry() -> None:
     assert later.value.elapsed == 10.0
 
 
+def test_deadline_latches_a_subprocess_timeout_without_clock_progress() -> None:
+    clock = FakeClock()
+    deadline = AttemptDeadline(10.0, clock=clock)
+
+    with pytest.raises(AttemptDeadlineExceeded) as caught:
+        deadline.expire(DeadlinePhase.SETUP)
+
+    assert caught.value.phase is DeadlinePhase.SETUP
+    assert caught.value.elapsed == 10.0
+
+
 @pytest.mark.parametrize("timeout", [0, -1.0, float("nan"), float("inf"), True, "1"])
 def test_deadline_rejects_invalid_timeout(timeout: object) -> None:
     with pytest.raises(ValueError, match="finite number greater than zero"):
