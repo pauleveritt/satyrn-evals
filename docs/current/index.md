@@ -13,6 +13,9 @@ past artifact. Archived material does not set current policy.
   is the proposed next experiment: a disclosed replication at `n=36` per arm,
   with its power, assumptions, checkpoint rule and stopping rules fixed in
   advance. It authorizes no spending.
+- [Pre-run record: the bounded Baseline session](session-ordering-baseline-pre-run-record.md)
+  freezes the conditions for one Baseline session on the cross-prompt witness
+  task, and states what a single session cannot establish.
 - [Pre-run record: misleading-locus R1](misleading-locus-r1-pre-run-record.md)
   fixes that design's concrete values, measures, disclosure and stopping rules.
 - [Pre-run record: misleading-locus R3](misleading-locus-r3-pre-run-record.md)
@@ -45,6 +48,7 @@ whole-attempt-deadline-plan
 agentclinic-suite-brief
 misleading-locus-r1-comparison-design
 misleading-locus-r1-pre-run-record
+session-ordering-baseline-pre-run-record
 misleading-locus-r3-pre-run-record
 first-engine-comparison-plan
 first-smoke-run-record
