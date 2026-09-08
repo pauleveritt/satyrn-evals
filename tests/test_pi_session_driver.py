@@ -309,7 +309,9 @@ def test_main_shell_spawns_serves_and_reaps(
     )
     result: dict[str, object] = {}
     thread = threading.Thread(
-        target=lambda: result.update(code=main(["--provider", "fake", "--model", "m"])),
+        target=lambda: result.update(
+            code=main(["--provider", "fake", "--model", "m", "--tools", "read"])
+        ),
         daemon=True,
     )
     thread.start()
@@ -509,7 +511,9 @@ def test_pi_child_argv_and_runtime_env_carry_no_overlay_names():
     manifest = load_manifest(task_dir)
     assert manifest.grader_overlay is not None
     names = _overlay_declared_names(task_dir, manifest.grader_overlay)
-    argv_text = " ".join(build_pi_argv(provider="p", model="m", pi_bin="pi"))
+    argv_text = " ".join(
+        build_pi_argv(provider="p", model="m", tools=("read",), pi_bin="pi")
+    )
     env_text = " ".join(f"{k}={v}" for k, v in _SESSION_RUNTIME_ENV.items())
     for name in names:
         assert name not in argv_text

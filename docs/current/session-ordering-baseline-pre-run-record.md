@@ -22,6 +22,8 @@ cross-prompt failures.
 | adapter argv | `satyrn-evals-session-pi --provider omlx --model gemma-4-12B-it-MLX-8bit` |
 | model | `gemma-4-12B-it-MLX-8bit`, local at `127.0.0.1:8001` |
 | sessions | **1** |
+| **effective tool surface** | **`read,bash,edit,write`**, with extension, skill, prompt-template and context-file discovery all disabled |
+| delegation | **disabled** — no `subagent`, verified from the transcript after the run |
 | step timeout | 600 s |
 | start / close timeout | 60 s / 30 s |
 
@@ -34,6 +36,14 @@ Infrastructure failure — the adapter or pi exiting before the model runs, no
 genuine model-stream events, a plumbing code where a model outcome was
 expected — stops the run and the evidence is retained.
 
+> **Amended 2026-09-08, after the first run.** The first version of this
+> record had **no tool-surface row**, and that omission is why the run is not
+> counted: the adapter passed no `--tools`, the model reached the installed
+> `pi-subagents` extension, and a **detached worker** wrote files across two
+> checkpoint boundaries with no retained events. The R1 pre-run record froze
+> tools per arm and this one did not. The rows above are the repair; the first
+> run's record is retained separately and unchanged.
+
 ## What is read afterwards
 
 1. `session-record.json` parses, and records the terminal reason.
@@ -45,6 +55,10 @@ expected — stops the run and the evidence is retained.
 5. **Per-checkpoint feature and preservation verdicts**, which is the new
    coverage — whether a regression appears at the checkpoint that caused it.
 6. Per-step turn and tool counts, and context accumulation across steps.
+7. **The effective tool surface, read from the transcript** — every tool name
+   the model actually called, checked against the allowlist above. A name
+   outside it, or any dispatch of a detached worker, voids the run's evidence
+   rather than merely annotating it.
 
 ## What this cannot establish
 

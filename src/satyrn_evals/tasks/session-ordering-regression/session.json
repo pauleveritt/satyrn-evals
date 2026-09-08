@@ -4,7 +4,7 @@
     {
       "id": "add-summarize",
       "kind": "feature",
-      "prompt": "Add summarize(text, width): the first sentence, whitespace-normalized, cut to width with a trailing ellipsis when it had to cut.",
+      "prompt": "The package lives in src/textkit/ and that is the only place you may write; the tests under tests/ are fixed and must not be edited. Add summarize(text, width) to the textkit package: the first sentence, whitespace-normalized, cut to width with a trailing ellipsis when it had to cut.",
       "new_feature_selectors": [
         "tests/test_summarize.py::test_summarize_cuts_with_marker",
         "tests/test_summarize.py::test_summarize_collapses_internal_whitespace"
@@ -13,7 +13,7 @@
     {
       "id": "add-initials",
       "kind": "feature",
-      "prompt": "Add initials(name): the uppercase first letter of each word in name, joined with no separator. Handle names with extra or repeated spaces.",
+      "prompt": "The package lives in src/textkit/ and that is the only place you may write; the tests under tests/ are fixed and must not be edited. Add initials(name) to the textkit package: the uppercase first letter of each word in name, joined with no separator. Handle names with extra or repeated spaces.",
       "new_feature_selectors": [
         "tests/test_initials.py::test_initials_basic",
         "tests/test_initials.py::test_initials_ignores_extra_spaces"
@@ -22,7 +22,7 @@
     {
       "id": "repair-shared-regression",
       "kind": "review",
-      "prompt": "Check whether any previously working behavior has regressed, and repair anything you find. Preserve all existing behavior, including wrap. normalize, summarize and initials must all behave correctly together. Run the public suite to confirm.",
+      "prompt": "The package lives in src/textkit/ and that is the only place you may write; the tests under tests/ are fixed and must not be edited. Check whether any previously working behavior has regressed, and repair anything you find. Preserve all existing behavior, including wrap. normalize, summarize and initials must all behave correctly together. Run the public suite to confirm.",
       "new_feature_selectors": []
     }
   ],
