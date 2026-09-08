@@ -218,6 +218,21 @@ records none on a normal completion, so `scripts/timing.py` supplies them.
   before start, an artifact predating the start, a transcript born before the
   start or after its own mtime, or a receipt older than its transcript.
 
+**Reporting convention, resolved 2026-09-08.** Cost is reported as the
+monotonic total plus usage counted by the terminal-per-response rule. Phase
+decomposition is **not** reported: lifecycle durations are unmeasured, and the
+filesystem intervals are diagnostic context rather than a phase split.
+
+The harness could supply real phases: `attempt.py` already calls
+`deadline.remaining(...)` at every `SETUP`, `COMMAND`, `PRESERVATION`,
+`GRADING`, and `CLEANUP` boundary against a monotonic clock, so the boundaries
+exist and are simply not persisted on a normal completion. Instrumenting them
+is deferred because phase durations exist to justify infrastructure
+optimization, which this plan defers until a measured need. When that need
+arrives, note that `CLEANUP` is entered from several sites including error
+paths, so non-overlapping spans need deliberate handling rather than a
+first-and-last-entry rule.
+
 Two operational constraints follow from the method:
 
 - **Measure before regrading.** `regrade` rewrites `receipt.json` and

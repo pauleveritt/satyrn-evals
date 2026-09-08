@@ -113,42 +113,88 @@ reason, slot, and budget. Sol reviews the evidence and readiness for triage.
 
 ## 3. Choose one engine change and run a small matched screen
 
-Name the engine behavior to change, the predicted effect, and the required task
-behaviors that can expose it. Use the smoke and relevant retained evidence to
-choose the question. If the change has a deterministic failure component,
-write its reproducer before implementation. Work on the candidate in the
-engine's own scoped checkout; freeze its revision after focused tests and Sol
-review. This Evals plan does not assume permission to edit an external engine.
+Select the behavior first, then the condition. A condition is chosen because it
+exercises the named behavior, never because it is convenient or because an
+earlier result looked favorable.
 
-Prefer the qualified depth-3/R3 condition. Passing smoke results can still make
-it useful for regression detection. If it cannot exercise the proposed change,
-write down the missing behavior and propose exactly one additional condition.
-Before using it, qualify its accessible requirements, public feedback, hidden
-checks, and base/known-good/incomplete witnesses through the existing gates.
-Do not infer qualification for another rung from R3. Sol reviews the new record
-before spending; final Astra review includes its semantic adequacy.
+### 3.1 Name the change and its predicted effect
 
-Freeze two configurations that differ only in the intended engine change, with
-the same task, prompt, model settings, tools, budgets, and grading. Record any
-unavoidable differences and the claims they prevent. Predeclare order, seed
-policy where supported, and cache/model-server treatment to limit carryover.
+Name one engine change: two revisions, or two settings of one revision. State
+the behavior it should improve, the required task behaviors that would show
+that improvement, and the regressions it might introduce. Write the prediction
+down before choosing a condition and before any spending.
+
+If the change has a deterministic failure component, write its reproducer
+first and keep it as a cheap regression test. Work on the candidate in the
+engine's own scoped checkout and freeze its revision after focused tests and
+review. This plan does not assume permission to edit an external engine.
+
+### 3.2 Choose the condition that exercises that behavior
+
+Start from `agentclinic-repair-depth-3` at `R3` and ask whether it exercises
+the named behavior. Its retained evidence is 12 baseline passes under earlier
+limits and one engine pass from the smoke. That is **not** a demonstrated
+ceiling: it leaves unresolved whether the condition can distinguish two engine
+configurations, and passing remains compatible with useful regression
+detection.
+
+Keep `R3` unless the named behavior cannot appear there. If it cannot, write
+down which behavior is missing and why, then qualify exactly one additional
+condition. `depth-2` at `R1` is a candidate worth examining; its retained 6 of
+12 baseline against 8 of 12 engine is an exploratory lead under different
+limits and does not establish an engine benefit. Before using any new
+condition, qualify its accessible requirements, public feedback, hidden checks,
+and base, known-good, and incomplete witnesses through the existing gates. Do
+not infer one rung's qualification from another. Review the new record before
+spending.
+
+### 3.3 Freeze a matched before-and-after pair
+
+Freeze two configurations differing only in the named engine change. Hold the
+task, rung and prompt, model and its settings, budgets, grading, and the tool
+surface constant — including the bounded test runner the contract enables.
+
+Derive each configuration's **effective** tool surface from the rendered
+contract, not from its arm file. The smoke ran `read,edit,bash` where its arm
+file pinned `read,edit`, because the engine enables a test runner when the
+contract declares one. An unchecked arm file breaks the "differ only in the
+engine change" premise silently, and in the direction that looks like a clean
+result. Record any unavoidable difference and the claims it prevents.
+Predeclare order, seed policy where supported, and cache and model-server
+treatment to limit carryover.
+
+### 3.4 Run four attempts as triage
 
 Authorize and run two attempts per configuration: four planned attempts total.
-Keep the smoke outside this denominator. Inspect each completed attempt before
-the next launch for infrastructure failure. Count ordinary failures and
-completed unavailable grades; name missing or interrupted slots explicitly.
-Do not substitute retries, extend budgets, or add configurations based on which
-result looks favorable.
+Keep the smoke outside this denominator.
 
-Report behavior outcomes and measured cost for all four slots. This screen
-selects a candidate for investigation; it establishes no success rate, causal
-effect, or headroom conclusion. Sol recommends whether confirmation can answer
-a worthwhile question, including when triage shows no apparent improvement.
-If the condition did not exercise the behavior, propose one revised hypothesis
-or condition and repeat this section with a separately frozen and authorized
-four-attempt screen. Allow at most one such additional screen in this plan;
-keep both screens' evidence and denominators separate. If neither supports a
-useful confirmation question, report the limitation and propose a revised plan.
+Give each configuration its own schedule and output root so their counts cannot
+pool — `ArmName` is a closed vocabulary and a tally groups by it — while
+keeping one predeclared interleaving order across both roots. This needs no
+change to the arm vocabulary.
+
+Inspect each completed attempt before the next launch for infrastructure
+failure. Count ordinary failures and completed unavailable grades; name missing
+or interrupted slots explicitly. Do not substitute retries, extend budgets, or
+add configurations because of which result looks favorable.
+
+Report behavior outcomes and measured cost for all four slots. Cost is the
+monotonic total plus usage counted by the terminal-per-response rule; report
+any phase decomposition only as far as the resolved timing convention
+supports. This screen selects a candidate for investigation; it establishes no
+success rate, causal effect, or headroom conclusion.
+
+Recommend whether confirmation can answer a worthwhile question, including when
+triage shows no apparent improvement. If the condition did not exercise the
+behavior, propose one revised hypothesis or condition and repeat this section
+with a separately frozen and authorized four-attempt screen. Allow at most one
+such additional screen; keep both screens' evidence and denominators separate.
+If neither supports a useful confirmation question, report the limitation and
+propose a revised plan.
+
+**Before any Stage 3 spending:** the smoke's tool-surface record and usage
+accounting are corrected, and the timing reporting convention is resolved and
+written down.
 
 **Exit:** a reviewed decision to confirm one candidate, or the bounded
 candidate-selection path is exhausted with an evidence-backed next proposal.
