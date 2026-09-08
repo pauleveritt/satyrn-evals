@@ -8,6 +8,9 @@ past artifact. Archived material does not set current policy.
 - [First useful engine comparison](first-engine-comparison-plan.md) sequences
   the next work: live smoke, matched triage, confirmation, and an evidence-backed
   decision. Each live stage needs its own frozen, authorized budget.
+- [First smoke run record](first-smoke-run-record.md) freezes the one bounded
+  live attempt that stage 2 runs. It has unresolved fields, and they block the
+  live stage until they are resolved and its budget is authorized.
 - [First-milestone design](first-milestone-design.md) defines the offline outcome,
   scope, evidence policy, and artifact contracts.
 - [First-milestone execution plan](first-milestone-plan.md) gives the
@@ -26,4 +29,5 @@ work; they do not create a second policy source.
 whole-attempt-deadline-design
 whole-attempt-deadline-plan
 first-engine-comparison-plan
+first-smoke-run-record
 ```
