@@ -26,7 +26,9 @@ Two findings are kept, both deterministic:
   pushed to `admitted`, so its count cannot decay. Eviction was the only thing
   that ever removed it. Where the model retries a refusal, consecutive blocks
   reach `CONSECUTIVE_BLOCK_LIMIT` and terminate the turn — 4 terminations
-  against 0 today — feeding the restart cycling the change was meant to reduce.
+  against 0 today — which could reinforce the restart cycling the change was
+  meant to reduce. The reproducer demonstrates the additional termination
+  decisions; how a model responds to them is untested.
 - **The existing dense-repeat limitation.** At high density the current
   `WINDOW=20` already refuses legitimate repeated reads and test runs: 5
   admitted, 4 blocked, identically under both settings. This is a property of
@@ -69,7 +71,10 @@ mechanism its own record flags as untested. This candidate is that half.
 No live spending is required for any of it.
 
 1. Inspect the traced edits and identify what useful context today's region
-   omits. Work from retained transcripts, not from assumption.
+   omits. Work from retained transcripts, not from assumption. The bar is a
+   **concrete follow-up read whose needed content a larger region would have
+   supplied** — that is the link between a larger response and fewer reads.
+   Finding edits and reads in the same attempt does not establish it.
 2. Choose one concrete larger setting, justified by what step 1 found.
 3. Verify the region's content, its truncation behavior, and that responses
    stay bounded.
@@ -80,3 +85,9 @@ No live spending is required for any of it.
 mechanism actually occurs. The requirement to leave `R3` is not inherited from
 the previous candidate: whether post-edit re-reads appear at `R3` is a question
 about this mechanism and is answered from evidence, not assumed.
+
+What the one retained `R3` attempt shows: its five reads all precede its three
+edits — reads at positions 3 to 7, edits at 8 to 10 — so it contains **zero**
+post-edit reads. That attempt therefore offers no demonstrated read-saving
+opportunity for this candidate. It does not establish that the behavior cannot
+occur at `R3`; it is one attempt, and its trajectory happened to be linear.
