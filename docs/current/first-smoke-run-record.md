@@ -191,61 +191,46 @@ uv run satyrn-evals run agentclinic-repair-depth-3 --n 1 --rung R3 \
   collection errors; copy the receipt aside and regrade the retained patch
   offline; compare and diagnose any disagreement before proceeding.
 
-## Timing measurement
+## Timing and cost reporting
 
-The plan requires setup, command, grading, and total durations. The harness
-records none on a normal completion, so `scripts/timing.py` supplies them.
+**The convention, resolved 2026-09-08.** Cost is the monotonic total plus
+usage counted by the terminal-per-response rule. Lifecycle phase durations —
+setup, command, grading, preservation, cleanup — are **unmeasured**, and their
+absence is reported as missingness rather than filled in.
 
-- A launch wrapper bounds the single `satyrn-evals run` invocation. It takes
-  `time.monotonic()` for the authoritative total and `time.time()` separately
-  for comparison against file times. These are different clock domains and are
-  never subtracted from one another; the artifact names which produced each
-  figure.
-- Command start is the transcript's **birth time**, not the earliest artifact
-  mtime. An mtime is a *last* write, so the transcript's mtime marks where the
-  command ended. Deriving the boundary from the earliest mtime attributes the
-  whole command to setup: against a retained cell it reported setup 46.8 s and
-  command 0.0 s for a command that actually ran 46.6 s.
-- Phases: setup is wrapper start to transcript birth; command is transcript
-  birth to transcript mtime; grading is transcript mtime to receipt mtime.
-  Preservation and cleanup are a **residual** from receipt mtime to wrapper
-  end, reported separately and never added into the phases above.
-- Where a filesystem records no birth time, setup and command are reported as
-  one combined span with both named missing, rather than invented separately.
-- Missing artifacts yield named missing entries, never a zero. A refused
-  attempt still reports its total.
-- The tool refuses, naming the observed values, on an incoherent ordering: end
-  before start, an artifact predating the start, a transcript born before the
-  start or after its own mtime, or a receipt older than its transcript.
+- **Total.** A launch wrapper bounds the single `satyrn-evals run` invocation
+  and takes `time.monotonic()` either side. This figure is sound.
+- **Usage.** `scripts/usage_totals.py` counts one terminal `message_end` per
+  assistant response. Summing every usage object in a streaming transcript
+  inflates the total — 5.5x on the smoke — because `message_update` snapshots
+  and `turn_end` repeat the same figures.
+- **Phases.** Not reported. `scripts/timing.py` emits intervals between
+  artifact events, and those are diagnostic context only: they do not
+  correspond to lifecycle phases, and the artifact says so itself.
 
-**Reporting convention, resolved 2026-09-08.** Cost is reported as the
-monotonic total plus usage counted by the terminal-per-response rule. Phase
-decomposition is **not** reported: lifecycle durations are unmeasured, and the
-filesystem intervals are diagnostic context rather than a phase split.
+Why the intervals are not phases: the engine creates the transcript after the
+command has started, so the leading interval absorbs command startup; and it
+publishes the patch after the final transcript write, so the interval ending
+at the receipt contains patch publication and preservation as well as grading.
+The trailing residual is therefore not all preservation.
 
-The harness could supply real phases: `attempt.py` already calls
+The harness could supply real phases. `attempt.py` already calls
 `deadline.remaining(...)` at every `SETUP`, `COMMAND`, `PRESERVATION`,
 `GRADING`, and `CLEANUP` boundary against a monotonic clock, so the boundaries
 exist and are simply not persisted on a normal completion. Instrumenting them
-is deferred because phase durations exist to justify infrastructure
-optimization, which this plan defers until a measured need. When that need
-arrives, note that `CLEANUP` is entered from several sites including error
-paths, so non-overlapping spans need deliberate handling rather than a
+is deferred: phase durations exist to justify infrastructure optimization,
+which this plan defers until a measured need. Whoever takes it up should note
+that `CLEANUP` is entered from several sites including error paths, so
+non-overlapping spans need deliberate handling rather than a
 first-and-last-entry rule.
 
-Two operational constraints follow from the method:
+Two operational constraints hold wherever the interval tool is used for
+diagnosis:
 
 - **Measure before regrading.** `regrade` rewrites `receipt.json` and
-  `attempt.json`, destroying the mtimes the method reads.
+  `attempt.json`, destroying the mtimes it reads.
 - **Measure the original cell, not a copy.** A copy does not carry birth times
-  forward, so copying first collapses setup and command. Archive after
-  measuring.
-
-Verified against the retained cell
-`2026-09-06-overnight-232554/…/cell-000-baseline`, whose durations were already
-known: setup 0.269 s, command 46.575 s, grading 2.311 s, residual 0.137 s
-against an independently derived total of 49.291 s. That exercise read the cell
-only, and its checksums were confirmed unchanged.
+  forward. Archive after measuring.
 
 ## Verification performed without inference
 

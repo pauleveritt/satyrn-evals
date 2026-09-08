@@ -83,10 +83,13 @@ the relevant edit/test path. Record a refusal or timeout as observed. A failed
 repair may prove that the route works; a refusal that never exercises the path
 does not prove the full integration. Do not turn either into an automatic retry.
 
-Measure setup, command, grading, and total wall time from identified sources;
-state preservation/cleanup overhead without double-counting overlapping spans.
-Retain raw usage when the engine/provider exposes it. State input/output and
-cache accounting definitions and any missing usage. Price-based monetary
+Report cost as the monotonic total around the invocation plus usage counted by
+the terminal-per-response rule; a streaming transcript repeats the same usage
+and inflates a naive sum. Lifecycle phase durations are unmeasured: state that
+missingness rather than substituting filesystem intervals, which do not
+correspond to phases. Retain raw usage when the engine or provider exposes it,
+and state input/output and cache accounting definitions and any missing usage,
+including spending that was never retained. Price-based monetary
 estimates need a recorded rate source; local GPU time is not a dollar cost.
 Deadline elapsed time alone is not a general duration measurement. Keep tally
 counts-only; a small linked measurement artifact is sufficient.
@@ -154,12 +157,21 @@ Freeze two configurations differing only in the named engine change. Hold the
 task, rung and prompt, model and its settings, budgets, grading, and the tool
 surface constant — including the bounded test runner the contract enables.
 
-Derive each configuration's **effective** tool surface from the rendered
-contract, not from its arm file. The smoke ran `read,edit,bash` where its arm
-file pinned `read,edit`, because the engine enables a test runner when the
-contract declares one. An unchecked arm file breaks the "differ only in the
-engine change" premise silently, and in the direction that looks like a clean
-result. Record any unavoidable difference and the claims it prevents.
+Establish each configuration's **effective** tool surface from three sources
+together: the rendered contract, the pinned engine implementation, and the
+generated command. The arm file is not one of them — the smoke ran
+`read,edit,bash` where its arm file pinned `read,edit`, because the engine
+enables a test runner when the contract declares one. The contract alone is
+not enough either: the same contract can expose different tools under a
+different engine revision or extension set, which is exactly the axis a
+before-and-after pair varies.
+
+Compare tool **semantics**, not just names. A tool of the same name may differ
+in what it permits, how it reports failure, or what it does to the workspace,
+and a pair that matches on names while differing on semantics is not matched.
+An unchecked surface breaks the "differ only in the engine change" premise
+silently, and in the direction that looks like a clean result. Record any
+unavoidable difference and the claims it prevents.
 Predeclare order, seed policy where supported, and cache and model-server
 treatment to limit carryover.
 
