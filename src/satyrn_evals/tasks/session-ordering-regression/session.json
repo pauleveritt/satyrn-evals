@@ -22,7 +22,7 @@
     {
       "id": "repair-shared-regression",
       "kind": "review",
-      "prompt": "Something that used to work no longer does after the last change. Find and fix the regression so normalize, summarize, and initials all behave correctly together, then run the public suite to confirm.",
+      "prompt": "Check whether any previously working behavior has regressed, and repair anything you find. Preserve all existing behavior, including wrap. normalize, summarize and initials must all behave correctly together. Run the public suite to confirm.",
       "new_feature_selectors": []
     }
   ],

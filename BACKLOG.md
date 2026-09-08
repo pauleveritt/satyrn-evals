@@ -44,15 +44,27 @@ comparison — an arm that emits invalid calls is telling us something real abou
 that arm. **Reopen** when a comparison depends on pathology counts from cells
 containing refused calls.
 
-**Freeze the session tool surface, and forbid detached execution.**
+**Establish an effective session tool boundary, and disable delegation.**
 `adapters/pi_session.py:87-98` passes no `--tools`, so a session runs on
 whatever pi defaults to. On 2026-09-08 the model dispatched a **detached
 subagent** that wrote two files across two checkpoint boundaries with no
 retained events, leaving per-step turn, tool and context figures understating
 the work by an unknown amount. The attempt path does not have this problem:
-each arm freezes its tools and the pre-run record carries them. A proposal must
-decide the session tool set, whether detached execution is refused outright or
-merely recorded, and how a session pre-run record states its surface.
+each arm freezes its tools and the pre-run record carries them.
+
+**A `--tools` flag is not sufficient, and is not what this entry asks for.**
+The worker came from an **installed extension**, so the boundary that matters
+is what the launched pi runtime actually exposes — ambient extensions
+included — not what the adapter's argv requests. The proposal must verify the
+effective surface of the launched runtime, and the next bounded run must use a
+**fixed single-agent surface with delegation disabled**.
+
+**Recording a dispatch is not an acceptable alternative.** An earlier wording
+of this entry offered "refused outright or merely recorded" as a choice; that
+option is withdrawn. A recorded dispatch still would not capture the worker's
+usage and still would not prevent writes landing across a checkpoint boundary,
+which are the two properties this prerequisite exists to guarantee.
+
 **Reopen** before any session intended to count — this is a prerequisite, not
 an improvement, because no grading change can re-score evidence that was never
 retained.
