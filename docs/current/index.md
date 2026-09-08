@@ -5,14 +5,20 @@ It is deliberately small: use these pages for this work, and use
 the repository's archive only to retrieve evidence, code history, or a named
 past artifact. Archived material does not set current policy.
 
-- [First useful engine comparison](first-engine-comparison-plan.md) sequences
-  the next work: live smoke, matched triage, confirmation, and an evidence-backed
-  decision. Each live stage needs its own frozen, authorized budget.
-- [Stage 3.1 triage candidate](triage-candidate.md) names the engine change the
-  triage screen will test, and records the candidate closed before it.
-- [First smoke run record](first-smoke-run-record.md) freezes the one bounded
-  live attempt that stage 2 runs. It has unresolved fields, and they block the
-  live stage until they are resolved and its budget is authorized.
+- [AgentClinic suite brief](agentclinic-suite-brief.md) proposes the next bounded
+  sequence: finish existing repairs, qualify one useful additional condition,
+  verify its live route, run a matched four-attempt Engine/Baseline screen, and
+  decide what the evidence warrants.
+- [Pre-run record: misleading-locus R3](misleading-locus-r3-pre-run-record.md)
+  freezes the conditions, per-arm surfaces, limits, and stopping rules for the
+  route verification and the four-attempt screen, before anything is spent.
+- [First useful engine comparison](first-engine-comparison-plan.md) is paused,
+  not queued. Its live smoke is complete; further comparison requires a useful
+  question and its own frozen, authorized budget.
+- [Stage 3.1 triage candidate](triage-candidate.md) records the rejected
+  loop-breaker candidate and the paused post-edit region candidate.
+- [First smoke run record](first-smoke-run-record.md) retains the conditions and
+  evidence from the completed bounded live smoke.
 - [First-milestone design](first-milestone-design.md) defines the offline outcome,
   scope, evidence policy, and artifact contracts.
 - [First-milestone execution plan](first-milestone-plan.md) gives the
@@ -30,6 +36,8 @@ work; they do not create a second policy source.
 
 whole-attempt-deadline-design
 whole-attempt-deadline-plan
+agentclinic-suite-brief
+misleading-locus-r3-pre-run-record
 first-engine-comparison-plan
 first-smoke-run-record
 triage-candidate

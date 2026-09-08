@@ -1,5 +1,23 @@
 # Roadmap
 
+## Proposed next work: one AgentClinic addition
+
+**Status 2026-09-08:** stage 1 is confirmed landed and stage 2 is complete —
+`agentclinic-repair-misleading-locus` is qualified at `R3`, offline. Stages 3
+and 4 are authorized and have not yet run.
+
+[The suite brief](docs/current/agentclinic-suite-brief.md) proposes finishing
+the existing engine repairs, qualifying one additional useful task-condition,
+verifying its live route, and then running a matched four-attempt Engine and
+Baseline screen — two interleaved attempts per arm — before deciding what the
+evidence warrants. Selection is driven by distinct repair behavior, not a
+favorable historical score and not by which task separates the arms. The screen
+is a planned stage rather than an afterthought, and four attempts observe
+without establishing superiority. This is bounded suite development, not a
+restart of the paused comparison or a pathology audit. The brief authorizes no
+implementation, merge, commit, or inference; each live stage needs its own
+budget authorization.
+
 ## Paused: the engine comparison
 
 **The comparison is paused. Do not restart it.** Stages 1 and 2 are complete —
@@ -28,7 +46,13 @@ that refused to let a model inspect or test a file it had just edited.
 ## Accepted baseline
 
 The offline milestone is accepted. `agentclinic-repair-depth-3` is qualified at
-`R3`, with base, known-good, and declared-incomplete witnesses. Its synthetic
+`R3`, with base, known-good, and declared-incomplete witnesses.
+`agentclinic-repair-misleading-locus` is qualified at `R3` as of 2026-09-08,
+with base, known-good, and a preservation-violating known-broken witness, all
+three derived from real public and hidden suite runs. That qualification is
+**offline only**: its live route is not yet verified and it carries no
+comparison evidence. Why it was selected, and what it adds that `depth-3` does
+not, is in the task's own `SELECTION-NOTE.md`. Its synthetic
 route proves the edit, test, artifact, and grade flow and re-scores retained
 artifacts offline. The whole-attempt deadline then bounded setup, command,
 preservation, grading, and cleanup without discarding evidence. Their

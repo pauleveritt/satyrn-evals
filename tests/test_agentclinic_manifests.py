@@ -22,6 +22,12 @@ from satyrn_evals.patch import parse_patch_paths, within_source
 
 FORBIDDEN = ("overlay", "test_acceptance.py", "overlay/test_acceptance.py")
 
+#: The tasks carrying an authored R3 qualification record. A task joins this
+#: list when its record is derived from its own witness runs, not before.
+#: tests/integration/test_agentclinic_gate.py imports this list rather than
+#: repeating it, so the two tiers cannot disagree about what is qualified.
+QUALIFIED = ["depth-3", "misleading-locus"]
+
 
 @pytest.mark.parametrize("state", STATES)
 def test_manifest_loads_and_is_hidden(state: str) -> None:
@@ -285,3 +291,67 @@ def test_both_rungs_generate_an_engine_contract(state: str) -> None:
         '  - "templates/*"',
         '  - "tests/*"',
     ], state
+
+
+# --- Qualification records: structure only, no process ---
+#
+# The witness ROWS are verified by running the real suites
+# (tests/integration/test_agentclinic_gate.py). These two rows are the part
+# that `just gates` runs: a record whose behaviors stopped covering the oracle,
+# or whose witnesses all went green, would otherwise be caught only in the
+# integration tier, which the default gate run does not execute. Neither tier
+# runs in GitHub CI -- .github/workflows/pages.yml builds the docs and nothing
+# else -- so `just gates` is the only place either row fires.
+#
+# LIMIT, stated so a later reader does not over-trust the first row: it checks
+# that the behaviors are EXHAUSTIVE over the oracle, not that each check is
+# filed under the right behavior. A degenerate record with one catch-all
+# behavior listing all 13 would pass it. A partition check would be wrong --
+# depth-3 deliberately files two checks under two behaviors each -- so the
+# guard against "merely exhaustive" is the per-task row in the gate, not this.
+
+
+@pytest.mark.parametrize("state", QUALIFIED)
+def test_qualification_behaviors_cover_the_whole_oracle(state: str) -> None:
+    task_dir = resolve_task(f"agentclinic-repair-{state}")
+    manifest = load_manifest(task_dir)
+    record = json.loads((task_dir / "qualification.json").read_text())
+
+    assert record["task"] == manifest.name
+    assert record["rung"] == "R3"
+    assert {behavior["assessment"] for behavior in record["behaviors"]} == {"justified"}
+    assert {
+        check for behavior in record["behaviors"] for check in behavior["hidden_checks"]
+    } == set(manifest.expected_test_ids), state
+
+
+@pytest.mark.parametrize("state", QUALIFIED)
+def test_qualification_witnesses_declare_both_directions(state: str) -> None:
+    """A record whose every witness passes proves nothing, and one whose every
+    witness fails cannot tell a repair from a wrong repair. Each qualified task
+    declares at least one of each, and every named patch exists."""
+    task_dir = resolve_task(f"agentclinic-repair-{state}")
+    record = json.loads((task_dir / "qualification.json").read_text())
+    failing = [w for w in record["witnesses"] if w["hidden_expected_nonpassing_ids"]]
+    clean = [w for w in record["witnesses"] if not w["hidden_expected_nonpassing_ids"]]
+
+    assert failing, state
+    assert clean, state
+    for witness in record["witnesses"]:
+        if witness["patch"] is not None:
+            assert (task_dir / witness["patch"]).is_file(), (state, witness["id"])
+
+
+def test_misleading_locus_known_broken_touches_only_the_board_template() -> None:
+    """The isolation argument rests on this patch's scope, so pin it.
+
+    `base` and `known-broken` are argued to differ by exactly the template, which
+    is what lets a preservation check that is silent at base and fires here be
+    read as tracking the wrong repair rather than the unrepaired seam
+    (qualification.json, witness `known-broken`). Widening this patch would void
+    that argument while every other row stayed green, so the scope is asserted
+    rather than assumed.
+    """
+    task_dir = resolve_task("agentclinic-repair-misleading-locus")
+    patch = (task_dir / "fixtures" / "known-broken.patch").read_text()
+    assert parse_patch_paths(patch) == ("templates/complaints.html",)
