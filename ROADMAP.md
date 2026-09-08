@@ -40,6 +40,14 @@ engine/model combination, a reachable model server, and an authorized budget
 for each live stage. The engine is an external dependency: a recommendation
 from this work does not authorize editing or merging it.
 
+Evaluating a different engine checkout needs only its own arm file, a synced
+virtual environment on `PATH`, and preflight's `--engine-repo`; that checkout
+must be committed and clean, because preflight verifies its revision against
+the arm's pin. Comparing two engine revisions inside one batch needs more:
+`ArmName` is a closed vocabulary and the tally groups its counts by that name,
+so two engine configurations would pool into one denominator. The triage stage
+resolves that before it freezes a matched pair.
+
 Retained live evidence for `depth-3` is reported by condition rather than
 pooled. At `R3`, 6 of 6 baseline attempts pass with `gemma-4-12B` and 6 of 6
 pass with `gemma-4-26b`; no engine-arm attempt has run at `R3`. At `R1`, no
