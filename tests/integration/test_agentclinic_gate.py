@@ -96,8 +96,11 @@ def _run_base_with_hook(state: str, tmp_path: Path) -> dict:
     return json.loads(hook.read_text())
 
 
-def _qualification_record() -> dict:
-    path = _task("depth-3") / "qualification.json"
+QUALIFICATION_FILES = ["qualification.json", "qualification-R1c.json"]
+
+
+def _qualification_record(filename: str = "qualification.json") -> dict:
+    path = _task("depth-3") / filename
     return json.loads(path.read_text())
 
 
@@ -158,16 +161,20 @@ def _nonpassing_ids(data: dict) -> list[str]:
     return sorted(test_id for test_id, outcome in data["outcomes"].items() if outcome != "passed")
 
 
-def test_depth_3_r3_qualification_witnesses_match_the_authored_record(
-    tmp_path: Path,
+@pytest.mark.parametrize(
+    ("filename", "expected_rung"),
+    [("qualification.json", "R3"), ("qualification-R1c.json", "R1c")],
+)
+def test_depth_3_qualification_witnesses_match_the_authored_record(
+    filename: str, expected_rung: str, tmp_path: Path,
 ) -> None:
-    """The three R3 witnesses are fresh hook evidence, not command status."""
+    """The three witnesses per rung record are fresh hook evidence, not command status."""
     task_dir = _task("depth-3")
     manifest = load_manifest(task_dir)
-    record = _qualification_record()
+    record = _qualification_record(filename)
 
     assert record["task"] == manifest.name
-    assert record["rung"] == "R3"
+    assert record["rung"] == expected_rung
     assert "public_command" not in record
     assert manifest.public_suite
     assert {behavior["assessment"] for behavior in record["behaviors"]} == {"justified"}
@@ -206,8 +213,9 @@ def test_depth_3_r3_qualification_witnesses_match_the_authored_record(
         assert _nonpassing_ids(hidden) == sorted(witness["hidden_expected_nonpassing_ids"])
 
 
-def test_depth_3_r3_record_maps_the_declared_omission_to_its_hidden_check() -> None:
-    record = _qualification_record()
+@pytest.mark.parametrize("filename", QUALIFICATION_FILES)
+def test_depth_3_record_maps_the_declared_omission_to_its_hidden_check(filename: str) -> None:
+    record = _qualification_record(filename)
     behaviors = {behavior["id"]: behavior for behavior in record["behaviors"]}
     incomplete = next(witness for witness in record["witnesses"] if witness["id"] == "partial-no-303")
 

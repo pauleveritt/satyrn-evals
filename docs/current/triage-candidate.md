@@ -131,10 +131,25 @@ exists to display.
 file exceeds 40 lines, but a repair attempt can *enlarge* one past the cap, so
 the defect is reachable inside this very condition rather than only beyond it.
 A candidate that can hide part of a successful edit is not frozen until safe
-truncation is resolved — by reserving budget for the changed span before
-spending it on leading context, or by centring the retained window on the
-change instead of the file start. The reproducer for it is kept, not
-discharged.
+truncation is resolved. The reproducer for it is kept, not discharged.
+
+**Both caps discard from the end, and both can hide the change.** The line cap
+was the known case. The byte cap is sharper: 30 lines of about 200 bytes each
+stays under `REGION_MAX_LINES` so only `REGION_MAX_BYTES` applies, and it cuts
+a byte prefix — the region renders as truncated while containing **none** of
+the edit. The same file at the current radius renders about 1,400 bytes and
+never truncates, so a larger radius increases exposure to this path rather than
+inheriting it.
+
+Required behavior before a larger region is frozen: reserve budget for the
+changed span before spending it on context, in both dimensions. Retain the
+edit's line range whole, allocate the remaining line budget as context trimmed
+from whichever side has more surplus, apply the byte cap the same way by
+trimming context rather than the change, and only truncate the changed span
+itself when it alone exceeds a cap — marking that case distinctly. Implementing
+it is engine work in the engine's own scoped checkout, and is a prerequisite of
+this candidate rather than a side improvement. Evidence and the reproducer are
+at `~/satyrn-smokes/2026-09-08-breaker-window-reproducer/region-truncation.md`.
 
 **4. Counting rules, frozen.** A *follow-up read* is a `read` whose path is
 byte-identical to a prior `code=OK` `edit`'s path, later in the same attempt,
