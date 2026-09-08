@@ -5,8 +5,8 @@
 **Status 2026-09-08: the sequence is complete.** Stage 1 confirmed landed;
 stage 2 qualified `agentclinic-repair-misleading-locus` at `R3` offline;
 stage 3 verified the live route; stage 4 ran the matched four-cell screen.
-**Both arms passed every cell — Baseline 2/2, Engine 2/2** — so the screen is
-at ceiling and **detected no outcome difference**; it is comparison evidence,
+**Both arms passed every cell — Baseline 2/2, Engine 2/2** — so the screen
+**detected no outcome difference**; it is comparison evidence,
 but far too little to support a general comparison conclusion, a rate, or a
 mechanism. The condition
 is retained as a regression and route condition at `R3`; no engine repair is
@@ -58,10 +58,10 @@ The offline milestone is accepted. `agentclinic-repair-depth-3` is qualified at
 with base, known-good, and a preservation-violating known-broken witness, all
 three derived from real public and hidden suite runs. Its live route is
 verified, and a matched four-cell screen ran at that rung: **Baseline 2/2,
-Engine 2/2**. Both arms are at ceiling there, so the screen **detected no
-outcome difference** and cannot support a general comparison conclusion —
-retained as a regression and route condition, not as a diagnostic workload at
-`R3`. Why it was selected, and what it adds that `depth-3` does
+Engine 2/2**. The screen **detected no outcome difference** and cannot
+support a general comparison conclusion. Four observations also say nothing
+about whether `R3` is a ceiling; retained as a regression and route condition,
+and its discriminating power at that rung is simply unmeasured. Why it was selected, and what it adds that `depth-3` does
 not, is in the task's own `SELECTION-NOTE.md`. Its synthetic
 route proves the edit, test, artifact, and grade flow and re-scores retained
 artifacts offline. The whole-attempt deadline then bounded setup, command,

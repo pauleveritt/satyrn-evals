@@ -22,6 +22,7 @@ from pathlib import Path
 import pytest
 from test_agentclinic_manifests import (  # type: ignore[missing-import]  # pytest sibling resolution (tests/ on sys.path)
     QUALIFIED,
+    qualification_path,
 )
 
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, load_manifest
@@ -99,9 +100,8 @@ def _run_base_with_hook(state: str, tmp_path: Path) -> dict:
     return json.loads(hook.read_text())
 
 
-def _qualification_record(state: str) -> dict:
-    path = _task(state) / "qualification.json"
-    return json.loads(path.read_text())
+def _qualification_record(state: str, rung: str = "R3") -> dict:
+    return json.loads(qualification_path(_task(state), rung).read_text())
 
 
 def _run_qualification_suite(
@@ -161,17 +161,23 @@ def _nonpassing_ids(data: dict) -> list[str]:
     return sorted(test_id for test_id, outcome in data["outcomes"].items() if outcome != "passed")
 
 
-@pytest.mark.parametrize("state", QUALIFIED)
-def test_r3_qualification_witnesses_match_the_authored_record(
-    state: str, tmp_path: Path
+@pytest.mark.parametrize(("state", "rung"), QUALIFIED)
+def test_qualification_witnesses_match_the_authored_record(
+    state: str, rung: str, tmp_path: Path
 ) -> None:
-    """Each R3 witness row is fresh hook evidence, not command status."""
+    """Each witness row is fresh hook evidence, not command status.
+
+    Run per (task, rung), even though a rung changes only the contract text
+    handed to the solver and cannot reach the public suite or the overlay. The
+    record says as much; this row is what makes that a checked claim rather
+    than an assumption.
+    """
     task_dir = _task(state)
     manifest = load_manifest(task_dir)
-    record = _qualification_record(state)
+    record = _qualification_record(state, rung)
 
     assert record["task"] == manifest.name
-    assert record["rung"] == "R3"
+    assert record["rung"] == rung
     assert "public_command" not in record
     assert manifest.public_suite
     assert {behavior["assessment"] for behavior in record["behaviors"]} == {"justified"}
@@ -186,14 +192,14 @@ def test_r3_qualification_witnesses_match_the_authored_record(
         patch = task_dir / witness["patch"] if witness["patch"] else None
         public = _run_qualification_suite(
             task_dir,
-            tmp_path / witness["id"] / "public",
+            tmp_path / rung / witness["id"] / "public",
             argv=list(manifest.public_suite),
             patch=patch,
             include_hidden_overlay=False,
         )
         hidden = _run_qualification_suite(
             task_dir,
-            tmp_path / witness["id"] / "hidden",
+            tmp_path / rung / witness["id"] / "hidden",
             argv=[*manifest.oracle, *manifest.expected_test_ids],
             patch=patch,
             include_hidden_overlay=True,

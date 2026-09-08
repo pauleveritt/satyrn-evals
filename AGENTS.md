@@ -21,6 +21,12 @@ subprocess tripwire; run marked integration checks when a change needs real
 Git, materialization, an attempt command, or an oracle. Give every refusal
 test a sibling success test.
 
+Any comparison follows `BRIEF.md`'s comparison policy: declare the outcome and
+cost questions before the run, disclose an informed selection rather than hide
+it, carry a power figure's test and assumptions, keep checkpoints to execution
+integrity, treat outcome-shaped signals as measurements rather than stop
+triggers, and never restart from zero by default.
+
 Optimize development for useful feedback within 10–15 minutes. Start with a
 deterministic reproducer, then one bounded attempt, then two attempts per
 matched configuration on one relevant qualified task; a broader confirmation

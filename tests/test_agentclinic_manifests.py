@@ -22,11 +22,24 @@ from satyrn_evals.patch import parse_patch_paths, within_source
 
 FORBIDDEN = ("overlay", "test_acceptance.py", "overlay/test_acceptance.py")
 
-#: The tasks carrying an authored R3 qualification record. A task joins this
-#: list when its record is derived from its own witness runs, not before.
-#: tests/integration/test_agentclinic_gate.py imports this list rather than
-#: repeating it, so the two tiers cannot disagree about what is qualified.
-QUALIFIED = ["depth-3", "misleading-locus"]
+#: The (task, rung) pairs carrying an authored qualification record. A pair
+#: joins this list when its record is derived from its own witness runs, not
+#: before. tests/integration/test_agentclinic_gate.py imports this list rather
+#: than repeating it, so the two tiers cannot disagree about what is qualified.
+QUALIFIED: list[tuple[str, str]] = [
+    ("depth-3", "R3"),
+    ("misleading-locus", "R3"),
+    ("misleading-locus", "R1"),
+]
+
+
+def qualification_path(task_dir: Path, rung: str) -> Path:
+    """Where a rung's qualification record lives.
+
+    R3 keeps the unsuffixed name it shipped with; every other rung is suffixed.
+    Renaming the R3 file would be churn in committed evidence for no gain.
+    """
+    return task_dir / ("qualification.json" if rung == "R3" else f"qualification-{rung}.json")
 
 
 @pytest.mark.parametrize("state", STATES)
@@ -311,35 +324,36 @@ def test_both_rungs_generate_an_engine_contract(state: str) -> None:
 # guard against "merely exhaustive" is the per-task row in the gate, not this.
 
 
-@pytest.mark.parametrize("state", QUALIFIED)
-def test_qualification_behaviors_cover_the_whole_oracle(state: str) -> None:
+@pytest.mark.parametrize(("state", "rung"), QUALIFIED)
+def test_qualification_behaviors_cover_the_whole_oracle(state: str, rung: str) -> None:
     task_dir = resolve_task(f"agentclinic-repair-{state}")
     manifest = load_manifest(task_dir)
-    record = json.loads((task_dir / "qualification.json").read_text())
+    record = json.loads(qualification_path(task_dir, rung).read_text())
 
     assert record["task"] == manifest.name
-    assert record["rung"] == "R3"
+    assert record["rung"] == rung
+    assert rung in manifest.contracts, (state, rung)
     assert {behavior["assessment"] for behavior in record["behaviors"]} == {"justified"}
     assert {
         check for behavior in record["behaviors"] for check in behavior["hidden_checks"]
     } == set(manifest.expected_test_ids), state
 
 
-@pytest.mark.parametrize("state", QUALIFIED)
-def test_qualification_witnesses_declare_both_directions(state: str) -> None:
+@pytest.mark.parametrize(("state", "rung"), QUALIFIED)
+def test_qualification_witnesses_declare_both_directions(state: str, rung: str) -> None:
     """A record whose every witness passes proves nothing, and one whose every
-    witness fails cannot tell a repair from a wrong repair. Each qualified task
+    witness fails cannot tell a repair from a wrong repair. Each qualified pair
     declares at least one of each, and every named patch exists."""
     task_dir = resolve_task(f"agentclinic-repair-{state}")
-    record = json.loads((task_dir / "qualification.json").read_text())
+    record = json.loads(qualification_path(task_dir, rung).read_text())
     failing = [w for w in record["witnesses"] if w["hidden_expected_nonpassing_ids"]]
     clean = [w for w in record["witnesses"] if not w["hidden_expected_nonpassing_ids"]]
 
-    assert failing, state
-    assert clean, state
+    assert failing, (state, rung)
+    assert clean, (state, rung)
     for witness in record["witnesses"]:
         if witness["patch"] is not None:
-            assert (task_dir / witness["patch"]).is_file(), (state, witness["id"])
+            assert (task_dir / witness["patch"]).is_file(), (state, rung, witness["id"])
 
 
 def test_misleading_locus_known_broken_touches_only_the_board_template() -> None:
