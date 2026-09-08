@@ -15,8 +15,11 @@ superiority claim.
 This was the proposed next sequence, not a standing authorization. **Status
 2026-09-08:** stage 1 is confirmed landed; stage 2 is complete, with
 `agentclinic-repair-misleading-locus` qualified at `R3` offline; stages 3 and 4
-are authorized by the maintainer and their frozen conditions are recorded in
-[the pre-run record](misleading-locus-r3-pre-run-record.md). Nothing here
+ran on 2026-09-08 under the frozen conditions in
+[the pre-run record](misleading-locus-r3-pre-run-record.md); the route is
+verified and the screen put both arms at ceiling, 2/2 each, detecting no
+outcome difference and supporting no general comparison conclusion. The sequence below is therefore complete, and the decision it asks
+for is recorded with the batch. Nothing here
 authorizes a merge to an external repository, a commit, or any spending beyond
 those two stages. The earlier engine comparison and post-edit region candidate
 stay paused. This brief does not restart them.

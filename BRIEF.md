@@ -78,9 +78,11 @@ the limiting stage.
 ## What comes next
 
 The current milestone qualifies `agentclinic-repair-depth-3` at R3 and, as of
-2026-09-08, `agentclinic-repair-misleading-locus` at R3 — the latter **offline
-only**: its witnesses are derived from real suite runs, its live route is not
-yet verified, and it carries no comparison evidence. The milestone also proves
+2026-09-08, `agentclinic-repair-misleading-locus` at R3 — the latter with witnesses
+derived from real suite runs and a verified live route. A matched four-cell
+screen put both arms at ceiling (2/2 each) and **detected no outcome
+difference** — comparison evidence, but not enough to conclude anything general
+about the arms. The milestone also proves
 one repeatable synthetic route from a frozen execution description to retained,
 re-scorable results. Its design and plan live in `docs/current/`.
 `ROADMAP.md` says what is active and what remains outside this repository's

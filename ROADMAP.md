@@ -2,9 +2,16 @@
 
 ## Proposed next work: one AgentClinic addition
 
-**Status 2026-09-08:** stage 1 is confirmed landed and stage 2 is complete —
-`agentclinic-repair-misleading-locus` is qualified at `R3`, offline. Stages 3
-and 4 are authorized and have not yet run.
+**Status 2026-09-08: the sequence is complete.** Stage 1 confirmed landed;
+stage 2 qualified `agentclinic-repair-misleading-locus` at `R3` offline;
+stage 3 verified the live route; stage 4 ran the matched four-cell screen.
+**Both arms passed every cell — Baseline 2/2, Engine 2/2** — so the screen is
+at ceiling and **detected no outcome difference**; it is comparison evidence,
+but far too little to support a general comparison conclusion, a rate, or a
+mechanism. The condition
+is retained as a regression and route condition at `R3`; no engine repair is
+proposed and no follow-up is queued. Counts, recompute and the decision:
+`/Users/pauleveritt/satyrn-smokes/2026-09-08-misleading-locus-r3-174721/RESULT.md`.
 
 [The suite brief](docs/current/agentclinic-suite-brief.md) proposes finishing
 the existing engine repairs, qualifying one additional useful task-condition,
@@ -49,9 +56,12 @@ The offline milestone is accepted. `agentclinic-repair-depth-3` is qualified at
 `R3`, with base, known-good, and declared-incomplete witnesses.
 `agentclinic-repair-misleading-locus` is qualified at `R3` as of 2026-09-08,
 with base, known-good, and a preservation-violating known-broken witness, all
-three derived from real public and hidden suite runs. That qualification is
-**offline only**: its live route is not yet verified and it carries no
-comparison evidence. Why it was selected, and what it adds that `depth-3` does
+three derived from real public and hidden suite runs. Its live route is
+verified, and a matched four-cell screen ran at that rung: **Baseline 2/2,
+Engine 2/2**. Both arms are at ceiling there, so the screen **detected no
+outcome difference** and cannot support a general comparison conclusion —
+retained as a regression and route condition, not as a diagnostic workload at
+`R3`. Why it was selected, and what it adds that `depth-3` does
 not, is in the task's own `SELECTION-NOTE.md`. Its synthetic
 route proves the edit, test, artifact, and grade flow and re-scores retained
 artifacts offline. The whole-attempt deadline then bounded setup, command,

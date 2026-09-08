@@ -32,8 +32,27 @@ difference between them.**
 |---|---|---|
 | arm file | `arms/baseline.json` | `arms/engine.json` |
 | argv | `satyrn-evals-attempt-pi` | `satyrn-engine attempt` |
-| effective tools | `read`, `bash`, `edit`, `write` | `read`, `edit` |
+| effective tools | `read`, `bash`, `edit`, `write` | `read`, `edit`, and a **bounded `bash` test runner** |
 | engine commit | none | `fc22622ac39f71ff9d0ad42718da4e1bd3500ac3` |
+
+> **Correction, recorded 2026-09-08 after the run.** As first written, this
+> table gave Engine's effective tools as `read, edit` alone, copied from the
+> `tools` field of `arms/engine.json`. That was **false as a description of the
+> arm's surface**. The engine registers a further tool of its own, named `bash`
+> but **bounded**: it executes only the contract's declared `test_command` and
+> refuses every other command by name
+> (`satyrn-engine packages/engine/runner.ts:218-228`;
+> `src/satyrn_engine/runner.py:136-148`). The rendered R3 contract for this
+> task carries that `test_command`, and **every Engine cell in this batch used
+> the runner** — 3, 2 and 3 `bash` calls in the route-verification cell and the
+> two Engine screen cells.
+>
+> This is an **intended product-surface difference**, and the whole point of
+> freezing each arm's surface separately is that such a difference is stated
+> rather than assumed away. It changes nothing that was run, so **no re-run
+> follows** — but a frozen record has to be true, so the row is corrected and
+> the original wording is kept here rather than erased. It remains the case
+> that no component attribution follows from any difference between the arms.
 
 Engine source digests are pinned in `arms/engine.json` (`engine.ts`,
 `mutator.ts`, `runner.ts`, `orchestrator.ts`). The engine checkout at
