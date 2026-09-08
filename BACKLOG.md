@@ -69,7 +69,19 @@ which are the two properties this prerequisite exists to guarantee.
 an improvement, because no grading change can re-score evidence that was never
 retained.
 
-**Qualify `session-ordering-regression` before it is run as a workload.** The
+**Decide whether a cross-prompt hazard should be offered or forced.**
+`session-ordering-regression` makes its regression *available*: a solver hits it
+only by refactoring `normalize` into a shared helper. On 2026-09-08 the solver
+used `name.split()` instead and nothing broke, so the run passed cleanly and
+observed nothing. Estimating how often the hazard is taken needs repeated
+sessions; forcing it — asking step 2 for behaviour that cannot be implemented
+without touching the shared code — makes it reliable but less like the accident
+being modelled. **Reopen** when a session evaluation needs to *observe*
+cross-prompt regression rather than merely be able to grade it; the proposal
+must choose between measuring a rare event and manufacturing a common one, and
+say which question is being asked.
+
+**DONE 2026-09-08 — Qualify `session-ordering-regression` before it is run as a workload.** The
 2026-09-08 re-run failed the same two hidden checks at every checkpoint because
 they demand details the prompt does not state: the ellipsis must be `…`
 (U+2026) counted inside `width`, and the first sentence must have its terminal
@@ -82,8 +94,11 @@ qualification. `BRIEF.md`'s two selection rules forbid exactly that. Either
 state the ellipsis character and punctuation handling in the prompt, or relax
 the hidden checks to what the prompt implies, then map every accessible
 requirement to its checks the way the AgentClinic conditions are mapped.
-**Reopen** before the next session run; until it lands the task supports its
-witness and nothing else.
+Closed by the qualification of 2026-09-08: the prompts state the ellipsis
+character, the width accounting and the punctuation handling;
+`QUALIFICATION-NOTE.md` records the full mapping; and a fairness gate pins it,
+verified by mutation. A session then completed every step. Retained here as the
+record of what the defect was.
 
 **State the writable scope in session prompts.** `session.py:392` sends only
 the step prompt, so a session solver is never told where code belongs or what

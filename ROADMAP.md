@@ -49,14 +49,28 @@ from an extension) and a writable-scope statement in every prompt — and a
 `COMPLETE`, no tool outside the allowlist, no detached dispatch, zero scope
 violations, and three real per-checkpoint preservation verdicts.
 
-**The cross-prompt dependency still has not been exercised**, now for a
-different reason: the task's hidden checks demand details its prompt never
-states — the ellipsis character and whether terminal punctuation is stripped —
-so the solver cannot complete step 1 and nothing exists for step 2 to regress.
-The task was authored as a **grader fixture** and then run as a **workload**
-without qualification, which `BRIEF.md`'s two selection rules forbid. Its
-witness stands; qualifying it is the next offline repair, recorded in
-`BACKLOG.md`. **No further session runs until that lands.**
+A second run then exposed a fairness defect — the hidden checks demanded the
+ellipsis character and punctuation handling that the prompt never stated, so no
+solver could finish step 1. The task had been authored as a **grader fixture**
+and run as a **workload** without qualification, which `BRIEF.md`'s two
+selection rules forbid. **It is now qualified**: the prompts state what the
+checks require, `QUALIFICATION-NOTE.md` maps every hidden check to the
+accessible text, and `fixtures/prompt-faithful.patch` plus a fairness gate hold
+it there — an implementation written only from the prompts must pass, verified
+by mutation.
+
+**A third session then ran clean**
+(`~/satyrn-smokes/2026-09-08-session-ordering-baseline3-231223/RESULT.md`):
+`COMPLETE`, surface held, zero scope violations, and **every checkpoint passing
+both axes** — the first time any session reached step 1's feature.
+
+**The cross-prompt regression still did not occur, and now we know why.** The
+solver satisfied step 2 with `name.split()` rather than by refactoring
+`normalize` into a shared helper, so nothing could break. The task **offers**
+the hazard; it does not force it. At `n=1` that is an observation, not a rate.
+Making it reliable would mean forcing contact with the shared code, which
+trades away the accident the task is modelling — a design choice belonging in
+its own proposal. **No session runs are queued.**
 
 [The suite brief](docs/current/agentclinic-suite-brief.md) proposes finishing
 the existing engine repairs, qualifying one additional useful task-condition,
