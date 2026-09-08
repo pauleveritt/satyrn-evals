@@ -80,7 +80,15 @@ def test_engine_file_loads_with_read_edit_and_the_pinned_commit() -> None:
     # (973 refused calls, five lost cells); bc0434a added E7's runner and
     # 8f1deb3 renamed it to bash, which is why the digest set covers
     # runner.ts and orchestrator.ts as well as the two original extensions.
-    assert commit.startswith("8b52de9")
+    # fc22622 lands two repairs found by inspecting model-facing messages,
+    # neither of them an experiment: the post-edit region now reserves the
+    # changed span before spending budget on context, so it can no longer
+    # report truncation while showing none of the edit; and a call key now
+    # carries the revision of the workspace it addresses, so a read or a test
+    # after a landed edit is not mistaken for a repeat. Only engine.ts's
+    # digest moves -- the region fix is in mutation.py, which the digest set
+    # does not cover and the commit pin does.
+    assert commit.startswith("fc22622")
     assert len(commit) == 40
     assert set(arm.pins.digests) == {
         "engine.ts",
