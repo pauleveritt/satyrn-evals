@@ -62,10 +62,20 @@ verdict?** It establishes no success rate, no causal effect, and no headroom.
 The arm files are the single source for these values; this record cites them by
 digest rather than restating a second copy.
 
-Tool surfaces are **not** equivalent across arms. The engine arm's `read,edit`
-matches the envelope arm, not the baseline arm. A matched comparison must use
-the envelope arm as the tool-matched control, or state the difference and the
-claims it prevents.
+**Observed tool surface, corrected after the run.** The arm file pins
+`read,edit`, but the pinned engine additionally enables `bash` when the
+contract declares a test command, and `agentclinic-repair-depth-3` does. The
+smoke's transcript contains three `bash` calls: one refused `ls -R` and two
+runs of `uv run python -m pytest tests/`. The condition that ran was therefore
+`read,edit,bash`, not the `read,edit` frozen above.
+
+This invalidates an earlier claim in this record: the envelope arm
+(`read,edit`) is **not** a tool-matched control for the engine arm, because the
+engine's effective surface is wider than its arm file states. A matched
+comparison must derive the engine's *effective* surface from the contract
+rather than from the arm file, and must state any remaining difference and
+the claims it prevents. The arm file is not wrong about what it passes; it is
+incomplete as a description of what the engine enables.
 
 Evals appends a rendered engine-contract path as the final argument of whichever
 command is chosen; the recorded command includes it.

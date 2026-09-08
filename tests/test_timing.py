@@ -583,6 +583,67 @@ def test_a_transcript_born_before_the_wrapper_started_is_refused(
         )
 
 
+# --- producer ordering: the labels must not overstate what mtimes measure --
+
+
+def test_the_artifact_states_lifecycle_durations_are_unmeasured_and_names_the_limitation(
+    tmp_path: Path,
+) -> None:
+    """Every result carries the disclosure, regardless of the fixture's shape."""
+    cell_dir = _make_cell(tmp_path, no_attempt_dir=True)
+    result = measure_timing(cell_dir, wrapper_start=_BASE, wrapper_end=_BASE + 1)
+
+    assert result.lifecycle_durations == "unmeasured by this filesystem-mtime method"
+    assert "patch.diff" in result.producer_ordering_limitation
+    assert "AFTER" in result.producer_ordering_limitation
+    assert set(result.interval_definitions) == {
+        "setup",
+        "command",
+        "setup_and_command",
+        "grading",
+        "residual",
+    }
+
+
+def test_producer_ordering_patch_after_transcript_does_not_relabel_grading_as_pure(
+    tmp_path: Path,
+) -> None:
+    """Exercises the real engine's producer ordering, per Sol's note.
+
+    The real engine writes ``patch.diff`` AFTER the final ``transcript.txt``
+    write (verified 22 ms later on a retained cell), not before it as the
+    other fixtures in this file assume for readability. This fixture mirrors
+    that real ordering -- patch.diff mtime after transcript.txt mtime -- and
+    checks that the resulting artifact still discloses the limitation and
+    that the 'grading' interval's own definition disclaims being grading
+    alone, rather than silently presenting a clean phase breakdown.
+    """
+    cell_dir = _make_cell(
+        tmp_path,
+        transcript=_BASE + 10,
+        patch=_BASE + 10.022,  # patch published 22ms AFTER the transcript, as real
+        receipt=_BASE + 20,
+        attempt_record=_BASE + 21,
+    )
+    result = measure_timing(
+        cell_dir,
+        wrapper_start=_BASE,
+        wrapper_end=_BASE + 30,
+        birthtime_reader=_births(**{"transcript.txt": _BASE + 5}),
+    )
+
+    # The interval is still computed as transcript mtime -> receipt mtime --
+    # the code does not (and cannot) exclude patch publication from it.
+    assert result.phases["grading"] == pytest.approx(10.0)
+    # But its definition must not claim to be grading alone.
+    grading_definition = result.interval_definitions["grading"]
+    assert "not grading alone" in grading_definition
+    assert "patch" in grading_definition
+    # And the run-level limitation note is present and names the same reason.
+    assert "patch.diff is published AFTER" in result.producer_ordering_limitation
+    assert result.lifecycle_durations == "unmeasured by this filesystem-mtime method"
+
+
 def test_a_transcript_born_after_its_own_mtime_is_refused(tmp_path: Path) -> None:
     cell_dir = _make_cell(tmp_path, patch=_BASE + 1, transcript=_BASE + 10)
     with pytest.raises(TimingError, match="cannot have started after"):

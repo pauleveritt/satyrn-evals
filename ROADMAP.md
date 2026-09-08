@@ -45,8 +45,11 @@ virtual environment on `PATH`, and preflight's `--engine-repo`; that checkout
 must be committed and clean, because preflight verifies its revision against
 the arm's pin. Comparing two engine revisions inside one batch needs more:
 `ArmName` is a closed vocabulary and the tally groups its counts by that name,
-so two engine configurations would pool into one denominator. The triage stage
-resolves that before it freezes a matched pair.
+so two engine configurations would pool into one denominator. This need not
+mean extending the vocabulary: separate configuration-specific schedules and
+output roots, sharing one frozen interleaving order, keep the denominators
+apart without new platform work. The triage stage picks an approach before it
+freezes a matched pair.
 
 Retained live evidence for `depth-3` is reported by condition rather than
 pooled. At `R3`, 6 of 6 baseline attempts pass with `gemma-4-12B`, 6 of 6 pass
@@ -57,12 +60,12 @@ passes at either model. Refusals are counted separately from fail verdicts, and
 the earlier batches ran under limits and an evals revision that differ from the
 smoke's condition.
 
-Both arms now pass at `R3`, on 12 baseline attempts and 1 engine attempt. One
-attempt is not a rate, but nothing so far distinguishes the arms there, so
-`R3` supports regression detection rather than a demonstrated improvement. The
-triage stage decides whether that answers a worthwhile question or whether one
-additional condition must first be qualified; `depth-2` at `R1` is the recorded
-condition where the arms currently differ.
+Both arms now pass at `R3`, on 12 baseline attempts and 1 engine attempt.
+Whether `R3` can distinguish engine configurations is **not** settled by that:
+one engine attempt beside baseline runs under different limits cannot decide
+it. The triage stage names the engine change and the behavior it predicts
+first, and only then judges whether `R3` exercises that behavior. `depth-2` at
+`R1` is an exploratory lead, not on its own a reason to change conditions.
 
 ## Completion
 

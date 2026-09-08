@@ -57,6 +57,37 @@ authoritative total, immune to wall-clock adjustments) and file mtimes
 entry point below captures both explicitly and records which one produced
 which figure, rather than comparing them as if they were interchangeable.
 
+**These are filesystem intervals between named artifact events, not
+lifecycle phases.** ``phases["setup"]``, ``phases["command"]``, and
+``phases["grading"]`` are named for the lifecycle stage each interval was
+*designed* to approximate, but a retained cell
+(``2026-09-08-first-smoke-123843/cell-000-engine/``
+``agentclinic-repair-depth-3-20260908-123925-900511``) shows the boundary
+artifacts do not line up with those stages cleanly:
+
+- The engine creates ``transcript.txt`` **after** command startup has
+  already begun, so the ``setup`` interval (wrapper start -> transcript
+  birth) absorbs part of true command startup, and ``command`` (transcript
+  birth -> transcript mtime) understates the real command duration.
+- ``patch.diff`` is published **after** the transcript's final write --
+  verified on that cell: ``transcript.txt`` mtime ``08:39:55.982429``,
+  ``patch.diff`` birth ``08:39:56.004320``, 22 ms later. So the ``grading``
+  interval (transcript mtime -> receipt mtime) also contains patch
+  publication and other preservation work, not grading alone. The residual
+  (receipt mtime -> wrapper end) therefore cannot represent all
+  preservation either, since some of it already happened before the
+  receipt was written.
+
+Every :class:`TimingResult` therefore carries ``interval_definitions``
+(what each ``phases``/``residual`` key literally measures, in artifact-mtime
+terms), a ``lifecycle_durations`` marker stating plainly that true setup,
+command, grading, and preservation durations are **UNMEASURED** by this
+filesystem method, and ``producer_ordering_limitation`` naming the reason
+above. The ``phases`` dict keys are kept as-is (not renamed) so existing
+callers and tests keep working; the added fields are what make the
+distinction between "artifact interval" and "lifecycle phase" explicit
+rather than implied by a comment.
+
 Layout assumed
 ---------------
 A "cell directory" (one schedule cell, e.g. ``$RUNS_ROOT/cell-000-engine``)
@@ -114,6 +145,57 @@ _WALL_CLOCK_TOTAL_SOURCE = (
     "as the file mtimes compared above"
 )
 
+#: What each ``phases``/``residual`` key literally measures, in terms of the
+#: artifact-mtime boundary it spans -- NOT the lifecycle phase its name
+#: suggests. Kept as a flat mapping so a caller can print or record the exact
+#: boundary alongside the number, rather than trusting the key's English name.
+_INTERVAL_DEFINITIONS: dict[str, str] = {
+    "setup": (
+        "wrapper_start -> transcript.txt birth time (a filesystem interval; "
+        "not a measured setup duration -- it absorbs part of true command "
+        "startup, since the engine creates transcript.txt after the command "
+        "has already begun)"
+    ),
+    "command": (
+        "transcript.txt birth time -> transcript.txt mtime (a filesystem "
+        "interval; understates true command duration for the same reason "
+        "'setup' overstates it)"
+    ),
+    "setup_and_command": (
+        "wrapper_start -> transcript.txt mtime (a filesystem interval; "
+        "combined because this filesystem records no birth time to split it)"
+    ),
+    "grading": (
+        "transcript.txt mtime -> receipt.json mtime (a filesystem interval; "
+        "not grading alone -- patch.diff is published after the final "
+        "transcript write, so this interval also contains patch publication "
+        "and other preservation work that happens before the receipt exists)"
+    ),
+    "residual": (
+        "receipt.json mtime -> wrapper_end (a filesystem interval; cannot "
+        "represent all preservation work, since some of it -- e.g. patch "
+        "publication -- already happened before receipt.json was written)"
+    ),
+}
+
+#: True lifecycle-phase durations (as opposed to the filesystem intervals
+#: this module actually measures) are never produced by this method. Stated
+#: plainly on every result rather than left implicit in a docstring.
+_LIFECYCLE_DURATIONS_UNMEASURED = "unmeasured by this filesystem-mtime method"
+
+_PRODUCER_ORDERING_LIMITATION = (
+    "the artifact boundaries this module reads do not occur in lifecycle "
+    "order: the engine creates transcript.txt AFTER command startup (so "
+    "'setup' absorbs part of startup and 'command' understates it), and "
+    "patch.diff is published AFTER the transcript's final write -- verified "
+    "on a retained cell (2026-09-08-first-smoke-123843/cell-000-engine/"
+    "agentclinic-repair-depth-3-20260908-123925-900511): transcript.txt "
+    "mtime 08:39:55.982429, patch.diff birth 08:39:56.004320, 22 ms later. "
+    "So 'grading' (transcript mtime -> receipt mtime) also contains patch "
+    "publication and other preservation work, and the residual (receipt "
+    "mtime -> wrapper end) cannot represent all preservation either."
+)
+
 
 class TimingError(RuntimeError):
     """Raised instead of reporting a timing span that was never coherently observed."""
@@ -137,6 +219,9 @@ class TimingResult:
     artifact_mtimes: dict[str, float | None]
     measurement_source: str
     boundary_note: str
+    interval_definitions: dict[str, str]
+    lifecycle_durations: str
+    producer_ordering_limitation: str
 
     def to_json_dict(self) -> dict:
         return asdict(self)
@@ -378,6 +463,9 @@ def measure_timing(
         artifact_mtimes=mtimes,
         measurement_source=_MEASUREMENT_SOURCE,
         boundary_note=_BOUNDARY_NOTE,
+        interval_definitions=dict(_INTERVAL_DEFINITIONS),
+        lifecycle_durations=_LIFECYCLE_DURATIONS_UNMEASURED,
+        producer_ordering_limitation=_PRODUCER_ORDERING_LIMITATION,
     )
 
 
@@ -428,17 +516,34 @@ def _record(result: TimingResult, record_path: Path) -> None:
 
 def _print_summary(result: TimingResult) -> None:
     print(f"total: {result.total_seconds:.6f}s ({result.total_source})")
+    print(
+        "  (figures below are filesystem intervals between named artifacts, "
+        f"not instrumented lifecycle phases -- lifecycle durations are "
+        f"{result.lifecycle_durations})"
+    )
     for phase in ("setup", "command", "grading"):
         if phase in result.phases:
-            print(f"  {phase}: {result.phases[phase]:.6f}s")
+            print(
+                f"  {phase}: {result.phases[phase]:.6f}s "
+                f"[{result.interval_definitions[phase]}]"
+            )
         else:
             print(f"  {phase}: MISSING -- {result.missing[phase]}")
+    if "setup_and_command" in result.phases:
+        print(
+            "  setup_and_command (combined, no birth time available): "
+            f"{result.phases['setup_and_command']:.6f}s "
+            f"[{result.interval_definitions['setup_and_command']}]"
+        )
     if result.residual_seconds is not None:
         print(
-            f"  residual (preservation+cleanup, not summed): {result.residual_seconds:.6f}s"
+            f"  residual (preservation+cleanup, not summed): "
+            f"{result.residual_seconds:.6f}s "
+            f"[{result.interval_definitions['residual']}]"
         )
     else:
         print(f"  residual: MISSING -- {result.residual_missing}")
+    print(f"  limitation: {result.producer_ordering_limitation}")
 
 
 def main(argv: list[str] | None = None) -> int:
