@@ -1,15 +1,29 @@
 # Roadmap
 
-## Current milestone
+## Paused: the engine comparison
 
-Make one defensible decision about one engine change, from a qualified
-task-condition, retained behavior-level evidence, and measured cost. The
-ordered work — preparation, one bounded live smoke, a small matched triage
-screen, a separately frozen confirmation, and the decision — is in
-[the first engine comparison plan](docs/current/first-engine-comparison-plan.md).
+**The comparison is paused. Do not restart it.** Stages 1 and 2 are complete —
+the live route works and its evidence regrades — and stage 3 was stopped after
+naming a candidate, because the candidate was chosen for being measurable in
+retained traces rather than for addressing a problem that matters in use. That
+is too weak a reason to spend.
 
-Each live stage carries its own frozen, explicitly authorized budget. This
-roadmap authorizes no spending and no model inference.
+No evaluation is queued, and none should be manufactured. The next one is
+pulled by a real development need: a concrete engine problem whose relevance is
+established first, then evaluated with the cheapest existing condition. A
+negative result closes a question rather than prompting a search for another
+lever.
+
+The ordered work, if a need reopens it, is in
+[the first engine comparison plan](docs/current/first-engine-comparison-plan.md),
+and the candidate record in `docs/current/triage-candidate.md` says what was
+closed and why. Each live stage would carry its own frozen, explicitly
+authorized budget. This roadmap authorizes no spending and no model inference.
+
+What the pause produced instead: two engine defects found by inspecting
+model-facing messages and fixed without any model run — a post-edit region that
+could report truncation while showing none of the change, and a loop breaker
+that refused to let a model inspect or test a file it had just edited.
 
 ## Accepted baseline
 
