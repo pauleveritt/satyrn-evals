@@ -2,16 +2,32 @@
 
 ## Proposed next work: one AgentClinic addition
 
-**Status 2026-09-08: the sequence is complete.** Stage 1 confirmed landed;
-stage 2 qualified `agentclinic-repair-misleading-locus` at `R3` offline;
-stage 3 verified the live route; stage 4 ran the matched four-cell screen.
-**Both arms passed every cell — Baseline 2/2, Engine 2/2** — so the screen
-**detected no outcome difference**; it is comparison evidence,
-but far too little to support a general comparison conclusion, a rate, or a
-mechanism. The condition
-is retained as a regression and route condition at `R3`; no engine repair is
-proposed and no follow-up is queued. Counts, recompute and the decision:
-`/Users/pauleveritt/satyrn-smokes/2026-09-08-misleading-locus-r3-174721/RESULT.md`.
+**Status 2026-09-08.** The suite sequence completed at `R3` (four cells,
+Baseline 2/2 and Engine 2/2, no outcome difference detected;
+`~/satyrn-smokes/2026-09-08-misleading-locus-r3-174721/RESULT.md`). A fresh
+**R1 comparison then ran to its declared design** — 36 cells per arm, tally
+accepted 72/72, model identity verified in all 72 transcripts:
+
+- **Primary: Baseline 33/36, Engine 36/36, one-sided Fisher p = 0.1197**
+  against a predeclared `alpha = 0.05`. The criterion is **not met**: the
+  earlier large outcome advantage did not replicate at the specified
+  threshold. Given Baseline's realized 33/36, the best possible Engine result
+  would also have been p = 0.1197.
+- **Secondary, declared in advance: Engine reached the same outcomes for
+  less.** On successful cells, medians of 10 turns / 9 tool calls / 11,222
+  input / 500 output against Baseline's 13 / 12 / 15,934 / 674. Descriptive;
+  monetary cost is unmeasured on a local provider.
+- Every Baseline non-success in the batch is `REPEAT_LIMIT`.
+
+Counts, recompute and the decision:
+`~/satyrn-smokes/2026-09-08-misleading-locus-r1-201314/RESULT.md`.
+
+**Next: sessions.** The instrument measures one request per cell against a
+fresh workspace, so it cannot exercise a *sequence of new user requests* —
+where a later request regresses earlier work, or acts on state formed several
+requests ago. That is a coverage gap independent of the R1 outcome. The session
+machinery already exists (`session` CLI verb, cumulative per-checkpoint
+grading) and has never counted anything.
 
 [The suite brief](docs/current/agentclinic-suite-brief.md) proposes finishing
 the existing engine repairs, qualifying one additional useful task-condition,
