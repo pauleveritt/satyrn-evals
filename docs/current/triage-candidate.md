@@ -125,10 +125,16 @@ context consumes the cap before reaching the change. On a 200-line file with a
 20-line edit at line 100, the current setting returns lines 97-122 with the
 whole edit visible; `REGION_CONTEXT_LINES = 30` returns lines 70-109, truncated,
 with the edit's **tail cut off**. The larger region shows less of the change it
-exists to display. This never fires in the retained evidence, but it means the
-setting is scoped to this condition, not a general engine improvement, and any
-broader use needs `REGION_MAX_LINES` reconsidered — which has no evidence
-behind it yet — or truncation centred on the change instead of the file start.
+exists to display.
+
+**This is not waived on the grounds that today's files are short.** No retained
+file exceeds 40 lines, but a repair attempt can *enlarge* one past the cap, so
+the defect is reachable inside this very condition rather than only beyond it.
+A candidate that can hide part of a successful edit is not frozen until safe
+truncation is resolved — by reserving budget for the changed span before
+spending it on leading context, or by centring the retained window on the
+change instead of the file start. The reproducer for it is kept, not
+discharged.
 
 **4. Counting rules, frozen.** A *follow-up read* is a `read` whose path is
 byte-identical to a prior `code=OK` `edit`'s path, later in the same attempt,
@@ -143,6 +149,49 @@ lands in input and context. An avoided read is saved only when it would have
 happened, and saves its own tool result plus the assistant turn that emitted
 it. With a re-read rate between 5% and 89% across batches, the sign of the net
 effect is not predictable from the mechanism.
+
+### The R1 qualification gap, and the clarified condition
+
+`qualification.json` covers `R3` only. `R1` is a different rung and its
+qualification is not inherited. Assessing it fresh: witnesses verified
+unchanged — `base` 3 of 4 public and 9 of 13 hidden passing, `known-good`
+13 of 13, `partial-no-303` failing only `see-other-redirect` — and four of the
+five behaviors are accessible under `R1`.
+
+`timezone-aware-timestamp` is not. **The reason is narrow, and an earlier
+version of this record got it wrong.** It is *not* that `R1`'s prompt omits the
+words "timezone" or "timestamp": qualification never required a requirement's
+keywords to appear in the prompt, and diagnosing from visible code and ordinary
+Python knowledge is legitimate evidence. The actual defect is that the only
+visible hint —
+`{{ complaint.timestamp.strftime("%Y-%m-%d %H:%M UTC") }}` in
+`base/templates/complaints.html` — is a hardcoded literal inside a format
+string, which a **naive** datetime renders identically. The visible evidence
+labels the display as UTC without uniquely requiring timezone-aware *storage*.
+
+The response is a minimally clarified condition, `R1c`: `R1`'s text plus one
+sentence resolving that requirement alone, without importing `R3`'s causes or
+locations for the other defects. `R1` and its historical results stay
+byte-identical; `R1c` is a **new condition and carries its own qualification**.
+
+The retained `R1` re-read observations are the *motivation* for this candidate.
+They are not evidence that `R1c` will produce the same trajectories, and no
+part of this record should be read as predicting that.
+
+### What a four-attempt screen can and cannot show
+
+The pass floor does not erase behavior-level signal. Across the 24 retained
+engine attempts the required behaviors move independently of the overall
+verdict: the redirect behavior shows 19 passing checks against 1 failing, and
+the mapped page and layout behavior 13 passing against 7 failing, with 4
+attempts carrying no receipt. Behaviors worth protecting therefore remain
+observable even where only one attempt passes everything.
+
+What follows is a bound on the claim, not on the design. Four attempts can
+**flag an observed regression** in a named behavior. They cannot establish
+general outcome preservation — at `R1`, `R1c`, or `R3`. The comparison is
+reported as total time and usage, with behavior-level regression checks and
+explicit missingness for attempts without receipts.
 
 **Condition.** The task and rung are chosen *after* establishing where this
 mechanism actually occurs. The requirement to leave `R3` is not inherited from
