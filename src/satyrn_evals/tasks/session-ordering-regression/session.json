@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "steps": [
+    {
+      "id": "add-summarize",
+      "kind": "feature",
+      "prompt": "Add summarize(text, width): the first sentence, whitespace-normalized, cut to width with a trailing ellipsis when it had to cut.",
+      "new_feature_selectors": [
+        "tests/test_summarize.py::test_summarize_cuts_with_marker",
+        "tests/test_summarize.py::test_summarize_collapses_internal_whitespace"
+      ]
+    },
+    {
+      "id": "add-initials",
+      "kind": "feature",
+      "prompt": "Add initials(name): the uppercase first letter of each word in name, joined with no separator. Handle names with extra or repeated spaces.",
+      "new_feature_selectors": [
+        "tests/test_initials.py::test_initials_basic",
+        "tests/test_initials.py::test_initials_ignores_extra_spaces"
+      ]
+    },
+    {
+      "id": "repair-shared-regression",
+      "kind": "review",
+      "prompt": "Something that used to work no longer does after the last change. Find and fix the regression so normalize, summarize, and initials all behave correctly together, then run the public suite to confirm.",
+      "new_feature_selectors": []
+    }
+  ],
+  "base_preservation_selectors": [
+    "tests/test_textkit.py::test_normalize",
+    "tests/test_textkit.py::test_wrap"
+  ]
+}
