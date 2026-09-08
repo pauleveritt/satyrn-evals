@@ -38,14 +38,25 @@ outcome. Three things landed against it on 2026-09-08:
   All three prompts settled on one conversation; the route and the
   per-checkpoint grading both work.
 
-**It also found a prerequisite that blocks any session intended to count.** The
-session adapter passes no `--tools`, so the model dispatched a **detached
-subagent** that wrote two files across two checkpoint boundaries with **no
-retained events** — per-step turn, tool and context figures understate the work
-by an unknown amount, and no grading change can re-score evidence that was
-never captured. Freezing the session tool surface, and stating writable scope
-in the prompts, are recorded in `BACKLOG.md` as one proposal. **No further
-session runs until they land.**
+That first run found a prerequisite that blocked any session intended to count:
+the adapter passed no `--tools`, so the model reached an installed extension and
+dispatched a **detached subagent** that wrote two files across two checkpoint
+boundaries with **no retained events**. **Both repairs have since landed** — an
+effective tool boundary (allowlist plus `--no-extensions`, since the worker came
+from an extension) and a writable-scope statement in every prompt — and a
+**second session verified them**
+(`~/satyrn-smokes/2026-09-08-session-ordering-baseline2-230325/RESULT.md`):
+`COMPLETE`, no tool outside the allowlist, no detached dispatch, zero scope
+violations, and three real per-checkpoint preservation verdicts.
+
+**The cross-prompt dependency still has not been exercised**, now for a
+different reason: the task's hidden checks demand details its prompt never
+states — the ellipsis character and whether terminal punctuation is stripped —
+so the solver cannot complete step 1 and nothing exists for step 2 to regress.
+The task was authored as a **grader fixture** and then run as a **workload**
+without qualification, which `BRIEF.md`'s two selection rules forbid. Its
+witness stands; qualifying it is the next offline repair, recorded in
+`BACKLOG.md`. **No further session runs until that lands.**
 
 [The suite brief](docs/current/agentclinic-suite-brief.md) proposes finishing
 the existing engine repairs, qualifying one additional useful task-condition,

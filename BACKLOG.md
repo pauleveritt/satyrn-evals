@@ -69,12 +69,32 @@ which are the two properties this prerequisite exists to guarantee.
 an improvement, because no grading change can re-score evidence that was never
 retained.
 
+**Qualify `session-ordering-regression` before it is run as a workload.** The
+2026-09-08 re-run failed the same two hidden checks at every checkpoint because
+they demand details the prompt does not state: the ellipsis must be `…`
+(U+2026) counted inside `width`, and the first sentence must have its terminal
+punctuation stripped. The model's reading — `...` at `width-3`, punctuation
+kept — is ordinary, and the repository's standard is that hidden requirements
+are not allowed. The deeper error was using one artifact for two jobs: the task
+was authored as a **grader fixture**, whose checkpoint patches were written to
+satisfy the hidden tests, and then run as a **diagnostic workload** without
+qualification. `BRIEF.md`'s two selection rules forbid exactly that. Either
+state the ellipsis character and punctuation handling in the prompt, or relax
+the hidden checks to what the prompt implies, then map every accessible
+requirement to its checks the way the AgentClinic conditions are mapped.
+**Reopen** before the next session run; until it lands the task supports its
+witness and nothing else.
+
 **State the writable scope in session prompts.** `session.py:392` sends only
 the step prompt, so a session solver is never told where code belongs or what
 is writable — the information a single-prompt contract carries in
 `writable_paths`. Two sessions on two different tasks (2026-09-04, 2026-09-08)
-ended `SCOPE_VIOLATION`. **Reopen** with the tool-surface entry above; they are
-the same proposal.
+ended `SCOPE_VIOLATION`. **Done for `session-ordering-regression`** on
+2026-09-08: every step now names the writable directory and states that the
+tests are fixed, and the re-run recorded zero scope violations where the first
+run had them at every step. Still owed for `session-mechanics`, and owed as a
+general practice — a session-level preamble in the spec would beat repeating
+the sentence in every prompt.
 
 **Expand the task family after qualification.** Reopen after the first
 qualified route is complete and a specific engine hypothesis needs additional
