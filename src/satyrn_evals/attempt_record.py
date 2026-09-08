@@ -397,6 +397,7 @@ class AttemptRecord:
                         DeadlinePhase.SETUP,
                         DeadlinePhase.COMMAND,
                         DeadlinePhase.PRESERVATION,
+                        DeadlinePhase.CLEANUP,
                     }
                 ),
                 # A prior command stop remains the execution outcome if the

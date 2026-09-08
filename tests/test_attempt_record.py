@@ -211,7 +211,7 @@ def test_deadline_provenance_rejects_invalid_values(
         DeadlineProvenance(**values)  # type: ignore[arg-type]
 
 
-@pytest.mark.parametrize("phase", [DeadlinePhase.GRADING, DeadlinePhase.CLEANUP])
+@pytest.mark.parametrize("phase", [DeadlinePhase.GRADING])
 def test_deadline_refusal_rejects_post_pregrade_phases(phase: DeadlinePhase) -> None:
     with pytest.raises(ValueError, match="cannot carry deadline phase"):
         replace(
@@ -220,6 +220,17 @@ def test_deadline_refusal_rejects_post_pregrade_phases(phase: DeadlinePhase) -> 
                 phase, workspace_retained=phase is DeadlinePhase.CLEANUP
             ),
         )
+
+
+def test_deadline_refusal_accepts_cleanup_before_any_pregrade_record() -> None:
+    record = replace(
+        _valid_v4_record(AttemptCode.DEADLINE_EXCEEDED),
+        deadline=_deadline(DeadlinePhase.CLEANUP, workspace_retained=True),
+        retained_path="/tmp/retained-workspace",
+    )
+
+    assert record.deadline is not None
+    assert record.deadline.phase is DeadlinePhase.CLEANUP
 
 
 @pytest.mark.parametrize(

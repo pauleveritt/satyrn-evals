@@ -6,7 +6,8 @@ import subprocess
 import sys
 import tempfile
 import time
-from contextlib import suppress
+from collections.abc import Iterator
+from contextlib import contextmanager, suppress
 from pathlib import Path
 
 import satyrn_evals
@@ -34,7 +35,28 @@ from satyrn_evals.verdict import (
     describe_unavailable,
     load_hook_result,
 )
-from satyrn_evals.workspace import GIT_SAFETY_CONFIG, clean_git_environment
+from satyrn_evals.workspace import (
+    DEFAULT_TEARDOWN_GRACE,
+    GIT_SAFETY_CONFIG,
+    _is_posix,
+    _teardown_process,
+    clean_git_environment,
+)
+
+
+@contextmanager
+def _grading_workspace(parent: Path) -> Iterator[Path]:
+    """Remove normal grader scratch space but retain it on deadline expiry."""
+    root = Path(tempfile.mkdtemp(prefix="satyrn-grade-", dir=parent))
+    expired = False
+    try:
+        yield root
+    except AttemptDeadlineExceeded:
+        expired = True
+        raise
+    finally:
+        if not expired:
+            shutil.rmtree(root)
 
 
 def _run_grading_subprocess(
@@ -43,16 +65,43 @@ def _run_grading_subprocess(
     """Run one grading-owned subprocess without accepting work after expiry."""
     if deadline is None:
         return subprocess.run(argv, **kwargs)  # type: ignore[arg-type]
+    options = dict(kwargs)
+    check = options.pop("check", False)
+    capture_output = options.pop("capture_output", False)
+    input_data = options.pop("input", None)
+    if capture_output:
+        options["stdout"] = subprocess.PIPE
+        options["stderr"] = subprocess.PIPE
+    if input_data is not None:
+        options["stdin"] = subprocess.PIPE
+    deadline.remaining(DeadlinePhase.GRADING)
+    process: subprocess.Popen[bytes] | None = None
     try:
-        result = subprocess.run(
-            argv, timeout=deadline.remaining(DeadlinePhase.GRADING), **kwargs
+        process = subprocess.Popen(
+            argv,
+            start_new_session=_is_posix(),
+            **options,  # type: ignore[arg-type]
+        )
+        stdout, stderr = process.communicate(
+            input=input_data,
+            timeout=deadline.remaining(DeadlinePhase.GRADING),
         )
     except subprocess.TimeoutExpired:
+        assert process is not None
+        _teardown_process(process, DEFAULT_TEARDOWN_GRACE)
         deadline.expire(DeadlinePhase.GRADING)
-    except OSError, subprocess.CalledProcessError:
+    except BaseException:
+        if process is not None:
+            _teardown_process(process, DEFAULT_TEARDOWN_GRACE)
         deadline.remaining(DeadlinePhase.GRADING)
         raise
+    assert process is not None
+    result = subprocess.CompletedProcess(argv, process.returncode, stdout, stderr)
     deadline.remaining(DeadlinePhase.GRADING)
+    if check and result.returncode:
+        raise subprocess.CalledProcessError(
+            result.returncode, argv, output=stdout, stderr=stderr
+        )
     return result
 
 
@@ -119,6 +168,7 @@ def grade(
             patch_text,
             overlay=overlay,
             selectors=selectors,
+            workspace_parent=receipt_path.parent,
             deadline=deadline,
         )
         verdict = compute_verdict(
@@ -273,6 +323,7 @@ def _run_oracle(
     *,
     overlay: OverlaySpec | None = None,
     selectors: tuple[str, ...] = (),
+    workspace_parent: Path | None = None,
     deadline: AttemptDeadline | None = None,
 ) -> tuple[HookResult, dict[str, str] | None]:
     """Run the oracle and return (hook result, resolved-version attestation).
@@ -282,8 +333,8 @@ def _run_oracle(
     materialized env grade actually executed — attested, never parsed from
     the lock.
     """
-    with tempfile.TemporaryDirectory() as tmp:
-        work = Path(tmp) / "work"
+    with _grading_workspace(workspace_parent or Path.cwd()) as tmp:
+        work = tmp / "work"
         if deadline is not None:
             deadline.remaining(DeadlinePhase.GRADING)
         shutil.copytree(task_dir / "base", work, symlinks=True)
@@ -305,7 +356,7 @@ def _run_oracle(
         os.close(fd)
         os.unlink(hook_path)  # reserve a unique name; a silent oracle leaves NO file
         env_root = _materialize_project_env(
-            work, Path(tmp), task_dir / "base", deadline=deadline
+            work, tmp, task_dir / "base", deadline=deadline
         )
         env = dict(os.environ)
         env[oracle_hook.RESULT_ENV] = hook_path
@@ -359,4 +410,8 @@ def _run_oracle(
         try:
             return load_hook_result(Path(hook_path), run_started), frozen
         finally:
-            Path(hook_path).unlink(missing_ok=True)
+            if deadline is None:
+                Path(hook_path).unlink(missing_ok=True)
+            else:
+                deadline.remaining(DeadlinePhase.GRADING)
+                Path(hook_path).unlink(missing_ok=True)

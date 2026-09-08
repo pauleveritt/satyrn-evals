@@ -57,6 +57,10 @@ authorize an executor or model run.
    timeout or exit code.
 4. Test both default-tier fake grader paths and regrade: regrading changes only
    eligible verdict/receipt data and preserves original deadline provenance.
+5. **Astra acceptance correction:** execute grading subprocesses in an owned
+   process group and terminate/reap that group on deadline expiry; retain the
+   grader workspace and hook evidence rather than letting temporary-directory
+   cleanup delete it during expiry unwinding.
 
 ## 5. Summaries, integration, and review
 
@@ -74,3 +78,13 @@ authorize an executor or model run.
    executor, model/engine/tool revisions, schedule, both limits, stopping rule,
    budget, and evidence-review plan. The first live action is one bounded
    attempt; two per matched configuration is triage only.
+5. **Astra acceptance correction:** preserve an already-observed command
+   timeout or repeat-limit outcome when teardown consumes the remaining whole
+   budget; only a deadline first observed before that result may control it.
+   Thread the deadline through every command-unavailable and exception cleanup
+   path, retaining rather than deleting after expiry. A retained unreadable
+   artifact keeps its path with an absent digest and explicit missingness.
+6. Add marked integration witnesses for whole-deadline command-group teardown,
+   bounded oracle teardown, receipt-before-record reconciliation, cleanup
+   retention, and offline regrading that retains deadline provenance. These
+   witnesses are acceptance prerequisites, not optional smoke coverage.

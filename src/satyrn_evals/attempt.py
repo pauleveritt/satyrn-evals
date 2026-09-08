@@ -10,13 +10,14 @@ TRANSCRIPT are where the command writes its delivery.
 import hashlib
 import json
 import os
+import shutil
 import stat
 import sys
-from contextlib import suppress
+from collections.abc import Iterator
+from contextlib import contextmanager, suppress
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
-from tempfile import TemporaryDirectory
 
 from satyrn_evals.attempt_record import (
     AttemptCode,
@@ -66,6 +67,26 @@ _WORKSPACE_ATTEMPT_CODES: dict[WorkspaceCode, AttemptCode] = {
     WorkspaceCode.REPEAT_LIMIT: AttemptCode.REPEAT_LIMIT,
     WorkspaceCode.CLEANUP_FAILED: AttemptCode.CLEANUP_FAILED,
 }
+
+
+@contextmanager
+def _attempt_environment(
+    attempt_dir: Path, deadline: AttemptDeadline | None
+) -> Iterator[str]:
+    """Own the executor environment beneath durable attempt evidence.
+
+    It can contain the executor's project environment and is therefore needed
+    to diagnose a stopped attempt. The normal lifecycle performs bounded
+    cleanup before returning its durable record; this fallback only handles
+    unbounded and exceptional paths.
+    """
+    root = attempt_dir / "environment"
+    root.mkdir()
+    try:
+        yield os.fspath(root)
+    finally:
+        if root.exists() and (deadline is None or not deadline.expired):
+            shutil.rmtree(root)
 
 
 def resolve_contract(manifest: TaskManifest, rung: str | None) -> SelectedContract:
@@ -237,7 +258,7 @@ def _attempt(
         write_engine_contract(output, rendered_contract)
 
     workspace_lease: PreparedWorkspace | None = None
-    with TemporaryDirectory(prefix="satyrn-evals-uv-") as environment_root:
+    with _attempt_environment(attempt_dir, deadline) as environment_root:
         env["UV_PROJECT_ENVIRONMENT"] = environment_root
         try:
             workspace_lease = prepare_workspace(
@@ -305,7 +326,10 @@ def _attempt(
                     max_repeated_calls=max_repeated_calls,
                     deadline=deadline,
                 )
-                if deadline is not None:
+                if deadline is not None and workspace.code not in (
+                    WorkspaceCode.COMMAND_TIMEOUT,
+                    WorkspaceCode.REPEAT_LIMIT,
+                ):
                     deadline.remaining(DeadlinePhase.COMMAND)
             except AttemptDeadlineExceeded:
                 assert deadline is not None
@@ -324,12 +348,46 @@ def _attempt(
                     retained_path=os.fspath(workspace_lease.parent),
                 )
             except BaseException as exc:
-                _release_after_exception(workspace_lease, exc)
+                _release_after_exception(workspace_lease, exc, deadline=deadline)
                 raise
         if workspace.code is WorkspaceCode.COMMAND_UNAVAILABLE:
+            if deadline is not None:
+                try:
+                    deadline.remaining(DeadlinePhase.CLEANUP)
+                except AttemptDeadlineExceeded:
+                    assert workspace_lease is not None
+                    return _write_deadline_refusal(
+                        attempt_dir=attempt_dir,
+                        patch_path=patch_path,
+                        transcript_path=transcript_path,
+                        manifest=manifest,
+                        effective_command=effective_command,
+                        timeout=timeout,
+                        rung=selected_rung,
+                        digest=digest,
+                        deadline=deadline,
+                        workspace_base_sha=workspace_lease.base_sha,
+                        retained_path=os.fspath(workspace_lease.parent),
+                    )
             try:
                 retained_path, release_message = _release_attempt_workspace(
-                    workspace_lease
+                    workspace_lease, deadline=deadline
+                )
+            except AttemptDeadlineExceeded:
+                assert deadline is not None
+                assert workspace_lease is not None
+                return _write_deadline_refusal(
+                    attempt_dir=attempt_dir,
+                    patch_path=patch_path,
+                    transcript_path=transcript_path,
+                    manifest=manifest,
+                    effective_command=effective_command,
+                    timeout=timeout,
+                    rung=selected_rung,
+                    digest=digest,
+                    deadline=deadline,
+                    workspace_base_sha=workspace_lease.base_sha,
+                    retained_path=os.fspath(workspace_lease.parent),
                 )
             except BaseException as exc:
                 assert workspace_lease is not None
@@ -339,8 +397,30 @@ def _attempt(
                     f"retained at {workspace_lease.parent}",
                 )
                 raise
+            if deadline is not None:
+                try:
+                    deadline.remaining(DeadlinePhase.CLEANUP)
+                except AttemptDeadlineExceeded:
+                    assert workspace_lease is not None
+                    return _write_deadline_refusal(
+                        attempt_dir=attempt_dir,
+                        patch_path=patch_path,
+                        transcript_path=transcript_path,
+                        manifest=manifest,
+                        effective_command=effective_command,
+                        timeout=timeout,
+                        rung=selected_rung,
+                        digest=digest,
+                        deadline=deadline,
+                        workspace_base_sha=workspace_lease.base_sha,
+                        retained_path=retained_path,
+                    )
             workspace_lease = None
             if retained_path is None:
+                # The command never started, so this private environment has
+                # no attempt evidence.  It must be removed before retaining
+                # the historic no-attempt-dir API outcome.
+                shutil.rmtree(environment_root)
                 attempt_dir.rmdir()
                 raise UsageError(workspace.message)
             workspace = WorkspaceResult(
@@ -367,7 +447,13 @@ def _attempt(
                         rung=selected_rung,
                         digest=digest,
                     )
-                    return _retain_expired_record(attempt_dir, deadline, None)
+                    return _retain_expired_record(
+                        attempt_dir,
+                        deadline,
+                        Path(workspace.retained_path)
+                        if workspace.retained_path is not None
+                        else None,
+                    )
                 if workspace.code is not WorkspaceCode.OK:
                     _finish_attempt(
                         workspace=workspace,
@@ -414,7 +500,26 @@ def _attempt(
             )
         except AttemptDeadlineExceeded:
             assert deadline is not None
-            assert workspace_lease is not None
+            if workspace_lease is None:
+                _finish_attempt(
+                    workspace=workspace,
+                    task_dir=task_dir,
+                    attempt_dir=attempt_dir,
+                    patch_path=patch_path,
+                    transcript_path=transcript_path,
+                    manifest=manifest,
+                    effective_command=effective_command,
+                    timeout=timeout,
+                    rung=selected_rung,
+                    digest=digest,
+                )
+                return _retain_expired_record(
+                    attempt_dir,
+                    deadline,
+                    Path(workspace.retained_path)
+                    if workspace.retained_path is not None
+                    else None,
+                )
             if (attempt_dir / "attempt.json").is_file():
                 return _finalize_deadline_from_record(
                     attempt_dir, deadline, workspace_lease
@@ -451,7 +556,7 @@ def _attempt(
             )
         except BaseException as exc:
             if workspace_lease is not None:
-                _release_after_exception(workspace_lease, exc)
+                _release_after_exception(workspace_lease, exc, deadline=deadline)
             if workspace.code is WorkspaceCode.CLEANUP_FAILED:
                 _add_exception_note(
                     exc,
@@ -469,7 +574,12 @@ def _attempt(
                 deadline.remaining(DeadlinePhase.CLEANUP)
         except AttemptDeadlineExceeded:
             assert deadline is not None
-            assert workspace_lease is not None
+            if workspace_lease is None:
+                return _retain_expired_record(
+                    attempt_dir,
+                    deadline,
+                    Path(retained_path) if retained_path is not None else None,
+                )
             return _finalize_deadline_from_record(
                 attempt_dir,
                 deadline,
@@ -503,6 +613,41 @@ def _attempt(
                     f"{attempt_dir / 'attempt.json'}",
                 )
                 raise
+        if deadline is not None:
+            try:
+                deadline.remaining(DeadlinePhase.CLEANUP)
+            except AttemptDeadlineExceeded:
+                if workspace_lease is None:
+                    return _retain_expired_record(
+                        attempt_dir,
+                        deadline,
+                        Path(retained_path) if retained_path is not None else None,
+                    )
+                return _finalize_deadline_from_record(
+                    attempt_dir,
+                    deadline,
+                    workspace_lease,
+                    workspace_retained=retained_path is not None,
+                    retained_path=retained_path,
+                )
+        shutil.rmtree(environment_root)
+        if deadline is not None:
+            try:
+                deadline.remaining(DeadlinePhase.CLEANUP)
+            except AttemptDeadlineExceeded:
+                if workspace_lease is None:
+                    return _retain_expired_record(
+                        attempt_dir,
+                        deadline,
+                        Path(retained_path) if retained_path is not None else None,
+                    )
+                return _finalize_deadline_from_record(
+                    attempt_dir,
+                    deadline,
+                    workspace_lease,
+                    workspace_retained=retained_path is not None,
+                    retained_path=retained_path,
+                )
         return record
 
 
@@ -562,8 +707,14 @@ def _write_deadline_refusal(
         task=manifest.name,
         command=tuple(effective_command),
         command_exit=command_exit,
-        patch_path="patch.diff" if patch_bytes is not None else None,
-        transcript_path="transcript.txt" if transcript_bytes is not None else None,
+        patch_path="patch.diff"
+        if patch_bytes is not None or _patch_error is not None
+        else None,
+        transcript_path=(
+            "transcript.txt"
+            if transcript_bytes is not None or _transcript_error is not None
+            else None
+        ),
         patch_digest=patch_digest(patch_bytes) if patch_bytes is not None else None,
         transcript_digest=(
             patch_digest(transcript_bytes) if transcript_bytes is not None else None
@@ -598,27 +749,72 @@ def _retain_expired_record(
         expiry = caught
     else:
         raise AssertionError("deadline retention requires an expired deadline")
+    prior = load_attempt_record(attempt_dir / "attempt.json")
+    _patch_bytes, patch_error = _read_artifact(attempt_dir / "patch.diff", "patch")
+    _transcript_bytes, transcript_error = _read_artifact(
+        attempt_dir / "transcript.txt", "transcript"
+    )
+    resolved_retained_path = (
+        retained_path
+        if retained_path is not None
+        else Path(prior.retained_path) if prior.retained_path is not None else None
+    )
     record = replace(
-        load_attempt_record(attempt_dir / "attempt.json"),
+        prior,
+        patch_path=(
+            prior.patch_path
+            if prior.patch_path is not None
+            else "patch.diff"
+            if _patch_bytes is not None or patch_error is not None
+            else None
+        ),
+        patch_digest=(
+            prior.patch_digest
+            if prior.patch_digest is not None
+            else patch_digest(_patch_bytes) if _patch_bytes is not None else None
+        ),
+        transcript_path=(
+            prior.transcript_path
+            if prior.transcript_path is not None
+            else "transcript.txt"
+            if _transcript_bytes is not None or transcript_error is not None
+            else None
+        ),
+        transcript_digest=(
+            prior.transcript_digest
+            if prior.transcript_digest is not None
+            else patch_digest(_transcript_bytes)
+            if _transcript_bytes is not None
+            else None
+        ),
         attempt_timeout=deadline.timeout,
         deadline=DeadlineProvenance(
             deadline.timeout,
             expiry.phase,
             expiry.elapsed,
-            workspace_retained=retained_path is not None,
+            workspace_retained=resolved_retained_path is not None,
         ),
-        retained_path=os.fspath(retained_path) if retained_path is not None else None,
+        retained_path=(
+            os.fspath(resolved_retained_path)
+            if resolved_retained_path is not None
+            else None
+        ),
     )
     write_attempt_record(attempt_dir / "attempt.json", record)
     return record
 
 
 def _release_after_exception(
-    workspace: PreparedWorkspace, error: BaseException
+    workspace: PreparedWorkspace,
+    error: BaseException,
+    *,
+    deadline: AttemptDeadline | None = None,
 ) -> None:
     """Release after a primary failure without allowing cleanup to hide it."""
     try:
-        retained_path, message = _release_attempt_workspace(workspace)
+        retained_path, message = _release_attempt_workspace(
+            workspace, deadline=deadline
+        )
     except BaseException as release_error:
         _add_exception_note(
             error,

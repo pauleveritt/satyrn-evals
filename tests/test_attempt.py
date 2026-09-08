@@ -70,10 +70,10 @@ def _install_workspace_double(
             **kwargs,
         )
 
-    def release_prepared(lease: _FakeLease) -> str | None:
+    def release_prepared(lease: _FakeLease, **kwargs: Any) -> str | None:
         if release is None:
             return None
-        return release(lease)
+        return release(lease, **kwargs)
 
     monkeypatch.setattr(attempt_module, "prepare_workspace", prepare)
     monkeypatch.setattr(attempt_module, "run_prepared_command", run_prepared)
@@ -310,7 +310,7 @@ def test_command_unavailable_release_error_names_the_recovery_lease(
     ]
 
 
-def test_attempt_uses_an_external_temporary_uv_environment(
+def test_attempt_uses_a_durable_temporary_uv_environment(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The model workspace gets no project venv or bytecode residue."""
@@ -323,6 +323,7 @@ def test_attempt_uses_an_external_temporary_uv_environment(
         observed.update(environment)
         environment_root = Path(environment["UV_PROJECT_ENVIRONMENT"])
         assert environment_root.is_dir()
+        assert environment_root.is_relative_to(tmp_path / "attempts")
         assert not environment_root.is_relative_to(task_dir)
         return WorkspaceResult(WorkspaceCode.OK, "ok", 0, "b" * 40)
 
@@ -336,6 +337,30 @@ def test_attempt_uses_an_external_temporary_uv_environment(
 
     assert observed["PYTHONDONTWRITEBYTECODE"] == "1"
     assert not Path(observed["UV_PROJECT_ENVIRONMENT"]).exists()
+
+
+def test_attempt_environment_cleanup_failure_is_not_silent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An unremoved private environment remains visible to the caller."""
+    attempt_dir = tmp_path / "attempt"
+    attempt_dir.mkdir()
+    cleanup_error = PermissionError("environment is busy")
+
+    def fail_cleanup(path: Path) -> None:
+        assert path == attempt_dir / "environment"
+        raise cleanup_error
+
+    monkeypatch.setattr(attempt_module.shutil, "rmtree", fail_cleanup)
+
+    with (
+        pytest.raises(PermissionError) as raised,
+        attempt_module._attempt_environment(attempt_dir, None) as environment,
+    ):
+        assert Path(environment) == attempt_dir / "environment"
+
+    assert raised.value is cleanup_error
+    assert (attempt_dir / "environment").is_dir()
 
 
 @pytest.mark.parametrize(
@@ -974,6 +999,77 @@ def test_private_deadline_setup_expiry_writes_refusal_before_command(
     assert record.retained_path is None
 
 
+def test_within_budget_attempt_removes_its_temporary_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A bounded success still releases its private environment."""
+    clock = _Clock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+    _install_workspace_double(
+        monkeypatch,
+        lambda **_kwargs: WorkspaceResult(WorkspaceCode.OK, "done", 0, "b" * 40),
+    )
+
+    _bounded_attempt(tmp_path, monkeypatch, deadline)
+
+    attempt_dir = _cells(tmp_path / "attempts")[0]
+    assert not (attempt_dir / "environment").exists()
+
+
+def test_no_lease_cleanup_expiry_keeps_the_workspace_failure_record(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A setup failure can cross cleanup without requiring a fake lease."""
+    clock = _Clock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+    original_write = attempt_module.write_attempt_record
+
+    def setup_failure(**_kwargs: object) -> _FakeLease:
+        raise WorkspacePrepareError("setup failed")
+
+    def write_then_expire(path: Path, record: AttemptRecord) -> None:
+        original_write(path, record)
+        if record.code is AttemptCode.WORKSPACE_FAILED:
+            clock.now = 1.0
+
+    monkeypatch.setattr(attempt_module, "prepare_workspace", setup_failure)
+    monkeypatch.setattr(attempt_module, "write_attempt_record", write_then_expire)
+    record = _bounded_attempt(tmp_path, monkeypatch, deadline)
+
+    assert record.code is AttemptCode.WORKSPACE_FAILED
+    assert record.deadline is not None
+    assert record.deadline.phase is DeadlinePhase.CLEANUP
+    attempt_dir = _cells(tmp_path / "attempts")[0]
+    assert (attempt_dir / "environment").is_dir()
+
+
+def test_no_lease_preservation_expiry_writes_the_workspace_failure_record(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A setup failure can expire during artifact preservation without a lease."""
+    clock = _Clock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+
+    def setup_failure(**_kwargs: object) -> _FakeLease:
+        raise WorkspacePrepareError("setup failed")
+
+    original_read = attempt_module._read_artifact
+
+    def read_then_expire(path: Path, label: str) -> tuple[bytes | None, str | None]:
+        result = original_read(path, label)
+        if label == "patch":
+            clock.now = 1.0
+        return result
+
+    monkeypatch.setattr(attempt_module, "prepare_workspace", setup_failure)
+    monkeypatch.setattr(attempt_module, "_read_artifact", read_then_expire)
+    record = _bounded_attempt(tmp_path, monkeypatch, deadline)
+
+    assert record.code is AttemptCode.WORKSPACE_FAILED
+    assert record.deadline is not None
+    assert record.deadline.phase is DeadlinePhase.PRESERVATION
+
+
 def test_private_deadline_after_setup_error_still_writes_setup_refusal(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1042,6 +1138,47 @@ def test_private_deadline_command_expiry_retains_available_artifacts(
     assert record.deadline.phase is DeadlinePhase.COMMAND
     assert record.patch_digest is not None and record.transcript_digest is not None
     assert record.retained_path == "/tmp/fake-prepared-workspace"
+
+
+def test_deadline_refusal_keeps_unreadable_artifact_path_without_digest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Deadline missingness distinguishes an unreadable file from no file."""
+    tasks_root = tmp_path / "tasks"
+    task_dir = _task(tasks_root)
+    attempt_dir = tmp_path / "attempt"
+    attempt_dir.mkdir()
+    patch_path = attempt_dir / "patch.diff"
+    patch_path.write_text(GOOD_PATCH)
+    clock = _Clock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+    clock.now = 1.0
+    with pytest.raises(TimeoutError):
+        deadline.remaining(DeadlinePhase.COMMAND)
+    original_read = attempt_module._read_artifact
+
+    def unreadable(path: Path, label: str) -> tuple[bytes | None, str | None]:
+        if label == "patch":
+            return None, "cannot read patch: permission denied"
+        return original_read(path, label)
+
+    monkeypatch.setattr(attempt_module, "_read_artifact", unreadable)
+    record = attempt_module._write_deadline_refusal(
+        attempt_dir=attempt_dir,
+        patch_path=patch_path,
+        transcript_path=attempt_dir / "transcript.txt",
+        manifest=attempt_module.load_manifest(task_dir),
+        effective_command=["fake-agent"],
+        timeout=30,
+        rung=None,
+        digest="a" * 64,
+        deadline=deadline,
+        workspace_base_sha="b" * 40,
+    )
+
+    assert record.patch_path == "patch.diff"
+    assert record.patch_digest is None
+    assert record.transcript_path is None
 
 
 def test_private_deadline_precedes_command_unavailable_cleanup(

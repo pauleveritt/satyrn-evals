@@ -64,6 +64,11 @@ class AttemptDeadline:
             self.expire(phase, elapsed=elapsed)
         return self.timeout - elapsed
 
+    @property
+    def expired(self) -> bool:
+        """Whether a lifecycle boundary has already observed expiry."""
+        return self._expired is not None
+
     def expire(self, phase: DeadlinePhase, *, elapsed: float | None = None) -> None:
         """Latch expiry observed by a subprocess bounded with remaining time."""
         if self._expired is None:

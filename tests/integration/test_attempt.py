@@ -4,17 +4,29 @@ import json
 import os
 import shutil
 import sys
+import time
 from pathlib import Path
 
 import pytest
 
+import satyrn_evals.attempt as attempt_module
 from satyrn_evals.attempt import attempt
-from satyrn_evals.attempt_record import AttemptOutcome, load_attempt_record
+from satyrn_evals.attempt_record import (
+    AttemptCode,
+    AttemptOutcome,
+    DeadlinePhase,
+    DeadlineProvenance,
+    load_attempt_record,
+    write_attempt_record,
+)
 from satyrn_evals.cli import main
+from satyrn_evals.deadline import AttemptDeadline, AttemptDeadlineExceeded
 from satyrn_evals.errors import UsageError
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
-from satyrn_evals.receipt import patch_digest
+from satyrn_evals.receipt import Receipt, patch_digest, write_receipt
+from satyrn_evals.rescore import regrade_attempt
 from satyrn_evals.verdict import Verdict
+from satyrn_evals.workspace import prepare_workspace, release_workspace
 
 pytestmark = pytest.mark.integration
 
@@ -221,6 +233,166 @@ def test_command_not_found_is_usage_error(tmp_path: Path) -> None:
         )
     # usage writes nothing: the attempt directory was removed again
     assert not any(output.iterdir())
+
+
+@pytest.mark.skipif(os.name != "posix", reason="process-group proof is POSIX-only")
+def test_whole_deadline_reaps_executor_group_and_retains_attempt_environment(
+    tmp_path: Path,
+) -> None:
+    """A bounded executor cannot leave its delayed child running."""
+    output = tmp_path / "attempts"
+    late_marker = tmp_path / "executor-descendant-marker"
+    script = (
+        "import os, subprocess, sys, time\n"
+        "from pathlib import Path\n"
+        "Path(os.environ['SATYRN_ATTEMPT_PATCH']).write_bytes(Path(sys.argv[1]).read_bytes())\n"
+        "Path(os.environ['SATYRN_ATTEMPT_TRANSCRIPT']).write_text('started\\n')\n"
+        "subprocess.Popen([sys.executable, '-c', "
+        "'import sys, time; from pathlib import Path; time.sleep(2); Path(sys.argv[1]).write_text(\"late\")', "
+        "sys.argv[2]])\n"
+        "time.sleep(60)\n"
+    )
+
+    record = attempt(
+        task="format_number",
+        tasks_root=DEFAULT_TASKS_ROOT,
+        output=output,
+        command=[sys.executable, "-c", script, str(KNOWN_GOOD), str(late_marker)],
+        timeout=30,
+        attempt_timeout=1,
+    )
+
+    assert record.code is AttemptCode.DEADLINE_EXCEEDED
+    assert record.deadline is not None
+    assert record.deadline.phase is DeadlinePhase.COMMAND
+    assert record.retained_path is not None
+    attempt_dir = _attempt_dir(output)
+    assert (attempt_dir / "environment").is_dir()
+    assert (attempt_dir / "patch.diff").is_file()
+    assert (attempt_dir / "transcript.txt").is_file()
+    time.sleep(2.3)
+    assert not late_marker.exists()
+
+
+@pytest.mark.skipif(os.name != "posix", reason="process-group proof is POSIX-only")
+def test_whole_deadline_reaps_oracle_group_and_retains_grading_scratch(
+    tmp_path: Path,
+) -> None:
+    """A bounded oracle cannot leave a delayed descendant or lose its hook."""
+    task = tmp_path / "task"
+    shutil.copytree(DEFAULT_TASKS_ROOT / "format_number", task)
+    late_marker = tmp_path / "oracle-descendant-marker"
+    started = tmp_path / "oracle-started"
+    manifest_path = task / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    script = (
+        "import os, subprocess, sys, time\n"
+        "from pathlib import Path\n"
+        "Path(sys.argv[1]).write_text('started')\n"
+        "Path(os.environ['SATYRN_ORACLE_RESULT']).write_text('{}')\n"
+        "subprocess.Popen([sys.executable, '-c', "
+        "'import sys, time; from pathlib import Path; time.sleep(2); Path(sys.argv[1]).write_text(\"late\")', "
+        "sys.argv[2]])\n"
+        "time.sleep(60)\n"
+    )
+    manifest["oracle"] = [sys.executable, "-c", script, str(started), str(late_marker)]
+    manifest_path.write_text(json.dumps(manifest))
+    deadline = AttemptDeadline(1.0)
+
+    from satyrn_evals.grade import grade
+
+    with pytest.raises(AttemptDeadlineExceeded):
+        grade(
+            task,
+            task / "fixtures" / "known-good.patch",
+            tmp_path / "receipt.json",
+            deadline=deadline,
+        )
+
+    assert started.read_text() == "started"
+    scratch = list(tmp_path.glob("satyrn-grade-*"))
+    assert len(scratch) == 1
+    assert list(scratch[0].glob("satyrn-hook-*.json"))
+    time.sleep(2.3)
+    assert not late_marker.exists()
+
+
+def test_deadline_cleanup_retains_real_prepared_workspace(tmp_path: Path) -> None:
+    """A latched deadline refuses release before recursive workspace cleanup."""
+    workspace = prepare_workspace(
+        base=DEFAULT_TASKS_ROOT / "format_number" / "base",
+        protected_paths=(tmp_path,),
+        environment=os.environ,
+    )
+    deadline = AttemptDeadline(0.001)
+    time.sleep(0.01)
+    try:
+        with pytest.raises(AttemptDeadlineExceeded):
+            release_workspace(workspace, deadline=deadline)
+        assert workspace.parent.is_dir()
+    finally:
+        release_workspace(workspace)
+
+
+def test_receipt_before_record_deadline_finalization_uses_hook_verdict(
+    tmp_path: Path,
+) -> None:
+    """The durable receipt resolves a pre-grade record without stdout inference."""
+    output = tmp_path / "attempts"
+    original = attempt(
+        task="format_number",
+        tasks_root=DEFAULT_TASKS_ROOT,
+        output=output,
+        command=_cmd("--patch", str(KNOWN_GOOD)),
+    )
+    attempt_dir = _attempt_dir(output)
+    pregrade = attempt_module.replace(
+        original,
+        code=AttemptCode.GRADE_FAILED,
+        verdict=None,
+        receipt_path=None,
+    )
+    write_attempt_record(attempt_dir / "attempt.json", pregrade)
+    write_receipt(
+        attempt_dir / "receipt.json",
+        Receipt(pregrade.task, pregrade.patch_digest or "", Verdict.PASS, "", None),
+    )
+    deadline = AttemptDeadline(0.001)
+    time.sleep(0.01)
+    workspace = type("Workspace", (), {"parent": tmp_path / "retained-workspace"})()
+
+    finalized = attempt_module._finalize_deadline_from_record(
+        attempt_dir, deadline, workspace
+    )
+
+    assert finalized.code is AttemptCode.OK
+    assert finalized.verdict is Verdict.PASS
+    assert finalized.receipt_path == "receipt.json"
+    assert finalized.deadline is not None
+
+
+def test_offline_regrade_preserves_deadline_provenance(tmp_path: Path) -> None:
+    """Offline grading updates only verdict evidence, never live deadline facts."""
+    output = tmp_path / "attempts"
+    original = attempt(
+        task="format_number",
+        tasks_root=DEFAULT_TASKS_ROOT,
+        output=output,
+        command=_cmd("--patch", str(KNOWN_GOOD)),
+    )
+    attempt_dir = _attempt_dir(output)
+    bounded = attempt_module.replace(
+        original,
+        attempt_timeout=1.0,
+        deadline=DeadlineProvenance(1.0, DeadlinePhase.GRADING, 1.0, False),
+    )
+    write_attempt_record(attempt_dir / "attempt.json", bounded)
+
+    rewritten = regrade_attempt(attempt_dir, tasks_root=DEFAULT_TASKS_ROOT)
+
+    assert rewritten is not None
+    assert rewritten.deadline == bounded.deadline
+    assert rewritten.attempt_timeout == bounded.attempt_timeout
 
 
 def test_relative_output_resolves_in_caller_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

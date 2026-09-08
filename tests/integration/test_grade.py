@@ -3,11 +3,14 @@
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
 import satyrn_evals.grade as grade_module
+from satyrn_evals.attempt_record import DeadlinePhase
+from satyrn_evals.deadline import AttemptDeadline, AttemptDeadlineExceeded
 from satyrn_evals.errors import ApplyError, PatchReadError
 from satyrn_evals.grade import grade
 from satyrn_evals.manifest import load_manifest
@@ -68,6 +71,61 @@ def tmp_task(tmp_path: Path) -> Path:
     (task_dir / "fixtures" / "known-broken.patch").write_text(BROKEN_PATCH)
     (task_dir / "manifest.json").write_text(json.dumps(MANIFEST))
     return task_dir
+
+
+class _Clock:
+    def __init__(self) -> None:
+        self.now = 0.0
+
+    def __call__(self) -> float:
+        return self.now
+
+
+def test_checked_process_failure_does_not_displace_simultaneous_deadline() -> None:
+    """The whole deadline controls a checked process result observed with it."""
+    calls = iter((0.0, 0.0, 0.0, 1.0))
+    deadline = AttemptDeadline(1.0, clock=lambda: next(calls))
+
+    with pytest.raises(AttemptDeadlineExceeded) as raised:
+        grade_module._run_grading_subprocess(
+            [sys.executable, "-c", "raise SystemExit(7)"],
+            check=True,
+            capture_output=True,
+            deadline=deadline,
+        )
+
+    assert raised.value.phase is DeadlinePhase.GRADING
+
+
+def test_expiry_after_hook_load_retains_grading_scratch(
+    tmp_task: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Hook evidence survives expiry between loading and scratch cleanup."""
+    clock = _Clock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+    original_load = grade_module.load_hook_result
+
+    def load_then_expire(path: Path, run_started: float):
+        result = original_load(path, run_started)
+        clock.now = 1.0
+        return result
+
+    monkeypatch.setattr(grade_module, "load_hook_result", load_then_expire)
+    receipt_path = tmp_path / "receipt.json"
+
+    with pytest.raises(AttemptDeadlineExceeded) as raised:
+        grade(
+            tmp_task,
+            tmp_task / "fixtures" / "known-good.patch",
+            receipt_path,
+            deadline=deadline,
+        )
+
+    assert raised.value.phase is DeadlinePhase.GRADING
+    assert not receipt_path.exists()
+    scratch = list(tmp_path.glob("satyrn-grade-*"))
+    assert len(scratch) == 1
+    assert list(scratch[0].glob("satyrn-hook-*.json"))
 
 
 def test_known_good_patch_is_accepted(tmp_task: Path, tmp_path: Path) -> None:
