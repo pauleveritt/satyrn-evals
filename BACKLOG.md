@@ -81,24 +81,15 @@ cross-prompt regression rather than merely be able to grade it; the proposal
 must choose between measuring a rare event and manufacturing a common one, and
 say which question is being asked.
 
-**DONE 2026-09-08 — Qualify `session-ordering-regression` before it is run as a workload.** The
-2026-09-08 re-run failed the same two hidden checks at every checkpoint because
-they demand details the prompt does not state: the ellipsis must be `…`
-(U+2026) counted inside `width`, and the first sentence must have its terminal
-punctuation stripped. The model's reading — `...` at `width-3`, punctuation
-kept — is ordinary, and the repository's standard is that hidden requirements
-are not allowed. The deeper error was using one artifact for two jobs: the task
-was authored as a **grader fixture**, whose checkpoint patches were written to
-satisfy the hidden tests, and then run as a **diagnostic workload** without
-qualification. `BRIEF.md`'s two selection rules forbid exactly that. Either
-state the ellipsis character and punctuation handling in the prompt, or relax
-the hidden checks to what the prompt implies, then map every accessible
-requirement to its checks the way the AgentClinic conditions are mapped.
-Closed by the qualification of 2026-09-08: the prompts state the ellipsis
-character, the width accounting and the punctuation handling;
-`QUALIFICATION-NOTE.md` records the full mapping; and a fairness gate pins it,
-verified by mutation. A session then completed every step. Retained here as the
-record of what the defect was.
+**DONE 2026-09-08 — Qualify `session-ordering-regression`.** Its hidden checks
+demanded two details the prompts never stated — the ellipsis character and
+whether terminal punctuation is stripped — so no solver could finish step 1.
+The underlying error was using one artifact for two jobs: authored as a
+**grader fixture**, then run as a **diagnostic workload** without
+qualification, which `BRIEF.md`'s two selection rules forbid. Closed by
+correcting the prompts rather than the checks, which would have invalidated the
+committed witness. `QUALIFICATION-NOTE.md` records the mapping and a fairness
+gate pins it.
 
 **State the writable scope in session prompts.** `session.py:392` sends only
 the step prompt, so a session solver is never told where code belongs or what
