@@ -8,6 +8,8 @@ past artifact. Archived material does not set current policy.
 - [First useful engine comparison](first-engine-comparison-plan.md) sequences
   the next work: live smoke, matched triage, confirmation, and an evidence-backed
   decision. Each live stage needs its own frozen, authorized budget.
+- [Stage 3.1 triage candidate](triage-candidate.md) names the engine change the
+  triage screen will test, and records the candidate closed before it.
 - [First smoke run record](first-smoke-run-record.md) freezes the one bounded
   live attempt that stage 2 runs. It has unresolved fields, and they block the
   live stage until they are resolved and its budget is authorized.
@@ -30,4 +32,5 @@ whole-attempt-deadline-design
 whole-attempt-deadline-plan
 first-engine-comparison-plan
 first-smoke-run-record
+triage-candidate
 ```

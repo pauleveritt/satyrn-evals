@@ -127,6 +127,14 @@ the behavior it should improve, the required task behaviors that would show
 that improvement, and the regressions it might introduce. Write the prediction
 down before choosing a condition and before any spending.
 
+The current shortlist — widen the loop-breaker window, enlarge the post-edit
+region, or tighten the consecutive-block limit — contains efficiency
+hypotheses. Fewer repeats or less churn do not establish improved task
+capability, and the retained evidence does not establish a verdict benefit
+from these changes. If capability improvement is the objective, revisit the
+shortlist and name a supported capability hypothesis before freezing a pair.
+This is a limit on the evidence, not proof that a verdict benefit is impossible.
+
 If the change has a deterministic failure component, write its reproducer
 first and keep it as a cheap regression test. Work on the candidate in the
 engine's own scoped checkout and freeze its revision after focused tests and
@@ -140,6 +148,13 @@ limits and one engine pass from the smoke. That is **not** a demonstrated
 ceiling: it leaves unresolved whether the condition can distinguish two engine
 configurations, and passing remains compatible with useful regression
 detection.
+
+The engine smoke `2026-09-08-first-smoke-123843` reports `repeats: 1`, not
+zero. Repetition therefore occurred at R3; do not justify leaving it by claiming
+that repeat behavior is absent. Distinguish an observed repeat from reaching
+the loop-breaker's blocking threshold or exercising window eviction and
+re-admission. Any proposal to change conditions must address the trigger for
+the named candidate, rather than treating those behaviors as interchangeable.
 
 Keep `R3` unless the named behavior cannot appear there. If it cannot, write
 down which behavior is missing and why, then qualify exactly one additional
