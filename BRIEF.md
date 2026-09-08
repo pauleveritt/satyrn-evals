@@ -127,10 +127,20 @@ the limiting stage.
 
 The current milestone qualifies `agentclinic-repair-depth-3` at R3 and, as of
 2026-09-08, `agentclinic-repair-misleading-locus` at R3 — the latter with witnesses
-derived from real suite runs and a verified live route. A matched four-cell
-screen returned 2/2 in each arm and **detected no outcome
-difference** — comparison evidence, but not enough to conclude anything general
-about the arms. The milestone also proves
+derived from real suite runs and a verified live route. Two comparisons have
+run on it. At `R3`, four cells, 2/2 in each arm, no outcome difference
+detected. At `R1`, 36 cells per arm: **Baseline 33/36, Engine 36/36, one-sided
+Fisher p = 0.1197** against a predeclared `alpha = 0.05` — the criterion is not
+met and the earlier advantage did not replicate — while the predeclared
+secondary measure found Engine reaching the same outcomes at roughly 1.4x less
+input and three fewer turns per attempt.
+
+A first bounded **session** then ran on `session-ordering-regression`
+(Baseline, one session). It established the live session route and
+per-checkpoint preservation grading, and found that the session adapter passes
+no `--tools`: the model dispatched a **detached subagent** whose work never
+entered the retained transcript. Freezing the session tool surface is a
+prerequisite for any session that counts. The milestone also proves
 one repeatable synthetic route from a frozen execution description to retained,
 re-scorable results. Its design and plan live in `docs/current/`.
 `ROADMAP.md` says what is active and what remains outside this repository's

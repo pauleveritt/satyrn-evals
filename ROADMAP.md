@@ -22,12 +22,30 @@ accepted 72/72, model identity verified in all 72 transcripts:
 Counts, recompute and the decision:
 `~/satyrn-smokes/2026-09-08-misleading-locus-r1-201314/RESULT.md`.
 
-**Next: sessions.** The instrument measures one request per cell against a
-fresh workspace, so it cannot exercise a *sequence of new user requests* —
-where a later request regresses earlier work, or acts on state formed several
-requests ago. That is a coverage gap independent of the R1 outcome. The session
-machinery already exists (`session` CLI verb, cumulative per-checkpoint
-grading) and has never counted anything.
+**Sessions: started, and blocked on one prerequisite.** The instrument measures
+one request per cell against a fresh workspace, so it cannot exercise a
+*sequence of new user requests* — where a later request regresses earlier work,
+or acts on state formed several requests ago. That gap is independent of the R1
+outcome. Three things landed against it on 2026-09-08:
+
+- Base preservation is now graded at **every** checkpoint, not only the last,
+  so a regression is visible at the checkpoint that caused it.
+- `session-ordering-regression` is a task built around a real cross-prompt
+  dependency, with three checkpoint patches witnessing pass → break → restore
+  on both the feature and preservation axes, verified through the real grader.
+- One bounded Baseline session ran
+  (`~/satyrn-smokes/2026-09-08-session-ordering-baseline-220737/RESULT.md`).
+  All three prompts settled on one conversation; the route and the
+  per-checkpoint grading both work.
+
+**It also found a prerequisite that blocks any session intended to count.** The
+session adapter passes no `--tools`, so the model dispatched a **detached
+subagent** that wrote two files across two checkpoint boundaries with **no
+retained events** — per-step turn, tool and context figures understate the work
+by an unknown amount, and no grading change can re-score evidence that was
+never captured. Freezing the session tool surface, and stating writable scope
+in the prompts, are recorded in `BACKLOG.md` as one proposal. **No further
+session runs until they land.**
 
 [The suite brief](docs/current/agentclinic-suite-brief.md) proposes finishing
 the existing engine repairs, qualifying one additional useful task-condition,

@@ -156,3 +156,58 @@ def test_feature_grading_still_uses_cumulative_selectors(tmp_path: Path) -> None
         ("t_a.py::t_one", "t_b.py::t_one"),
         ("t_a.py::t_one", "t_b.py::t_one"),
     ]
+
+
+# --- Preservation unavailability, both directions (2026-09-08) ---
+#
+# Added after a review mutation: returning `(step, False)` unconditionally from
+# `_grade_preservation` -- i.e. never recording a verdict and never reporting
+# unavailability -- passed every row above. Nothing exercised the two failure
+# paths of preservation grading, so a grader that quietly stopped propagating
+# them was indistinguishable from one that worked.
+
+
+class _FailingPreservation(_Recorder):
+    """Preservation grading raises through to a None return; features grade."""
+
+    def _grade(self, patch_path, receipt_path, overlay, selectors, **kwargs):  # type: ignore[override]
+        if overlay is None:
+            self.calls.append(("preservation", receipt_path.name, tuple(selectors)))
+            return None
+        return super()._grade(patch_path, receipt_path, overlay, selectors, **kwargs)
+
+
+def test_a_preservation_grading_failure_marks_the_session_unavailable(
+    tmp_path: Path,
+) -> None:
+    """Refusal direction: grading that could not run must not read as a pass."""
+    grader = _FailingPreservation(tmp_path, {})
+    graded = grader.grade_record(
+        _record(_step("add-a"), _step("add-b")), SPEC, object(), tmp_path
+    )
+    assert graded.code is SessionCode.GRADE_UNAVAILABLE
+    assert [s.preservation_verdict for s in graded.steps] == [None, None]
+
+
+def test_an_unavailable_preservation_verdict_marks_the_session_unavailable(
+    tmp_path: Path,
+) -> None:
+    """A receipt that came back UNAVAILABLE propagates, per checkpoint."""
+    _, graded = _grade(
+        tmp_path,
+        _record(_step("add-a"), _step("add-b")),
+        {"preservation-add-a.json": Verdict.UNAVAILABLE},
+    )
+    assert graded.code is SessionCode.GRADE_UNAVAILABLE
+    assert graded.steps[0].preservation_verdict == "unavailable"
+
+
+def test_preservation_grading_that_works_leaves_the_code_alone(tmp_path: Path) -> None:
+    """The sibling success: nothing failed, so nothing is marked unavailable.
+
+    Without this row the two above are satisfied by a grader that reports
+    GRADE_UNAVAILABLE unconditionally.
+    """
+    _, graded = _grade(tmp_path, _record(_step("add-a"), _step("add-b")))
+    assert graded.code is SessionCode.COMPLETE
+    assert [s.preservation_verdict for s in graded.steps] == ["pass", "pass"]
