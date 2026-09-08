@@ -165,33 +165,16 @@ happened, and saves its own tool result plus the assistant turn that emitted
 it. With a re-read rate between 5% and 89% across batches, the sign of the net
 effect is not predictable from the mechanism.
 
-### The R1 qualification gap, and the clarified condition
+### R1c, prepared and withdrawn
 
-`qualification.json` covers `R3` only. `R1` is a different rung and its
-qualification is not inherited. Assessing it fresh: witnesses verified
-unchanged — `base` 3 of 4 public and 9 of 13 hidden passing, `known-good`
-13 of 13, `partial-no-303` failing only `see-other-redirect` — and four of the
-five behaviors are accessible under `R1`.
+`R1` qualifies four of the five behaviors. `timezone-aware-timestamp` does not:
+the only visible hint is a hardcoded `UTC` literal inside a `strftime` format
+string, which a naive datetime renders identically, so the visible evidence
+labels the display without uniquely requiring timezone-aware storage.
 
-`timezone-aware-timestamp` is not. **The reason is narrow, and an earlier
-version of this record got it wrong.** It is *not* that `R1`'s prompt omits the
-words "timezone" or "timestamp": qualification never required a requirement's
-keywords to appear in the prompt, and diagnosing from visible code and ordinary
-Python knowledge is legitimate evidence. The actual defect is that the only
-visible hint —
-`{{ complaint.timestamp.strftime("%Y-%m-%d %H:%M UTC") }}` in
-`base/templates/complaints.html` — is a hardcoded literal inside a format
-string, which a **naive** datetime renders identically. The visible evidence
-labels the display as UTC without uniquely requiring timezone-aware *storage*.
-
-The response is a minimally clarified condition, `R1c`: `R1`'s text plus one
-sentence resolving that requirement alone, without importing `R3`'s causes or
-locations for the other defects. `R1` and its historical results stay
-byte-identical; `R1c` is a **new condition and carries its own qualification**.
-
-The retained `R1` re-read observations are the *motivation* for this candidate.
-They are not evidence that `R1c` will produce the same trajectories, and no
-part of this record should be read as predicting that.
+A minimally clarified rung `R1c` was drafted and qualified for that gap in
+`cafb1b7`, with its manifest entry carried in `a1522d7`. It was never run, and
+it was withdrawn when this candidate was paused. Only `R3` is in use.
 
 ### What a four-attempt screen can and cannot show
 
