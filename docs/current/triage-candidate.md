@@ -81,6 +81,69 @@ No live spending is required for any of it.
 4. Freeze how follow-up reads and total usage will be counted before any
    comparison.
 
+### Preparation findings
+
+**1. What the region omits, with a concrete instance.** Verified in v14a
+`cell-001-engine`: call 15 edits `templates/base.html` with `code=OK` and its
+region returns **lines 1-5 only**. Call 19 re-reads the same file and returns
+content past line 5 — the stylesheet links, `<title>`, `</head>`, `<body>`, and
+the `<nav>` element — none of it reachable from the edit's region. At a context
+radius covering the file, that content would have been supplied. This is the
+link the candidate needs. Its limit: it shows the content was outside the
+region and that the model re-read to obtain it; it does not prove the model
+would otherwise have skipped the read.
+
+Across 152 `OK` edits where the file length could be measured, the region's
+median coverage is 24% of the file, and 138 of 152 (91%) show under half.
+Truncation never fires anywhere in this evidence: `REGION_MAX_LINES` and
+`REGION_MAX_BYTES` are not binding at this scale, so neither has evidence
+pressure behind changing it.
+
+**Read the co-occurrence rates with care.** Same-path re-reads follow 90 of 120
+`OK` edits (75%) at depth-3 `R1`, but two v14a cells are the flip-flop cycling
+the closed candidate documents — one toggles `app.py` nine times. Excluding
+them the rate is 32 of 62 (52%). Those cells re-read because they are looping,
+not because they lack context, so the region is unlikely to help them. The
+honest opportunity estimate is the lower figure.
+
+**2. The setting, and what it actually means.** `REGION_CONTEXT_LINES = 30`,
+with `REGION_MAX_LINES` and `REGION_MAX_BYTES` unchanged. At this task's scale
+that is not "a larger window" but **the whole file**: every observed file is at
+most 40 lines (median 37), so a radius of 30 reaches both boundaries in 129 of
+129 simulated edits. The pair is therefore a 5-line window against the entire
+file. The number is derived from this toy application's file sizes and is not
+evidence about larger files.
+
+**3. Verification — content, truncation, bounded size.** Replayed against the
+pinned engine's own `_post_edit_region`. At this task's scale the region is
+correct and well inside both caps: a 25-line file with a single-line edit gives
+lines 1-25, 258 bytes, no truncation, against 76 bytes at the current setting.
+
+A defect appears above this scale, and it is a **correctness** defect rather
+than a cost one. Truncation keeps the *first* `REGION_MAX_LINES`, so leading
+context consumes the cap before reaching the change. On a 200-line file with a
+20-line edit at line 100, the current setting returns lines 97-122 with the
+whole edit visible; `REGION_CONTEXT_LINES = 30` returns lines 70-109, truncated,
+with the edit's **tail cut off**. The larger region shows less of the change it
+exists to display. This never fires in the retained evidence, but it means the
+setting is scoped to this condition, not a general engine improvement, and any
+broader use needs `REGION_MAX_LINES` reconsidered — which has no evidence
+behind it yet — or truncation centred on the change instead of the file start.
+
+**4. Counting rules, frozen.** A *follow-up read* is a `read` whose path is
+byte-identical to a prior `code=OK` `edit`'s path, later in the same attempt,
+counted once per edit at the next such read. Report the unrestricted count and
+a distance-limited variant of five calls side by side. Another `edit` to the
+same path is not a follow-up read and is tracked separately.
+
+Usage follows `scripts/usage_totals.py`: terminal `message_end` only. The trade
+is asymmetric and both sides are measured, never assumed. Region growth is paid
+on **every** successful edit whether or not a re-read would have followed, and
+lands in input and context. An avoided read is saved only when it would have
+happened, and saves its own tool result plus the assistant turn that emitted
+it. With a re-read rate between 5% and 89% across batches, the sign of the net
+effect is not predictable from the mechanism.
+
 **Condition.** The task and rung are chosen *after* establishing where this
 mechanism actually occurs. The requirement to leave `R3` is not inherited from
 the previous candidate: whether post-edit re-reads appear at `R3` is a question
