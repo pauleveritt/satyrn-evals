@@ -5,18 +5,28 @@ This record freezes one bounded live attempt for stage 2 of
 authorizes no spending and no inference. The live stage begins only when every
 unresolved field below is resolved and its budget is authorized.
 
-## Unresolved fields
+## Status: executed
 
-These block the live stage. Nothing here is a default that may be assumed.
+The smoke ran on 2026-09-08 and is settled. Nothing in this record remains
+unresolved.
 
-| Field | What is missing |
+| Field | Resolution |
 | --- | --- |
-| Timing wrapper | The collection method below is defined but not yet implemented. It must be built and verified against the fixture executor before the launch. |
-| Launch authorization | The limits below are frozen and the arm is chosen. Committing this record does not authorize the launch; stage 2 needs its own go-ahead, covering the scored attempt and preflight's completion. |
+| Executor arm | Engine. |
+| Command timeout | 900 s; whole-attempt deadline 1020 s. |
+| Timing wrapper | `scripts/timing.py`, verified against a retained cell before the launch. |
+| Seed | `20260908`. |
+| Output directory | `~/satyrn-smokes/2026-09-08-first-smoke-123843/`. |
+| Token-floor artifact | 1627, provenance recorded in the schedule section. |
+| Engine repository path | `/Users/pauleveritt/projects/pauleveritt/satyrn-engine`. |
+| Clean-tree gate | Satisfied; preflight recorded the launch revision. |
+| Launch revision | `c7f93760d1f1f15d29bbf19b0039572417815a51`, from `preflight.json` `evals_commit`. It matched the commit this record was frozen at, so no code changed between freezing and launching. |
+| Budget authorization | Given for preflight's one completion and one scored attempt. Both were used; nothing further was launched. |
 
-Resolved on 2026-09-08: executor arm, command timeout, whole-attempt deadline,
-engine repository path, `PATH` resolution, seed, output location, and the
-token-floor artifact and its provenance.
+The outcome is recorded in `RESULT.md` beside the evidence: one scored attempt,
+verdict `pass`, 13 of 13 expected checks executed and passing, no refusals and
+no missing evidence, 31.763 s total, and a byte-identical offline regrade. That
+note owns the result; this record owns the conditions it ran under.
 
 ## Question and condition
 

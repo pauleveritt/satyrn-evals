@@ -49,18 +49,20 @@ so two engine configurations would pool into one denominator. The triage stage
 resolves that before it freezes a matched pair.
 
 Retained live evidence for `depth-3` is reported by condition rather than
-pooled. At `R3`, 6 of 6 baseline attempts pass with `gemma-4-12B` and 6 of 6
-pass with `gemma-4-26b`; no engine-arm attempt has run at `R3`. At `R1`, no
-baseline attempt passes in any recorded batch, and 1 of 24 engine attempts
-passes at the pinned engine. At `R0`, no baseline attempt passes at either
-model. Refusals are counted separately from fail verdicts, and every one of
-these batches ran under limits and an evals revision that differ from the
-proposed condition.
+pooled. At `R3`, 6 of 6 baseline attempts pass with `gemma-4-12B`, 6 of 6 pass
+with `gemma-4-26b`, and the one engine-arm attempt — the 2026-09-08 smoke —
+passes. At `R1`, no baseline attempt passes in any recorded batch, and 1 of 24
+engine attempts passes at the pinned engine. At `R0`, no baseline attempt
+passes at either model. Refusals are counted separately from fail verdicts, and
+the earlier batches ran under limits and an evals revision that differ from the
+smoke's condition.
 
-What that supports at `R3` is regression detection. It does not measure
-headroom for the proposed condition, which has no evidence of its own. The
+Both arms now pass at `R3`, on 12 baseline attempts and 1 engine attempt. One
+attempt is not a rate, but nothing so far distinguishes the arms there, so
+`R3` supports regression detection rather than a demonstrated improvement. The
 triage stage decides whether that answers a worthwhile question or whether one
-additional condition must first be qualified.
+additional condition must first be qualified; `depth-2` at `R1` is the recorded
+condition where the arms currently differ.
 
 ## Completion
 
