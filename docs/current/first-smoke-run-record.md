@@ -174,28 +174,43 @@ uv run satyrn-evals run agentclinic-repair-depth-3 --n 1 --rung R3 \
 ## Timing measurement
 
 The plan requires setup, command, grading, and total durations. The harness
-records none on a normal completion, so the smoke supplies them. This method is
-defined here and is verified before any spending.
+records none on a normal completion, so `scripts/timing.py` supplies them.
 
-- A launch wrapper takes a monotonic timestamp either side of the single
-  `satyrn-evals run` invocation. Their difference is the authoritative total.
-- Immediately after that invocation returns, and **before any regrade**, the
-  wrapper records the cell's `patch.diff`, `transcript.txt`, `receipt.json`,
-  and `attempt.json` modification times into a `timing.json` beside the cell.
-- Command end is the transcript mtime. Grading is transcript mtime to receipt
-  mtime. Setup is the wrapper start to the earliest artifact mtime.
-  Preservation and cleanup are reported as the residual between the receipt
-  mtime and the wrapper end, and are not added to the spans above.
-- These boundaries are filesystem observations, not instrumented spans, and are
-  reported with that precision limit rather than as harness measurements.
-- `regrade` rewrites `receipt.json` and `attempt.json` and destroys the mtimes
-  this method reads. `timing.json` is captured first, and the regrade
-  comparison runs on a copy, so re-scoring cannot corrupt the timing evidence.
+- A launch wrapper bounds the single `satyrn-evals run` invocation. It takes
+  `time.monotonic()` for the authoritative total and `time.time()` separately
+  for comparison against file times. These are different clock domains and are
+  never subtracted from one another; the artifact names which produced each
+  figure.
+- Command start is the transcript's **birth time**, not the earliest artifact
+  mtime. An mtime is a *last* write, so the transcript's mtime marks where the
+  command ended. Deriving the boundary from the earliest mtime attributes the
+  whole command to setup: against a retained cell it reported setup 46.8 s and
+  command 0.0 s for a command that actually ran 46.6 s.
+- Phases: setup is wrapper start to transcript birth; command is transcript
+  birth to transcript mtime; grading is transcript mtime to receipt mtime.
+  Preservation and cleanup are a **residual** from receipt mtime to wrapper
+  end, reported separately and never added into the phases above.
+- Where a filesystem records no birth time, setup and command are reported as
+  one combined span with both named missing, rather than invented separately.
+- Missing artifacts yield named missing entries, never a zero. A refused
+  attempt still reports its total.
+- The tool refuses, naming the observed values, on an incoherent ordering: end
+  before start, an artifact predating the start, a transcript born before the
+  start or after its own mtime, or a receipt older than its transcript.
 
-Verification before spending: run the wrapper against the model-free fixture
-executor (`tests/integration/fake_first_milestone_executor.py`, driven by
-`recipes/first-milestone-depth3-r3.fixture.json`) and confirm `timing.json` is
-produced with a coherent phase decomposition. That exercise invokes no model.
+Two operational constraints follow from the method:
+
+- **Measure before regrading.** `regrade` rewrites `receipt.json` and
+  `attempt.json`, destroying the mtimes the method reads.
+- **Measure the original cell, not a copy.** A copy does not carry birth times
+  forward, so copying first collapses setup and command. Archive after
+  measuring.
+
+Verified against the retained cell
+`2026-09-06-overnight-232554/…/cell-000-baseline`, whose durations were already
+known: setup 0.269 s, command 46.575 s, grading 2.311 s, residual 0.137 s
+against an independently derived total of 49.291 s. That exercise read the cell
+only, and its checksums were confirmed unchanged.
 
 ## Verification performed without inference
 
