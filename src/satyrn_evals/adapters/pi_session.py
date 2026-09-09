@@ -27,6 +27,7 @@ import uuid
 from collections.abc import Mapping, Sequence
 from typing import BinaryIO, Protocol, TextIO, cast
 
+from satyrn_evals.attempt_pi import clean_pi_environment
 from satyrn_evals.errors import ProtocolError
 
 # Session runtime policy: the model's python tool runs must not leave
@@ -344,6 +345,19 @@ def _serve(
                     current_step = None
 
 
+def session_child_environment(environ: Mapping[str, str]) -> dict[str, str]:
+    """The env for the Pi child: Evals' own virtualenv stripped, runtime overlaid.
+
+    Reuses ``attempt_pi.clean_pi_environment`` rather than reimplementing
+    it — the session adapter previously spawned Pi with a raw
+    ``{**os.environ, **_SESSION_RUNTIME_ENV}``, which let this repo's own
+    ``VIRTUAL_ENV``/``PATH`` reach the model's shell (see 2026-09-09
+    session-phased-verify RESULT.md, finding 2).
+    """
+    cleaned = clean_pi_environment(environ)
+    return {**cleaned, **_SESSION_RUNTIME_ENV}
+
+
 def reap(proc: _PiHandle) -> None:
     """Stop and reap the pi child: close stdin, TERM, then KILL on refusal."""
     with contextlib.suppress(OSError):
@@ -369,7 +383,7 @@ def main(argv: list[str] | None = None) -> int:
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
-        env={**os.environ, **_SESSION_RUNTIME_ENV},
+        env=session_child_environment(os.environ),
     )
     assert proc.stdin is not None and proc.stdout is not None
     # Popen satisfies the _PiHandle seam at runtime; pyrefly's structural

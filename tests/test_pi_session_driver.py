@@ -518,3 +518,31 @@ def test_pi_child_argv_and_runtime_env_carry_no_overlay_names():
     for name in names:
         assert name not in argv_text
         assert name not in env_text
+
+
+def test_session_child_environment_strips_the_harness_virtualenv() -> None:
+    """The evals repo's own VIRTUAL_ENV/PATH entries never reach Pi's child.
+
+    Regression for 2026-09-09 session-phased-verify RESULT.md finding 2:
+    the session adapter previously spawned Pi with a raw
+    ``{**os.environ, **_SESSION_RUNTIME_ENV}``, leaking the harness's
+    virtualenv into the solver's shell.
+    """
+    venv = "/Users/pauleveritt/projects/pauleveritt/satyrn-evals-engine-comparison/.venv"
+    environ = {
+        "VIRTUAL_ENV": venv,
+        "PATH": f"{venv}/bin:/usr/bin:/bin",
+        "HOME": "/Users/pauleveritt",
+    }
+    cleaned = pi_session.session_child_environment(environ)
+    assert "VIRTUAL_ENV" not in cleaned
+    assert f"{venv}/bin" not in cleaned["PATH"].split(os.pathsep)
+
+
+def test_session_child_environment_preserves_a_clean_environ() -> None:
+    """With no VIRTUAL_ENV set, every input variable survives unchanged."""
+    environ = {"HOME": "/Users/pauleveritt", "PATH": "/usr/bin:/bin"}
+    cleaned = pi_session.session_child_environment(environ)
+    for key, value in environ.items():
+        assert cleaned[key] == value
+    assert cleaned["PYTHONDONTWRITEBYTECODE"] == "1"
