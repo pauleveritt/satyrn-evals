@@ -241,3 +241,28 @@ def test_no_step_declares_a_budget_ceiling() -> None:
     for step in data["steps"]:
         assert "turn_budget" not in step
         assert "tool_budget" not in step
+
+
+def test_qualification_note_quotes_the_live_preamble() -> None:
+    """The note's quoted preamble must match session.json exactly.
+
+    The note carries a copy, not a live inclusion, so nothing structural
+    stops the two diverging -- and they already did once: the note went on
+    quoting "The project environment is already installed" after a live run
+    disproved it. This test is the only thing that makes "it cannot drift
+    silently" a true statement rather than a hope.
+    """
+    spec = json.loads((TASK / "session.json").read_text())
+    preamble = spec["steps"][0]["prompt"].split("\n\n")[0].strip()
+
+    note = (TASK / "QUALIFICATION-NOTE.md").read_text()
+    quoted_blocks = [
+        "\n".join(line[2:] for line in block.splitlines())
+        for block in note.split("\n\n")
+        if block.startswith("> ") and all(
+            line.startswith(">") for line in block.splitlines()
+        )
+    ]
+    assert preamble in quoted_blocks, (
+        "QUALIFICATION-NOTE.md does not quote the live preamble verbatim"
+    )

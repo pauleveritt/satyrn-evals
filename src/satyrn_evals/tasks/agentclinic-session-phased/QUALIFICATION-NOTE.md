@@ -197,12 +197,14 @@ the grader), not another fixture.
 ## Correction, 2026-09-09 — the preamble's environment claim was false
 
 The preamble quoted above previously opened "The project environment is
-already installed; do not install or reinstall anything." The first live
-session's own verification call disproved it: the attempt workspace does not
-arrive installed, and `uv run` printed `Creating virtual environment at:
-.venv / Installed 47 packages in 80ms`. The sentence was also
-self-contradictory once the verification instruction was added, since
-`uv run python -m pytest tests` provisions.
+already installed; do not install or reinstall anything." The **second**
+session — the verification-instructed run `2026-09-09-session-phased-verify-114708`
+— disproved it: the attempt workspace does not arrive installed, and its
+phase-1 `uv run` printed `Creating virtual environment at: .venv / Installed
+47 packages in 80ms`. The first session could not have shown this; its only
+shell command was `mkdir -p templates tests`, and it ran no verification at
+all. The sentence was also self-contradictory once the verification
+instruction was added, since `uv run python -m pytest tests` provisions.
 
 Replaced with a true statement of the same intent — dependencies are pinned
 and `uv run` provisions them from the lock, and the model still must not
@@ -212,3 +214,13 @@ already-present packages, 7 of 10 phase-1 tool errors in the 2026-09-01
 spike); the replacement keeps that prohibition.
 
 Evidence: `~/satyrn-smokes/2026-09-09-session-phased-verify-114708/RESULT.md`.
+
+### On drift
+
+The preamble above is a **copy**, not a live inclusion. It was taken from
+`session.json` at the time of writing, which makes it accurate, not
+self-maintaining. What keeps it from drifting silently is a test —
+`test_qualification_note_quotes_the_live_preamble` in
+`tests/test_agentclinic_session_phased.py` — which fails if the two stop
+matching. Absent that test the copy would rot exactly as the previous version
+did.

@@ -65,6 +65,12 @@ def _adapter(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> list[str]:
         "fake",
         "--model",
         "fake-model",
+        # --tools became mandatory on 2026-09-08: a session with an unstated
+        # tool surface cannot produce accountable evidence (build_pi_argv).
+        # Without it the adapter exits before the session runs at all, so
+        # this test stopped exercising the path it exists to cover.
+        "--tools",
+        "read,bash,edit,write",
         "--pi-bin",
         str(shim),
     ]
