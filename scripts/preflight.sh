@@ -201,6 +201,10 @@ digest_of() { shasum -a 256 "$1" | awk '{print $1}'; }
 # recorded-but-not-checked shape as the temperature gap this preflight
 # already carried once. The record below emits exactly what was verified,
 # so it cannot drift from the check either.
+# Declared before the engine block: a batch whose arms pin no engine never
+# enters that block, and `set -u` then killed the record write AFTER every
+# check had passed (2026-09-09, first Baseline-only batch to use preflight).
+VERIFIED_DIGESTS=""
 PINNED_NAMES="$(python3 -c '
 import json, sys
 print("\n".join(json.load(open(sys.argv[1]))["pins"]["digests"]))
@@ -300,7 +304,7 @@ cat > "$OUTPUT/preflight.json" <<JSON
 {
   "evals_commit": "$EVALS_SHA",
   "engine_commit": "$HEAD_SHA",
-  "engine_digests": {$VERIFIED_DIGESTS
+  "engine_digests": {${VERIFIED_DIGESTS:-}
   },
   "pi": "$ACTUAL_PI",
   "model": "$PI_MODEL",
