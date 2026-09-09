@@ -29,9 +29,8 @@ The preamble, identical on all three steps, states the writable scope. It is
 the information a single-prompt contract carries in `writable_paths`, and it
 is not in the roadmap:
 
-> The project environment is already installed; do not install or reinstall
-> anything. You may write only app.py, models.py, files under templates/,
-> and files under tests/. Adding tests under tests/ is expected.
+> Dependencies are pinned in pyproject.toml and uv.lock, and `uv run` provisions them from the lock; do not install packages yourself or add new dependencies. You may write only app.py, models.py, files under templates/,
+> and files under tests/. Adding tests under tests/ is expected. Before finishing, run `uv run python -m pytest tests`. Address failures caused by your changes without weakening tests, and report the command and result.
 
 **Exactly two tightenings** were applied to the quoted sections. Both are
 recorded in the map below and nowhere else in the prompts:
@@ -194,3 +193,22 @@ would each fail a reading the prompt permits:
 Closing this needs a fresh-author probe (someone who has not read the
 checks) or a model probe (a session run against this task with no access to
 the grader), not another fixture.
+
+## Correction, 2026-09-09 — the preamble's environment claim was false
+
+The preamble quoted above previously opened "The project environment is
+already installed; do not install or reinstall anything." The first live
+session's own verification call disproved it: the attempt workspace does not
+arrive installed, and `uv run` printed `Creating virtual environment at:
+.venv / Installed 47 packages in 80ms`. The sentence was also
+self-contradictory once the verification instruction was added, since
+`uv run python -m pytest tests` provisions.
+
+Replaced with a true statement of the same intent — dependencies are pinned
+and `uv run` provisions them from the lock, and the model still must not
+install packages or add dependencies. The original sentence existed to prevent
+a recorded failure class (a model spending turns on `pip install` for
+already-present packages, 7 of 10 phase-1 tool errors in the 2026-09-01
+spike); the replacement keeps that prohibition.
+
+Evidence: `~/satyrn-smokes/2026-09-09-session-phased-verify-114708/RESULT.md`.
