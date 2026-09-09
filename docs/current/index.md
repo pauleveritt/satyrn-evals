@@ -23,6 +23,9 @@ past artifact. Archived material does not set current policy.
 - [Pre-run record: the bounded Baseline session](session-ordering-baseline-pre-run-record.md)
   freezes the conditions for one Baseline session on the cross-prompt witness
   task, and states what a single session cannot establish.
+- [Pre-run record: the phased AgentClinic session](agentclinic-session-phased-pre-run-record.md)
+  freezes the arm, digests, n and observables for one Baseline session on the
+  phased workload, and records the fairness limitation it carries in.
 - [Pre-run record: misleading-locus R1](misleading-locus-r1-pre-run-record.md)
   fixes that design's concrete values, measures, disclosure and stopping rules.
 - [Pre-run record: misleading-locus R3](misleading-locus-r3-pre-run-record.md)
@@ -56,6 +59,7 @@ agentclinic-suite-brief
 overnight-cycle-protocol
 misleading-locus-r1-comparison-design
 misleading-locus-r1-pre-run-record
+agentclinic-session-phased-pre-run-record
 session-ordering-baseline-pre-run-record
 agentclinic-phase-session-proposal
 misleading-locus-r3-pre-run-record
