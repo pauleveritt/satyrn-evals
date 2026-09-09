@@ -67,3 +67,51 @@ def test_the_limit_does_not_reach_the_other_two_timeouts(session: int) -> None:
     consecutive-repeat limit touches them.
     """
     assert _longest_run(session) < 10
+
+
+# --- The window tripwire, replayed over the same twelve sessions ---
+#
+# The consecutive wire reaches 2 of the 4 step timeouts. The window wire reaches
+# 3, including session 11's rotating loop, and fires on none of the 8 sessions
+# that did not time out. The margin is thin and the rows below say so: the
+# nearest non-timeout sits at 6 against a limit of 7.
+
+from satyrn_evals.session_repeat_limit import SessionWindowTripwire  # noqa: E402
+
+WINDOW_CAUGHT = (2, 5, 11)
+WINDOW_MISSED = (3,)
+NON_TIMEOUT = (1, 4, 6, 7, 8, 9, 10, 12)
+
+
+def _window_wire_trips(session: int, limit: int = 7, window: int = 20) -> bool:
+    transcript = next((BATCH / f"session-{session:02d}").rglob("transcript.jsonl"), None)
+    if transcript is None:
+        pytest.skip(f"retained batch missing session-{session:02d}")
+    wire = SessionWindowTripwire(limit, window=window)
+    for raw in transcript.read_text().splitlines():
+        if raw.strip():
+            wire.feed(json.loads(raw).get("payload"))
+    return wire.tripped
+
+
+@pytest.mark.parametrize("session", WINDOW_CAUGHT)
+def test_the_window_wire_catches_the_rotating_timeouts(session: int) -> None:
+    assert _window_wire_trips(session) is True
+
+
+@pytest.mark.parametrize("session", NON_TIMEOUT)
+def test_the_window_wire_spares_every_session_that_did_not_time_out(
+    session: int,
+) -> None:
+    """The direction that matters: it must not end a working session."""
+    assert _window_wire_trips(session) is False
+
+
+@pytest.mark.parametrize("session", WINDOW_MISSED)
+def test_one_timeout_is_still_out_of_reach(session: int) -> None:
+    """Pinned so the wire is not read as solving the timeout problem.
+
+    Session 03 peaks at 6 occurrences in a 20-call window -- the same value two
+    healthy sessions reach -- so no limit separates it from them.
+    """
+    assert _window_wire_trips(session) is False

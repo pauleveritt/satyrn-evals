@@ -67,3 +67,70 @@ def test_an_unreadable_payload_is_ignored_not_counted() -> None:
 def test_a_limit_below_one_is_refused() -> None:
     with pytest.raises(ValueError, match="at least 1"):
         SessionRepeatTripwire(0)
+
+
+# --- The window tripwire: a rotating loop no consecutive rule can see ---
+
+from satyrn_evals.session_repeat_limit import SessionWindowTripwire  # noqa: E402
+
+
+def test_a_rotating_loop_trips_the_window_wire() -> None:
+    """A-B-C-A-B-C is the shape session 11 spent 194 calls on.
+
+    Its longest identical-consecutive run is 1, so the consecutive detector is
+    blind to it by construction.
+    """
+    wire = SessionWindowTripwire(3, window=20)
+    probes = [_call("bash", command=f"probe {i}") for i in range(3)]
+    for _ in range(2):
+        for p in probes:
+            assert wire.feed(p) is False
+    assert wire.feed(probes[0]) is True
+
+
+def test_the_consecutive_wire_is_blind_to_that_same_loop() -> None:
+    """The sibling that justifies adding a second detector rather than
+    retuning the first: fed the identical sequence, it never fires."""
+    wire = SessionRepeatTripwire(3)
+    probes = [_call("bash", command=f"probe {i}") for i in range(3)]
+    for _ in range(10):
+        for p in probes:
+            wire.feed(p)
+    assert wire.tripped is False
+
+
+def test_varied_work_does_not_trip_the_window_wire() -> None:
+    """Success direction: distinct calls never accumulate."""
+    wire = SessionWindowTripwire(3, window=20)
+    for i in range(40):
+        assert wire.feed(_call("bash", command=f"step {i}")) is False
+
+
+def test_the_window_forgets(y_window: int = 4) -> None:
+    """A key recurring slower than the window is not a loop."""
+    wire = SessionWindowTripwire(2, window=y_window)
+    wire.feed(_call("bash", command="target"))
+    for i in range(y_window):
+        wire.feed(_call("bash", command=f"filler {i}"))
+    assert wire.feed(_call("bash", command="target")) is False
+
+
+def test_a_step_boundary_resets_the_window() -> None:
+    wire = SessionWindowTripwire(2, window=20)
+    wire.feed(_call("bash", command="x"))
+    wire.reset()
+    assert wire.feed(_call("bash", command="x")) is False
+
+
+def test_an_unreadable_payload_is_ignored_by_the_window_wire() -> None:
+    """Refusal direction: noise must not end a step."""
+    wire = SessionWindowTripwire(2, window=20)
+    for _ in range(10):
+        wire.feed({"assistantMessageEvent": {"toolCall": "not-an-object"}})
+        wire.feed(None)
+    assert wire.tripped is False
+
+
+def test_a_window_smaller_than_the_limit_is_refused() -> None:
+    with pytest.raises(ValueError, match="cannot be smaller"):
+        SessionWindowTripwire(5, window=3)
