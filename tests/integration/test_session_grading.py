@@ -125,11 +125,18 @@ def test_elapsed_seconds_is_recorded_for_a_clean_session(tmp_path: Path) -> None
 def test_elapsed_seconds_excludes_teardown_on_a_timeout(tmp_path: Path) -> None:
     """The figure must bound the prompt, not the reaping that follows it.
     A step killed at its deadline reports about the deadline, not the
-    deadline plus however long terminate_and_reap took."""
+    deadline plus however long terminate_and_reap took.
+
+    The fake adapter's ``timeout`` scenario ignores SIGTERM, so
+    terminate_and_reap's first wait(1.0) expires and the SIGKILL
+    escalation costs about another 1.0s. A correctly placed elapsed
+    sample (taken before the reap) reads about 1.0s; a sample moved to
+    after terminate_and_reap would read about 2.0s -- the 1.5s bound
+    discriminates the two."""
     record = _graded(tmp_path, "timeout", step_timeout=1.0)
     slow = record.steps[-1]
     assert slow.elapsed_seconds is not None
-    assert slow.elapsed_seconds < 5.0
+    assert slow.elapsed_seconds < 1.5
 
 
 def test_grading_reads_only_retained_artifacts(tmp_path: Path) -> None:

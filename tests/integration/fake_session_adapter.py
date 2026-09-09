@@ -9,6 +9,7 @@ steps append the matching feature to solution.py, review edits nothing.
 """
 
 import json
+import signal
 import sys
 import time
 from pathlib import Path
@@ -79,6 +80,12 @@ def main() -> int:
             continue
         step = msg["step_id"]
         if scenario == "timeout":
+            # Ignore SIGTERM so terminate_and_reap's first wait(1.0)
+            # expires and the reap costs the SIGKILL-escalation second,
+            # not the graceful one -- this is what makes the elapsed-time
+            # assertion discriminate a correct sample (before the reap,
+            # ~1.0s) from a wrongly-placed one (after the reap, ~2.0s).
+            signal.signal(signal.SIGTERM, lambda *_: None)
             continue  # accept the prompt and emit nothing: deadline fires
         if marker is not None and step == "review":
             Path(marker).write_text("prompted")

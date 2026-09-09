@@ -83,9 +83,19 @@ def test_elapsed_seconds_round_trips_through_the_loader(tmp_path) -> None:
 
 def test_elapsed_seconds_absent_from_json_loads_as_none(tmp_path) -> None:
     """Sibling success, and the missingness rule: a record written before
-    this field carries None, not 0.0, which would read as an instant step."""
+    this field carries None, not 0.0, which would read as an instant step.
+
+    write_session_record always emits ``elapsed_seconds`` (as ``null``
+    when unset), so exercising real absence means deleting the key from
+    the JSON on disk before reloading it -- otherwise this test would
+    pass against a loader that defaults to 0.0 instead of None."""
     step = StepRecord(step_id="one", prompt_digest="d", outcome="settled")
-    reloaded = _write_and_reload(tmp_path, _record_with(steps=(step,)))
+    path = tmp_path / "session-record.json"
+    write_session_record(path, _record_with(steps=(step,)))
+    data = json.loads(path.read_text(encoding="utf-8"))
+    del data["steps"][0]["elapsed_seconds"]
+    path.write_text(json.dumps(data), encoding="utf-8")
+    reloaded = load_session_record(path)
     assert reloaded.steps[0].elapsed_seconds is None
 
 
