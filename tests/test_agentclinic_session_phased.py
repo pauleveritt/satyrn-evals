@@ -266,3 +266,44 @@ def test_qualification_note_quotes_the_live_preamble() -> None:
     assert preamble in quoted_blocks, (
         "QUALIFICATION-NOTE.md does not quote the live preamble verbatim"
     )
+
+
+VERIFICATION_SENTENCE = (
+    " Before finishing, run `uv run python -m pytest tests`. Address "
+    "failures caused by your changes without weakening tests, and "
+    "report the command and result."
+)
+
+
+def test_the_two_prompt_conditions_differ_only_by_the_verification_sentence() -> None:
+    """The screen's validity rests entirely on this.
+
+    session.json is the remedy condition and session-control.json the
+    control. If anything else differs between them -- a tightening, a
+    scope sentence, a stray edit to the quoted roadmap text -- the screen
+    stops measuring the verification instruction and starts measuring a
+    mixture, and no reading of the result can separate the two.
+    """
+    remedy = json.loads((TASK / "session.json").read_text())
+    control = json.loads((TASK / "session-control.json").read_text())
+
+    assert [s["id"] for s in control["steps"]] == [s["id"] for s in remedy["steps"]]
+    assert control["base_preservation_selectors"] == remedy["base_preservation_selectors"]
+    for c, r in zip(control["steps"], remedy["steps"], strict=True):
+        assert c["kind"] == r["kind"]
+        assert c["new_feature_selectors"] == r["new_feature_selectors"]
+        assert VERIFICATION_SENTENCE not in c["prompt"], c["id"]
+        assert VERIFICATION_SENTENCE in r["prompt"], r["id"]
+        assert c["prompt"] == r["prompt"].replace(VERIFICATION_SENTENCE, "", 1), c["id"]
+
+
+def test_the_control_condition_never_mentions_running_tests() -> None:
+    """Sibling: the removal is complete, not merely of one phrasing.
+
+    A control that still hints at running tests would understate the
+    contrast rather than break it -- the quieter failure, and the one a
+    string-equality check above would not catch on its own.
+    """
+    control = json.loads((TASK / "session-control.json").read_text())
+    for step in control["steps"]:
+        assert "pytest" not in step["prompt"], step["id"]
