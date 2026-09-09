@@ -68,12 +68,23 @@ def _parse_step(raw: object) -> SessionStep:
 
 
 def _check_spec_name(spec_name: str) -> None:
-    """Refuse anything but a bare ``*.json`` filename inside the task dir.
+    """Refuse anything but a bare ``*.json`` filename.
 
-    ``spec_name`` names a file *inside* ``task_dir``; it must never be used
-    to escape it. Four independent checks, each with its own message, so a
-    disabled check is visible in which refusal (if any) still fires rather
-    than being masked by a neighboring one.
+    This is a **lexical** guard on the name, and that is the whole of its
+    claim: it rejects an absolute path, a ``..`` segment, a separator, and a
+    non-``.json`` suffix. It does **not** establish containment. A bare
+    filename inside ``task_dir`` that is a symlink pointing outside still
+    resolves and is read, because nothing here resolves the real path.
+
+    That exposure is not new — the single-argument form had it for
+    ``session.json`` itself — and hardening it would mean resolving and
+    containment-checking, which is a different change with its own failure
+    modes on legitimate symlinked checkouts. Recorded rather than silently
+    implied: a caller who needs containment must add it.
+
+    Four independent checks, each with its own message, so a disabled check
+    is visible in which refusal (if any) still fires rather than being
+    masked by a neighboring one.
     """
     if not spec_name.endswith(".json"):
         raise SessionSpecError(

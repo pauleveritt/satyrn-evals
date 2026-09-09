@@ -23,6 +23,9 @@ past artifact. Archived material does not set current policy.
 - [Pre-run record: the bounded Baseline session](session-ordering-baseline-pre-run-record.md)
   freezes the conditions for one Baseline session on the cross-prompt witness
   task, and states what a single session cannot establish.
+- [Triage screen: the verification instruction](agentclinic-verification-triage-screen.md)
+  freezes four sessions, two per prompt condition, and states what a screen
+  that size cannot establish.
 - [Pre-run record: the verification instruction](agentclinic-session-phased-verification-pre-run-record.md)
   freezes the second phased session, which asks only whether an explicit
   verification instruction is usable — not whether it improves behaviour.
@@ -64,6 +67,7 @@ misleading-locus-r1-comparison-design
 misleading-locus-r1-pre-run-record
 agentclinic-session-phased-pre-run-record
 agentclinic-session-phased-verification-pre-run-record
+agentclinic-verification-triage-screen
 session-ordering-baseline-pre-run-record
 agentclinic-phase-session-proposal
 misleading-locus-r3-pre-run-record
