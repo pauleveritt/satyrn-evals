@@ -163,6 +163,7 @@ def test_the_overlay_loads_and_carries_every_grader_module() -> None:
     satisfy the row above vacuously."""
     overlay = load_overlay(TASK, load_manifest(TASK))
     assert sorted(overlay.rel_paths) == [
+        "grader_tests/__init__.py",
         "grader_tests/_contract.py",
         "grader_tests/_seed.py",
         "grader_tests/test_phase1_home.py",

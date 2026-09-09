@@ -396,8 +396,8 @@ def _drive(
                 # step_timeout bounds the WHOLE prompt, not one idle wait:
                 # a deadline set when the prompt is sent, so a chatty
                 # adapter cannot reset the budget by emitting events.
-                step_deadline = time.monotonic() + step_timeout
-                step_started = step_deadline - step_timeout
+                step_started = time.monotonic()
+                step_deadline = step_started + step_timeout
                 turn_count = tool_count = context_events = 0
                 outcome = ""
                 stop: _Stop | None = None

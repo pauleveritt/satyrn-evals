@@ -85,6 +85,13 @@ def _failed_check_names(
 
 
 def _contamination(witness: str) -> ContaminationOutcome:
+    # visible_texts mirrors grade.py's own call (grade.py:199), which
+    # subtracts needles that already appear in the visible workspace before
+    # the patch. The session path this task actually runs under passes no
+    # visible_texts at all (session.py:161), so this gate is strictly more
+    # permissive than the session path -- inert today because base/ holds
+    # only pyproject.toml and uv.lock, but the direction matters if base/
+    # ever grows visible files that overlap grader-module text.
     base = TASK / "base"
     visible = [
         path.read_text(encoding="utf-8", errors="replace")

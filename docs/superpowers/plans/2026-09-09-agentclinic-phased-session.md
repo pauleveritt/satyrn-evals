@@ -40,7 +40,7 @@ captured live.
 **Interfaces:**
 - Produces: `SessionSpec.base_preservation_selectors` may be `()`; `StepRecord.elapsed_seconds: float | None`.
 
-- [ ] **Step 1: Write the failing tests for the empty preservation list**
+- [x] **Step 1: Write the failing tests for the empty preservation list**
 
 Add to `tests/test_session_manifest.py`:
 
@@ -77,12 +77,12 @@ def test_no_preservation_selectors_leaves_verdict_unset(tmp_path) -> None:
     assert all(step.preservation_verdict is None for step in record.steps)
 ```
 
-- [ ] **Step 2: Run them to verify they fail**
+- [x] **Step 2: Run them to verify they fail**
 
 Run: `uv run pytest tests/test_session_manifest.py tests/test_session_preservation_per_checkpoint.py -q -k "empty_base_preservation or non_empty_strings or leaves_verdict_unset"`
 Expected: FAIL — "base_preservation_selectors must be a non-empty list of strings".
 
-- [ ] **Step 3: Allow the empty list**
+- [x] **Step 3: Allow the empty list**
 
 In `src/satyrn_evals/session_manifest.py`, replace the `pres` validation:
 
@@ -98,7 +98,7 @@ In `src/satyrn_evals/session_manifest.py`, replace the `pres` validation:
 
 The emptiness check is dropped; the per-entry check is kept.
 
-- [ ] **Step 4: Skip preservation grading when nothing is declared**
+- [x] **Step 4: Skip preservation grading when nothing is declared**
 
 In `src/satyrn_evals/session_grader.py`, guard the `_grade_preservation`
 call site (around line 156):
@@ -115,7 +115,7 @@ Without the guard an empty selection hands pytest no selection and runs
 the whole workspace suite — the model's own tests — which is exactly the
 circularity the preservation guard exists to prevent.
 
-- [ ] **Step 5: Write the failing tests for elapsed capture**
+- [x] **Step 5: Write the failing tests for elapsed capture**
 
 Add to `tests/test_session_record.py`:
 
@@ -165,7 +165,7 @@ The `"timeout"` scenario may not exist in
 a prompt and then emits nothing, so the step hits its deadline. Follow the
 existing scenario dispatch rather than inventing a second mechanism.
 
-- [ ] **Step 6: Run them to verify they fail**
+- [x] **Step 6: Run them to verify they fail**
 
 Run: `uv run pytest tests/test_session_record.py -q -k elapsed`
 Expected: FAIL — unexpected keyword argument `elapsed_seconds`.
@@ -173,7 +173,7 @@ Expected: FAIL — unexpected keyword argument `elapsed_seconds`.
 Run: `uv run pytest tests/integration/test_session_grading.py -q -m integration -k elapsed`
 Expected: FAIL for the same reason.
 
-- [ ] **Step 7: Add the field and load it**
+- [x] **Step 7: Add the field and load it**
 
 In `src/satyrn_evals/session_record.py`, after `context_events`:
 
@@ -195,7 +195,7 @@ In the loader (line ~192), beside the other counts:
 
 No default of `0.0`: absent must load as `None`.
 
-- [ ] **Step 8: Sample it where the step settles**
+- [x] **Step 8: Sample it where the step settles**
 
 In `src/satyrn_evals/session.py`, capture the start on the same clock the
 deadline uses (line ~397):
@@ -223,7 +223,7 @@ awkward, restructure so it does rather than adding a second sample. Add
 the parameter to the capture helper's signature (line 131) and to its
 `StepRecord(...)` construction (lines 225-227).
 
-- [ ] **Step 9: Run the tests**
+- [x] **Step 9: Run the tests**
 
 Run: `uv run pytest -q`
 Expected: PASS.
@@ -231,7 +231,7 @@ Expected: PASS.
 Run: `uv run pytest -q -m integration`
 Expected: PASS.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add src/satyrn_evals tests
@@ -277,7 +277,7 @@ changes, and provenance is claimed per check.
 - Create: `.../fixtures/{checkpoint-1,checkpoint-2,checkpoint-3,known-good,known-broken,prompt-faithful,contaminated}.patch`
 - Test: `tests/test_agentclinic_session_phased.py`, `tests/integration/test_session_phased_qualification.py`
 
-- [ ] **Step 1: Copy the environment; do not copy the suite**
+- [x] **Step 1: Copy the environment; do not copy the suite**
 
 ```bash
 T=src/satyrn_evals/tasks/agentclinic-session-phased
@@ -291,7 +291,7 @@ declared source path, and `load_overlay` refuses an overlay path that
 falls inside `source_paths` (`src/satyrn_evals/overlay.py:80`). The guard
 stays; the location moves.
 
-- [ ] **Step 2: Write `grader_tests/_contract.py`**
+- [x] **Step 2: Write `grader_tests/_contract.py`**
 
 The shared preamble, with **no models import**:
 
@@ -330,7 +330,7 @@ def _has_html5_doctype(document) -> bool:
     )
 ```
 
-- [ ] **Step 3: Write `grader_tests/_seed.py`**
+- [x] **Step 3: Write `grader_tests/_seed.py`**
 
 ```python
 """The seed snapshot, imported only by phases that need models.
@@ -362,7 +362,7 @@ If a bare `grader_tests` package import does not resolve in the graded
 workspace, add an empty `grader_tests/__init__.py` and keep the import
 absolute. Do not switch to a `sys.path` manipulation.
 
-- [ ] **Step 4: Write the three test modules, copying assertion bodies verbatim**
+- [x] **Step 4: Write the three test modules, copying assertion bodies verbatim**
 
 `test_phase1_home.py` imports from `_contract` only and carries these four
 bodies unchanged from the source: `test_home_still_returns_200_and_tagline`
@@ -388,7 +388,7 @@ Preserve the source module's `follow_redirects=False` note as a comment in
 `test_phase3_add.py`. It records the trap this suite exists not to fall
 into (`overlay/test_acceptance.py:6-11`).
 
-- [ ] **Step 5: Write the verbatim-assertion test**
+- [x] **Step 5: Write the verbatim-assertion test**
 
 Create `tests/test_agentclinic_session_phased.py`:
 
@@ -484,7 +484,7 @@ def test_no_step_declares_a_budget_ceiling() -> None:
     )
 ```
 
-- [ ] **Step 6: Write `manifest.json`**
+- [x] **Step 6: Write `manifest.json`**
 
 ```json
 {
@@ -515,7 +515,7 @@ descendants (`src/satyrn_evals/patch.py:176-178`, used at
 `session.py:218`). Declared directory paths matter only to the Engine
 contract, and no Engine session arm exists — see Deferred.
 
-- [ ] **Step 7: Write `session.json`**
+- [x] **Step 7: Write `session.json`**
 
 Each prompt is the preamble followed by the roadmap's `## Phase N`
 section, quoted from
@@ -563,7 +563,7 @@ Selectors, all prefixed with their module path:
   `test_post_complaint_redirects_to_complaints_board`,
   `test_posted_complaint_appears_on_complaints_board`
 
-- [ ] **Step 8: Build the witnesses**
+- [x] **Step 8: Build the witnesses**
 
 From the swiftstar reference tree at
 `/Users/pauleveritt/projects/pauleveritt/swiftstar/fixtures/agenttest/`:
@@ -589,7 +589,7 @@ From the swiftstar reference tree at
 - `prompt-faithful.patch` — written using **only** the preamble and the
   three prompt texts, with the grader modules closed.
 
-- [ ] **Step 9: Write the qualification gate that actually grades**
+- [x] **Step 9: Write the qualification gate that actually grades**
 
 Create `tests/integration/test_session_phased_qualification.py`. Follow
 the construction in `tests/integration/test_session_grading.py`; mark the
@@ -644,7 +644,7 @@ and running the cumulative selection through the real grader — not by
 reading a fixture's contents. `_contamination` calls `scan_patch` with the
 loaded overlay.
 
-- [ ] **Step 10: Run everything**
+- [x] **Step 10: Run everything**
 
 Run: `uv run pytest tests/test_agentclinic_session_phased.py -q`
 Expected: PASS.
@@ -661,7 +661,7 @@ prompt's test bullet — **never widen the contamination window**
 Run: `just gates`
 Expected: exit 0.
 
-- [ ] **Step 11: Write `QUALIFICATION-NOTE.md`, then commit**
+- [x] **Step 11: Write `QUALIFICATION-NOTE.md`, then commit**
 
 It must carry: the 13-row check-to-prompt-line map, marking each line as
 quoted roadmap text or one of the two tightenings; the `swiftstar` commit

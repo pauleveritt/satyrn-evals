@@ -72,6 +72,21 @@ Making it reliable would mean forcing contact with the shared code, which
 trades away the accident the task is modelling — a design choice belonging in
 its own proposal. **No session runs are queued.**
 
+**The phased AgentClinic session task: Tasks 1-2 landed, Task 3 pending
+authorization.** [The plan](docs/superpowers/plans/2026-09-09-agentclinic-phased-session.md)
+adds a second, independent session workload: one growing checkout carried
+through three ordered development requests (home page, then the complaints
+board, then adding a complaint), with the depth-3 acceptance assertions
+extracted into three independently collectable modules so each phase grades
+on its own. Task 1 (sampling `elapsed_seconds` live instead of deriving it,
+and allowing an app-less `base/` so a session task can ship no application)
+and Task 2 (the `agentclinic-session-phased` task itself, its per-phase
+graders, and its witnesses — `known-good`, `known-broken`,
+`regression`, `contaminated`, and `prompt-faithful`, all qualified through
+the real grader) are both committed. Task 3 — the one bounded Baseline
+session this exists to run — has not started and needs its own live-run
+authorization, per this file's other live stages.
+
 [The suite brief](docs/current/agentclinic-suite-brief.md) proposes finishing
 the existing engine repairs, qualifying one additional useful task-condition,
 verifying its live route, and then running a matched four-attempt Engine and

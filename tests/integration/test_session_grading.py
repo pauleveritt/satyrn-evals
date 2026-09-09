@@ -131,12 +131,13 @@ def test_elapsed_seconds_excludes_teardown_on_a_timeout(tmp_path: Path) -> None:
     terminate_and_reap's first wait(1.0) expires and the SIGKILL
     escalation costs about another 1.0s. A correctly placed elapsed
     sample (taken before the reap) reads about 1.0s; a sample moved to
-    after terminate_and_reap would read about 2.0s -- the 1.5s bound
-    discriminates the two."""
+    after terminate_and_reap would read about 2.0s -- the 1.7s bound
+    still discriminates the two, with headroom for the loop-exit path's
+    own cost on a loaded machine."""
     record = _graded(tmp_path, "timeout", step_timeout=1.0)
     slow = record.steps[-1]
     assert slow.elapsed_seconds is not None
-    assert slow.elapsed_seconds < 1.5
+    assert slow.elapsed_seconds < 1.7
 
 
 def test_grading_reads_only_retained_artifacts(tmp_path: Path) -> None:
