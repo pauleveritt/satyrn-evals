@@ -13,6 +13,9 @@ past artifact. Archived material does not set current policy.
   is the proposed next experiment: a disclosed replication at `n=36` per arm,
   with its power, assumptions, checkpoint rule and stopping rules fixed in
   advance. It authorizes no spending.
+- [Overnight cycle protocol](overnight-cycle-protocol.md) is the loop the
+  authorized overnight work runs under: find a reproducer, remedy it, have it
+  reviewed, close the cycle.
 - [Proposal: build the phased application as a session](agentclinic-phase-session-proposal.md)
   argues the next multi-prompt workload should be the AgentClinic phases rather
   than a synthetic task, and names two prerequisites measured over twelve
@@ -50,6 +53,7 @@ work; they do not create a second policy source.
 whole-attempt-deadline-design
 whole-attempt-deadline-plan
 agentclinic-suite-brief
+overnight-cycle-protocol
 misleading-locus-r1-comparison-design
 misleading-locus-r1-pre-run-record
 session-ordering-baseline-pre-run-record
