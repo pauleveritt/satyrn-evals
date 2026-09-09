@@ -111,3 +111,7 @@ class SessionSpecError(UsageError):
 
 class ProtocolError(SatyrnError):
     """The adapter violated the session protocol; the sequence stops."""
+
+
+class PacketError(UsageError):
+    """Exit 2: a handoff packet violates the HP1 packet contract."""

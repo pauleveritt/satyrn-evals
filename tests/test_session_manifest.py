@@ -378,3 +378,172 @@ def test_session_spec_name_traversal_cannot_read_outside_task_dir(
 
     with pytest.raises(SessionSpecError, match="traverse"):
         load_session_spec(task_dir, spec_name="../secret/session.json")
+
+
+# --- HP1 slice 2: `facts` per step, `self_test_command` per spec -------------
+#
+# Both keys are optional in the loader and each refusal below lands with the
+# sibling success that proves it can pass (`BRIEF.md` invariant 5). The
+# requirement that a *packet* carry non-empty facts belongs to the builder
+# (HP1 slice 3), stated once so the two cannot drift.
+
+
+def test_a_step_carries_its_pinned_facts(tmp_path: Path) -> None:
+    payload = copy.deepcopy(VALID)
+    payload["steps"][0]["facts"] = ["The web framework is FastAPI."]
+    _write(tmp_path, payload)
+    spec = load_session_spec(tmp_path)
+    assert spec.steps[0].facts == ("The web framework is FastAPI.",)
+
+
+def test_a_spec_written_before_facts_existed_still_loads(tmp_path: Path) -> None:
+    """The sibling that keeps the key optional rather than breaking every
+    stored spec on the day it was added."""
+    _write(tmp_path, copy.deepcopy(VALID))
+    spec = load_session_spec(tmp_path)
+    assert spec.steps[0].facts == ()
+
+
+def test_a_misspelled_facts_key_is_still_refused(tmp_path: Path) -> None:
+    """Optional must not mean tolerant: `fact` would silently drop the
+    pinned decisions the packet exists to carry."""
+    payload = copy.deepcopy(VALID)
+    payload["steps"][0]["fact"] = ["The web framework is FastAPI."]
+    _write(tmp_path, payload)
+    with pytest.raises(SessionSpecError, match="id, kind, prompt"):
+        load_session_spec(tmp_path)
+
+
+def test_facts_must_be_non_blank_strings(tmp_path: Path) -> None:
+    payload = copy.deepcopy(VALID)
+    payload["steps"][0]["facts"] = ["fine", "  "]
+    _write(tmp_path, payload)
+    with pytest.raises(SessionSpecError, match="facts"):
+        load_session_spec(tmp_path)
+
+
+def test_facts_must_be_a_list(tmp_path: Path) -> None:
+    payload = copy.deepcopy(VALID)
+    payload["steps"][0]["facts"] = "FastAPI"
+    _write(tmp_path, payload)
+    with pytest.raises(SessionSpecError, match="facts"):
+        load_session_spec(tmp_path)
+
+
+def test_a_spec_carries_the_implementer_self_test_command(tmp_path: Path) -> None:
+    payload = copy.deepcopy(VALID)
+    payload["self_test_command"] = ["uv", "run", "python", "-m", "pytest", "tests"]
+    _write(tmp_path, payload)
+    spec = load_session_spec(tmp_path)
+    assert spec.self_test_command == (
+        "uv", "run", "python", "-m", "pytest", "tests",
+    )
+
+
+def test_a_spec_without_a_self_test_command_carries_none(tmp_path: Path) -> None:
+    """`None` means the task offers none, which is not the same as a command
+    of no tokens."""
+    _write(tmp_path, copy.deepcopy(VALID))
+    assert load_session_spec(tmp_path).self_test_command is None
+
+
+def test_an_empty_self_test_command_is_refused(tmp_path: Path) -> None:
+    payload = copy.deepcopy(VALID)
+    payload["self_test_command"] = []
+    _write(tmp_path, payload)
+    with pytest.raises(SessionSpecError, match="self_test_command"):
+        load_session_spec(tmp_path)
+
+
+def test_a_self_test_command_given_as_a_string_is_refused(tmp_path: Path) -> None:
+    payload = copy.deepcopy(VALID)
+    payload["self_test_command"] = "uv run python -m pytest tests"
+    _write(tmp_path, payload)
+    with pytest.raises(SessionSpecError, match="self_test_command"):
+        load_session_spec(tmp_path)
+
+
+def test_an_unknown_top_level_key_is_still_refused(tmp_path: Path) -> None:
+    payload = copy.deepcopy(VALID)
+    payload["self_test_commands"] = ["uv"]
+    _write(tmp_path, payload)
+    with pytest.raises(SessionSpecError, match="unknown or missing keys"):
+        load_session_spec(tmp_path)
+
+
+def test_a_blank_argv_token_is_refused(tmp_path: Path) -> None:
+    payload = copy.deepcopy(VALID)
+    payload["self_test_command"] = ["uv", "  "]
+    _write(tmp_path, payload)
+    with pytest.raises(SessionSpecError, match="self_test_command"):
+        load_session_spec(tmp_path)
+
+
+# --- HP1 review: the self-test command is a third channel into the packet ----
+
+
+def _phased_task() -> Path:
+    return (
+        Path(__file__).resolve().parent.parent
+        / "src/satyrn_evals/tasks/agentclinic-session-phased"
+    )
+
+
+def _spec_with_command(tmp_path: Path, command: list[str]):
+    task = _phased_task()
+    payload = json.loads((task / "session.json").read_text())
+    payload["self_test_command"] = command
+    (tmp_path / "session.json").write_text(json.dumps(payload))
+    return load_session_spec(tmp_path), load_manifest(task), task
+
+
+def test_a_self_test_command_naming_the_oracle_hook_is_refused(
+    tmp_path: Path,
+) -> None:
+    """The failing witness. This exact command passed the shape check, the
+    builder and both render gates, and reached the rendered packet -- the leak
+    that got `validation_command` removed, arriving by another door."""
+    spec, manifest, task = _spec_with_command(
+        tmp_path, ["python", "-m", "pytest", "-p", "satyrn_evals.oracle_hook"]
+    )
+    with pytest.raises(SessionSpecError, match="oracle_hook"):
+        assert_no_overlay_names(spec, manifest, task)
+
+
+def test_the_legitimate_self_test_command_is_accepted(tmp_path: Path) -> None:
+    """The success sibling: the task's real command, through the same check."""
+    spec, manifest, task = _spec_with_command(
+        tmp_path, ["uv", "run", "python", "-m", "pytest", "tests"]
+    )
+    assert_no_overlay_names(spec, manifest, task)
+
+
+def test_a_self_test_command_naming_a_grader_path_is_refused(
+    tmp_path: Path,
+) -> None:
+    spec, manifest, task = _spec_with_command(
+        tmp_path, ["uv", "run", "pytest", "grader/overlay/grader_tests"]
+    )
+    with pytest.raises(SessionSpecError, match="grader-only path"):
+        assert_no_overlay_names(spec, manifest, task)
+
+
+def test_a_hidden_path_in_facts_is_refused(tmp_path: Path) -> None:
+    """Through the authoring boundary itself, not through the later packet
+    gate. Review replaced this check with a facts-ignoring version and all 135
+    focused tests still passed."""
+    task = _phased_task()
+    payload = json.loads((task / "session.json").read_text())
+    payload["steps"][0]["facts"] = ["see grader/overlay/grader_tests"]
+    (tmp_path / "session.json").write_text(json.dumps(payload))
+    spec = load_session_spec(tmp_path)
+    with pytest.raises(SessionSpecError, match="facts"):
+        assert_no_overlay_names(spec, load_manifest(task), task)
+
+
+def test_the_real_facts_pass_the_same_boundary(tmp_path: Path) -> None:
+    """The sibling that proves the refusal above is not refusing everything."""
+    task = _phased_task()
+    spec = load_session_spec(task)
+    assert all(step.facts for step in spec.steps)
+    assert_no_overlay_names(spec, load_manifest(task), task)

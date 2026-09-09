@@ -35,6 +35,7 @@ Verified by reading the implementation, not by recall:
 | Typed handoff packet: objective, writable files, validation command, optional worker self-test command, per-file baselines, turn and tool-call budgets | `swiftstar/Sources/SwiftStarKit/HandoffPacket.swift:62-72` |
 | Host-enriched packet building from the orchestrator's own tool call | `swiftstar/Sources/SwiftStarKit/DispatchPacketBuilder.swift:1-12` |
 | Phase-chained isolation ending in one candidate ref | `swiftstar/Sources/SwiftStarAppKit/WorktreeTransaction.swift:4-20` |
+| Per-file baselines as the worker's mutation guard | `swiftstar/Sources/SwiftStarKit/HandoffPacket.swift:66-69` |
 | Model-driven loop: decompose, dispatch, read receipts, validate, write | `swiftstar/docs/superpowers/specs/2026-08-27-p20-orchestrate-loop-design.md:74` |
 
 The worker gets `read`, `write` and `edit` and **no** `bash`, with every
@@ -62,7 +63,11 @@ awk -F '\t' 'FNR>1 {n[FILENAME FS $4]++} END {for (k in n) print k,n[k]}' docs/s
 ```
 
 **`harness-void` is a historical classification and is not audited here.**
-Eleven of the 54 rows carry it. Whether each void deserves exclusion is
+**Thirteen** of the 54 rows carry it — corrected 2026-09-09 from "eleven",
+which was written rather than computed; the table above sums to thirteen and
+so does the recompute. One whole campaign, the user-story context fix that
+was meant to confirm the Flask repair, is **5 of 5 void**, so that repair is
+confirmed only by the later arm. Whether each void deserves exclusion is
 unestablished, and by this repository's own standard a void that hides a fail
 is a named instrument defect. Any Satyrn record citing these counts must
 carry the void column and this sentence with them.
@@ -82,8 +87,10 @@ jointly validate packet authoring, isolation and candidate integration.
 Seed 221 passed after dispatching three phases, and all three phases report
 **0 mutations**
 (`swiftstar/captures/agenttest/20260829-212715-roadmap-user-story-directive/campaign-stdout.txt:14-16`).
-The orchestrator issued the writes and edits. An orchestrator that delivers
-the application is a useful product; it is not evidence that delegation
+The retained lines show zero worker mutations and a pass. **That the
+orchestrator issued the writes is an inference** from the loop being
+model-driven with the orchestrator writing files, not something those lines
+state. An orchestrator that delivers the application is a useful product; it is not evidence that delegation
 improved quality or reduced cost. **A Satyrn result that cannot separate "the
 workflow delivered" from "the implementer delivered" is not a result.**
 
@@ -102,11 +109,37 @@ as 0c is archived, at
 
 Everything outside this line is out of scope for the phase:
 
-**orchestrator-authored packet → bounded implementer → isolated candidate →
-explicit integration → cumulative validation.**
+**inspected packet → bounded implementer → isolated candidate → explicit
+integration → cumulative validation.**
 
 Only the gaps on that path get closed. No pool, no UI, no historical
 machinery is carried over.
+
+> **Amended 2026-09-09.** The first word of that line read
+> *orchestrator-authored*. It overstated the phase. `satyrn-engine`'s
+> deferred `facts` field carries the measurement: machine-made **bounds** do
+> confine an implementer and packet **content** does move outcomes floor to
+> ceiling, but a system **authoring and gating that content autonomously**
+> scored **3/8 against 8/8 by hand**, and a remediated authoring prompt
+> **collapsed to 0/8, all no-op** (`local-ai-pi/ROADMAP.md:386-402`, verified
+> at source; the deferral is `satyrn-engine` commit `7b847eb`, still
+> unmerged). local-ai-pi re-scoped its own phase around a main agent
+> authoring the contract for exactly this reason.
+>
+> So Phase HP runs an **inspected** packet: built deterministically from the
+> task and reviewed before dispatch. That isolates execution defects from
+> packet-authoring defects, which is what makes an HP2 failure readable.
+> **Autonomous packet authoring is out of scope for the phase.**
+>
+> **Corrected 2026-09-09.** This first said that decision reopens "on an
+> experiment that isolates contract content from contract delivery". That is
+> the reopen condition of the **`facts` field**, not of autonomous authoring.
+> The authoring entry reopens "on a deterministic authoring path, or on
+> evidence that a newer model closes the 3/8-versus-8/8 gap" (`7b847eb`,
+> added lines 49-51). HP1's builder **is** a deterministic authoring path, so
+> that condition is arguably already met. Keeping autonomous authoring out of
+> Phase HP is a **scope judgment for this phase**, not a claim the condition
+> is unmet, and it is the maintainer's to revisit.
 
 ## Workload: the one that already exists
 
@@ -119,23 +152,39 @@ workload is authored.**
 
 ## The incident every packet field answers to
 
-SwiftStar's orchestrate path dropped shared project context from its packets.
+SwiftStar's `runDirectiveOnce` built the **orchestrator's own prompt** from
+the task alone, while its non-directive loop always included the shared
+project context in its packets.
 On a business-outcome phrasing of the same target application, the
 orchestrator built **the entire application in Flask instead of FastAPI**,
 passed its own phase validation, and failed the acceptance suite at import
 (`swiftstar/ROADMAP.md:410-425`) — recorded there as the fourth instance of
-one defect family. Two consequences bind the deliverables:
+one defect family.
+
+**Corrected 2026-09-09.** This section first said the context was dropped
+from the *packets*, which framed it as an argument about the implementer's
+packet alone. The role starved of context was the **orchestrator**. The
+constraint therefore lands in two places, and D6 carries the second.
+
+Three consequences bind the deliverables:
 
 1. **A packet omitting project constraints is a defect, not a shorter
    packet.**
 2. **Phase-local validation passing is not acceptance.** The orchestrator's
    accept decision and the hidden per-phase grading stay separate, as
-   `BRIEF.md` rule 3 already requires of capture and grading.
+   `BRIEF.md` invariant 1 already requires of capture and grading. **The
+   packet therefore carries no parent validation command at all** — see the
+   HP1 spec, where sourcing one from the task's `oracle` was refused because
+   it would put the hidden oracle hook in a document the implementer reads.
+3. **The orchestrator's own instructions carry the project constraints too.**
+   Not only the packet. D6 retains those instructions so a Flask-shaped
+   failure is attributable to the role that lost the context.
 
 ## Deliverables
 
-Each names its acceptance evidence. Per `BRIEF.md` rule 6, every refusal
-check ships with the sibling success check that proves it can pass.
+Each names its acceptance evidence. Per `BRIEF.md` invariant 5, every refusal
+check ships with the sibling success that proves it can pass, and every check
+is shown to work in both directions.
 
 **D1 — The packet, mapped rather than invented.** Take SwiftStar's field set
 as the starting point and map it onto Satyrn's existing contract rendering
@@ -184,7 +233,7 @@ orchestrator or implementer, from retained events rather than from prose.
 is reported as **zero implementer mutations** — the seed-221 shape, detected
 rather than passed — while a chain where the implementer delivers reports its
 mutations to the implementer. A detector that cannot show both directions on
-the current batch does not ship (`BRIEF.md` rule 8).
+the current batch does not ship (`BRIEF.md` invariant 5).
 
 **D6 — The whole chain retained and re-scorable.** Orchestrator instructions,
 every packet, the implementer's own tool events, the candidate change, the
@@ -192,7 +241,7 @@ validation output, and the accept-or-reject decision **with its reason** —
 plus cost recorded separately per role, and any orchestrator fallback work
 labelled as such.
 *Acceptance:* every acceptance decision recomputes from retained artifacts
-with no further inference (`BRIEF.md` rule 3); a chain with an implementer
+with no further inference (`BRIEF.md` invariant 1); a chain with an implementer
 step carrying no retained events **fails** the chain check, which is the
 2026-09-08 detached-worker gap written as a test; and every packet
 declaration that the runtime does not actually apply is recorded as declared
@@ -219,12 +268,27 @@ the reason.
 ## The confound to state before D8 runs
 
 The two routes must not differ in tool surface while claiming to differ in
-workflow. V13d found an implementer restricted to `read,edit` lost 8 of 12
-successes against a `bash`-carrying baseline
-(`satyrn-engine/packages/engine/runner.ts:22-30`). SwiftStar's answer is
-already in the packet: a worker **self-test command**, distinct from the
-parent's validation command (`HandoffPacket.swift:62-68`). Adopt that shape.
-The implementer's validation capability is required, not optional.
+workflow. V13d found that removing `bash` and `write` cost 8 of 12 successes
+on one task. The primary record adds two things the engine's own comment
+omits: Engine recovered 2 of those 8, indistinguishable from chance, and **on
+`misleading-locus` the sign was opposite**
+(`archive/2026-09-07-pre-reset/ROADMAP.md:154`, the primary;
+`satyrn-engine/packages/engine/runner.ts:22-30` restates only the first
+half). A separate self-test command is therefore **necessary to avoid the
+confound, not shown sufficient to remove it.** SwiftStar's shape is the one
+to adopt: a worker self-test command, distinct from whatever decides
+acceptance (`HandoffPacket.swift:62-68`).
+
+**A second confound, and it is not tool surface.** The packet's declared
+scope and the session route's enforced scope match differently.
+`engine_contract.writable_paths` renders fnmatch patterns and leaves a path
+absent from `base/` as an exact filename
+(`src/satyrn_evals/engine_contract.py:32-46`), while the session route
+enforces prefix matching through `patch.within_source`
+(`src/satyrn_evals/patch.py:166-178`). On this task's empty skeleton the two
+disagree about whether `templates/base.html` is in scope. **Until HP4 the
+packet's declared scope is not the enforced scope**, and any comparison says
+so.
 
 ## Deliberately out of scope
 

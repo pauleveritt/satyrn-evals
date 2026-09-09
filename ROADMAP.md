@@ -145,15 +145,18 @@ the packet schema, the arm, capture, grading, attribution and comparison.
 Cycles marked *engine* need mirrored entries in that repository's own
 roadmap; this table does not govern it.
 
-The one path being built, and the only one: **orchestrator-authored packet →
-bounded implementer → isolated candidate → explicit integration → cumulative
-validation.** The workload is the existing
+The one path being built, and the only one: **inspected packet → bounded
+implementer → isolated candidate → explicit integration → cumulative
+validation.** The packet is built deterministically and reviewed, not authored
+by an orchestrator unsupervised — autonomous authoring is measured at 3/8
+against 8/8 by hand and is **out of scope for the phase** (the amendment in
+the design names the evidence). The workload is the existing
 `agentclinic-session-phased` task. No second workload is authored, and no
 agent is asked to invent a decomposition.
 
 | Cycle | In scope | Out of scope | Artifacts | Status |
 |---|---|---|---|---|
-| **HP1** Packet schema | The typed packet mapped from SwiftStar's field set onto this repo's contract rendering: objective, project constraints, base revision, writable scope, behaviour to preserve, parent validation command, worker self-test command, budgets | Executing a packet; anything engine-side; fields this path does not need | spec + plan | proposed |
+| **HP1** Packet schema | The typed packet mapped from SwiftStar's field set: objective, pinned facts, base revision, writable scope, behaviour to preserve, worker self-test command, redactions, budgets. **No parent validation command** — sourcing one from the task's `oracle` would put the hidden oracle hook in a document the implementer reads | Executing a packet; anything engine-side; fields this path does not need | spec + plan | **implemented, awaiting acceptance** — five slices, 1,559 tests green; two review rounds recorded in the spec's correction blocks |
 | **HP2** Offline route | The three phases end to end against a fake implementer on the engine seam, no model | Real inference; isolation (HP3); attribution (HP5) | plan only | proposed |
 | **HP3** Chained isolation *(engine)* | Phase N branches from phase N-1's accepted commit; a refused phase stops the chain with no candidate ref | Pools, parallel dispatch, retry | spec + plan | proposed |
 | **HP4** File creation | Declared directory source paths, so an empty-skeleton directory is distinguishable from a creation target | A trailing slash as the settled syntax; relaxing scope enforcement | plan only | proposed |

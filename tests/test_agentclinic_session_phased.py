@@ -4,9 +4,12 @@ import ast
 import json
 from pathlib import Path
 
+import pytest
+
 from satyrn_evals.manifest import load_manifest
 from satyrn_evals.overlay import load_overlay
 from satyrn_evals.patch import within_source
+from satyrn_evals.session import _digest
 from satyrn_evals.session_manifest import assert_no_overlay_names, load_session_spec
 
 REPO = Path(__file__).resolve().parents[1]
@@ -232,11 +235,11 @@ def test_no_step_declares_a_budget_ceiling() -> None:
     judgment wearing a measurement's clothes.
 
     ``SessionStep`` is a ``slots=True`` frozen dataclass whose fields are
-    exactly ``id, kind, prompt, new_feature_selectors``
-    (session_manifest.py:24-31), so an attribute check on the loaded
-    dataclass can never see a budget field, even one present in the raw
-    file -- it would always read back ``None``. This reads ``session.json``
-    directly so the assertion can actually fail."""
+    exactly ``id, kind, prompt, new_feature_selectors, facts`` (HP1 slice 2
+    added the last one), so an attribute check on the loaded dataclass can
+    never see a budget field, even one present in the raw file -- it would
+    always read back ``None``. This reads ``session.json`` directly so the
+    assertion can actually fail."""
     data = json.loads((TASK / "session.json").read_text())
     for step in data["steps"]:
         assert "turn_budget" not in step
@@ -292,6 +295,10 @@ def test_the_two_prompt_conditions_differ_only_by_the_verification_sentence() ->
     for c, r in zip(control["steps"], remedy["steps"], strict=True):
         assert c["kind"] == r["kind"]
         assert c["new_feature_selectors"] == r["new_feature_selectors"]
+        # HP1 slice 2: `facts` is compared too. Without this the two
+        # conditions could carry different pinned decisions with this test
+        # still green, and the screen's validity rests entirely on it.
+        assert c.get("facts") == r.get("facts"), c["id"]
         assert VERIFICATION_SENTENCE not in c["prompt"], c["id"]
         assert VERIFICATION_SENTENCE in r["prompt"], r["id"]
         assert c["prompt"] == r["prompt"].replace(VERIFICATION_SENTENCE, "", 1), c["id"]
@@ -307,3 +314,71 @@ def test_the_control_condition_never_mentions_running_tests() -> None:
     control = json.loads((TASK / "session-control.json").read_text())
     for step in control["steps"]:
         assert "pytest" not in step["prompt"], step["id"]
+
+
+# --- HP1 slice 2: the recorded prompt digests --------------------------------
+
+#: The six prompt digests recorded before any inference in the four-session
+#: screen (`docs/current/agentclinic-verification-triage-screen.md:33-35`),
+#: truncated there to sixteen characters. Adding `facts` changes the spec
+#: **file** digests and the task tree hash, which is unavoidable and is
+#: recorded as a correction to that record. It must not change these.
+RECORDED_PROMPT_DIGESTS: dict[str, dict[str, str]] = {
+    "session-control.json": {
+        "phase-1-home": "4b143eed93f721d6",
+        "phase-2-board": "2bbeb2c9d882bf99",
+        "phase-3-add": "882ed2b11e6b66da",
+    },
+    "session.json": {
+        "phase-1-home": "9238e5d3a1265a6c",
+        "phase-2-board": "8bc6457681df6448",
+        "phase-3-add": "6fcfd29df448f013",
+    },
+}
+
+
+@pytest.mark.parametrize("spec_name", sorted(RECORDED_PROMPT_DIGESTS))
+def test_the_recorded_prompt_digests_are_unchanged(spec_name: str) -> None:
+    """`facts` is carried into a packet and never appended to a prompt.
+
+    This replaces a proposed "prompt invariance" test that could not fail:
+    `session.py` sends `spec_step.prompt` verbatim, so no builder existed
+    that could have appended anything. This one can fail, and it is what
+    keeps the three retained runs comparable.
+    """
+    spec = load_session_spec(TASK, spec_name)
+    recorded = RECORDED_PROMPT_DIGESTS[spec_name]
+    assert {step.id for step in spec.steps} == set(recorded)
+    for step in spec.steps:
+        assert _digest(step.prompt)[:16] == recorded[step.id], step.id
+
+
+def test_the_digest_check_would_notice_an_appended_fact() -> None:
+    """The sibling: prove the check above can fail.
+
+    Without this, a digest test passes just as well over prompts nothing
+    could ever have modified.
+    """
+    spec = load_session_spec(TASK, "session.json")
+    step = spec.steps[0]
+    appended = f"{step.prompt}\n{step.facts[0]}"
+    assert _digest(appended)[:16] != RECORDED_PROMPT_DIGESTS["session.json"][step.id]
+
+
+def test_both_conditions_carry_the_same_self_test_command() -> None:
+    """It never reaches a prompt, so it does not disturb the screen -- and
+    holding it equal keeps the conditions differing by exactly one sentence.
+    """
+    remedy = load_session_spec(TASK, "session.json")
+    control = load_session_spec(TASK, "session-control.json")
+    assert remedy.self_test_command == control.self_test_command
+    assert remedy.self_test_command == (
+        "uv", "run", "python", "-m", "pytest", "tests",
+    )
+
+
+def test_every_step_carries_pinned_facts() -> None:
+    spec = load_session_spec(TASK, "session.json")
+    for step in spec.steps:
+        assert step.facts, step.id
+        assert all(f.strip() for f in step.facts), step.id

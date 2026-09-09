@@ -132,3 +132,49 @@ As in the prior records: environment verified at the pins; a clean tree with
 the commit recorded; a **live completion** rather than a `/v1/models`
 listing; and model identity read from each transcript's own `message.model`
 field after the run.
+
+---
+
+## Correction, 2026-09-09: two recorded digests are now historical
+
+**The runs this record describes are unaffected.** HP1 slice 2 added two
+optional keys to the task's session specs — `facts` per step and a
+spec-level `self_test_command` — so two of the values frozen above no longer
+match the files on disk:
+
+| Recorded above | Now |
+|---|---|
+| Control spec sha256 `16c72870b9732e22…` | `c8298185f5a3591c…` |
+| Verification spec sha256 `1b0139140b357138…` | `d92432b5560d0302…` |
+| Task tree sha256 `3e6607e5…` | changed; see below |
+
+**The six prompt digests at the top of this record are unchanged**, and that
+is the property that matters. `facts` is carried into a handoff packet and
+never appended to a prompt. Two tests hold it there:
+`test_the_recorded_prompt_digests_are_unchanged` asserts all six against the
+values recorded above, and its sibling proves that check can fail by digesting
+a prompt with a fact appended.
+
+**The supported statement is narrower than the one first written here.** An
+earlier version of this correction said the retained runs "remain comparable
+to each other and to any later run on these prompts". That does not follow:
+tools, runtime, budget, model and packet rendering can all differ between
+runs, and unchanged prompt digests say nothing about any of them. What is
+established is only this: **HP1 did not change these decoded prompts and did
+not retroactively change the retained evidence.** A future handoff packet
+carries rendered facts and preservation text, so it is a different model
+input, not a continuation of this condition.
+
+**One more thing the diff shows, so nobody re-investigates it.** Both files
+were re-serialized rather than hand-edited, so every escaped em dash
+(`\u2014`) is now written as the literal character. The decoded prompt
+strings are unchanged — that is what the digests above prove — but the diff
+touches every prompt line.
+
+**Stated rather than implied:** the task tree hash necessarily changed,
+because two files in the tree changed. This correction does **not** publish a
+new value. The walk that produced `3e6607e5…` is recorded only in
+`RUN-MANIFEST.json:5` and is not reproduced by any script in this repository,
+so a recomputation here would be a different measurement wearing the same
+name. Anyone needing the new value should compute it with the same walk that
+produced the old one, and record which walk that was.
