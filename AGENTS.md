@@ -27,6 +27,29 @@ it, carry a power figure's test and assumptions, keep checkpoints to execution
 integrity, treat outcome-shaped signals as measurements rather than stop
 triggers, and never restart from zero by default.
 
+**The instrument is not the work.** Instrument improvement is always
+available, always verifiable, and always produces a green gate and a commit,
+while finding a pathology is uncertain and often ends in "no change". Left
+alone that gradient runs one way, so three rules bind it.
+
+**Currency.** Do not open an investigation on a pathology whose only evidence
+predates the shipping revision of the component it targets. Compare the
+evidence's recorded digest against `HEAD` **before** measuring — one command.
+On 2026-09-09 three consecutive cycles characterised a loop breaker that a
+landed commit had already fixed, because nobody ran that command.
+
+**Declare what each piece of work produced**, and cap one of the answers:
+*remedy tested live*, *remedy proposed and refused*, or **instrument only**.
+**Two consecutive instrument-only pieces stop the loop** and require a live run
+before another opens. The overnight run of 2026-09-08/09 was four in a row and
+ended with no remedy enabled and none tested.
+
+**Instrument work is a tax, not a product.** It is permitted when it blocks the
+measurement in hand, it is recorded as debt rather than as the work's result,
+and **if the fix is larger than the measurement it unblocks, stop and ask**.
+Each such fix is individually justified; the failure is cumulative, and only a
+count catches it.
+
 Optimize development for useful feedback within 10–15 minutes. Start with a
 deterministic reproducer, then one bounded attempt, then two attempts per
 matched configuration on one relevant qualified task; a broader confirmation

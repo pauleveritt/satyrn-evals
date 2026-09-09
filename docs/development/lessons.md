@@ -48,10 +48,41 @@ run-level rate.
 rule, not the two fields.** The earlier entry named `tool_execution_start` and
 `usage_totals.py`, and a third occurrence followed anyway on 2026-09-08
 (`grep -o NO_CHANGE_REQUESTED` gave 466 against 47 real refusals, 9.9x; the
-loop-breaker string runs 4.2x). The rule: **count engine messages only from
-top-level `tool_execution_end` events, and never `grep -c`/`-o` a string**,
-because a tool result is re-streamed in the following message and quoted in
-model thinking. Carry the recompute command beside every count.
+loop-breaker string runs 4.2x). The rule: **never `grep -c`/`-o` a string to count events** — a tool result is
+re-streamed in the following message and quoted in model thinking. Count from
+the authoritative event for the thing being counted, which is **not one event
+type for everything**: a tool's *result* is a top-level `tool_execution_end`,
+while the breaker's own firings are `entry_appended` with
+`entry.customType == "loop_broken"`, and usage is a settled `message_end`.
+Name the event you counted, and carry the recompute command beside the number.
+
+Two neighbouring failures share the symptom and need separate checks: an
+**invalid counterfactual replay** (see the entry above) and **uncertain token
+semantics** — `usage.output` is the server's `completion_tokens`, and what it
+includes is a property of that server, not something a character count can
+settle.
+
+**"The night produced commits, green gates, and no tested remedy."**
+Every instrument fix was individually justified — each blocked the next
+measurement — and the failure was cumulative, so nothing local caught it. Four
+consecutive cycles produced parser, preflight, grading and protocol changes and
+**zero enabled or tested remedies**. Two contributing causes, both specific:
+mining retained evidence can only find pathologies of the code that produced
+it, and that code was retired; and a deterministic-reproducer entry gate turns
+most candidates into instrument corrections, because building the reproducer
+means first proving the instrument reads the evidence correctly. `AGENTS.md`
+now carries the currency check, the instrument-only cap, and the tax rule.
+
+**"The waiter never returned and the work had already finished."**
+`while pgrep -f "run-batch.sh"; do sleep 30; done` matches the **waiter's own
+command line**, which contains the pattern as its argument, so the loop can
+never exit. Three such waiters spun for 10–12 hours after their batches
+finished, on a machine whose quietness is a stated precondition for unattended
+batches. The mirror-image error is guessing a process name that matches
+nothing, which returns instantly and looks like success. **Wait on a condition
+the work itself produces** — a file appearing, a marker line in a log, a count
+of completed cells — not on a process name; `pgrep -f "[r]un-batch.sh"` guards
+the self-match but the file check is the right instrument for this job.
 
 For a specific past incident or original line citation, retrieve its record
 from [the archive](https://github.com/pauleveritt/satyrn-evals/tree/main/archive/2026-09-07-pre-reset).

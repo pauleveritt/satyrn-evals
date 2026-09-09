@@ -40,13 +40,19 @@ from accepted edit results exactly as `registerLoopBreaker` feeds it.
 
 ## What it means
 
-**The fix works in the expected direction, and the pathology largely
-survives it.** Revision keying admits a wrongly-refused call in 53 of the 60
-diverging cells — consistent with cycle 1's finding that 195 of 532 refusals
-were stale. But **84% of the refusals both breakers faced are still issued**,
-so cycle 1's subject is not an artifact of retired code: the loop breaker still
-refuses at this volume, and the model's 33% immediate re-send was measured
-against refusals that mostly still stand.
+**The fix works in the expected direction.** Revision keying admits a
+wrongly-refused call in 53 of the 60 diverging cells — consistent with cycle 1's
+finding that 195 of 532 refusals were stale. On the decisions both breakers
+faced, **84% of recorded refusals are still refused**.
+
+> **Correction, 2026-09-09.** This first concluded that the pathology "largely
+> survives" and that the breaker "still refuses at this volume". Neither
+> follows, and both contradict this section's own caveat. **A prefix agreement
+> rate cannot establish present-day prevalence**, because the prefixes end at
+> the first divergence and the model's subsequent behaviour is unobserved.
+> What the number supports is narrow: *where both breakers saw the same call,
+> they mostly agreed*. Present-day volume is unmeasured, and the only batches
+> on the shipping breaker recorded zero refusals.
 
 ## Limits, stated
 

@@ -32,7 +32,11 @@ does. Over the twelve sessions, most occurrences of one key in a 20-call window:
 | everything else | 2, 4, 5, 5, 5, 5, 6, 6 |
 
 A limit of **7** catches three of the four timeouts — including the rotating
-one — and fires on **none** of the eight sessions that did not time out.
+one — and fires on none of the eight sessions that did not time out. **Those
+eight are not "healthy":** five ended in scope violations and only three
+completed. The comparison group is "did not hit the step timeout", which is a
+weaker thing than "worked", and the threshold is fitted to the sample that
+discovered it.
 
 ## The margin is thin, and that is the finding
 

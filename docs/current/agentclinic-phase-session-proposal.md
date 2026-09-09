@@ -101,13 +101,13 @@ Both come from the same twelve sessions and should land first:
    unchanged: `RepeatTripwire` keys on `tool_execution_start`
    (`repeat_limit.py:29`), an event the session adapter does not map
    (`pi_session.py:45-53`); the session key would be `toolcall_end.toolCall`.
-2. **A scope model that permits adding tests.** Five of twelve sessions ended
-   `SCOPE_VIOLATION`, and every violation was under `tests/` — 14 touches of
-   the protected file plus two new test files the model wrote. Forbidding a
-   coding agent from writing tests fights its normal behaviour; the rule exists
-   only to stop preservation grading being graded against a test the model
-   edited. Permitting *new* test files while protecting the declared
-   preservation files would remove most of this without weakening the guard.
+2. **Grade against trusted checks, independently of solver-authored tests.**
+   Nine of twelve sessions wrote under `tests/`. **Permitting new test files
+   would not have removed most of it:** eight edited the *protected existing*
+   file, and only session 11 was new-file-only — and it timed out anyway. So
+   the earlier framing of this prerequisite was wrong. The workload should let
+   the solver add tests freely, and grade preservation from checks it cannot
+   reach, rather than policing where it writes.
 
 ## What it would and would not establish
 
@@ -123,11 +123,17 @@ session has no per-prompt equivalent.
 
 ## The alternative this proposal has to answer: do nothing
 
-`ROADMAP.md` records that the comparison is paused, that "no evaluation is
-queued, and none should be manufactured", and that the next one is **pulled by
-a real development need**. This proposal concedes it says nothing about Engine
-versus Baseline. By that standard it is not currently pulled by anything: it is
-a better instrument for a question no one has yet asked.
+> **Correction, 2026-09-09.** This section argued the proposal was "not pulled
+> by anything" and recommended deferring it behind further instrument fixes.
+> **That was wrong, and it deferred the stated goal.** Testing a multi-phase
+> workload *is* the development need — it was asked for directly, and "no
+> evaluation should be manufactured" guards against inventing questions, not
+> against answering the one on the table.
+>
+> A second thing this got wrong: requiring a step that must extend shared
+> behaviour is **not** "manufacturing an accident". Requiring a *regression*
+> would be. A realistic request can demand extending shared behaviour while
+> preserving earlier requirements, and that is ordinary development.
 
 The two prerequisites are different — both are justified on their own by the
 retained batch, and both are **re-scorable against the 12 sessions already on
