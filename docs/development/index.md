@@ -19,6 +19,7 @@ cycles/index
 ../superpowers/plans/2026-09-09-agentclinic-phased-session
 ../superpowers/specs/2026-09-09-agentclinic-phased-session-design
 ../superpowers/plans/2026-09-09-hp1-handoff-packet
+../superpowers/plans/2026-09-09-hp2-offline-route
 ../superpowers/specs/2026-09-09-hp1-handoff-packet-design
 ```
 

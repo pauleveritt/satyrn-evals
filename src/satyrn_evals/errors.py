@@ -115,3 +115,7 @@ class ProtocolError(SatyrnError):
 
 class PacketError(UsageError):
     """Exit 2: a handoff packet violates the HP1 packet contract."""
+
+
+class RouteError(UsageError):
+    """Exit 2: an implementer result or a routed phase violates HP2's contract."""
