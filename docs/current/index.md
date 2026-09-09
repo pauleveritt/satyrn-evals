@@ -13,6 +13,10 @@ past artifact. Archived material does not set current policy.
   is the proposed next experiment: a disclosed replication at `n=36` per arm,
   with its power, assumptions, checkpoint rule and stopping rules fixed in
   advance. It authorizes no spending.
+- [Proposal: build the phased application as a session](agentclinic-phase-session-proposal.md)
+  argues the next multi-prompt workload should be the AgentClinic phases rather
+  than a synthetic task, and names two prerequisites measured over twelve
+  sessions. It authorizes nothing.
 - [Pre-run record: the bounded Baseline session](session-ordering-baseline-pre-run-record.md)
   freezes the conditions for one Baseline session on the cross-prompt witness
   task, and states what a single session cannot establish.
@@ -49,6 +53,7 @@ agentclinic-suite-brief
 misleading-locus-r1-comparison-design
 misleading-locus-r1-pre-run-record
 session-ordering-baseline-pre-run-record
+agentclinic-phase-session-proposal
 misleading-locus-r3-pre-run-record
 first-engine-comparison-plan
 first-smoke-run-record
