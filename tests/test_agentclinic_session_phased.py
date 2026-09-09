@@ -6,7 +6,7 @@ from pathlib import Path
 from satyrn_evals.manifest import load_manifest
 from satyrn_evals.overlay import load_overlay
 from satyrn_evals.patch import within_source
-from satyrn_evals.session_manifest import load_session_spec
+from satyrn_evals.session_manifest import assert_no_overlay_names, load_session_spec
 
 REPO = Path(__file__).resolve().parents[1]
 TASK = REPO / "src/satyrn_evals/tasks/agentclinic-session-phased"
@@ -117,6 +117,26 @@ def test_every_claimed_selector_names_a_check_that_exists() -> None:
     }
     claimed = {s for step in spec.steps for s in step.new_feature_selectors}
     assert claimed == defined
+
+
+def test_the_manifest_target_names_a_check_that_exists() -> None:
+    """``expected_test_ids`` drives the bare ``grade`` path, which narrows
+    the selection to exactly those ids. One naming nothing would make every
+    bare grade of this task UNAVAILABLE."""
+    manifest = load_manifest(TASK)
+    defined = {
+        f"grader_tests/{module.name}::{name}"
+        for module in sorted(GRADER.glob("test_phase*.py"))
+        for name in _functions(module)
+    }
+    assert set(manifest.expected_test_ids) <= defined
+
+
+def test_no_prompt_names_a_grader_only_path() -> None:
+    """The hidden-oracle tripwire, run against this task's own prompts
+    rather than against a synthetic one (session_manifest.py:110-136)."""
+    manifest = load_manifest(TASK)
+    assert_no_overlay_names(load_session_spec(TASK), manifest, TASK)
 
 
 def test_no_prompt_discloses_a_later_phase() -> None:
