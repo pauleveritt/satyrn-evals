@@ -285,6 +285,42 @@ def test_session_spec_refuses_unreadable_file(
         load_session_spec(tmp_path)
 
 
+def test_session_spec_refuses_malformed_json_names_the_given_file(
+    tmp_path: Path,
+) -> None:
+    """A non-default --session-spec name appears in the failure message.
+
+    Regression for a bug where the three failure branches hardcoded the
+    literal ``"session.json"``, so a malformed ``other.json`` reported the
+    wrong filename.
+    """
+    (tmp_path / "other.json").write_text("{not json")
+    with pytest.raises(SessionSpecError, match="malformed other.json"):
+        load_session_spec(tmp_path, spec_name="other.json")
+
+
+def test_session_spec_refuses_unreadable_named_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "other.json"
+    path.write_text("{}")
+
+    def deny(path: Path):
+        raise PermissionError("permission denied")
+
+    monkeypatch.setattr(Path, "read_text", deny)
+    with pytest.raises(SessionSpecError, match="cannot read other.json"):
+        load_session_spec(tmp_path, spec_name="other.json")
+
+
+def test_session_spec_refuses_bad_keys_names_the_given_file(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "other.json").write_text(json.dumps({"version": 1}))
+    with pytest.raises(SessionSpecError, match="in other.json"):
+        load_session_spec(tmp_path, spec_name="other.json")
+
+
 def test_session_spec_name_loads_a_named_file(tmp_path: Path) -> None:
     """--session-spec picks a different file inside the task dir.
 

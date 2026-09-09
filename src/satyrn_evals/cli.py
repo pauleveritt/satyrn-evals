@@ -18,6 +18,7 @@ from satyrn_evals.rescore import regrade_attempt, summarize_output
 from satyrn_evals.run import run
 from satyrn_evals.session import run_session
 from satyrn_evals.session_grader import SessionGrader
+from satyrn_evals.session_manifest import DEFAULT_SESSION_SPEC
 from satyrn_evals.session_record import SessionCode
 from satyrn_evals.verdict import Verdict
 from satyrn_evals.workspace import DEFAULT_TIMEOUT
@@ -341,10 +342,10 @@ session_p.add_argument(
 )
 session_p.add_argument(
     "--session-spec",
-    default="session.json",
+    default=DEFAULT_SESSION_SPEC,
     help=(
         "spec file inside the task directory to load "
-        "(default: session.json; must be a bare *.json filename)"
+        f"(default: {DEFAULT_SESSION_SPEC}; must be a bare *.json filename)"
     ),
 )
 

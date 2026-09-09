@@ -21,6 +21,8 @@ _SAFE_ID = re.compile(r"[A-Za-z0-9._-]+\Z")
 _KEYS = {"version", "steps", "base_preservation_selectors"}
 _STEP_KEYS = {"id", "kind", "prompt", "new_feature_selectors"}
 
+DEFAULT_SESSION_SPEC: str = "session.json"
+
 
 @dataclass(frozen=True, slots=True)
 class SessionStep:
@@ -92,19 +94,21 @@ def _check_spec_name(spec_name: str) -> None:
         )
 
 
-def load_session_spec(task_dir: Path, spec_name: str = "session.json") -> SessionSpec:
+def load_session_spec(
+    task_dir: Path, spec_name: str = DEFAULT_SESSION_SPEC
+) -> SessionSpec:
     """Load and validate ``spec_name`` (default ``session.json``) below ``task_dir``."""
     _check_spec_name(spec_name)
     path = task_dir / spec_name
     try:
         data = json.loads(path.read_text())
     except OSError as e:
-        raise SessionSpecError(f"cannot read session.json: {e}") from e
+        raise SessionSpecError(f"cannot read {spec_name}: {e}") from e
     except json.JSONDecodeError as e:
-        raise SessionSpecError(f"malformed session.json: {e}") from e
+        raise SessionSpecError(f"malformed {spec_name}: {e}") from e
     if not isinstance(data, dict) or set(data) != _KEYS:
         raise SessionSpecError(
-            "unknown or missing keys in session.json: expected "
+            f"unknown or missing keys in {spec_name}: expected "
             "version, steps, base_preservation_selectors"
         )
     if data["version"] != 1:

@@ -38,6 +38,7 @@ from satyrn_evals.manifest import TaskManifest, load_manifest, resolve_task
 from satyrn_evals.overlay import OverlaySpec, load_overlay
 from satyrn_evals.patch import within_source
 from satyrn_evals.session_manifest import (
+    DEFAULT_SESSION_SPEC,
     SessionSpec,
     assert_no_overlay_names,
     load_session_spec,
@@ -241,7 +242,7 @@ def run_session(
     step_timeout: float = 600.0,
     close_timeout: float = 30.0,
     grader: SessionGrader | None = None,
-    session_spec: str = "session.json",
+    session_spec: str = DEFAULT_SESSION_SPEC,
 ) -> SessionRecord:
     """Run one session against TASK and return the durable record."""
     task_dir = resolve_task(task, tasks_root)
