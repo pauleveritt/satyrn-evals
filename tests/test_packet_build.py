@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from satyrn_evals.engine_contract import admits
 from satyrn_evals.errors import PacketError
 from satyrn_evals.manifest import load_manifest
 from satyrn_evals.packet import HandoffPacket, build_packet
@@ -113,30 +114,37 @@ def test_the_self_test_command_comes_from_the_session_spec() -> None:
 
 
 def test_the_writable_paths_are_the_contract_renderers() -> None:
-    """Weak by construction, and recorded as such: this task's `base/` holds
-    no directories, so the renderer's output equals `source_paths` and a
-    builder that copied `source_paths` directly would pass. The test pins the
-    *call*, not a distinguishable result; HP4 gives it teeth.
+    """The builder calls the renderer rather than copying `source_paths`.
+
+    Distinguishable since HP4: this task declares `templates` and `tests`
+    directories, so the renderer returns `templates/*` and `tests/*` and a
+    builder that copied `source_paths` would now fail here.
     """
     from satyrn_evals.engine_contract import writable_paths
 
     manifest = load_manifest(TASK)
-    assert _build().writable_paths == writable_paths(TASK, manifest.source_paths)
+    built = _build().writable_paths
+    assert built == writable_paths(TASK, manifest.source_paths, manifest.source_dirs)
+    assert built != manifest.source_paths
 
 
-def test_the_declared_scope_is_not_the_enforced_scope() -> None:
-    """Recorded, not asserted away. HP4 closes it.
+def test_the_declared_scope_no_longer_hides_a_creation_target() -> None:
+    """The gap this test used to record, closed by HP4.
 
-    `writable_paths` leaves a path absent from `base/` as an exact filename,
-    while the session route matches by prefix, so the two disagree about a
-    file the task expects the model to create.
+    It read: `writable_paths` leaves a path absent from `base/` as an exact
+    filename, while the session route matches by prefix, so the two disagree
+    about a file the task expects the model to create. The manifest now
+    declares its directories and the disagreement is gone for that file.
+    The remaining one-directional invariant, and the bare-directory
+    asymmetry left open on purpose, live in
+    `tests/test_declared_scope_against_enforced.py`.
     """
     manifest = load_manifest(TASK)
     declared = _build().writable_paths
-    assert "templates" in declared
-    assert "templates/*" not in declared
+    assert "templates/*" in declared
+    assert "templates" not in declared
+    assert admits(declared, "templates/base.html")
     assert within_source("templates/base.html", manifest.source_paths)
-    assert "templates/base.html" not in declared
 
 
 def test_an_unknown_step_is_refused() -> None:

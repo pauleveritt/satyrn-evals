@@ -7,6 +7,7 @@
     "grader_tests/test_phase2_board.py::test_complaint_model_contract_is_preserved"
   ],
   "source_paths": ["app.py", "models.py", "templates", "tests"],
+  "source_dirs": ["templates", "tests"],
   "fixtures": {
     "known_good": "fixtures/known-good.patch",
     "known_broken": "fixtures/known-broken.patch"

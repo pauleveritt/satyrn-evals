@@ -158,12 +158,15 @@ def build_packet(
     refused.
 
     ``writable_paths`` is reused from the Engine contract renderer rather
-    than reimplemented. Its fnmatch semantics differ from the session route's
-    prefix matching (``patch.within_source``): a path absent from ``base/``
-    renders as an exact filename, so on an empty skeleton the declared scope
-    and the enforced scope disagree. That gap belongs to HP4; this builder
-    inherits it unchanged rather than half-fixing it, and a test records the
-    disagreement instead of asserting it away.
+    than reimplemented, and is handed the manifest's own ``source_dirs``
+    declaration. **HP4 closed the gap this docstring used to record:** the
+    renderer probed ``base/`` and an absent path rendered as an exact
+    filename, so on an empty skeleton the declared scope and the enforced
+    scope disagreed about ``templates/base.html``. A declaring manifest now
+    renders the directory pattern. What remains, deliberately, is that
+    ``patch.within_source`` also admits the bare path ``templates`` and the
+    declaration does not; the invariant this builder relies on is
+    one-directional, that declared never exceeds enforced.
     """
     steps = {step.id: step for step in spec.steps}
     if (step := steps.get(step_id)) is None:
@@ -202,7 +205,9 @@ def build_packet(
         objective=step.prompt,
         facts=step.facts,
         base_revision=base_revision,
-        writable_paths=writable_paths(task_dir, manifest.source_paths),
+        writable_paths=writable_paths(
+            task_dir, manifest.source_paths, manifest.source_dirs
+        ),
         preserve=earlier,
         self_test_command=spec.self_test_command,
         redacts=redacts,

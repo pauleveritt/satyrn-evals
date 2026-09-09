@@ -131,3 +131,29 @@ so the marked tier is re-run once by hand:
 ```
 uv run pytest -q -m integration
 ```
+
+## What the implementation found, recorded rather than edited away
+
+**Two fakes were reading the packet by the wrong rule.** Both the in-process
+`scripted_implementer` and the executable `fake_implementer.py` checked scope
+with prefix matching — `within_source` in one, a hand-rolled `startswith` in
+the other — against patterns written in fnmatch. The two rules agree on an
+exact filename, which is all the phased task rendered, so the mismatch was
+invisible until `templates` became `templates/*` and eleven tests failed at
+once. A fake that reads the packet by a different rule than the packet is
+written in is not enforcing the packet, so this was a real defect that HP4
+surfaced rather than caused. Both now use `admits`.
+
+**The golden packet moved by exactly two lines**, `templates` to
+`templates/*` and `tests` to `tests/*`, which is the visible diff the golden
+exists to produce.
+
+**Four mutations, each killed.** Ignoring the declaration: 22 failures.
+Treating an absent key as an empty declaration: 24. Making `admits` always
+true: 19. Dropping the undeclared-directory refusal: 1 — the minimum, and
+worth naming, since that gate has exactly one test holding it.
+
+**Five marked-tier failures are not HP4's.** `test_attempt` (two), the
+uv-isolation witness and both `local-pings` cases fail in this worktree and
+pass in the primary checkout. Verified by stashing every change and
+re-running at the plan's own commit. Recorded in `BACKLOG.md`.

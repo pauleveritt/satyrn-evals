@@ -13,6 +13,7 @@ on purpose.
 import json
 import os
 import sys
+from fnmatch import fnmatch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
@@ -37,9 +38,12 @@ def main() -> int:
     for name, text in files.items():
         # The executable honours the packet's declared scope, exactly as the
         # in-process fake does; a permissive one would hide a route defect.
-        if name not in packet["writable_paths"] and not any(
-            name.startswith(f"{p}/") for p in packet["writable_paths"]
-        ):
+        # The patterns are fnmatch, which is why this uses `fnmatch` and not a
+        # hand-rolled prefix test. The prefix version it replaced agreed with
+        # the patterns only while the phased task rendered exact filenames;
+        # HP4's declaration made `templates` render `templates/*` and the
+        # difference stopped being invisible.
+        if not any(fnmatch(name, pattern) for pattern in packet["writable_paths"]):
             raise SystemExit(f"{name} outside declared scope")
         path = workspace / name
         path.parent.mkdir(parents=True, exist_ok=True)

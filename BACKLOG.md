@@ -105,3 +105,15 @@ the sentence in every prompt.
 **Expand the task family after qualification.** Reopen after the first
 qualified route is complete and a specific engine hypothesis needs additional
 headroom or a regression case beyond the qualified initial set.
+
+**Five integration tests fail in a linked worktree, not in the primary
+checkout.** `tests/integration/test_attempt.py` (two), the uv-isolation
+witness, and both `test_local_pings_bundled.py` cases fail under
+`~/projects/pauleveritt/satyrn-evals-engine-comparison` while passing in the
+primary checkout on 2026-09-09. Verified independent of HP4 by stashing every
+working-tree change and re-running at `1008aaa`. The isolation witness asserts
+`uv_environment` is named `satyrn-evals-uv-*` and gets something else, so the
+likely cause is the worktree's `uv` environment resolution rather than the
+attempt path. Reopens whenever the marked tier is run as evidence for
+anything, since a tier that fails for environment reasons cannot witness a
+behaviour claim.

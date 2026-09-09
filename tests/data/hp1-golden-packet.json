@@ -42,7 +42,7 @@
   "writable_paths": [
     "app.py",
     "models.py",
-    "templates",
-    "tests"
+    "templates/*",
+    "tests/*"
   ]
 }

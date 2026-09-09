@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from satyrn_evals.engine_contract import admits
 from satyrn_evals.errors import RouteError
 from satyrn_evals.manifest import TaskManifest
 from satyrn_evals.packet import (
@@ -31,7 +32,6 @@ from satyrn_evals.packet import (
     build_packet,
     worker_projection,
 )
-from satyrn_evals.patch import within_source
 from satyrn_evals.session_manifest import SessionSpec
 
 type ReportedOutcome = Literal["delivered", "refused"]
@@ -148,6 +148,14 @@ def scripted_implementer(files: PhaseFiles, workspace: Path) -> Implementer:
     cannot fail. Scope is checked for **every** file before any is written,
     so a refusal never leaves a half-delivered workspace.
 
+    Scope is checked with ``engine_contract.admits``, the fnmatch rule the
+    packet's patterns are written in. It used to call ``patch.within_source``,
+    which is the *enforced* prefix rule and a different question. That went
+    unnoticed while the phased task rendered four exact filenames, where the
+    two agree; HP4's declaration makes ``templates`` render ``templates/*``
+    and the mismatch surfaced at once. A fake that reads the packet by the
+    wrong rule is not enforcing the packet.
+
     Phases are consumed **in call order** rather than matched against the
     packet's text. The first version keyed on the step id appearing in
     ``objective``; the prompts say "## Phase 2 - Complaints Board" and never
@@ -164,7 +172,7 @@ def scripted_implementer(files: PhaseFiles, workspace: Path) -> Implementer:
             raise RouteError("scripted implementer called more times than it has phases")
         step_files = remaining.pop(0)
         for name in step_files:
-            if not within_source(name, packet.writable_paths):
+            if not admits(packet.writable_paths, name):
                 raise RouteError(
                     f"{name!r} is outside the declared scope "
                     f"{packet.writable_paths}"

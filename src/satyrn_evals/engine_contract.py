@@ -19,6 +19,7 @@ newlines — round-trips through ``yaml.safe_load`` with no dependency here.
 import hashlib
 import json
 from collections.abc import Sequence
+from fnmatch import fnmatch
 from pathlib import Path
 
 from satyrn_evals.manifest import TaskManifest
@@ -29,21 +30,67 @@ CONTRACTS_DIRNAME = "engine-contracts"
 type WritablePaths = tuple[str, ...]
 
 
-def writable_paths(task_dir: Path, source_paths: Sequence[str]) -> WritablePaths:
+def writable_paths(
+    task_dir: Path,
+    source_paths: Sequence[str],
+    source_dirs: Sequence[str] | None = None,
+) -> WritablePaths:
     """``writable_paths`` patterns derived from a manifest's ``source_paths``.
 
     A **file** entry stays exact. A **directory** entry becomes an fnmatch
     pattern over its descendants (``templates`` -> ``templates/*``), which
     ``fnmatch`` matches at any depth because its ``*`` spans ``/``.
 
-    An entry with nothing at that path in ``base/`` stays exact: it is a
-    creation target (``agentclinic-repair-framing-2`` declares ``models.py``
-    and its base deletes the file), never a directory pattern.
+    ``source_dirs`` is the manifest's own declaration and is authoritative
+    when present: every entry in it is a directory and every other entry is a
+    file, with no probe. Absent (``None``, not ``()``), directory-ness is
+    probed from ``base/`` as it always was, so a manifest that agrees with its
+    tree needs no declaration and its rendered patterns do not move.
+
+    The probe cannot tell an **empty-skeleton directory** from a **creation
+    target**, because both are absent from ``base/``. It resolves the tie
+    towards the creation target, since ``agentclinic-repair-framing-2``
+    declares ``models.py`` whose base deletes the file. That is why
+    ``agentclinic-session-phased`` -- four entries, an empty base -- has to
+    declare: without the key its ``templates`` renders exact, and the
+    implementer is told it may not write ``templates/base.html`` that the
+    grader would accept. HP4.
+
+    A declaration that contradicts the tree is refused in both directions. A
+    declared directory that ``base/`` holds as a regular file is a
+    contradiction; so is an undeclared entry that ``base/`` holds as a
+    directory, and that second refusal is what stops an empty declaration
+    from silently narrowing a real directory task back to exact filenames.
     """
     base = task_dir / "base"
-    return tuple(
-        f"{entry}/*" if (base / entry).is_dir() else entry for entry in source_paths
-    )
+    if source_dirs is None:
+        return tuple(
+            f"{entry}/*" if (base / entry).is_dir() else entry for entry in source_paths
+        )
+    declared = set(source_dirs)
+    for entry in source_paths:
+        on_disk = base / entry
+        if entry in declared and on_disk.is_file():
+            raise ValueError(
+                f"source_dirs declares {entry!r} a directory, but base/ holds "
+                "it as a regular file"
+            )
+        if entry not in declared and on_disk.is_dir():
+            raise ValueError(
+                f"base/ holds {entry!r} as a directory, but source_dirs does "
+                "not declare it one"
+            )
+    return tuple(f"{entry}/*" if entry in declared else entry for entry in source_paths)
+
+
+def admits(patterns: Sequence[str], path: str) -> bool:
+    """Whether the rendered writable patterns admit ``path``.
+
+    The fnmatch side of the scope question, stated once so a test can ask it.
+    This is the *declared* scope; ``patch.within_source`` is the *enforced*
+    one, and they are not the same rule.
+    """
+    return any(fnmatch(path, pattern) for pattern in patterns)
 
 
 def contract_id(task: str, rung: str | None, digest: str) -> str:
@@ -84,7 +131,9 @@ def render_engine_contract(
     ]
     lines += [
         f"  - {json.dumps(pattern)}"
-        for pattern in writable_paths(task_dir, manifest.source_paths)
+        for pattern in writable_paths(
+            task_dir, manifest.source_paths, manifest.source_dirs
+        )
     ]
     # `test_command` is emitted only when the task declares a public suite.
     # Absent, the Engine registers no `run_tests` tool and its pi argv is
