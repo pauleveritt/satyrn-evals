@@ -211,3 +211,63 @@ def test_preservation_grading_that_works_leaves_the_code_alone(tmp_path: Path) -
     _, graded = _grade(tmp_path, _record(_step("add-a"), _step("add-b")))
     assert graded.code is SessionCode.COMPLETE
     assert [s.preservation_verdict for s in graded.steps] == ["pass", "pass"]
+
+
+# --- Feature grading is gated on the protected files, not on any violation ---
+#
+# Measured on 2026-09-08 over twelve sessions: 9 of 12 wrote something under
+# `tests/`, because writing tests is what a coding agent does. Every one of
+# those checkpoints had its feature grading skipped, so the batch bought three
+# fully gradable sessions out of twelve.
+#
+# The skip existed to stop circular grading -- a passing receipt read off a
+# test the model itself edited. That risk is specific to the DECLARED
+# preservation files, and preservation grading already refuses them by name
+# (PRESERVATION_INVALID). Feature grading runs against the hidden overlay,
+# which is materialised over the workspace, so a model-authored file elsewhere
+# cannot forge a hidden pass.
+#
+# So the gate narrows to protected-file contact. `scope_violations` still
+# records every out-of-scope path and the session code is unchanged: what
+# changes is only what blocks a verdict.
+
+
+def test_a_file_added_beside_the_preservation_tests_still_grades(tmp_path: Path) -> None:
+    """A model-authored test file no longer costs the checkpoint its verdict."""
+    _, graded = _grade(
+        tmp_path,
+        _record(_step("add-a", violations=("tests/test_new_thing.py",))),
+    )
+    assert graded.steps[0].feature_verdict == "pass"
+    # the evidence is kept, not laundered
+    assert graded.steps[0].scope_violations == ("tests/test_new_thing.py",)
+
+
+def test_touching_a_protected_file_still_skips_feature_grading(tmp_path: Path) -> None:
+    """Refusal direction: the circularity guard is unchanged.
+
+    Sibling success is the row above -- a violation elsewhere grades -- so a
+    grader that stopped skipping altogether fails here, and one that skipped
+    everything fails there.
+    """
+    _, graded = _grade(
+        tmp_path, _record(_step("add-a", violations=("tests/t_base.py",)))
+    )
+    assert graded.steps[0].feature_verdict is None
+    assert graded.steps[0].preservation_verdict == PRESERVATION_INVALID
+
+
+def test_a_write_outside_every_declared_area_still_skips_grading(tmp_path: Path) -> None:
+    """Refusal direction: the exemption is for tests, not for anywhere.
+
+    A scope violation is a candidate failure (2026-09-01 spec). Writing a
+    stray module outside the writable scope keeps costing the checkpoint its
+    hidden verdict; only a file added beside the preservation tests is excused.
+    """
+    _, graded = _grade(tmp_path, _record(_step("add-a", violations=("outside.txt",))))
+    assert graded.steps[0].feature_verdict is None
+
+
+def test_a_step_with_no_patch_still_grades_nothing(tmp_path: Path) -> None:
+    _, graded = _grade(tmp_path, _record(_step("add-a", patch=None)))
+    assert graded.steps[0].feature_verdict is None

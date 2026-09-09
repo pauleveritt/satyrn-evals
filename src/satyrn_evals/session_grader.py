@@ -46,6 +46,45 @@ def _protected_public_test_files(spec: SessionSpec) -> frozenset[str]:
     return frozenset(module for module in files if module)
 
 
+def _touches_protected(step: StepRecord, protected: frozenset[str]) -> bool:
+    """Whether this checkpoint's patch touched a declared preservation file."""
+    return any(
+        within_source(violation, tuple(protected))
+        for violation in step.scope_violations
+    )
+
+
+def _preservation_dirs(protected: frozenset[str]) -> tuple[str, ...]:
+    """The directories the declared preservation files live in."""
+    return tuple(
+        sorted({os.path.dirname(path) for path in protected if os.path.dirname(path)})
+    )
+
+
+def _blocks_feature_grading(step: StepRecord, protected: frozenset[str]) -> bool:
+    """Whether this checkpoint's out-of-scope writes should cost it a verdict.
+
+    A scope violation remains a candidate failure (2026-09-01 spec), and a
+    write outside the declared areas still skips hidden grading. The single
+    exemption, added 2026-09-08: a file the solver ADDED alongside the
+    preservation tests, which is not itself one of them.
+
+    Why only that: over twelve sessions, 9 of 12 wrote something under
+    `tests/`, because writing tests is what a coding agent does. Two of those
+    were new files, and losing a checkpoint's verdict over them measures the
+    task's phrasing rather than the solver. Editing a declared preservation
+    file stays disqualifying -- that is the circularity the guard exists for --
+    and a write anywhere else stays disqualifying too.
+    """
+    if _touches_protected(step, protected):
+        return True
+    allowed = _preservation_dirs(protected)
+    return any(
+        not (allowed and within_source(violation, allowed))
+        for violation in step.scope_violations
+    )
+
+
 def _cumulative_selectors(spec: SessionSpec, index: int) -> tuple[str, ...]:
     """The ordered union of hidden selectors introduced through step ``index``."""
     selectors: list[str] = []
@@ -75,8 +114,18 @@ class SessionGrader:
         protected = _protected_public_test_files(spec)
         for index, step in enumerate(record.steps):
             current = step
-            if step.scope_violations or step.patch_path is None:
-                # the full patch stays in evidence; hidden grading skipped
+            if step.patch_path is None or _blocks_feature_grading(step, protected):
+                # Hidden grading is skipped only for contact with a DECLARED
+                # preservation file (2026-09-08, narrowed from "any scope
+                # violation"). Measured over twelve sessions, 9 of 12 wrote
+                # something under `tests/` -- writing tests is what a coding
+                # agent does -- and every one lost its feature verdict to a
+                # guard aimed at circularity it could not cause: feature
+                # grading runs against the overlay, materialised over the
+                # workspace, so a model-authored file elsewhere cannot forge a
+                # hidden pass. `scope_violations` still records every
+                # out-of-scope path and the session code is unchanged; only
+                # what blocks a verdict has narrowed.
                 pass
             else:
                 patch_path = session_dir / step.patch_path
@@ -130,10 +179,7 @@ class SessionGrader:
         base behaviour. That checkpoint is marked explicitly not meaningful,
         and its neighbours are unaffected.
         """
-        if any(
-            within_source(violation, tuple(protected))
-            for violation in step.scope_violations
-        ):
+        if _touches_protected(step, protected):
             return dataclasses.replace(
                 step, preservation_verdict=PRESERVATION_INVALID
             ), False
