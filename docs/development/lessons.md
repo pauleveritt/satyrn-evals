@@ -32,5 +32,26 @@ or snapshot before the operation and keep the hashes.** State only what the
 retained artifacts prove — an empty log and no retained hashes support no
 claim about what a command did or did not write.
 
+**"I replayed the change over the old recordings and got a number."**
+An intervention that changes *which events occur* cannot be evaluated by
+replaying events recorded under a different intervention. A loop breaker
+decides which tool calls execute, so a transcript's call sequence is endogenous
+to the breaker that produced it; feeding it to another breaker measures a
+counterfactual. The tell, when it happened on 2026-09-09: replaying the
+*shipping* breaker — built to refuse less — over transcripts from the older one
+produced **1,373 refusals against 532 recorded**. **Compare in lockstep and
+stop at the first divergence**, so every decision counted is one both versions
+actually faced, and report the result as a prefix agreement rate rather than a
+run-level rate.
+
+**"The count looked plausible and was a whole multiple of the truth" — the
+rule, not the two fields.** The earlier entry named `tool_execution_start` and
+`usage_totals.py`, and a third occurrence followed anyway on 2026-09-08
+(`grep -o NO_CHANGE_REQUESTED` gave 466 against 47 real refusals, 9.9x; the
+loop-breaker string runs 4.2x). The rule: **count engine messages only from
+top-level `tool_execution_end` events, and never `grep -c`/`-o` a string**,
+because a tool result is re-streamed in the following message and quoted in
+model thinking. Carry the recompute command beside every count.
+
 For a specific past incident or original line citation, retrieve its record
 from [the archive](https://github.com/pauleveritt/satyrn-evals/tree/main/archive/2026-09-07-pre-reset).
