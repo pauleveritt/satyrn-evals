@@ -84,5 +84,29 @@ the work itself produces** — a file appearing, a marker line in a log, a count
 of completed cells — not on a process name; `pgrep -f "[r]un-batch.sh"` guards
 the self-match but the file check is the right instrument for this job.
 
+**"The oracle already carries every phase, so it can grade any phase."**
+`agentclinic-repair-depth-3/overlay/test_acceptance.py` holds all 13 checks
+and labels its own sections by phase, so it reads as a phase-structured
+suite. It is not one. Its module body runs `from app import app`,
+`import models`, `from models import Complaint`, and snapshots
+`tuple(models.complaints)` at import (`overlay/test_acceptance.py:14-29`).
+Selecting only the four phase-1 node ids does not avoid that: **collection
+imports the module before any selection applies**, so grading a phase-1
+workspace — which has no `models.py` — fails at import for every selector.
+A design was written, reviewed and planned on the premise that the file
+could grade phase 1 unchanged; three reviewers, including the one who
+recommended the approach, read the phase-labelled section headers as
+evidence of independent collectability. **A suite's section comments
+describe its authors' intent; only its import graph describes what it can
+run against.** Check the module body, not the headings, before promising a
+file can grade a workspace smaller than the one it was written for.
+
+**"Byte identity proves the artifact; it does not prove the fit."**
+The same episode, generalized. Byte-identity with a recovered source
+establishes provenance — that this oracle is the one that discriminated
+before, unedited. It says nothing about whether the oracle suits a
+*different* workload. Provenance and suitability are separate claims and
+need separate evidence.
+
 For a specific past incident or original line citation, retrieve its record
 from [the archive](https://github.com/pauleveritt/satyrn-evals/tree/main/archive/2026-09-07-pre-reset).

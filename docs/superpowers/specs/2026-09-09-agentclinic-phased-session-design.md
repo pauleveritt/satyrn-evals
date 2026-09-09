@@ -350,3 +350,84 @@ The run needs items 1-3. Item 4 follows.
 - Vendoring `specs/` into any task's `base/` (§3).
 - A generic budget framework. Two session tasks is not three; the design
   adds fields, not an abstraction.
+
+## Correction, 2026-09-09 — the premise of §1 and §3 is refuted
+
+Recorded, not edited away. Five blocking findings from external review,
+all confirmed against the code. The first is fatal to this design's spine.
+
+**1. The unchanged acceptance suite cannot grade Phase 1.** §1 asserts
+that phase N's step grades phase N's checks from the copied file
+unchanged. It cannot. The module body runs `from app import app`,
+`import models`, `from models import Complaint`, and
+`SEED_COMPLAINTS = tuple(models.complaints)` at import time
+(`agentclinic-repair-depth-3/overlay/test_acceptance.py:14-29`).
+Collection imports the module before any selection applies, so a phase-1
+workspace — which has no `models.py` — fails at import for every
+selector. The 4/6/3 split is not achievable from this file as it stands.
+
+What survives: the assertions. What does not: whole-file byte identity as
+a design constraint. Phase-1 checks must become independently collectable
+— a separate module carrying the phase-1 assertions verbatim, importing
+only `app` — and provenance is then claimed per assertion (digest of each
+check body against the swiftstar source) rather than per file. Byte
+identity proves the artifact; it does not prove the fit.
+
+**2. The hidden oracle's location collides with the writable scope.** §1
+places the overlay at `tests/test_acceptance.py` while `tests/` is a
+declared source path. `load_overlay` refuses exactly that overlap
+(`src/satyrn_evals/overlay.py:80`), so the task cannot load. The hidden
+tests move to a grader-only namespace (`grader_tests/`); the overlap
+guard stays.
+
+**3. Patch witnesses cannot calibrate a model budget.** §2 and §5 send
+Phase 3's turn ceiling and every tool ceiling to a "calibration pass over
+the known-good and prompt-faithful witnesses." A witness is a patch: it
+carries the resulting code, not the investigation, tool calls or mistakes
+that would produce it. Applying a patch measures the script that applies
+it. The calibration step is withdrawn. The first run reports **raw counts
+and elapsed time**; any later threshold is declared as an operational
+allowance and labelled a judgment, never presented as a measurement.
+
+**4. §5's "six tasks block the run" overstates what the path requires.**
+The session scope check uses `within_source` (`session.py:218`), where a
+bare `templates` entry already admits its descendants. Declared directory
+source paths matter only to the **Engine contract** — and no Engine
+session arm exists (`docs/current/agentclinic-phase-session-proposal.md:118-121`).
+The first slice is explicitly **one Baseline session**, and the
+directory-declaration work is deferred with it.
+
+**5. The qualification gates verify existence, not qualification.** The
+tests assert that fixture files are on disk; the advertised
+"passes and scans clean" command only prints `scan_patch`. Qualification
+needs an integration gate that applies the checkpoint witnesses and
+verifies cumulative correctness, a *named* persistent failure in the
+broken witness, an earlier behaviour genuinely regressing at a later
+checkpoint, and a positive contamination witness alongside the clean one.
+
+### Consequences for §2 and §4
+
+The budget verdict subsystem is **deferred, not merely reordered**. Two
+defects made it unsafe as specified — `outcome_cell` buckets every
+non-`pass` string, `unavailable` included, as a failure; and
+`turn_count`/`tool_count` load with a default of `0`
+(`src/satyrn_evals/session_record.py:190-192`), so a record missing counts
+would produce a `within` verdict out of absent data. Cost stays co-equal
+with correctness **in the report**, which needs no verdict subsystem to
+achieve.
+
+The two deferred detectors are renamed to what their evidence supports.
+Identical successive patches mean *no net change*, which is a candidate
+finding to inspect, not established phase leakage; leakage is established
+by checking whether a later phase's requirements were already satisfied.
+Tool names cannot establish "no edit" — `bash` writes files and a refused
+`edit` does not — nor does an edit-free stretch establish misdiagnosis.
+Both become candidate-finding observations followed by trace inspection.
+
+### What §1-§5 keep
+
+Progressive per-step prompt revelation and the Correction 7 guard; the
+prompts as quoted roadmap sections with the two tightenings; the
+prompt-faithful fairness gate; solver-owned tests; per-checkpoint
+evidence; the empty `base_preservation_selectors` correction and its
+skipped grading call with the verdict left unset.
