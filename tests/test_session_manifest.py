@@ -37,6 +37,41 @@ def _write(tmp_path: Path, payload: object) -> None:
     (tmp_path / "session.json").write_text(json.dumps(payload))
 
 
+def _step(id_: str, *, kind: str = "feature") -> dict:
+    """One session step, defaulting to a feature step with one selector."""
+    selectors = [] if kind == "review" else [f"test_hidden.py::test_{id_}"]
+    return {
+        "id": id_,
+        "kind": kind,
+        "prompt": f"Do {id_}.",
+        "new_feature_selectors": selectors,
+    }
+
+
+def _write_and_load(
+    tmp_path: Path,
+    *,
+    steps: list[dict],
+    preservation: list[str] | None = None,
+):
+    """Write session.json from the given steps/preservation and load it.
+
+    ``preservation`` defaults to the file's current non-empty value so every
+    existing call keeps its exact meaning.
+    """
+    if preservation is None:
+        preservation = ["test_solution.py::test_normalize"]
+    _write(
+        tmp_path,
+        {
+            "version": 1,
+            "steps": steps,
+            "base_preservation_selectors": preservation,
+        },
+    )
+    return load_session_spec(tmp_path)
+
+
 @pytest.mark.parametrize(
     ("mutate", "match"),
     [
@@ -45,7 +80,7 @@ def _write(tmp_path: Path, payload: object) -> None:
         (lambda p: p["steps"][0].update(prompt=""), "empty prompt"),
         (lambda p: p["steps"][0].update(id="bad id!"), "filesystem-safe"),
         (lambda p: p["steps"][0].update(new_feature_selectors=[]), "feature step"),
-        (lambda p: p.update(base_preservation_selectors=[]), "preservation"),
+        (lambda p: p.update(base_preservation_selectors=[""]), "preservation"),
         (lambda p: p["steps"][1].update(kind="chaos"), "kind"),
         (lambda p: p.update(version=2), "version"),
         (lambda p: p.update(extra=1), "unknown"),
@@ -70,6 +105,23 @@ def test_session_spec_valid_sibling(tmp_path: Path) -> None:
     )
     assert spec.steps[1].new_feature_selectors == ()
     assert spec.base_preservation_selectors == ("test_solution.py::test_normalize",)
+
+
+def test_empty_base_preservation_selectors_are_allowed(tmp_path) -> None:
+    """A base that ships no application has no base behaviour to preserve.
+    Cross-phase preservation comes from cumulative feature grading."""
+    spec = _write_and_load(
+        tmp_path, steps=[_step("one"), _step("two")], preservation=[]
+    )
+    assert spec.base_preservation_selectors == ()
+
+
+def test_base_preservation_selectors_must_be_non_empty_strings(tmp_path) -> None:
+    """Refusal, narrowed: an empty list is now legal, an empty entry is not."""
+    with pytest.raises(SessionSpecError, match="base_preservation_selectors"):
+        _write_and_load(
+            tmp_path, steps=[_step("one"), _step("two")], preservation=[""]
+        )
 
 
 def _hidden_session_task(tmp_path: Path, *, prompts: tuple[str, ...]) -> Path:

@@ -152,7 +152,7 @@ class SessionGrader:
             # feature selectors already catch a later prompt regressing an
             # earlier feature; this was the remaining hole, and seeing it is
             # why a session evaluation exists.
-            if current.patch_path is not None:
+            if current.patch_path is not None and spec.base_preservation_selectors:
                 current, step_unavailable = self._grade_preservation(
                     current, spec, protected, session_dir, receipt_dir
                 )

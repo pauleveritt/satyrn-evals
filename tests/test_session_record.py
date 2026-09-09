@@ -39,24 +39,54 @@ def _record(**overrides: object) -> SessionRecord:
     return SessionRecord(**base)  # type: ignore[arg-type]
 
 
-def _record_with(contamination):
-    step = StepRecord(
-        step_id="s1",
-        prompt_digest="d",
-        outcome="settled",
-        patch_path="checkpoints/00-s1.patch",
-        patch_digest="p",
-        patch_bytes=10,
-        contamination=contamination,
-    )
+def _record_with(
+    contamination=None, *, steps: tuple[StepRecord, ...] | None = None
+) -> SessionRecord:
+    """A minimal session record around either a contamination finding on
+    one default step, or an explicit ``steps`` tuple."""
+    if steps is None:
+        step = StepRecord(
+            step_id="s1",
+            prompt_digest="d",
+            outcome="settled",
+            patch_path="checkpoints/00-s1.patch",
+            patch_digest="p",
+            patch_bytes=10,
+            contamination=contamination,
+        )
+        steps = (step,)
     return SessionRecord(
         version=1,
         task="session-mechanics",
         adapter_command=("fake",),
         base_commit="a" * 40,
         code=SessionCode.COMPLETE,
-        steps=(step,),
+        steps=steps,
     )
+
+
+def _write_and_reload(tmp_path: Path, record: SessionRecord) -> SessionRecord:
+    path = tmp_path / "session-record.json"
+    write_session_record(path, record)
+    return load_session_record(path)
+
+
+def test_elapsed_seconds_round_trips_through_the_loader(tmp_path) -> None:
+    """The loader is explicit field-by-field (session_record.py:186-194),
+    so a new field is dropped silently unless it is added there too."""
+    step = StepRecord(
+        step_id="one", prompt_digest="d", outcome="settled", elapsed_seconds=12.5
+    )
+    reloaded = _write_and_reload(tmp_path, _record_with(steps=(step,)))
+    assert reloaded.steps[0].elapsed_seconds == 12.5
+
+
+def test_elapsed_seconds_absent_from_json_loads_as_none(tmp_path) -> None:
+    """Sibling success, and the missingness rule: a record written before
+    this field carries None, not 0.0, which would read as an instant step."""
+    step = StepRecord(step_id="one", prompt_digest="d", outcome="settled")
+    reloaded = _write_and_reload(tmp_path, _record_with(steps=(step,)))
+    assert reloaded.steps[0].elapsed_seconds is None
 
 
 def test_step_record_contamination_round_trips(tmp_path: Path) -> None:

@@ -113,6 +113,25 @@ def _graded(tmp_path: Path, scenario: str, **kw: float):
     )
 
 
+def test_elapsed_seconds_is_recorded_for_a_clean_session(tmp_path: Path) -> None:
+    """Dataclass round-tripping is not evidence the runner measures anything."""
+    record = _graded(tmp_path, "clean")
+    assert all(
+        step.elapsed_seconds is not None and step.elapsed_seconds >= 0.0
+        for step in record.steps
+    )
+
+
+def test_elapsed_seconds_excludes_teardown_on_a_timeout(tmp_path: Path) -> None:
+    """The figure must bound the prompt, not the reaping that follows it.
+    A step killed at its deadline reports about the deadline, not the
+    deadline plus however long terminate_and_reap took."""
+    record = _graded(tmp_path, "timeout", step_timeout=1.0)
+    slow = record.steps[-1]
+    assert slow.elapsed_seconds is not None
+    assert slow.elapsed_seconds < 5.0
+
+
 def test_grading_reads_only_retained_artifacts(tmp_path: Path) -> None:
     """Regrade a captured session from its artifacts alone (BRIEF rule 3)."""
     record = _graded(tmp_path, "clean")

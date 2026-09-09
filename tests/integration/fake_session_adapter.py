@@ -3,7 +3,7 @@
 Usage: fake_session_adapter.py SCENARIO [--marker PATH]
 Scenarios: clean | scope | wrong-id | wrong-id-event | output-limit |
 hang | die-after-one | die-mid-read | garbage | event-wrong-step |
-wrong-step-terminal | chaos-close-line | close-fail
+wrong-step-terminal | chaos-close-line | close-fail | timeout
 The adapter edits the worktree like a competent executor would: feature
 steps append the matching feature to solution.py, review edits nothing.
 """
@@ -78,6 +78,8 @@ def main() -> int:
         if msg.get("type") != "prompt":
             continue
         step = msg["step_id"]
+        if scenario == "timeout":
+            continue  # accept the prompt and emit nothing: deadline fires
         if marker is not None and step == "review":
             Path(marker).write_text("prompted")
         if step in FEATURES and scenario in (

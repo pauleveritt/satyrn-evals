@@ -85,11 +85,11 @@ def load_session_spec(task_dir: Path) -> SessionSpec:
     if not isinstance(raw_steps, list) or len(raw_steps) < 2:
         raise SessionSpecError("session.json declares fewer than two steps")
     pres = data["base_preservation_selectors"]
-    if not isinstance(pres, list) or not pres or not all(
+    if not isinstance(pres, list) or not all(
         isinstance(s, str) and s for s in pres
     ):
         raise SessionSpecError(
-            "base_preservation_selectors must be a non-empty list of strings"
+            "base_preservation_selectors must be a list of non-empty strings"
         )
     steps = tuple(_parse_step(raw) for raw in raw_steps)
     seen_ids: set[str] = set()

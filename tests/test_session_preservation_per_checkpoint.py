@@ -12,6 +12,7 @@ No model, no network, no subprocess: `SessionGrader._grade` is the seam, and
 it is the seam these tests inject at.
 """
 
+import dataclasses
 from pathlib import Path
 
 from satyrn_evals.receipt import Receipt
@@ -77,6 +78,28 @@ def _grade(tmp_path: Path, record: SessionRecord, verdicts: dict[str, Verdict] |
     grader = _Recorder(tmp_path, verdicts or {})
     graded = grader.grade_record(record, SPEC, overlay=object(), session_dir=tmp_path)
     return grader, graded
+
+
+def _graded_session(
+    tmp_path: Path,
+    *,
+    preservation: tuple[str, ...] | list[str] = SPEC.base_preservation_selectors,
+) -> SessionRecord:
+    """Grade a full three-step session against SPEC with the given
+    ``base_preservation_selectors``, defaulting to SPEC's own value so every
+    existing meaning is kept."""
+    spec = dataclasses.replace(SPEC, base_preservation_selectors=tuple(preservation))
+    grader = _Recorder(tmp_path, {})
+    record = _record(_step("add-a"), _step("add-b"), _step("repair"))
+    return grader.grade_record(record, spec, overlay=object(), session_dir=tmp_path)
+
+
+def test_no_preservation_selectors_leaves_verdict_unset(tmp_path) -> None:
+    """Not graded and not inferred. An unset verdict is a stated absence
+    and must never be summarized as a pass -- the rule the
+    PRESERVATION_INVALID sentinel already exists for."""
+    record = _graded_session(tmp_path, preservation=[])
+    assert all(step.preservation_verdict is None for step in record.steps)
 
 
 def test_every_checkpoint_with_a_patch_gets_a_preservation_verdict(tmp_path: Path) -> None:
