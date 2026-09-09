@@ -14,3 +14,8 @@ Use these checks when interpreting a task or result:
 
 For a specific past incident or original line citation, retrieve its record
 from [the archive](https://github.com/pauleveritt/satyrn-evals/tree/main/archive/2026-09-07-pre-reset).
+
+For a catalog of specific observed pathologies, each traced to a live
+source citation or an archived incident, see
+[pathologies.md](../pathologies.md) and its companion
+[remediations.md](../remediations.md).

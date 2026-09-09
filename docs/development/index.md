@@ -11,6 +11,8 @@ evidence retrieval outside this documentation site.
 ../contributing
 arm-substrate
 lessons
+../pathologies
+../remediations
 ../sdd
 ../current/index
 ../current/first-milestone-design
