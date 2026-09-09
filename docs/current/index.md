@@ -23,6 +23,10 @@ past artifact. Archived material does not set current policy.
 - [Pre-run record: the bounded Baseline session](session-ordering-baseline-pre-run-record.md)
   freezes the conditions for one Baseline session on the cross-prompt witness
   task, and states what a single session cannot establish.
+- [Next-agent brief: correct the screen, then put Engine on the phased
+  workload](next-agent-brief-engine-on-phased.md) is the current handoff: six
+  documentation corrections that need no new run, then the Engine session
+  capability.
 - [Triage screen: the verification instruction](agentclinic-verification-triage-screen.md)
   freezes four sessions, two per prompt condition, and states what a screen
   that size cannot establish.
@@ -68,6 +72,7 @@ misleading-locus-r1-pre-run-record
 agentclinic-session-phased-pre-run-record
 agentclinic-session-phased-verification-pre-run-record
 agentclinic-verification-triage-screen
+next-agent-brief-engine-on-phased
 session-ordering-baseline-pre-run-record
 agentclinic-phase-session-proposal
 misleading-locus-r3-pre-run-record
