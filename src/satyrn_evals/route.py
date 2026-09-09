@@ -25,7 +25,12 @@ from typing import Literal
 
 from satyrn_evals.errors import RouteError
 from satyrn_evals.manifest import TaskManifest
-from satyrn_evals.packet import HandoffPacket, build_packet, packet_to_dict
+from satyrn_evals.packet import (
+    HandoffPacket,
+    assert_projection_is_clean,
+    build_packet,
+    worker_projection,
+)
 from satyrn_evals.patch import within_source
 from satyrn_evals.session_manifest import SessionSpec
 
@@ -253,7 +258,12 @@ def command_implementer(argv: list[str], workspace: Path) -> Implementer:
         # sequence the in-process seam produces, which is the drift guard.
         packet_path = workspace / ".satyrn-packet.json"
         result_path = workspace / ".satyrn-result.json"
-        packet_path.write_text(json.dumps(packet_to_dict(packet), indent=2))
+        # Only the worker projection crosses. The full packet -- `redacts`
+        # included -- stays host-side; writing it here put every hidden
+        # selector in a file the worker could read.
+        projection = worker_projection(packet)
+        assert_projection_is_clean(packet, projection)
+        packet_path.write_text(json.dumps(projection, indent=2))
         result_path.unlink(missing_ok=True)
         env = {
             **os.environ,

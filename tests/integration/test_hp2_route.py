@@ -148,3 +148,95 @@ def test_the_executable_refuses_to_write_outside_the_declared_scope(
     assert proc.returncode != 0
     assert "outside declared scope" in proc.stderr
     assert not (tmp_path / ".satyrn-result.json").exists()
+
+
+# --- review finding 1: what the executable can actually read ----------------
+
+
+def test_the_workspace_packet_carries_no_hidden_selector(tmp_path: Path) -> None:
+    """Through the real executable seam, checked on the file itself.
+
+    The first version wrote the whole packet here, so all 14 redacted
+    selectors sat in a file the worker could read. Filtering a prompt would
+    not have helped; the file was there.
+    """
+    task_dir = resolve_task(TASK_NAME)
+    spec = load_session_spec(task_dir)
+    run_phases(
+        task_dir, load_manifest(task_dir), spec,
+        command_implementer([sys.executable, str(FAKE)], tmp_path),
+        tmp_path,
+        lambda step_id, workspace: ("pass", "scripted"),
+        base_revision="3e6607e533792ab0", **BUDGETS,
+    )
+    written = (tmp_path / ".satyrn-packet.json").read_text()
+    selectors = [s for step in spec.steps for s in step.new_feature_selectors]
+    assert selectors
+    for selector in selectors:
+        assert selector not in written
+    assert "redacts" not in written
+
+
+# --- review finding 2: the executable's workspace, through the real grader ---
+
+
+def _record_for(session_dir: Path, task_dir: Path, patches: list[str]) -> SessionRecord:
+    return _record_over(session_dir, task_dir, patches)
+
+
+def _real_grader(task_dir: Path, patches: list[str], session_dir: Path):
+    """A grader that returns the real per-checkpoint verdict for each step.
+
+    Not a new grading framework: it grades once with the existing
+    `SessionGrader` and hands the route the verdict for the step it asks
+    about, which is what makes continuation depend on real grading.
+    """
+    graded = _grade(session_dir, patches)
+    verdicts = {s.step_id: s.feature_verdict for s in graded.steps}
+
+    def grade(step_id: str, workspace: Path) -> tuple[str, str]:
+        verdict = verdicts[step_id]
+        return verdict, f"{verdict} from the real grader for {step_id}"
+
+    return grade
+
+
+def test_the_executable_route_is_accepted_when_the_real_grader_passes(
+    tmp_path: Path,
+) -> None:
+    """The witness joining the pieces: a real process delivers, the real
+    grader decides, and the route runs to the end."""
+    task_dir = resolve_task(TASK_NAME)
+    session_dir = tmp_path / "grading"
+    session_dir.mkdir()
+    workspace = tmp_path / "work"
+    workspace.mkdir()
+    decisions = run_phases(
+        task_dir, load_manifest(task_dir), load_session_spec(task_dir),
+        command_implementer([sys.executable, str(FAKE)], workspace),
+        workspace,
+        _real_grader(task_dir, ["checkpoint-1", "checkpoint-2", "known-good"], session_dir),
+        base_revision="3e6607e533792ab0", **BUDGETS,
+    )
+    assert [(d.step_id, d.accepted) for d in decisions] == EXPECTED_SEQUENCE
+
+
+def test_a_real_rejected_checkpoint_stops_the_executable_route(
+    tmp_path: Path,
+) -> None:
+    """The refusal half, and the one that proves grading controls
+    continuation rather than merely being consulted."""
+    task_dir = resolve_task(TASK_NAME)
+    session_dir = tmp_path / "grading"
+    session_dir.mkdir()
+    workspace = tmp_path / "work"
+    workspace.mkdir()
+    decisions = run_phases(
+        task_dir, load_manifest(task_dir), load_session_spec(task_dir),
+        command_implementer([sys.executable, str(FAKE)], workspace),
+        workspace,
+        _real_grader(task_dir, ["checkpoint-1", "known-broken", "known-good"], session_dir),
+        base_revision="3e6607e533792ab0", **BUDGETS,
+    )
+    assert [d.accepted for d in decisions] == [True, False]
+    assert "fail from the real grader" in decisions[-1].reason

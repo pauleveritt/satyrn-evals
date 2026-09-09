@@ -180,3 +180,50 @@ def test_an_empty_sequence_renders_no_section() -> None:
     text = render_packet(packet)
     assert "## preserve" not in text
     assert "## objective" in text
+
+
+# --- review: what the worker can actually read ------------------------------
+
+
+def test_the_worker_projection_carries_only_the_rendered_fields() -> None:
+    from satyrn_evals.packet import worker_projection
+
+    assert set(worker_projection(_packet())) == set(RENDERED_FIELDS)
+
+
+def test_the_worker_projection_carries_no_redacted_selector() -> None:
+    """The defect review reproduced: the first executable seam wrote the whole
+    packet into the worker's workspace, all 14 selectors included."""
+    import json as _json
+
+    from satyrn_evals.packet import worker_projection
+
+    packet = _packet()
+    serialized = _json.dumps(worker_projection(packet))
+    assert packet.redacts
+    for secret in packet.redacts:
+        assert secret not in serialized
+
+
+def test_a_contaminated_projection_is_refused() -> None:
+    from satyrn_evals.packet import assert_projection_is_clean, worker_projection
+
+    packet = _packet()
+    projection = worker_projection(packet)
+    projection["preserve"] = [packet.redacts[0]]
+    with pytest.raises(PacketError, match="redacted"):
+        assert_projection_is_clean(packet, projection)
+
+
+def test_a_clean_projection_is_accepted() -> None:
+    from satyrn_evals.packet import assert_projection_is_clean, worker_projection
+
+    packet = _packet()
+    assert_projection_is_clean(packet, worker_projection(packet))
+
+
+def test_an_empty_projection_is_refused_rather_than_passing() -> None:
+    from satyrn_evals.packet import assert_projection_is_clean
+
+    with pytest.raises(PacketError, match="nothing to check"):
+        assert_projection_is_clean(_packet(), {})

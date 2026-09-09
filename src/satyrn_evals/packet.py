@@ -22,6 +22,7 @@ departures recorded in the HP1 design spec:
 on the builder (slice 3), so the two cannot drift apart.
 """
 
+import json
 import shlex
 from dataclasses import dataclass
 from pathlib import Path
@@ -244,6 +245,47 @@ def render_packet(packet: HandoffPacket) -> str:
             case _:
                 continue
     return "\n\n".join(blocks) + "\n"
+
+
+def worker_projection(packet: HandoffPacket) -> dict[str, object]:
+    """The **only** packet data a worker may be handed, as plain JSON data.
+
+    Exactly ``RENDERED_FIELDS``. It carries no ``redacts``, no
+    ``base_revision``, no budgets and no role -- the first because those are
+    the hidden selectors themselves, the rest because a worker has no use for
+    the harness's bookkeeping and every field handed over is a field that can
+    leak.
+
+    Review found the first version of the executable seam writing
+    ``packet_to_dict`` into the worker's own workspace, which put all 14
+    redacted selectors in a file the worker can read. Filtering a prompt would
+    not have helped: the file was there. The full packet is retained
+    host-side; this is what crosses.
+    """
+    projected = {name: getattr(packet, name) for name in RENDERED_FIELDS}
+    return {
+        name: list(value) if isinstance(value, tuple) else value
+        for name, value in projected.items()
+    }
+
+
+def assert_projection_is_clean(packet: HandoffPacket, projection: dict[str, object]) -> None:
+    """Refuse a projection carrying anything the packet withholds.
+
+    Checked on the serialized bytes rather than field by field, because the
+    question is what the worker can read, not what we intended to send.
+    """
+    serialized = json.dumps(projection, sort_keys=True)
+    if not serialized.strip() or serialized == "{}":
+        raise PacketError(
+            "worker projection is empty: nothing to check, which is not the "
+            "same as nothing found"
+        )
+    if leaked := [secret for secret in packet.redacts if secret in serialized]:
+        raise PacketError(
+            f"worker projection carries {len(leaked)} redacted string(s): "
+            f"{leaked[0]!r}"
+        )
 
 
 def assert_redactions_absent(
