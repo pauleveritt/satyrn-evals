@@ -21,6 +21,8 @@ cycles/index
 ../superpowers/plans/2026-09-09-hp1-handoff-packet
 ../superpowers/plans/2026-09-09-hp2-offline-route
 ../superpowers/plans/2026-09-09-hp4-declared-directories
+../superpowers/plans/2026-09-09-hp5-role-attribution
+../superpowers/specs/2026-09-09-hp5-role-attribution-design
 ../superpowers/specs/2026-09-09-hp1-handoff-packet-design
 ```
 
