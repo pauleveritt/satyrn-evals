@@ -1,0 +1,26 @@
+{
+  "arm": "baseline",
+  "argv": [
+    "satyrn-evals-attempt-pi"
+  ],
+  "tools": [
+    "read",
+    "bash",
+    "edit",
+    "write"
+  ],
+  "model": "omlx/Ornith-1.5-9B-MLX-8bit",
+  "server_model": "Ornith-1.5-9B-MLX-8bit",
+  "pins": {
+    "pi": "0.84.4",
+    "engine_commit": null,
+    "digests": {}
+  },
+  "inference": {
+    "context_window": 262144,
+    "max_tokens": 32000,
+    "compaction_enabled": true,
+    "compaction_reserve_tokens": 16384,
+    "temperature": 0.6
+  }
+}
