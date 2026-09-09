@@ -138,5 +138,31 @@ the wrong signature — built from a prior run's `follow_redirects` loop, while
 this run's shape was all edits and no verification. Deferring it until a trace
 demanded it is what kept it from being wrong in production.
 
+**"The precondition passed because I verified a different proposition."**
+A pre-run record required proving the environment its preamble promised the
+model actually exists. The check materialized `base/`, ran the pinned install,
+and confirmed the imports — all green, recorded PASS. The claim that mattered
+was whether the **run's** workspace arrives installed, and it does not: the
+first verification command in the session printed "Creating virtual
+environment at: .venv / Installed 47 packages in 80ms". The preamble was
+telling the model the environment was ready while also telling it not to
+install anything, and the command it was told to run installs. Nothing broke
+only because `uv run` self-heals from the lock in 80ms; with a cold cache or
+no network that lands inside the model's step budget or reads as a model
+failure. **A precondition names a proposition, and passing a check on a
+neighbouring proposition is not evidence for it** — write the check against
+the artifact the claim is about (here, the attempt workspace), not against a
+convenient stand-in.
+
+**"The instrument's virtualenv was exported into the subject's shell."**
+Every bash call in the session carried
+`VIRTUAL_ENV=<evals repo>/.venv does not match the project environment path
+'.venv' and will be ignored`. `uv` ignored it and warned, so the run was
+unaffected — but a tool without that defence would have run the model's tests
+against the harness's interpreter and packages instead of the task's pinned
+ones, and the result would have looked like a finding about the model. Env
+inherited from the harness process is part of the measured surface; it belongs
+in the same freeze as tools and sampling settings.
+
 For a specific past incident or original line citation, retrieve its record
 from [the archive](https://github.com/pauleveritt/satyrn-evals/tree/main/archive/2026-09-07-pre-reset).
