@@ -78,3 +78,11 @@ already happens, and say which instrument version the evidence came from.
 Each cycle writes one short record: the candidate, its reproducer, the remedy
 or the decision not to remedy, Fable's verdict, and what the cycle discovered
 but did not fix.
+
+**The record is committed, to `docs/development/cycles/`, and it is written
+before the review rather than after it.** Cycle 3's was missing when its review
+ran, so "record and close" was unmet and nobody noticed until the reviewer
+looked for it. The batch evidence stays outside version control under
+`~/satyrn-smokes/` — it is large, pinned to the commit its preflight recorded,
+and never edited afterwards. What belongs in the repository is the reasoning,
+including the parts that turned out wrong.

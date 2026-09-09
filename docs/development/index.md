@@ -11,6 +11,7 @@ evidence retrieval outside this documentation site.
 ../contributing
 arm-substrate
 lessons
+cycles/index
 ../sdd
 ../current/index
 ../current/first-milestone-design
