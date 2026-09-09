@@ -164,5 +164,32 @@ ones, and the result would have looked like a finding about the model. Env
 inherited from the harness process is part of the measured surface; it belongs
 in the same freeze as tools and sampling settings.
 
+**"The control produced the behaviour we were about to attribute to the
+instruction."**
+A four-session triage screen tested one added sentence telling the model to
+run its tests. Both instructed sessions verified in all three phases; so did
+**one of the two controls**, unprompted, ending every phase with a test run.
+Had the screen been run without controls -- or had it been the 48-session
+success-rate study it briefly became -- the obvious reading would have been
+"the instruction produces verification", and the control refutes that at
+n=2. What the instruction demonstrably did was narrower and still useful:
+it made the behaviour consistent rather than incidental, and it **named a
+command that works**, where the unprompted control burned calls on
+`pytest: command not found` before finding a working invocation. **Two
+attempts per configuration was enough to kill the wrong explanation**, which
+is the entire argument for running the cheap matched screen before the
+expensive confirmation.
+
+**"The experiment grew until it answered a question nobody had asked."**
+A screen meant to decide whether a prompt change was operationally usable was
+specified at n=24 per arm, ~3.25 hours, with an exact-Fisher power table
+attached. The arithmetic was right; the design had drifted into a
+success-rate confirmation study. The tell was reaching for a power
+calculation at all: powering a decision implies a rate estimate is the
+output, and the actual question was "does this behave usefully, and is
+further work warranted". BRIEF.md already prescribed two attempts per
+configuration first. **When a screen acquires a power table, check whether
+the question acquired a denominator** -- and whether anyone asked for one.
+
 For a specific past incident or original line citation, retrieve its record
 from [the archive](https://github.com/pauleveritt/satyrn-evals/tree/main/archive/2026-09-07-pre-reset).
