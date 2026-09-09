@@ -232,3 +232,57 @@ print(h.hexdigest())
 of `base/`, and `fastapi`, `turbohtml`, `pytest`, `httpx` and `starlette` all
 import at the pinned versions, as do `starlette.testclient.TestClient` and
 `turbohtml.parse` / `Doctype` — the exact imports the hidden checks perform.
+
+## Precondition results, 2026-09-09
+
+**1. Environment — PASS after a fix.** See the correction above.
+
+**2. Preflight — NOT APPLICABLE as written; its substance checked directly.**
+`scripts/preflight.sh` is attempt-shaped: it requires `--rung` and
+`--contract-digest`, and a session has neither. It exits 2 on
+`--rung is required`. Rather than bend a session into an attempt's flags, its
+two load-bearing checks were performed directly and are recorded here:
+
+- **Clean tree.** `git status --porcelain` empty at `ab1f6fd`.
+- **A live completion, never `/v1/models`.** `preflight.sh:11-18` records why:
+  on 2026-09-05 the omlx server advertised `gemma-4-26B-A4B-it-OptiQ-4bit`,
+  whose weights were nowhere on the machine, and the listing was cleared later
+  the same session. A listing is not evidence a cell can run. The probe:
+  `POST http://127.0.0.1:8001/v1/chat/completions`, model
+  `gemma-4-12B-it-MLX-8bit`, `max_tokens` 8, `temperature` 0 — returned
+  `"OK"`, with the response's own `model` field reading
+  `gemma-4-12B-it-MLX-8bit`.
+
+Not checked, because they belong to a budgeted multi-cell batch and this is
+one session: the per-cell input-token floor, and the realized arm order.
+A session run needs a preflight of its own shape; that gap is recorded, not
+worked around.
+
+**3. Machine — acceptable, not silent.** No GPU-competing compute was running.
+The largest CPU consumers were interactive UI processes (WindowServer, Chrome,
+the Claude app). Recorded rather than asserted quiet, because elapsed seconds
+are a diagnostic here and no wall-clock comparison between arms is possible in
+a single-arm run.
+
+**4. Model identity from the transcript** — to be verified from each
+transcript's own `message.model` field after the run, never from the requested
+argv.
+
+## The command
+
+```
+uv run satyrn-evals session agentclinic-session-phased \
+  --output ~/satyrn-smokes/2026-09-09-session-phased-<HHMMSS> \
+  --step-timeout 600 \
+  -- satyrn-evals-session-pi --provider omlx \
+     --model gemma-4-12B-it-MLX-8bit \
+     --tools read,bash,edit,write
+```
+
+`--tools` is mandatory and stated. The first bounded Baseline session, before
+2026-09-08, passed none: the model reached the installed `pi-subagents`
+extension and dispatched a **detached** worker that wrote files across two
+checkpoint boundaries with no retained events
+(`src/satyrn_evals/adapters/pi_session.py:96-102`). `build_pi_argv` now
+refuses an unstated surface and disables extension, skill, prompt-template and
+context-file discovery.
