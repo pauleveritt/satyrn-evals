@@ -9,10 +9,12 @@ all, so it grades only if the phase-1 checks are independently collectable
 -- which is the entire reason the depth-3 acceptance module was split.
 """
 
+import json
 from pathlib import Path
 
 import pytest
 
+from satyrn_evals.cli import main
 from satyrn_evals.contamination import ContaminationOutcome, scan_patch
 from satyrn_evals.grade import grade
 from satyrn_evals.manifest import load_manifest
@@ -135,3 +137,46 @@ def test_the_contaminated_witness_is_flagged() -> None:
     """The positive half. A scanner that never fires would pass the
     clean-side test on its own."""
     assert _contamination("contaminated") == "flagged"
+
+
+def test_bundled_known_good_patch_is_accepted_by_the_bare_grade_path(
+    tmp_path: Path,
+) -> None:
+    """The bare ``grade`` path narrows to ``manifest.expected_test_ids``
+    (grade.py:147-151), unlike the qualification rows above, which pass an
+    explicit cumulative selection. F2: this task's declared fixture must
+    also pass through that narrower path, or the convention stated at
+    ``tests/integration/test_bundled.py:1-5,33-40`` is inverted."""
+    receipt = tmp_path / "known-good.json"
+    code = main(
+        [
+            "grade",
+            "agentclinic-session-phased",
+            str(TASK / "fixtures" / "known-good.patch"),
+            "--receipt",
+            str(receipt),
+        ]
+    )
+    assert code == 0
+    data = json.loads(receipt.read_text())
+    assert data["verdict"] == "pass"
+
+
+def test_bundled_known_broken_patch_is_rejected_by_the_bare_grade_path(
+    tmp_path: Path,
+) -> None:
+    """Sibling to the row above: the declared ``known_broken`` fixture must
+    fail through the same narrow, bare path."""
+    receipt = tmp_path / "known-broken.json"
+    code = main(
+        [
+            "grade",
+            "agentclinic-session-phased",
+            str(TASK / "fixtures" / "known-broken.patch"),
+            "--receipt",
+            str(receipt),
+        ]
+    )
+    assert code == 0
+    data = json.loads(receipt.read_text())
+    assert data["verdict"] == "fail"

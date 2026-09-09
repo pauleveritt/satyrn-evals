@@ -10,7 +10,7 @@ are copied verbatim from the source; only the module structure differs.
 """
 
 from starlette.testclient import TestClient
-from turbohtml import Doctype, parse
+from turbohtml import Doctype
 
 from app import app
 

@@ -3,7 +3,8 @@
   "contract": "Build the AgentClinic application across three ordered development requests: the home page, the complaints board, then adding a complaint.",
   "oracle": ["python", "-m", "pytest", "-p", "satyrn_evals.oracle_hook"],
   "expected_test_ids": [
-    "grader_tests/test_phase1_home.py::test_home_still_returns_200_and_tagline"
+    "grader_tests/test_phase1_home.py::test_home_still_returns_200_and_tagline",
+    "grader_tests/test_phase2_board.py::test_complaint_model_contract_is_preserved"
   ],
   "source_paths": ["app.py", "models.py", "templates", "tests"],
   "fixtures": {

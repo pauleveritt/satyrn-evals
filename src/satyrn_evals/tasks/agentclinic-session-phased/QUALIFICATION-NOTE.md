@@ -131,7 +131,7 @@ contents.
 | `known-good` | 3 | copy of `checkpoint-3`; 13/13 pass |
 | `known-broken` | 2 | fails exactly `test_complaint_model_contract_is_preserved` (naive `datetime.now` default factory) |
 | `known-broken` | 3 | still fails `test_complaint_model_contract_is_preserved` — not silently repaired by a later checkpoint |
-| `regression` | 3 | a checkpoint-3 tree with `lang="en"` dropped from `base.html`: fails `test_home_html_element_declares_english_language` and `test_complaints_board_preserves_the_shared_layout`, both of which pass at checkpoint 1 |
+| `regression` | 3 | a checkpoint-3 tree with `lang="en"` dropped from `base.html`: fails `test_home_html_element_declares_english_language` (a phase-1 check, and the cross-phase witness — it passes at checkpoint 1) and `test_complaints_board_preserves_the_shared_layout` (a phase-2 check that does not run at checkpoint 1 at all) |
 | `prompt-faithful` | 3 | 13/13 pass, written from the preamble and the three prompt texts |
 | `contaminated` | 3 | grades 13/13 pass, and the contamination scan flags it |
 
@@ -169,3 +169,28 @@ session has been run against it, so nothing here shows that the three
 requests discriminate between engines or that a model can finish them.
 Admission would need a probe — a separate job, and one no fixture can
 substitute for.
+
+## Known limitation: `prompt-faithful` does not establish check-blindness
+
+The `prompt-faithful` gate establishes that a prompt-derivable implementation
+scoring 13/13 *exists*, which rules out "no prompt-conformant solution can
+pass." It does **not** establish that a check-blind solver lands in the
+passing region, because its author had read the checks — the extraction
+required it (see "Caveat" in the extraction record above).
+
+Two ambiguities in the prompt text, found by review and still unprobed,
+would each fail a reading the prompt permits:
+
+1. `test_complaint_model_contract_is_preserved` requires positional
+   construction, `Complaint("first", "First complaint")`. A solver that adds
+   an `id` field ahead of `agent_name` — a reading the "Fields:" bullet does
+   not exclude — fails this check even though the field list it names is
+   present.
+2. `test_home_still_has_navigation_links` requires link text that normalizes
+   to exactly `home` and `complaints`. A solver that writes "Home Page" for
+   the link label — a reading the "links to Home (`/`)" bullet does not
+   exclude — fails this check.
+
+Closing this needs a fresh-author probe (someone who has not read the
+checks) or a model probe (a session run against this task with no access to
+the grader), not another fixture.

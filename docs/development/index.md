@@ -16,6 +16,8 @@ cycles/index
 ../current/index
 ../current/first-milestone-design
 ../current/first-milestone-plan
+../superpowers/plans/2026-09-09-agentclinic-phased-session
+../superpowers/specs/2026-09-09-agentclinic-phased-session-design
 ```
 
 The repository-root

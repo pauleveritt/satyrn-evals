@@ -1,6 +1,7 @@
 """The phased session task: provenance, structure, and prompt discipline."""
 
 import ast
+import json
 from pathlib import Path
 
 from satyrn_evals.manifest import load_manifest
@@ -26,6 +27,32 @@ def _functions(path: Path) -> dict[str, str]:
     }
 
 
+def _non_test_functions(path: Path) -> dict[str, str]:
+    return {
+        name: body
+        for name, body in _functions(path).items()
+        if not name.startswith("test_")
+    }
+
+
+def _constants(path: Path) -> dict[str, str]:
+    """Module-level ``NAME = ...`` assignments, dunders excluded (e.g.
+    ``_seed.py``'s ``__all__``, an extraction-only addition with no
+    counterpart in the source module)."""
+    tree = ast.parse(path.read_text())
+    result: dict[str, str] = {}
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Name):
+            continue
+        name = node.targets[0].id
+        if name.startswith("__") and name.endswith("__"):
+            continue
+        result[name] = ast.unparse(node.value)
+    return result
+
+
 def test_every_extracted_check_is_verbatim() -> None:
     """Whole-file identity is impossible (the source imports models at
     load). Per-assertion identity is not, and it is what the provenance
@@ -40,12 +67,63 @@ def test_every_extracted_check_is_verbatim() -> None:
         assert body == source[name], f"{name} was edited during extraction"
 
 
+def test_contract_and_seed_helpers_and_constants_are_verbatim() -> None:
+    """The per-function guard above only globs ``test_phase*.py``. All 13
+    of those bodies call into ``_contract.py``'s ``TAGLINE``,
+    ``SEED_COMPLAINT``, ``_normalized_text``, ``_has_html5_doctype`` and
+    ``_seed.py``'s ``SEED_COMPLAINTS`` -- so without this row, editing a
+    helper or retuning a constant silently changes what every 'verbatim'
+    check actually asserts, while the guard above stays green."""
+    source_functions = _functions(SOURCE)
+    source_constants = _constants(SOURCE)
+
+    extracted_functions: dict[str, str] = {}
+    extracted_constants: dict[str, str] = {}
+    for name in ("_contract.py", "_seed.py"):
+        path = GRADER / name
+        extracted_functions |= _non_test_functions(path)
+        extracted_constants |= _constants(path)
+
+    assert extracted_functions
+    assert extracted_constants
+    for name, body in extracted_functions.items():
+        assert name in source_functions, f"{name} is not in the source suite"
+        assert body == source_functions[name], f"{name} was edited during extraction"
+    for name, value in extracted_constants.items():
+        assert name in source_constants, f"{name} is not in the source suite"
+        assert value == source_constants[name], f"{name} was edited during extraction"
+
+
 def test_phase_one_module_does_not_reach_models() -> None:
     """The whole reason for the extraction. If this fails, phase 1 cannot
     be graded at all -- collection imports before selection applies."""
     text = (GRADER / "test_phase1_home.py").read_text()
     assert "models" not in text
     assert "_seed" not in text
+
+
+def test_seed_module_imports_contract_before_snapshotting() -> None:
+    """Load-bearing order, commented as such in ``_seed.py``: the snapshot
+    must be taken after ``_contract``'s ``client.__enter__()`` has run the
+    FastAPI lifespan, or an application that seeds from a startup hook
+    looks identical to an empty store."""
+    tree = ast.parse((GRADER / "_seed.py").read_text())
+    import_index = next(
+        i
+        for i, node in enumerate(tree.body)
+        if isinstance(node, ast.ImportFrom)
+        and node.module == "grader_tests"
+        and any(alias.name == "_contract" for alias in node.names)
+    )
+    assignment_index = next(
+        i
+        for i, node in enumerate(tree.body)
+        if isinstance(node, ast.Assign)
+        and len(node.targets) == 1
+        and isinstance(node.targets[0], ast.Name)
+        and node.targets[0].id == "SEED_COMPLAINTS"
+    )
+    assert import_index < assignment_index
 
 
 def test_phase_two_module_does_reach_models() -> None:
@@ -150,8 +228,15 @@ def test_no_prompt_discloses_a_later_phase() -> None:
 
 def test_no_step_declares_a_budget_ceiling() -> None:
     """The first run reports raw counts. A ceiling here would be a
-    judgment wearing a measurement's clothes."""
-    spec = load_session_spec(TASK)
-    assert all(
-        getattr(step, "turn_budget", None) is None for step in spec.steps
-    )
+    judgment wearing a measurement's clothes.
+
+    ``SessionStep`` is a ``slots=True`` frozen dataclass whose fields are
+    exactly ``id, kind, prompt, new_feature_selectors``
+    (session_manifest.py:24-31), so an attribute check on the loaded
+    dataclass can never see a budget field, even one present in the raw
+    file -- it would always read back ``None``. This reads ``session.json``
+    directly so the assertion can actually fail."""
+    data = json.loads((TASK / "session.json").read_text())
+    for step in data["steps"]:
+        assert "turn_budget" not in step
+        assert "tool_budget" not in step
