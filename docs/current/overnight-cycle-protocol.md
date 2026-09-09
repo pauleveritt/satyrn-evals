@@ -13,9 +13,13 @@ under, written before the first one.
    the behaviour.
 3. **Smallest remedy that makes it pass**, with a sibling showing it stays
    silent on the healthy case.
-4. **Fable reviews the cycle** — the reproducer, the remedy, and whether the
+4. **Run the tier that guards what you changed**, not only the fast one. The
+   engine's shipped-suite gate lives in the integration tier and pins the
+   behaviour-suite test count; it sat red for two cycles because nobody ran it,
+   while a cycle record said "34 tests pass" and the gate still asserted 33.
+5. **Fable reviews the cycle** — the reproducer, the remedy, and whether the
    pathology is real or an artifact of how it was measured.
-5. **Record and close.** The next cycle starts clean.
+6. **Record and close.** The next cycle starts clean.
 
 ## Stopping rules
 
@@ -60,6 +64,14 @@ that leaves the model doing the same thing again is a message that failed.
 Recorded hypothesis to test against, from the V14a result: the runner refusal
 that worked **named what to do instead**, while E9's corrective message named
 **what already happened** and left the next action unspecified.
+
+## Stating a trade
+
+A remedy that ends work is judged on its **margin**, never its population.
+Cycle 3 first reported "76% of the produced-nothing population against 3% of
+the passes" for a rule whose incremental effect — after the limit already in
+place — was 4 cells against 5 passes. Report what the change adds over what
+already happens, and say which instrument version the evidence came from.
 
 ## Per-cycle record
 

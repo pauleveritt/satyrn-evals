@@ -172,6 +172,12 @@ if [ -z "$ENGINE_PINNING_ARM" ]; then
   HEAD_SHA=""
   ACTUAL_ENGINE_TS=""
   ACTUAL_MUTATOR_TS=""
+  # A batch whose arms pin no engine never enters the else branch below, where
+  # this is otherwise assigned, and `set -u` then killed the record write AFTER
+  # every check had passed (2026-09-09, the first Baseline-only batch to use
+  # preflight). Assigned here rather than defaulted at the point of use, so the
+  # no-engine path holds a real value instead of relying on a `:-`.
+  VERIFIED_DIGESTS=""
   ok "no arm in this batch pins an engine commit; engine checks not applicable"
 else
 PINNED_COMMIT="$(pin "$ENGINE_PINNING_ARM" pins engine_commit)"
@@ -201,10 +207,6 @@ digest_of() { shasum -a 256 "$1" | awk '{print $1}'; }
 # recorded-but-not-checked shape as the temperature gap this preflight
 # already carried once. The record below emits exactly what was verified,
 # so it cannot drift from the check either.
-# Declared before the engine block: a batch whose arms pin no engine never
-# enters that block, and `set -u` then killed the record write AFTER every
-# check had passed (2026-09-09, first Baseline-only batch to use preflight).
-VERIFIED_DIGESTS=""
 PINNED_NAMES="$(python3 -c '
 import json, sys
 print("\n".join(json.load(open(sys.argv[1]))["pins"]["digests"]))
