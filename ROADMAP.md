@@ -2,6 +2,13 @@
 
 ## Proposed next work: one AgentClinic addition
 
+**Status 2026-09-09. The phased AgentClinic session workload exists, is
+qualified, and has run three times; the proposed next work is Phase HP,
+orchestrated delivery.** Nothing produced so far speaks to Engine versus
+Baseline on a session workload in either direction, and no Engine session arm
+exists. The phase and its eight cycles are below; the paragraphs before it
+record how each stage got here.
+
 **Status 2026-09-08.** The suite sequence completed at `R3` (four cells,
 Baseline 2/2 and Engine 2/2, no outcome difference detected;
 `~/satyrn-smokes/2026-09-08-misleading-locus-r3-174721/RESULT.md`). A fresh
@@ -72,8 +79,8 @@ Making it reliable would mean forcing contact with the shared code, which
 trades away the accident the task is modelling — a design choice belonging in
 its own proposal. **No session runs are queued.**
 
-**The phased AgentClinic session task: Tasks 1-2 landed, Task 3 pending
-authorization.** [The plan](docs/superpowers/plans/2026-09-09-agentclinic-phased-session.md)
+**The phased AgentClinic session task: all three tasks landed, and Task 3 has
+run.** [The plan](docs/superpowers/plans/2026-09-09-agentclinic-phased-session.md)
 adds a second, independent session workload: one growing checkout carried
 through three ordered development requests (home page, then the complaints
 board, then adding a complaint), with the depth-3 acceptance assertions
@@ -83,9 +90,37 @@ and allowing an app-less `base/` so a session task can ship no application)
 and Task 2 (the `agentclinic-session-phased` task itself, its per-phase
 graders, and its witnesses — `known-good`, `known-broken`,
 `regression`, `contaminated`, and `prompt-faithful`, all qualified through
-the real grader) are both committed. Task 3 — the one bounded Baseline
-session this exists to run — has not started and needs its own live-run
-authorization, per this file's other live stages.
+the real grader) are both committed.
+
+**Task 3 has run, three times, all Baseline and all retained under
+`~/satyrn-smokes/`:** a discovery session at `n=1` without the verification
+instruction (`2026-09-09-session-phased-112550`), which found a genuine
+cross-phase regression; an `n=1` session with it
+(`2026-09-09-session-phased-verify-114708`), which exposed two environment
+defects, both since fixed; and the **four-session matched triage screen**
+(`2026-09-09-verify-triage-132612`), two control and two verification,
+recorded in [the frozen screen](docs/current/agentclinic-verification-triage-screen.md).
+
+**The prompt experiment is closed.** The verification sentence is **adopted as
+an operating policy** for session prompts: it states a desirable behaviour and
+supplies a command that works, where an uninstructed session spent calls
+discovering one. That adoption is **a judgment, not a demonstrated correctness
+or reliability improvement** — the screen's own control verified unprompted in
+one session of two, all four sessions passed every check, and four sessions
+separate nothing. **No confirmation campaign is queued**, and the screen's
+counts stay outside the denominator of any later experiment.
+
+**The proposed next phase is orchestrated delivery**, not a longer Engine
+conversation, and it is an **adaptation of SwiftStar's already-exercised
+design** rather than a new one: this same phased roadmap carried through
+bounded implementer handoffs, each phase branched from its predecessor's
+accepted commit, with every packet, decision, role-attributed mutation and
+cost retained ([the proposal](docs/current/orchestrated-delivery-design.md)),
+**recorded below as Phase HP** and sequenced into eight feature cycles. It supersedes
+Part 2 of [the next-agent brief](docs/current/next-agent-brief-engine-on-phased.md),
+which scoped an Engine session arm; that arm survives only as a comparison
+condition. Neither document authorizes implementation or inference, and each
+live stage needs its own budget authorization.
 
 [The suite brief](docs/current/agentclinic-suite-brief.md) proposes finishing
 the existing engine repairs, qualifying one additional useful task-condition,
@@ -98,6 +133,54 @@ without establishing superiority. This is bounded suite development, not a
 restart of the paused comparison or a pathology audit. The brief authorizes no
 implementation, merge, commit, or inference; each live stage needs its own
 budget authorization.
+
+## Phase HP — the handoff packet
+
+**Proposed 2026-09-09, not started, authorizing nothing.** Design:
+[orchestrated delivery](docs/current/orchestrated-delivery-design.md), an
+adaptation of SwiftStar's exercised implementation rather than a new
+orchestration design. **Ownership is settled:** `satyrn-engine` owns packet
+execution, chained isolation and candidate production; `satyrn-evals` owns
+the packet schema, the arm, capture, grading, attribution and comparison.
+Cycles marked *engine* need mirrored entries in that repository's own
+roadmap; this table does not govern it.
+
+The one path being built, and the only one: **orchestrator-authored packet →
+bounded implementer → isolated candidate → explicit integration → cumulative
+validation.** The workload is the existing
+`agentclinic-session-phased` task. No second workload is authored, and no
+agent is asked to invent a decomposition.
+
+| Cycle | In scope | Out of scope | Artifacts | Status |
+|---|---|---|---|---|
+| **HP1** Packet schema | The typed packet mapped from SwiftStar's field set onto this repo's contract rendering: objective, project constraints, base revision, writable scope, behaviour to preserve, parent validation command, worker self-test command, budgets | Executing a packet; anything engine-side; fields this path does not need | spec + plan | proposed |
+| **HP2** Offline route | The three phases end to end against a fake implementer on the engine seam, no model | Real inference; isolation (HP3); attribution (HP5) | plan only | proposed |
+| **HP3** Chained isolation *(engine)* | Phase N branches from phase N-1's accepted commit; a refused phase stops the chain with no candidate ref | Pools, parallel dispatch, retry | spec + plan | proposed |
+| **HP4** File creation | Declared directory source paths, so an empty-skeleton directory is distinguishable from a creation target | A trailing slash as the settled syntax; relaxing scope enforcement | plan only | proposed |
+| **HP5** Role attribution | Every mutation attributed to orchestrator or implementer from retained events | Judging whether delegation helped; any new pathology detector | spec + plan | proposed |
+| **HP6** Chain retention | Instructions, packets, worker events, candidate, validation output, accept/reject with reason, cost per role, fallback labelled | Cost thresholds or a budget verdict | plan only | proposed |
+| **HP7** Live route proof | One orchestrated delivery, `n` frozen at 1, Baseline model, the adopted verification instruction | Superiority of any kind; extending `n` after reading it | spec (pre-run record) | proposed, budgeted |
+| **HP8** Workflow comparison | Orchestrated route against the continuous-session route, same roadmap and prompt, triage at two attempts per configuration | Publication; mechanism attribution; wall-clock between contiguous arms | spec (pre-run record) | proposed, separately authorized |
+
+**Why some cycles are plan-only.** `docs/sdd.md` asks for designs
+proportionate to the change: work that moves an evaluation condition,
+evidence boundary, task contract or interpretation earns a spec, and the rest
+does not. HP1, HP3, HP5, HP7 and HP8 each move one of those. HP2, HP4 and HP6
+implement decisions those specs already fixed.
+
+**Ordering.** HP1 gates HP2 and HP3. HP4, HP5 and HP6 all gate HP7 — a run
+that cannot create files, cannot attribute a mutation, or cannot be re-scored
+is not worth its inference. HP7 gates HP8.
+
+**Two limits carried into every cycle, from SwiftStar's own records.** Its
+live campaign substitutes harness-defined scope and commands for the model's
+packet parameters, so it does not jointly validate packet authoring,
+isolation and integration
+(`swiftstar/Sources/swiftstar-agenttest/main.swift:1297-1305`). And a passing
+workflow can hide a silent implementer: seed 221 passed with **0 mutations**
+in all three dispatched phases
+(`swiftstar/captures/agenttest/20260829-212715-roadmap-user-story-directive/campaign-stdout.txt:14-16`).
+HP5 exists because of the second one.
 
 ## Paused: the engine comparison
 

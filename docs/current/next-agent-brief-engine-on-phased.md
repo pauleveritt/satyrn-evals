@@ -1,7 +1,11 @@
 # Brief for the next agent — correct the screen's claims, then put Engine on the phased workload
 
-Written 2026-09-09 at `b78fa13`. Read `CLAUDE.md`, `BRIEF.md` and
+Written 2026-09-09 at `b78fa13`. Read `AGENTS.md`, `BRIEF.md` and
 `ROADMAP.md` first, as every session must. This brief does not replace them.
+
+> **Correction, 2026-09-09.** This line first named `CLAUDE.md`, which has
+> been a legacy pointer since the 2026-09-07 reset; `AGENTS.md` is canonical.
+> Two rules cited below as `CLAUDE.md`'s survive only in the archive.
 
 ## Where things stand
 
@@ -33,6 +37,14 @@ Three runs are retained, all under `~/satyrn-smokes/`:
 | `2026-09-09-verify-triage-132612` | The four-session matched screen: 2 control, 2 verification. |
 
 ## Part 1 — corrections to make first. No new run is required for any of them.
+
+> **Applied 2026-09-09, no run.** C1–C6 are done, in one documentation
+> change: the Q1, Q2 and Q3/Q4 sections of
+> `~/satyrn-smokes/2026-09-09-verify-triage-132612/RESULT.md` (with a
+> corrections banner above them), the two named entries in
+> `docs/development/lessons.md`, and `ROADMAP.md`'s status paragraph and
+> phased-task paragraph, which now agree and carry the adoption. Part 2
+> onward is open.
 
 These correct overclaims in records that are otherwise sound. A correction is
 recorded, not edited away.
@@ -72,8 +84,9 @@ answered a question nobody had asked" entry accordingly.
 
 **C5. `ROADMAP.md` is stale.** Around line 75 it still reads "Tasks 1-2
 landed, Task 3 pending authorization" and "Task 3 ... has not started". Task
-3 ran, twice, plus the four-session screen. `CLAUDE.md`'s one-current-status
-rule requires the opening paragraph and the phase table to agree — update
+3 ran, twice, plus the four-session screen. The one-current-status rule
+(archived, `archive/2026-09-07-pre-reset/CLAUDE.md`) requires the opening
+paragraph and the phase table to agree — update
 both in the same edit or neither.
 
 **C6. Close the prompt experiment.** Adopt the verification sentence as a
@@ -110,9 +123,14 @@ three.
 Note that `writable_paths` currently infers directory-ness by probing
 `base/`, which cannot distinguish an empty-skeleton directory from a file
 creation target; the deferred entry in
-`docs/superpowers/plans/2026-09-09-agentclinic-phased-session.md` describes
-the trailing-slash declaration and reopens exactly when an Engine session arm
-exists. That is now.
+`docs/superpowers/plans/2026-09-09-agentclinic-phased-session.md:750-754`
+reopens exactly when an Engine session arm exists. That is now.
+
+> **Correction, 2026-09-09.** This paragraph first said that entry
+> "describes the trailing-slash declaration". It does not. The entry is
+> titled "Declared directory source paths" and names the gap without naming
+> a syntax; the trailing slash was this brief's own invention, restated as
+> if it were on record.
 
 ## Part 3 — prove the route cheaply
 

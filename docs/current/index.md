@@ -23,10 +23,16 @@ past artifact. Archived material does not set current policy.
 - [Pre-run record: the bounded Baseline session](session-ordering-baseline-pre-run-record.md)
   freezes the conditions for one Baseline session on the cross-prompt witness
   task, and states what a single session cannot establish.
+- [Orchestrated delivery](orchestrated-delivery-design.md) proposes the next
+  phase as an **adaptation of SwiftStar's exercised design**, not a new
+  orchestration design: the existing phased roadmap carried through bounded
+  implementer handoffs over chained isolated checkouts, with role attribution
+  required so a passing workflow cannot hide a silent implementer. It
+  supersedes the brief's Part 2 and authorizes nothing.
 - [Next-agent brief: correct the screen, then put Engine on the phased
   workload](next-agent-brief-engine-on-phased.md) is the current handoff: six
-  documentation corrections that need no new run, then the Engine session
-  capability.
+  documentation corrections that need no new run — **applied 2026-09-09** —
+  then the Engine session capability, which is the open work.
 - [Triage screen: the verification instruction](agentclinic-verification-triage-screen.md)
   freezes four sessions, two per prompt condition, and states what a screen
   that size cannot establish.
@@ -73,6 +79,7 @@ agentclinic-session-phased-pre-run-record
 agentclinic-session-phased-verification-pre-run-record
 agentclinic-verification-triage-screen
 next-agent-brief-engine-on-phased
+orchestrated-delivery-design
 session-ordering-baseline-pre-run-record
 agentclinic-phase-session-proposal
 misleading-locus-r3-pre-run-record
