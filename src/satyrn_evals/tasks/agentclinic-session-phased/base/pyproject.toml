@@ -1,7 +1,7 @@
 [project]
-name = "agentclinic-complaints-depth-3"
+name = "agentclinic-session-phased"
 version = "0.1.0"
-description = "Seeded broken state depth-3 of the AgentClinic complaints app (repair fixture)"
+description = "AgentClinic complaints app"
 requires-python = ">=3.12"
 dependencies = [
   "fastapi[standard]==0.115.10",

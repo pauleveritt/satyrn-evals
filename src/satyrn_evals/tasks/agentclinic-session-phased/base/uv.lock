@@ -17,7 +17,7 @@ wheels = [
 ]
 
 [[package]]
-name = "agentclinic-complaints-depth-3"
+name = "agentclinic-session-phased"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

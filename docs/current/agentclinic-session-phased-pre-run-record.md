@@ -52,7 +52,7 @@ covers the five recorded settings only.
 | Field | Value |
 |---|---|
 | Task | `agentclinic-session-phased` |
-| Task tree sha256 | `6c218759c6ccacc2a3998d3614e9c551215745b7bde086f7744841090cbd98b3` |
+| Task tree sha256 | `bd9ac2fe0c4aeee280802d4c15c00e152728b0c6a48064996009dd4ec9daab10` |
 | Repo commit | `ac445c0` (preflight refuses a dirty tree and records the commit) |
 | Prompt source | `swiftstar` `ab1d83d`, `fixtures/agenttest/specs/roadmap.md`, sha256 `d470ba450101c669a3475cc388bd753f174bc749f6ed7cf2d3e114853453ff0c` |
 
@@ -180,3 +180,55 @@ Read the transcripts. Select **one** concrete obstruction to pursue. Build
 further classification only if it serves that investigation — a detector
 written before a trace has demanded it is instrument work, and `AGENTS.md`
 caps consecutive instrument-only pieces at two.
+
+## Correction, 2026-09-09 — task identity leaked into the solver's workspace
+
+Found while verifying precondition 1, **before any inference**. Recorded, not
+edited away.
+
+`base/pyproject.toml` was copied from `agentclinic-repair-depth-3` and kept
+that task's identity: `name = "agentclinic-complaints-depth-3"` and
+`description = "Seeded broken state depth-3 of the AgentClinic complaints app
+(repair fixture)"`. That file sits in the solver's workspace and is among the
+first things a coding agent reads. It tells a solver that is supposed to be
+**building an application from an empty skeleton** that it is instead looking
+at a seeded broken state and a repair fixture — a false statement about the
+task, in the same class as the preamble promising an environment that does not
+exist.
+
+The contamination scanner would not have caught it: it looks for grader
+overlay content in the workspace, not for task-identity leakage.
+
+Fixed by renaming the package to `agentclinic-session-phased` in
+`base/pyproject.toml` and in the matching root-package name at
+`base/uv.lock:20`, and replacing the description with `AgentClinic complaints
+app`. The lock was **not** regenerated — only the identity string changed — so
+no version moved: `uv sync --frozen` succeeds and resolves fastapi 0.115.10,
+turbohtml 1.5.0, pytest 8.3.4, httpx 0.28.1, starlette 0.46.2, verified after
+the edit. `base/` is no longer byte-identical to depth-3's, which was never a
+required property of this task; the pins are, and they are unchanged.
+
+The frozen task tree sha256 in the table above is updated to `bd9ac2fe0c4aeee280802d4c15c00e152728b0c6a48064996009dd4ec9daab10`
+accordingly. The prompt digests are unchanged, since no prompt changed.
+
+Recompute:
+
+```
+uv run python -c "
+import hashlib
+from pathlib import Path
+t = Path('src/satyrn_evals/tasks/agentclinic-session-phased')
+h = hashlib.sha256()
+for p in sorted(t.rglob('*')):
+    if p.is_file():
+        h.update(p.relative_to(t).as_posix().encode()); h.update(p.read_bytes())
+print(h.hexdigest())
+"
+```
+
+### Precondition 1 result
+
+**PASS**, after the fix. `uv sync --frozen` exits 0 from a clean materialization
+of `base/`, and `fastapi`, `turbohtml`, `pytest`, `httpx` and `starlette` all
+import at the pinned versions, as do `starlette.testclient.TestClient` and
+`turbohtml.parse` / `Doctype` — the exact imports the hidden checks perform.
