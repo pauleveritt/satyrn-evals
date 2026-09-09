@@ -65,9 +65,37 @@ def _parse_step(raw: object) -> SessionStep:
     )
 
 
-def load_session_spec(task_dir: Path) -> SessionSpec:
-    """Load and validate ``session.json`` below ``task_dir``."""
-    path = task_dir / "session.json"
+def _check_spec_name(spec_name: str) -> None:
+    """Refuse anything but a bare ``*.json`` filename inside the task dir.
+
+    ``spec_name`` names a file *inside* ``task_dir``; it must never be used
+    to escape it. Four independent checks, each with its own message, so a
+    disabled check is visible in which refusal (if any) still fires rather
+    than being masked by a neighboring one.
+    """
+    if not spec_name.endswith(".json"):
+        raise SessionSpecError(
+            f"--session-spec must name a .json file: {spec_name!r}"
+        )
+    path = Path(spec_name)
+    if path.is_absolute():
+        raise SessionSpecError(
+            f"--session-spec must not be an absolute path: {spec_name!r}"
+        )
+    if ".." in path.parts:
+        raise SessionSpecError(
+            f"--session-spec must not traverse directories: {spec_name!r}"
+        )
+    if path.name != spec_name:
+        raise SessionSpecError(
+            f"--session-spec must be a bare filename, not a path: {spec_name!r}"
+        )
+
+
+def load_session_spec(task_dir: Path, spec_name: str = "session.json") -> SessionSpec:
+    """Load and validate ``spec_name`` (default ``session.json``) below ``task_dir``."""
+    _check_spec_name(spec_name)
+    path = task_dir / spec_name
     try:
         data = json.loads(path.read_text())
     except OSError as e:

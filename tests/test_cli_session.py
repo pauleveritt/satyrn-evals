@@ -64,6 +64,38 @@ def test_session_exit_code_mapping(
     assert seen["task"] == "mini-session"
     assert seen["adapter_command"] == ["adapter"]
     assert seen["grader"] is not None
+    assert seen["session_spec"] == "session.json"
+
+
+def test_session_spec_flag_threads_to_run_session(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """--session-spec is not the default: it reaches run_session verbatim."""
+    seen: dict[str, object] = {}
+
+    def fake_run_session(**kwargs: object) -> SessionRecord:
+        seen.update(kwargs)
+        return _record(SessionCode.COMPLETE)
+
+    monkeypatch.setattr(cli, "run_session", fake_run_session)
+    assert (
+        cli.main(
+            [
+                "session",
+                "mini-session",
+                "--tasks-root",
+                str(TASKS_ROOT),
+                "--output",
+                str(tmp_path),
+                "--session-spec",
+                "other.json",
+                "--",
+                "adapter",
+            ]
+        )
+        == 0
+    )
+    assert seen["session_spec"] == "other.json"
 
 
 def test_session_without_adapter_refuses_with_exit_two(tmp_path: Path) -> None:

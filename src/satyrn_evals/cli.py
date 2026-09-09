@@ -136,6 +136,7 @@ def main(argv: list[str] | None = None) -> int:
                 grader=SessionGrader(
                     task_dir=resolve_task(args.task, tasks_root=Path(args.tasks_root))
                 ),
+                session_spec=args.session_spec,
             )
             match record.code:
                 case (
@@ -337,6 +338,14 @@ session_p.add_argument(
     type=positive_finite_timeout,
     default=30.0,
     help="seconds for graceful adapter close (default: 30)",
+)
+session_p.add_argument(
+    "--session-spec",
+    default="session.json",
+    help=(
+        "spec file inside the task directory to load "
+        "(default: session.json; must be a bare *.json filename)"
+    ),
 )
 
 build_census_parser(sub)

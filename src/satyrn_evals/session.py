@@ -241,11 +241,12 @@ def run_session(
     step_timeout: float = 600.0,
     close_timeout: float = 30.0,
     grader: SessionGrader | None = None,
+    session_spec: str = "session.json",
 ) -> SessionRecord:
     """Run one session against TASK and return the durable record."""
     task_dir = resolve_task(task, tasks_root)
     manifest = load_manifest(task_dir)
-    spec = load_session_spec(task_dir)
+    spec = load_session_spec(task_dir, spec_name=session_spec)
     overlay = load_overlay(task_dir, manifest)
     # prompt-authoring guard: a hidden session task must not name an
     # overlay path; refuse (exit 2) before any workspace is built.

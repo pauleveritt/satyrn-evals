@@ -283,3 +283,62 @@ def test_session_spec_refuses_unreadable_file(
     monkeypatch.setattr(Path, "read_text", deny)
     with pytest.raises(SessionSpecError, match="cannot read"):
         load_session_spec(tmp_path)
+
+
+def test_session_spec_name_loads_a_named_file(tmp_path: Path) -> None:
+    """--session-spec picks a different file inside the task dir.
+
+    The default caller still gets session.json's steps; a caller that asks
+    for other.json gets that file's steps instead — proving both the
+    default path and the selector both resolve to the file they name.
+    """
+    _write(tmp_path, copy.deepcopy(VALID))
+    other = copy.deepcopy(VALID)
+    other["steps"][0]["id"] = "add-other"
+    (tmp_path / "other.json").write_text(json.dumps(other))
+
+    default_spec = load_session_spec(tmp_path)
+    other_spec = load_session_spec(tmp_path, spec_name="other.json")
+
+    assert default_spec.steps[0].id == "add-slugify"
+    assert other_spec.steps[0].id == "add-other"
+
+
+@pytest.mark.parametrize(
+    ("spec_name", "match"),
+    [
+        ("sub/other.json", "bare filename"),
+        ("../other.json", "traverse"),
+        ("/etc/passwd.json", "absolute"),
+        ("other.txt", "\\.json"),
+    ],
+)
+def test_session_spec_name_refusals(
+    tmp_path: Path, spec_name: str, match: str
+) -> None:
+    _write(tmp_path, copy.deepcopy(VALID))
+    with pytest.raises(SessionSpecError, match=match):
+        load_session_spec(tmp_path, spec_name=spec_name)
+
+
+def test_session_spec_name_traversal_cannot_read_outside_task_dir(
+    tmp_path: Path,
+) -> None:
+    """The traversal refusal actually blocks escape, not just bad names.
+
+    A sibling directory holds a *readable, well-formed* session.json. Absent
+    the validation this loader would happily follow ``../secret/session.json``
+    and return the secret's steps; the refusal must fire before any read.
+    """
+    task_dir = tmp_path / "task"
+    task_dir.mkdir()
+    _write(task_dir, copy.deepcopy(VALID))
+
+    secret_dir = tmp_path / "secret"
+    secret_dir.mkdir()
+    secret = copy.deepcopy(VALID)
+    secret["steps"][0]["id"] = "exfiltrated"
+    (secret_dir / "session.json").write_text(json.dumps(secret))
+
+    with pytest.raises(SessionSpecError, match="traverse"):
+        load_session_spec(task_dir, spec_name="../secret/session.json")
