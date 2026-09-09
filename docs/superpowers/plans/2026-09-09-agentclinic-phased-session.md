@@ -771,7 +771,20 @@ written before a trace has demanded it is instrument work, and
   effort: it carries the resulting code, not the investigation that
   produced it, so applying it measures the script that applies it.
   Reopens as a declared operational allowance, labelled a judgment.
-- **Phase-leak and no-edit-run detectors.** Both were named beyond their
+- **Phase-leak and no-edit-run detectors.** **Corrected 2026-09-09 by the
+  first run** (`~/satyrn-smokes/2026-09-09-session-phased-112550/RESULT.md`),
+  on two counts. First, the no-edit detector's specification was factually
+  wrong: it reads tool names via `session_repeat_limit._tool_key`, whose shape
+  is `payload.assistantMessageEvent.toolCall` — that is the `message_update`
+  shape. A real `tool_end` payload carries `payload.toolName`. As written the
+  detector would read `None` for every call and report a no-edit run spanning
+  the whole session, which is a fabricated finding, not a missed one. Second,
+  it was aimed at the wrong shape: the first session's signature is the
+  opposite of the spike's `follow_redirects` loop — every call after the first
+  was a write or an edit, and nothing was ever verified. The statistic worth
+  counting may be *edits without a verification run*; one session is not
+  evidence that it recurs.
+- **Phase-leak and no-edit-run detectors (original entry).** Both were named beyond their
   evidence. Identical successive patches mean *no net change*; leakage
   would have to be established by checking whether a later phase's
   requirements were already satisfied. Tool names cannot establish that

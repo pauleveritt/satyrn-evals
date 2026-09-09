@@ -108,5 +108,35 @@ before, unedited. It says nothing about whether the oracle suits a
 *different* workload. Provenance and suitability are separate claims and
 need separate evidence.
 
+**"The model wrote tests, edited them twice, and never ran one."**
+First phased session, 2026-09-09, Gemma 12B. Across three prompts it made 12
+tool calls: one `bash` (returning "(no output)") and eleven `write`/`edit`.
+At phase 3 it wrote `from fastapi.form import Form` — a module that does not
+exist, where the prompt says verbatim "`Form` from `fastapi`" — and stopped.
+Its own `tests/test_app.py`, which it had written and twice edited, fails with
+the same `ModuleNotFoundError`; a single `pytest` run would have surfaced it.
+Two consequences worth separating. The **pathology** is cross-phase: phases 1
+and 2 passed, and phase 3's edit made them ungradeable without touching them,
+because every grader module imports `app`. The **instrument defect** is that
+this scores `unavailable`, not `fail`: the grader requires executed ids to
+match expected, a collection error executes zero, and the mismatch reads as
+"we could not measure" when the truth is "the model shipped code that does not
+import". A scope violation is already "a candidate failure, never
+infrastructure unavailability"; an import error in the *solver's* own code
+belongs on that same side, and one in a *grader* module does not.
+
+**"The detector was specified against the wrong event shape, and would have
+fabricated rather than missed."**
+A deferred no-edit-run detector was specified to read tool names through
+`session_repeat_limit._tool_key`, whose shape is
+`payload.assistantMessageEvent.toolCall` — the `message_update` shape. Real
+`tool_end` payloads carry `payload.toolName`. Written as specified it would
+have read `None` for every call and reported a no-edit run spanning the entire
+session. The failure mode is not a silent zero but a **confident maximum**:
+absent data rendered as the strongest possible finding. It was also aimed at
+the wrong signature — built from a prior run's `follow_redirects` loop, while
+this run's shape was all edits and no verification. Deferring it until a trace
+demanded it is what kept it from being wrong in production.
+
 For a specific past incident or original line citation, retrieve its record
 from [the archive](https://github.com/pauleveritt/satyrn-evals/tree/main/archive/2026-09-07-pre-reset).
