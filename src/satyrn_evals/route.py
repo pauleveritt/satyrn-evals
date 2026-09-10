@@ -370,4 +370,23 @@ def command_implementer(argv: list[str], workspace: Path) -> Implementer:
             )
         return implementer_result_from_dict(json.loads(result_path.read_text()))
 
+    # HP6: a marker on the closure itself, read by `is_executable_seam`
+    # below, so a caller retaining a chain does not have to separately
+    # assert which seam produced it -- the one fact that assertion cannot
+    # get wrong is whether this is the object it is looking at.
+    implement.executable_seam = True  # type: ignore[attr-defined]
     return implement  # pragma: no cover
+
+
+def is_executable_seam(implementer: Implementer) -> bool:
+    """Whether ``implementer`` is a ``command_implementer`` closure.
+
+    HP6's ``declaration_ledger`` needs to know which seam a chain ran on to
+    say whether ``redacts`` was applied. The prior shape took that as a bare
+    boolean the caller asserted, which nothing checked against the actual run
+    -- a caller could pass ``executable_seam=True`` for an in-process chain
+    and the ledger would say so. Deriving it from the callable actually
+    driving the chain closes that: the only way to get ``True`` here is to
+    hand this function the object ``command_implementer`` itself returned.
+    """
+    return bool(getattr(implementer, "executable_seam", False))

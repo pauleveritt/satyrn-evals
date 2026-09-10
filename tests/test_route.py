@@ -23,8 +23,10 @@ from satyrn_evals.packet import HandoffPacket, build_packet
 from satyrn_evals.route import (
     ROUTE_SCENARIO,
     ImplementerResult,
+    command_implementer,
     implementer_result_from_dict,
     implementer_result_to_dict,
+    is_executable_seam,
     run_phases,
     scripted_implementer,
 )
@@ -311,3 +313,24 @@ def test_changed_files_must_be_a_tuple_of_non_blank_strings(bad: object) -> None
             reported_outcome="delivered",
             message=None,
         )
+
+
+# --- HP6: which seam produced this run, derived rather than asserted --------
+
+
+def test_command_implementer_is_recognized_as_the_executable_seam(
+    tmp_path: Path,
+) -> None:
+    assert is_executable_seam(command_implementer(["true"], tmp_path)) is True
+
+
+def test_a_plain_callable_is_not_the_executable_seam(tmp_path: Path) -> None:
+    """The sibling: nothing about being *an* `Implementer` makes something
+    `command_implementer`'s own closure. A caller cannot get `True` here by
+    passing a lookalike -- only by handing over the real object."""
+    assert is_executable_seam(scripted_implementer(ROUTE_SCENARIO, tmp_path)) is False
+
+    def bare(packet: HandoffPacket) -> ImplementerResult:
+        return ImplementerResult(changed_files=("x",), reported_outcome="delivered", message=None)
+
+    assert is_executable_seam(bare) is False

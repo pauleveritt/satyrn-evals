@@ -191,6 +191,17 @@ cleanup (`BRIEF.md` invariant 1). Specifically:
   no-orchestrator-model note above; a `True` anywhere is reported as a
   finding to investigate, not summarized away.
 
+**Resolved 2026-09-10.** `chain_record.run_and_record_chain` now composes
+HP2/HP5/HP6 the way a real run must — one observer wired for both
+attribution and retention, `executable_seam` derived from the implementer
+object itself (`route.is_executable_seam`) rather than asserted by the
+caller, the record written durably before the function returns. What it
+still does **not** do, and what a live run still needs before it can start:
+materialize the task's `base/` into a workspace, and decide how a phase is
+graded live (`PhaseGrader` — this record has not yet named what plays that
+role outside the offline route's scripted fixtures). Those are CLI-driver
+concerns, not retention's, and are not resolved by this correction.
+
 ## Preconditions, all required before the run starts
 
 1. **Resolved 2026-09-09.** A real implementer executable for the packet seam

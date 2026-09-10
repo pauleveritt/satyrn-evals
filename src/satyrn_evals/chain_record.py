@@ -28,9 +28,17 @@ from enum import StrEnum
 from pathlib import Path
 from typing import get_args
 
-from satyrn_evals.attribution import ChainLedger, Mutation, MutationKind
+from satyrn_evals.attribution import (
+    ChainLedger,
+    Mutation,
+    MutationKind,
+    Snapshot,
+    attribute,
+    snapshot,
+)
 from satyrn_evals.engine_contract import admits
 from satyrn_evals.errors import ChainRecordError
+from satyrn_evals.manifest import TaskManifest
 from satyrn_evals.packet import (
     HandoffPacket,
     packet_from_dict,
@@ -38,11 +46,16 @@ from satyrn_evals.packet import (
 )
 from satyrn_evals.route import (
     BoundaryEvent,
+    Implementer,
     ImplementerResult,
     PhaseDecision,
+    PhaseGrader,
     implementer_result_from_dict,
     implementer_result_to_dict,
+    is_executable_seam,
+    run_phases,
 )
+from satyrn_evals.session_manifest import SessionSpec
 
 CHAIN_RECORD_VERSION: int = 1
 
@@ -269,6 +282,63 @@ def build_chain_record(
         phases=tuple(phases),
         final_decision=final_decision,
     )
+
+
+def run_and_record_chain(
+    task_dir: Path,
+    manifest: TaskManifest,
+    spec: SessionSpec,
+    implementer: Implementer,
+    workspace: Path,
+    grader: PhaseGrader,
+    output_path: Path,
+    *,
+    base_revision: str,
+    turn_budget: int,
+    tool_call_budget: int,
+    costs: Mapping[str, tuple[float | None, float | None]] | None = None,
+) -> ChainRecord:
+    """Run one chain and retain it durably -- HP2, HP5 and HP6 composed the
+    way a real driver must, since nothing else in this repository does.
+
+    Wires one ``BoundaryObserver`` for both HP5's attribution (a snapshot per
+    boundary) and HP6's retention (the raw event stream), the way every test
+    that exercises both already has to -- this is that wiring, shipped once
+    rather than copied per caller. ``executable_seam`` is never asked for: it
+    is derived from ``implementer`` itself via ``route.is_executable_seam``,
+    so a caller cannot mis-assert which seam a chain ran on.
+
+    Writes the record durably (``write_chain_record``, fsync then atomic
+    replace) **before returning** -- ``BRIEF.md`` invariant 1, "preserve
+    before judging," holds even if the caller never reads this function's
+    return value or crashes immediately after it returns.
+
+    What this function does **not** do: materialize a workspace, apply a
+    task's fixture, or decide a live run's budget or authorization. Those are
+    a CLI driver's job, not retention's, and none exists yet for the packet
+    route -- the HP7 pre-run record names that gap.
+    """
+    events: list[BoundaryEvent] = []
+    records: list[tuple[str, str, Snapshot]] = []
+
+    def observe(event: BoundaryEvent) -> None:
+        events.append(event)
+        records.append((event.step_id, event.boundary, snapshot(workspace)))
+
+    decisions = run_phases(
+        task_dir, manifest, spec, implementer, workspace, grader,
+        base_revision=base_revision, turn_budget=turn_budget,
+        tool_call_budget=tool_call_budget, observer=observe,
+    )
+    reported = {d.step_id: d.result.changed_files for d in decisions}
+    ledger = attribute(records, reported)
+    record = build_chain_record(
+        decisions, events, ledger,
+        executable_seam=is_executable_seam(implementer),
+        costs=costs,
+    )
+    write_chain_record(output_path, record)
+    return record
 
 
 @dataclass(frozen=True, slots=True)

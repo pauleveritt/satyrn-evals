@@ -26,6 +26,7 @@ from satyrn_evals.chain_record import (
     decisions_from_record,
     declaration_ledger,
     load_chain_record,
+    run_and_record_chain,
     write_chain_record,
 )
 from satyrn_evals.errors import ChainRecordError
@@ -35,6 +36,7 @@ from satyrn_evals.route import (
     ROUTE_SCENARIO,
     BoundaryEvent,
     ImplementerResult,
+    is_executable_seam,
     run_phases,
     scripted_implementer,
 )
@@ -456,3 +458,66 @@ def test_recomputation_matches_a_chain_stopped_by_a_grader_rejection(
     assert len(decisions) == 2
     assert not decisions[-1].accepted
     assert decisions_from_record(record) == decisions
+
+
+# --- run_and_record_chain: HP2/HP5/HP6 composed, and actually written -------
+
+
+def test_run_and_record_chain_writes_the_record_before_returning(
+    tmp_path: Path,
+) -> None:
+    """The whole point of the function: a caller that never reads the return
+    value still gets a durable record, because it is on disk before this
+    function's `return` executes."""
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    output = tmp_path / "chain.json"
+
+    record = run_and_record_chain(
+        TASK, load_manifest(TASK), load_session_spec(TASK),
+        scripted_implementer(ROUTE_SCENARIO, workspace), workspace,
+        _grade_pass, output,
+        base_revision=REVISION, **BUDGETS,
+    )
+    assert output.is_file()
+    assert load_chain_record(output) == record
+    assert all(phase.accepted for phase in record.phases)
+
+
+def test_run_and_record_chain_derives_the_seam_rather_than_trusting_a_flag(
+    tmp_path: Path,
+) -> None:
+    """No `executable_seam` parameter exists to lie to: it is read off the
+    implementer callable itself, the same way `is_executable_seam` proves."""
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    implementer = scripted_implementer(ROUTE_SCENARIO, workspace)
+    assert is_executable_seam(implementer) is False
+
+    record = run_and_record_chain(
+        TASK, load_manifest(TASK), load_session_spec(TASK), implementer,
+        workspace, _grade_pass, tmp_path / "chain.json",
+        base_revision=REVISION, **BUDGETS,
+    )
+    for phase in record.phases:
+        assert phase.declaration_ledger["redacts"] is AppliedState.DECLARED_NOT_APPLIED
+
+
+def test_run_and_record_chain_retains_a_rejected_chain_too(tmp_path: Path) -> None:
+    def grader(step_id: str, workspace: Path) -> tuple[str, str]:
+        if step_id == STEPS[1]:
+            return "fail", "scripted fail"
+        return "pass", "scripted pass"
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    output = tmp_path / "chain.json"
+    record = run_and_record_chain(
+        TASK, load_manifest(TASK), load_session_spec(TASK),
+        scripted_implementer(ROUTE_SCENARIO, workspace), workspace,
+        grader, output,
+        base_revision=REVISION, **BUDGETS,
+    )
+    assert len(record.phases) == 2
+    assert not record.phases[-1].accepted
+    assert load_chain_record(output) == record
