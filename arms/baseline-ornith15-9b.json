@@ -12,7 +12,7 @@
   "model": "omlx/Ornith-1.5-9B-MLX-8bit",
   "server_model": "Ornith-1.5-9B-MLX-8bit",
   "pins": {
-    "pi": "0.84.4",
+    "pi": "0.85.1",
     "engine_commit": null,
     "digests": {}
   },

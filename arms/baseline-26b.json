@@ -12,7 +12,7 @@
   "model": "omlx/gemma-4-26b-a4b-it-8bit",
   "server_model": "gemma-4-26b-a4b-it-8bit",
   "pins": {
-    "pi": "0.84.4",
+    "pi": "0.85.1",
     "engine_commit": null,
     "digests": {}
   },

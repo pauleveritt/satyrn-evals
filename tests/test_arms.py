@@ -59,7 +59,7 @@ def test_baseline_file_loads_with_the_four_baseline_tools() -> None:
     assert arm.tools == ("read", "bash", "edit", "write")
     assert arm.model == "omlx/gemma-4-12B-it-MLX-8bit"
     assert arm.server_model == "gemma-4-12B-it-MLX-8bit"
-    assert arm.pins.pi == "0.84.4"
+    assert arm.pins.pi == "0.85.1"
     assert arm.pins.engine_commit is None
     assert arm.pins.digests == {}
 

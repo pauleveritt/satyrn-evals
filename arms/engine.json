@@ -11,7 +11,7 @@
   "model": "omlx/gemma-4-12B-it-MLX-8bit",
   "server_model": "gemma-4-12B-it-MLX-8bit",
   "pins": {
-    "pi": "0.84.4",
+    "pi": "0.85.1",
     "engine_commit": "fc22622ac39f71ff9d0ad42718da4e1bd3500ac3",
     "digests": {
       "engine.ts": "c3ec10eb8a3efe457f1fff455bf72fa24d0d3168c1c88167eac28507e749fa46",
