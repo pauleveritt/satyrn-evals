@@ -276,6 +276,16 @@ def main(argv: list[str] | None = None) -> int:
     ):
         transcript.write(marker)
         stderr_log.write(marker)
+        # Reviewed 2026-09-10 (Sol, reproduced with a real /bin/echo child,
+        # no inference): `subprocess.run` hands the child the file's raw
+        # descriptor via dup2 and writes straight to it, bypassing Python's
+        # userspace buffer entirely -- so an unflushed marker sits in that
+        # buffer while the child's bytes land in the file first, and the
+        # marker appears *after* the turn it was meant to open. `flush()`
+        # forces the marker to the OS-level file before the child ever
+        # writes to the same descriptor.
+        transcript.flush()
+        stderr_log.flush()
         subprocess.run(
             build_pi_argv(model, tools, prompt, pi_bin),
             cwd=workspace,
