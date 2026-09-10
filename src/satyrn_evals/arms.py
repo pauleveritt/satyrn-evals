@@ -37,9 +37,10 @@ type ArmName = Literal["baseline", "baseline-compaction", "envelope", "engine"]
 #: vocabulary so the probe's schedule remains readable — deleting it
 #: would make a recorded batch unloadable to make a tidier enum.
 
-#: The pi tool names an arm file may name. pi 0.84.4 accepts these four
-#: through `--tools`; an unknown name is an authoring error that would
-#: otherwise reach the model as a silently dropped capability.
+#: The pi tool names an arm file may name. pi accepts these four through
+#: `--tools` (confirmed through 0.85.1); an unknown name is an authoring
+#: error that would otherwise reach the model as a silently dropped
+#: capability.
 KNOWN_TOOLS: frozenset[str] = frozenset({"read", "bash", "edit", "write"})
 
 #: The Engine sources whose bytes the Engine arm pins.
@@ -195,10 +196,11 @@ def load_arm(path: Path) -> Arm:
 def build_argv(arm: Arm) -> list[str]:
     """The attempt command Evals invokes for this arm.
 
-    The model is always two tokens. pi 0.84.4's hand-rolled parser matches
-    the literal token `--model` and records `--model=VALUE` as an unknown
-    flag; that defect cost the V8 smoke a run and is what engine commit
-    `75d4863` fixed. Evals never builds the equals form.
+    The model is always two tokens. pi's hand-rolled parser matches the
+    literal token `--model` and records `--model=VALUE` as an unknown
+    flag; that defect cost the V8 smoke a run at 0.84.4 and is what engine
+    commit `75d4863` fixed. Reconfirmed unchanged through 0.85.1
+    2026-09-10. Evals never builds the equals form.
     """
     if not arm.model:
         raise ArmError(f"arm {arm.arm!r} has no model; cannot build argv")

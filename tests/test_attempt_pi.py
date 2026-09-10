@@ -108,9 +108,9 @@ def test_missing_model_is_refused() -> None:
 
 
 def test_the_equals_form_of_model_is_refused() -> None:
-    """pi 0.84.4 records `--model=VALUE` as an unknown flag; the adapter
-    never accepts a form it cannot pass on. Sibling success: the space
-    form two rows above."""
+    """pi records `--model=VALUE` as an unknown flag (confirmed through
+    0.85.1); the adapter never accepts a form it cannot pass on. Sibling
+    success: the space form two rows above."""
     with pytest.raises(AdapterError, match="--model"):
         parse_args([f"--model={MODEL}"])
 

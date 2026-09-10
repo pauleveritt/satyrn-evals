@@ -32,19 +32,22 @@ cannot establish, and no reading of it may claim:
   `n = 1` stays outside every TE confirmation denominator, the same rule
   HP7 and HP8 already hold themselves to.
 
-## Precondition: the pi version mismatch, unresolved
+## Precondition: the pi version mismatch, resolved 2026-09-10
 
-The locally resolved `pi` is `0.85.1`; every existing pin in this
-repository (`arms/*.json`, every other pre-run record, `pi_implementer.py`'s
-own docstrings) names `0.84.4`. `scripts/preflight.sh:233-234` already
-checks `pi --version` against the pinned value and fails loudly on
-mismatch — this run is **not authorized to proceed** until that is
-resolved (either `pi` is reinstalled at `0.84.4`, or the pin is
-deliberately updated after checking `0.85.1`'s actual CLI behavior against
-what the adapters assume, e.g. the space-form-only `--model` parsing
-`attempt_pi.py`/`pi_session.py`/`pi_implementer.py` all depend on).
-Named here as a precondition, not silently worked around; resolving it is
-a separate decision from authorizing this smoke's budget.
+Every pin (`arms/*.json`, every adapter docstring/error message) now
+names `0.85.1`, matching the actually installed and available `pi` —
+`scripts/preflight.sh:233-234` would pass, verified directly against the
+real binary (`ACTUAL_PI` = `PINNED_PI` = `0.85.1`). Resolved by repinning
+forward, not by downgrading the installed tool: pi's own `CHANGELOG.md`
+between `0.84.4` and `0.85.1` names no change to CLI flag parsing, the
+JSON event stream schema, or the extension/`registerTool`/`pi.exec` API,
+and the specific behavior every adapter's comments assert — `--model VALUE`
+parses, `--model=VALUE` fails as an unknown option — was reconfirmed
+directly against the installed `0.85.1` binary (usage-error paths only,
+no inference). Historical run records that used `0.84.4` for real
+(`first-smoke-run-record.md`, `agentclinic-session-phased-pre-run-record.md`,
+the `misleading-locus` records) are untouched; they correctly describe
+what those completed runs actually used.
 
 ## The arm
 

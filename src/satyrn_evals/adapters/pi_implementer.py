@@ -188,8 +188,8 @@ def build_pi_argv(
 ) -> list[str]:
     """One Pi process invocation, not one model turn -- see the module
     docstring's 2026-09-10 correction. Space-form model flag, matching
-    every other adapter in this repository (pi 0.84.4 rejects the equals
-    form).
+    every other adapter in this repository (pi rejects the equals form,
+    confirmed through 0.85.1).
 
     When ``self_test_command`` is declared, adds ``-e self_test_tool.ts``
     -- an explicit extension path, which pi's own ``--help`` confirms

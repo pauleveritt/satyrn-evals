@@ -109,7 +109,7 @@ baseline arm.
 | Arm record | `arms/baseline.json` |
 | Model | `omlx/gemma-4-12B-it-MLX-8bit` |
 | Server model | `gemma-4-12B-it-MLX-8bit` |
-| pi | `0.84.4` |
+| pi | `0.85.1` (repinned 2026-09-10 from `0.84.4`, matching the actually installed and available version; no run had happened under the stale pin, so this is re-freezing before any run, not a change after reading a result — see `arms/baseline.json`) |
 | Context window | 80000 |
 | Max tokens | 8192 |
 | Compaction | enabled, reserve 16384 |

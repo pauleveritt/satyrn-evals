@@ -13,10 +13,12 @@ text Evals exports in ``SATYRN_TASK_CONTRACT`` (`attempt.py:109-112`).
 That is the seam that keeps the ladder (V11a) and the arm substrate
 (V11b) independent of each other.
 
-**Model flags are space-form, always.** pi 0.84.4's hand-rolled parser
-matches the literal token ``--model`` and records ``--model=VALUE`` as an
-unknown flag; the V8 smoke lost a run to exactly that, and engine commit
-``75d4863`` is the fix on the Engine side.
+**Model flags are space-form, always.** pi's hand-rolled parser matches
+the literal token ``--model`` and records ``--model=VALUE`` as an unknown
+flag; the V8 smoke lost a run to exactly that at 0.84.4, and engine commit
+``75d4863`` is the fix on the Engine side. Reconfirmed against 0.85.1
+2026-09-10 (usage-error paths only, no inference) before repinning every
+arm to it -- the behavior is unchanged.
 
 Stated limits, neither of them papered over:
 
@@ -109,7 +111,7 @@ def parse_args(args: list[str]) -> AdapterArgs:
                 raise AdapterError(
                     f"unknown adapter argument {token!r}"
                     + (
-                        "; pi 0.84.4 rejects the equals form, pass --model VALUE"
+                        "; pi rejects the equals form, pass --model VALUE"
                         if token.startswith("--model=")
                         else ""
                     )

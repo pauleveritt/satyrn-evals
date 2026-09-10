@@ -62,10 +62,11 @@ rather than smoothed away.
    inflated every `tool_calls` tally by roughly 2x.
    (`src/satyrn_evals/pathology.py:28-33`)
 
-3. **`--model=VALUE` silently rejected.** pi 0.84.4's hand-rolled flag
-   parser matches only the literal token `--model` and records the combined
+3. **`--model=VALUE` silently rejected.** pi's hand-rolled flag parser
+   matches only the literal token `--model` and records the combined
    `--model=VALUE` form as an unknown flag rather than an error. That defect
-   cost the V8 smoke a run before it was found.
+   cost the V8 smoke a run at 0.84.4 before it was found; reconfirmed
+   unchanged at 0.85.1, 2026-09-10.
    (`src/satyrn_evals/arms.py:198-201`,
    `src/satyrn_evals/attempt_pi.py:16-19`)
 

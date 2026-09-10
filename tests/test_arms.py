@@ -255,9 +255,9 @@ def test_a_file_that_is_not_a_json_object_is_refused(tmp_path: Path) -> None:
 
 
 def test_baseline_argv_uses_space_form_model_and_comma_joined_tools() -> None:
-    """Fixture: arms/baseline.json. pi 0.84.4 rejects `--model=VALUE` in
-    print mode — that is what engine 75d4863 fixed, and the trap is the
-    same here (2026-09-04 V8 smoke record)."""
+    """Fixture: arms/baseline.json. pi rejects `--model=VALUE` in print
+    mode (confirmed through 0.85.1) — that is what engine 75d4863 fixed,
+    and the trap is the same here (2026-09-04 V8 smoke record)."""
     argv = build_argv(load_arm(BASELINE))
     assert not any(token.startswith("--model=") for token in argv)
     index = argv.index("--model")

@@ -67,6 +67,9 @@ def live_settings(config_dir: Path, model_id: str) -> dict[str, object]:
     # the provider does `Object.assign(params, options.samplingParams)`.
     # Both sides of the old comparison were therefore always None: a check
     # that could not fail, in the preflight whose job is to catch those.
+    # `buildBaseOptions` still exists under the same name in 0.85.1's
+    # installed bundle (2026-09-10 spot check); the exact precedence chain
+    # above was not re-traced line by line, only its presence confirmed.
     sampling = entry.get("samplingParams") or {}
     return {
         "context_window": entry.get("contextWindow"),

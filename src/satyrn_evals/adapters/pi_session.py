@@ -2,19 +2,20 @@
 
 A narrow executable owning one conversation with Pi: it speaks the
 2026-09-01 session JSONL protocol on its own stdin/stdout and drives one
-``pi --mode rpc --no-session`` child (pi 0.84.4 docs/rpc.md). The RPC
-mapping and the terminal-outcome derivation are pure functions; the
-driver loop (``serve``) takes its streams and child process as
-parameters so the whole loop is verifiable in process — the coverage
-gate's subprocess patch does not reach this child, and unverified
-branches in an adapter are review findings, not assumptions. The
-complete original Pi event is carried unmodified under ``payload`` so
-every count is recomputable.
+``pi --mode rpc --no-session`` child (docs/rpc.md, consulted at 0.84.4 and
+reconfirmed unchanged at 0.85.1). The RPC mapping and the terminal-outcome
+derivation are pure functions; the driver loop (``serve``) takes its
+streams and child process as parameters so the whole loop is verifiable in
+process — the coverage gate's subprocess patch does not reach this child,
+and unverified branches in an adapter are review findings, not
+assumptions. The complete original Pi event is carried unmodified under
+``payload`` so every count is recomputable.
 
 The child shares this adapter's process group (no start_new_session), so
 the executor's group teardown reaches Pi too. Model argv is space-form —
-pi 0.80-0.84 rejects ``--model=VALUE`` (recorded satyrn-engine defect);
-a shim is a failed stock-adapter proof, not a workaround to ship.
+pi 0.80-0.85 rejects ``--model=VALUE`` (recorded satyrn-engine defect,
+reconfirmed at 0.85.1 2026-09-10); a shim is a failed stock-adapter proof,
+not a workaround to ship.
 """
 
 import contextlib
