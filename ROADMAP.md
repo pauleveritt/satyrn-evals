@@ -134,6 +134,14 @@ restart of the paused comparison or a pathology audit. The brief authorizes no
 implementation, merge, commit, or inference; each live stage needs its own
 budget authorization.
 
+**Status 2026-09-10.** After HP, Phase TE — fewer wasted turns, more work
+within budget — is now proposed and **recorded below**, with its own
+[execution plan](docs/current/engine-turn-efficiency-plan.md). It confirms two
+turn-efficiency claims on an easy and a harder AgentClinic roadmap once HP's
+route is accepted; TE does not absorb unfinished HP requirements. Neither
+phase authorizes implementation, merge, commit, or inference; each live stage
+needs its own budget authorization.
+
 ## Phase HP — the handoff packet
 
 **Proposed 2026-09-09, not started, authorizing nothing.** Design:
