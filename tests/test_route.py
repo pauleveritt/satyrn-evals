@@ -246,6 +246,18 @@ def test_the_fake_writes_nothing_before_refusing(tmp_path: Path) -> None:
     assert not (tmp_path / "app.py").exists()
 
 
+def test_the_in_process_seam_never_writes_a_self_test_outcome(
+    tmp_path: Path,
+) -> None:
+    """The in-process seam is not `command_implementer` at all, so nothing
+    here can spawn a self-test regardless of what the packet declares --
+    the default-tier half of the executable-seam-only invariant; the
+    subprocess half is proven in `tests/integration/test_hp2_route.py`."""
+    implementer = scripted_implementer(ROUTE_SCENARIO, tmp_path)
+    implementer(_packet("phase-1-home"))
+    assert not (tmp_path / ".satyrn-self-test-result.json").is_file()
+
+
 # --- HP2.3 and HP2.4 the route ----------------------------------------------
 
 

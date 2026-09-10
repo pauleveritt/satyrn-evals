@@ -25,15 +25,16 @@ type MutationKind = Literal["created", "deleted", "modified"]
 #: Files the harness itself writes into a worker's workspace. They are the
 #: seam's own bookkeeping, not anybody's mutation, and they are listed by
 #: name rather than matched by a pattern so that adding one is a visible
-#: decision. ``.satyrn-packet.json`` and ``.satyrn-result.json`` are written
-#: by ``route.command_implementer``; ``.phase-counter`` by the executable
-#: fake, which stands in for a worker that tracks its own position. The
-#: remaining three are the real Pi implementer adapter's own
+#: decision. ``.satyrn-packet.json``, ``.satyrn-result.json`` and
+#: ``.satyrn-self-test-result.json`` are written by
+#: ``route.command_implementer``; ``.phase-counter`` by the executable fake,
+#: which stands in for a worker that tracks its own position. The remaining
+#: three are the real Pi implementer adapter's own
 #: (``adapters/pi_implementer.py``) -- ``.satyrn-implementer-transcript.jsonl``
 #: and ``.satyrn-implementer-stderr.log``, each appended to once per phase
 #: rather than named per phase, since this set matches exact relative paths
 #: and not a pattern; and ``.satyrn-implementer-call-counter``, its own
-#: position-tracker, the same shape as ``.phase-counter``. All three are
+#: position-tracker, the same shape as ``.phase-counter``. All seven are
 #: retained evidence, never a mutation to attribute to either role.
 HARNESS_FILES: frozenset[str] = frozenset(
     {
@@ -43,6 +44,7 @@ HARNESS_FILES: frozenset[str] = frozenset(
         ".satyrn-implementer-transcript.jsonl",
         ".satyrn-implementer-stderr.log",
         ".satyrn-implementer-call-counter",
+        ".satyrn-self-test-result.json",
     }
 )
 

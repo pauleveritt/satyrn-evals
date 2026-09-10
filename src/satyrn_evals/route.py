@@ -19,6 +19,7 @@ import json
 import math
 import os
 import subprocess
+import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -457,7 +458,12 @@ def run_phases(
     return decisions
 
 
-def command_implementer(argv: list[str], workspace: Path) -> Implementer:
+def command_implementer(
+    argv: list[str],
+    workspace: Path,
+    *,
+    self_test_timeout: int = DEFAULT_SELF_TEST_TIMEOUT_SECONDS,
+) -> Implementer:
     """Adapt an implementer **executable** to the callable seam.
 
     Shipped here rather than in a test: if this adapter lived only in the
@@ -467,6 +473,15 @@ def command_implementer(argv: list[str], workspace: Path) -> Implementer:
     The packet is handed over as a file and the result read back from one, so
     neither crosses on stdout -- the same reason a verdict never comes from
     stdout anywhere else in this repository.
+
+    **After the implementer returns, the harness runs the packet's own
+    ``self_test_command`` once**, in the same workspace, if one is declared --
+    closing the gap HP7's pre-run record names: nothing else on this seam can
+    run it, since the real Pi adapter has no ``bash``. The outcome is
+    retained evidence only (``SELF_TEST_RESULT_NAME``, excluded from
+    mutation attribution via ``attribution.HARNESS_FILES``) and never
+    changes this function's return value -- ``command_implementer`` still
+    does not decide verdicts.
     """
 
     def implement(packet: HandoffPacket) -> ImplementerResult:  # pragma: no cover
@@ -476,6 +491,7 @@ def command_implementer(argv: list[str], workspace: Path) -> Implementer:
         # sequence the in-process seam produces, which is the drift guard.
         packet_path = workspace / ".satyrn-packet.json"
         result_path = workspace / ".satyrn-result.json"
+        self_test_path = workspace / SELF_TEST_RESULT_NAME
         # Only the worker projection crosses. The full packet -- `redacts`
         # included -- stays host-side; writing it here put every hidden
         # selector in a file the worker could read.
@@ -483,6 +499,11 @@ def command_implementer(argv: list[str], workspace: Path) -> Implementer:
         assert_projection_is_clean(packet, projection)
         packet_path.write_text(json.dumps(projection, indent=2))
         result_path.unlink(missing_ok=True)
+        # A stale outcome from an earlier phase in this same workspace must
+        # not survive into a phase that declares no self_test_command --
+        # this is one plain workspace across the whole chain (HP3 is not
+        # composed here), so "absent" must mean this phase, not a leftover.
+        self_test_path.unlink(missing_ok=True)
         env = {
             **os.environ,
             PACKET_ENV: str(packet_path),
@@ -494,7 +515,13 @@ def command_implementer(argv: list[str], workspace: Path) -> Implementer:
                 f"implementer wrote no result to {RESULT_ENV}; an absent "
                 "result is not a refusal"
             )
-        return implementer_result_from_dict(json.loads(result_path.read_text()))
+        result = implementer_result_from_dict(json.loads(result_path.read_text()))
+        if packet.self_test_command:
+            outcome = _run_self_test(
+                packet.self_test_command, workspace, self_test_timeout
+            )
+            self_test_path.write_text(json.dumps(self_test_outcome_to_dict(outcome)))
+        return result
 
     # HP6: a marker on the closure itself, read by `is_executable_seam`
     # below, so a caller retaining a chain does not have to separately
@@ -502,6 +529,44 @@ def command_implementer(argv: list[str], workspace: Path) -> Implementer:
     # get wrong is whether this is the object it is looking at.
     implement.executable_seam = True  # type: ignore[attr-defined]
     return implement  # pragma: no cover
+
+
+def _run_self_test(
+    command: tuple[str, ...], workspace: Path, timeout: int
+) -> SelfTestOutcome:  # pragma: no cover
+    """Runs one declared ``self_test_command`` in ``workspace`` and reports
+    what happened. Never raises: a self-test that cannot launch or that
+    times out is evidence for the retained record, not a route crash -- the
+    implementer's own result, already read by the caller, is unaffected
+    either way. Integration tier only, for the same reason `implement` above
+    is: this spawns.
+    """
+    start = time.monotonic()
+    try:
+        completed = subprocess.run(
+            list(command),
+            cwd=workspace,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return SelfTestOutcome(
+            command=command,
+            ran=False,
+            exit_code=None,
+            output="",
+            reason=str(exc),
+            duration_seconds=time.monotonic() - start,
+        )
+    return SelfTestOutcome(
+        command=command,
+        ran=True,
+        exit_code=completed.returncode,
+        output=completed.stdout + completed.stderr,
+        reason=None,
+        duration_seconds=time.monotonic() - start,
+    )
 
 
 def is_executable_seam(implementer: Implementer) -> bool:

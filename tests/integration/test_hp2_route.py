@@ -12,6 +12,8 @@ Two things live here rather than in the default tier, and neither by choice:
   keeps the two from drifting apart while both stay green.
 """
 
+import dataclasses
+import json
 import shutil
 import subprocess
 import sys
@@ -21,6 +23,7 @@ import pytest
 
 from satyrn_evals.manifest import load_manifest, resolve_task
 from satyrn_evals.overlay import load_overlay
+from satyrn_evals.packet import build_packet
 from satyrn_evals.route import ROUTE_SCENARIO, command_implementer, run_phases
 from satyrn_evals.session_grader import SessionGrader
 from satyrn_evals.session_manifest import load_session_spec
@@ -240,3 +243,83 @@ def test_a_real_rejected_checkpoint_stops_the_executable_route(
     )
     assert [d.accepted for d in decisions] == [True, False]
     assert "fail from the real grader" in decisions[-1].reason
+
+
+# --- self-test evidence: the harness runs self_test_command -----------------
+
+
+def _packet(step_id: str = "phase-1-home"):
+    task_dir = resolve_task(TASK_NAME)
+    return build_packet(
+        task_dir, load_manifest(task_dir), load_session_spec(task_dir),
+        step_id, base_revision="3e6607e533792ab0", **BUDGETS,
+    )
+
+
+def test_a_passing_self_test_command_is_run_and_retained(tmp_path: Path) -> None:
+    implementer = command_implementer([sys.executable, str(FAKE)], tmp_path)
+    implementer(dataclasses.replace(_packet(), self_test_command=("true",)))
+    data = json.loads((tmp_path / ".satyrn-self-test-result.json").read_text())
+    assert data["ran"] is True
+    assert data["exit_code"] == 0
+    assert data["command"] == ["true"]
+
+
+def test_a_failing_self_test_command_is_retained_with_its_exit_code(
+    tmp_path: Path,
+) -> None:
+    implementer = command_implementer([sys.executable, str(FAKE)], tmp_path)
+    implementer(dataclasses.replace(_packet(), self_test_command=("false",)))
+    data = json.loads((tmp_path / ".satyrn-self-test-result.json").read_text())
+    assert data["ran"] is True
+    assert data["exit_code"] != 0
+
+
+def test_a_self_test_command_that_cannot_launch_is_retained_as_not_ran(
+    tmp_path: Path,
+) -> None:
+    implementer = command_implementer([sys.executable, str(FAKE)], tmp_path)
+    implementer(
+        dataclasses.replace(
+            _packet(), self_test_command=("satyrn-evals-nonexistent-binary-xyz",)
+        )
+    )
+    data = json.loads((tmp_path / ".satyrn-self-test-result.json").read_text())
+    assert data["ran"] is False
+    assert data["exit_code"] is None
+    assert data["reason"]
+
+
+def test_a_self_test_command_that_times_out_is_retained_as_not_ran(
+    tmp_path: Path,
+) -> None:
+    implementer = command_implementer(
+        [sys.executable, str(FAKE)], tmp_path, self_test_timeout=1
+    )
+    implementer(
+        dataclasses.replace(
+            _packet(),
+            self_test_command=(sys.executable, "-c", "import time; time.sleep(5)"),
+        )
+    )
+    data = json.loads((tmp_path / ".satyrn-self-test-result.json").read_text())
+    assert data["ran"] is False
+    assert data["reason"]
+
+
+def test_no_self_test_command_writes_no_outcome_file(tmp_path: Path) -> None:
+    implementer = command_implementer([sys.executable, str(FAKE)], tmp_path)
+    implementer(dataclasses.replace(_packet(), self_test_command=None))
+    assert not (tmp_path / ".satyrn-self-test-result.json").is_file()
+
+
+def test_a_stale_outcome_does_not_survive_a_phase_with_no_command(
+    tmp_path: Path,
+) -> None:
+    """The two-call sibling: a workspace this seam reuses across phases must
+    not let phase 1's outcome file read as phase 2's absence-of-a-command."""
+    implementer = command_implementer([sys.executable, str(FAKE)], tmp_path)
+    implementer(dataclasses.replace(_packet(), self_test_command=("true",)))
+    assert (tmp_path / ".satyrn-self-test-result.json").is_file()
+    implementer(dataclasses.replace(_packet(), self_test_command=None))
+    assert not (tmp_path / ".satyrn-self-test-result.json").is_file()
