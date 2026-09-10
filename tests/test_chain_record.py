@@ -8,6 +8,7 @@ subprocess rather than the pure `declaration_ledger` function this file
 exercises.
 """
 
+import hashlib
 import json
 from dataclasses import replace
 from pathlib import Path
@@ -173,14 +174,16 @@ def test_writable_paths_is_unknown_when_the_implementer_window_is_unobserved() -
     assert ledger["writable_paths"] is AppliedState.UNKNOWN
 
 
-def test_writable_paths_is_applied_when_every_observed_mutation_admits() -> None:
+def test_writable_paths_is_observed_compliant_when_every_mutation_admits() -> None:
+    """Not `APPLIED`: compliance is not enforcement, and nothing here can
+    tell "nothing tried to leave scope" apart from "something stopped it"."""
     packet = _packet("phase-1-home")
     ledger = declaration_ledger(
         executable_seam=False,
         packet=packet,
         implementer_mutations=(Mutation("app.py", "created"),),
     )
-    assert ledger["writable_paths"] is AppliedState.APPLIED
+    assert ledger["writable_paths"] is AppliedState.OBSERVED_COMPLIANT
 
 
 def test_writable_paths_is_declared_not_applied_when_a_mutation_is_out_of_scope() -> None:
@@ -203,9 +206,9 @@ def test_a_built_record_carries_the_offline_ledger_on_every_phase(
     for phase in record.phases:
         assert phase.declaration_ledger["redacts"] is AppliedState.DECLARED_NOT_APPLIED
         # scripted_implementer enforces its own scope, so every observed
-        # mutation admits and the ledger reports it applied -- from
-        # observation, not from a constant (see the three tests above).
-        assert phase.declaration_ledger["writable_paths"] is AppliedState.APPLIED
+        # mutation admits -- observed compliant, not "applied": nothing here
+        # can credit the fixture's own self-discipline as route enforcement.
+        assert phase.declaration_ledger["writable_paths"] is AppliedState.OBSERVED_COMPLIANT
 
 
 def test_an_out_of_scope_mutation_is_a_check_chain_finding(tmp_path: Path) -> None:
@@ -521,3 +524,183 @@ def test_run_and_record_chain_retains_a_rejected_chain_too(tmp_path: Path) -> No
     assert len(record.phases) == 2
     assert not record.phases[-1].accepted
     assert load_chain_record(output) == record
+
+
+def test_a_grader_crash_on_phase_two_still_leaves_phase_one_retained(
+    tmp_path: Path,
+) -> None:
+    """The exact scenario Sol reproduced against the prior version: phase 1
+    passes, phase 2's grader raises. Preserve-before-judging means phase 1's
+    already-graded decision, and phase 2's candidate, both survive on disk
+    -- not nothing, which is what a whole-chain-then-write design leaves."""
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    output = tmp_path / "chain.json"
+
+    def grader(step_id: str, ws: Path) -> tuple[str, str]:
+        if step_id == STEPS[1]:
+            raise RuntimeError("grader exploded")
+        return "pass", "scripted pass"
+
+    with pytest.raises(RuntimeError, match="grader exploded"):
+        run_and_record_chain(
+            TASK, load_manifest(TASK), load_session_spec(TASK),
+            scripted_implementer(ROUTE_SCENARIO, workspace), workspace,
+            grader, output,
+            base_revision=REVISION, **BUDGETS,
+        )
+
+    assert output.is_file(), "nothing was persisted before the crash propagated"
+    record = load_chain_record(output)
+    assert [p.step_id for p in record.phases] == [STEPS[0], STEPS[1]]
+
+    first, second = record.phases
+    assert first.graded and first.accepted is True
+    assert first.reason == "scripted pass"
+
+    assert not second.graded
+    assert second.accepted is None and second.reason is None
+    assert second.result.reported_outcome == "delivered"  # the implementer DID run
+    assert second.candidate_snapshot_path is not None  # candidate evidence survived
+
+    findings = {f.step_id: f.reason for f in check_chain(record)}
+    assert findings[STEPS[1]] == "phase candidate persisted but not yet graded"
+
+
+def test_an_implementer_crash_on_phase_two_leaves_phase_one_graded_and_retained(
+    tmp_path: Path,
+) -> None:
+    """The sibling failure mode: the implementer itself crashes (HP6's own
+    Fix 5 in route.py). Unlike a grader crash, `run_phases` converts this
+    into a refused decision and returns normally -- no exception reaches
+    `run_and_record_chain` at all, so both phases end up graded."""
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    output = tmp_path / "chain.json"
+    scripted = scripted_implementer(ROUTE_SCENARIO, workspace)
+    calls: list[str] = []
+
+    def implementer(packet: HandoffPacket) -> ImplementerResult:
+        calls.append("call")
+        if len(calls) == 2:
+            raise RuntimeError("implementer died")
+        return scripted(packet)
+
+    record = run_and_record_chain(
+        TASK, load_manifest(TASK), load_session_spec(TASK), implementer,
+        workspace, _grade_pass, output,
+        base_revision=REVISION, **BUDGETS,
+    )
+    assert [p.step_id for p in record.phases] == [STEPS[0], STEPS[1]]
+    first, second = record.phases
+    assert first.graded and first.accepted is True
+    assert second.graded and second.accepted is False
+    assert "crashed" in second.reason
+    assert load_chain_record(output) == record
+
+
+# --- P1#2: candidate content, offline regrading, missing-evidence findings --
+
+
+def test_candidate_snapshot_holds_the_actual_file_content(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    output = tmp_path / "chain.json"
+    record = run_and_record_chain(
+        TASK, load_manifest(TASK), load_session_spec(TASK),
+        scripted_implementer(ROUTE_SCENARIO, workspace), workspace,
+        _grade_pass, output,
+        base_revision=REVISION, **BUDGETS,
+    )
+    first = record.phases[0]
+    assert first.candidate_snapshot_path is not None
+    content = json.loads(Path(first.candidate_snapshot_path).read_text())
+    assert content["app.py"] == ROUTE_SCENARIO[STEPS[0]]["app.py"]
+    # digest actually matches the file on disk -- not a placeholder
+    digest = hashlib.sha256(
+        Path(first.candidate_snapshot_path).read_bytes()
+    ).hexdigest()
+    assert digest == first.candidate_snapshot_digest
+
+
+def test_a_missing_candidate_snapshot_is_a_check_chain_finding_when_the_record_retains_them(
+    tmp_path: Path,
+) -> None:
+    """The "missing worker evidence" rejection: a record that demonstrably
+    captures candidate snapshots elsewhere, tampered so one phase lost
+    its own, is flagged -- the retention gap is not silently accepted."""
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    output = tmp_path / "chain.json"
+    record = run_and_record_chain(
+        TASK, load_manifest(TASK), load_session_spec(TASK),
+        scripted_implementer(ROUTE_SCENARIO, workspace), workspace,
+        _grade_pass, output,
+        base_revision=REVISION, **BUDGETS,
+    )
+    phases = list(record.phases)
+    phases[1] = replace(
+        phases[1], candidate_snapshot_path=None, candidate_snapshot_digest=None
+    )
+    tampered = replace(record, phases=tuple(phases))
+    findings = {f.step_id: f.reason for f in check_chain(tampered)}
+    assert findings[STEPS[1]] == "phase has retained mutations but no candidate snapshot"
+
+
+def test_build_chain_record_alone_is_not_held_to_the_candidate_standard(
+    tmp_path: Path,
+) -> None:
+    """The sibling in the other direction: `build_chain_record` never
+    captures snapshots (it has no workspace to read from), and a record
+    built only through it is not penalized for a standard it never claimed."""
+    record = _delivered_record(tmp_path)
+    assert all(p.candidate_snapshot_path is None for p in record.phases)
+    assert check_chain(record) == ()
+
+
+def test_offline_regrading_from_only_the_retained_candidate_snapshots(
+    tmp_path: Path,
+) -> None:
+    """Reuses the same `PhaseGrader` shape the original run used, but calls
+    it against a workspace rebuilt from nothing but the persisted record's
+    `candidate_snapshot_path` files -- no access to the original workspace,
+    no implementer, no re-run. If retention were insufficient, this would
+    have nothing correct to reconstruct from."""
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    output = tmp_path / "chain.json"
+
+    # A grader that inspects real file content, not a scripted verdict --
+    # otherwise "regrading" would trivially agree with itself.
+    def content_grader(step_id: str, ws: Path) -> tuple[str, str]:
+        app_py = (ws / "app.py").read_text() if (ws / "app.py").is_file() else ""
+        phase_index = STEPS.index(step_id)
+        expected_marker = f"# phase-{phase_index + 1}"
+        if expected_marker in app_py:
+            return "pass", f"{expected_marker} present"
+        return "fail", f"{expected_marker} missing"
+
+    original = run_and_record_chain(
+        TASK, load_manifest(TASK), load_session_spec(TASK),
+        scripted_implementer(ROUTE_SCENARIO, workspace), workspace,
+        content_grader, output,
+        base_revision=REVISION, **BUDGETS,
+    )
+    assert all(p.accepted for p in original.phases)
+
+    # "Offline": a fresh load, a fresh directory, no relation to `workspace`.
+    reloaded = load_chain_record(output)
+    for phase in reloaded.phases:
+        assert phase.candidate_snapshot_path is not None
+        reconstructed = tmp_path / f"regrade-{phase.step_id}"
+        reconstructed.mkdir()
+        content = json.loads(Path(phase.candidate_snapshot_path).read_text())
+        for name, text in content.items():
+            path = reconstructed / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text)
+        verdict, reason = content_grader(phase.step_id, reconstructed)
+        assert (verdict == "pass") == phase.accepted, (
+            f"offline regrade disagreed with the retained decision for "
+            f"{phase.step_id}: {reason!r}"
+        )

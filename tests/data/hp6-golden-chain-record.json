@@ -16,13 +16,15 @@
   "phases": [
     {
       "accepted": true,
+      "candidate_snapshot_digest": null,
+      "candidate_snapshot_path": null,
       "declaration_ledger": {
         "base_revision": "declared_not_applied",
         "redacts": "declared_not_applied",
         "self_test_command": "declared_not_applied",
         "tool_call_budget": "declared_not_applied",
         "turn_budget": "declared_not_applied",
-        "writable_paths": "applied"
+        "writable_paths": "observed_compliant"
       },
       "implementer_cost": null,
       "implementer_mutations": [
@@ -101,13 +103,15 @@
     },
     {
       "accepted": true,
+      "candidate_snapshot_digest": null,
+      "candidate_snapshot_path": null,
       "declaration_ledger": {
         "base_revision": "declared_not_applied",
         "redacts": "declared_not_applied",
         "self_test_command": "declared_not_applied",
         "tool_call_budget": "declared_not_applied",
         "turn_budget": "declared_not_applied",
-        "writable_paths": "applied"
+        "writable_paths": "observed_compliant"
       },
       "implementer_cost": null,
       "implementer_mutations": [
@@ -189,13 +193,15 @@
     },
     {
       "accepted": true,
+      "candidate_snapshot_digest": null,
+      "candidate_snapshot_path": null,
       "declaration_ledger": {
         "base_revision": "declared_not_applied",
         "redacts": "declared_not_applied",
         "self_test_command": "declared_not_applied",
         "tool_call_budget": "declared_not_applied",
         "turn_budget": "declared_not_applied",
-        "writable_paths": "applied"
+        "writable_paths": "observed_compliant"
       },
       "implementer_cost": null,
       "implementer_mutations": [

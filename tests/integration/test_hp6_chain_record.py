@@ -67,9 +67,13 @@ def test_a_record_built_over_the_real_executable_seam_reports_redacts_applied(
     assert all(d.accepted for d in decisions)
     for phase in record.phases:
         assert phase.declaration_ledger["redacts"] is AppliedState.APPLIED
-        # And every observed mutation stayed in scope, since the executable
-        # enforces it against itself exactly as the in-process fake does.
-        assert phase.declaration_ledger["writable_paths"] is AppliedState.APPLIED
+        # Observed compliant, not applied: the fake executable enforces
+        # scope against itself, but nothing here can take credit for a
+        # fixture's own self-discipline as route enforcement.
+        assert (
+            phase.declaration_ledger["writable_paths"]
+            is AppliedState.OBSERVED_COMPLIANT
+        )
     assert check_chain(record) == ()
 
 

@@ -104,6 +104,18 @@ applied on the executable seam, which is one field taking both values from
 the same task — the sibling that proves the ledger is reading the runtime
 and not a constant.
 
+> **Corrected 2026-09-10 (Sol).** "`writable_paths` is recorded applied by
+> the implementer" was wrong on its own terms: nothing observes an
+> implementer *enforcing* scope, only whether its mutations happened to stay
+> inside it, and a fourth state, `observed_compliant`, now carries that
+> weaker claim. `applied` is reserved for a declaration whose enforcement
+> this build can point to a real code path for — `redacts` on the executable
+> seam, via `assert_projection_is_clean` actually running. `writable_paths`
+> never reaches `applied` under this build, because no such code path exists
+> for it; the real adapter (`adapters/pi_implementer.py`) deliberately does
+> not self-enforce, exactly so this ledger cannot be given one to point to
+> that isn't real.
+
 **HP6.4 — cost per role, null when unmeasured.**
 A per-role cost field on each phase, `None` when nothing measured it. The
 offline route measures no model cost, so offline the honest record is null
@@ -160,6 +172,26 @@ runs that matter.
 > bytes is not attempted and is not in scope. This also corrects D6's
 > acceptance line in `orchestrated-delivery-design.md`, which the same
 > review flagged for the identical overstatement.
+>
+> **Corrected again 2026-09-10 (Sol), same day.** The paragraph above said
+> "regrading a retained candidate from its bytes is not attempted." Sol's
+> review named this a second acceptance gap on its own terms, not only a
+> wording one: D6 lists "the candidate change" among what HP6 must retain,
+> and mutation paths and kinds are not that. `run_and_record_chain` now
+> captures each phase's actual file content, durably, before grading
+> (`PhaseRecord.candidate_snapshot_path`/`_digest`), and
+> `tests/test_chain_record.py`'s
+> `test_offline_regrading_from_only_the_retained_candidate_snapshots`
+> reconstructs a phase's workspace from nothing but that content and
+> re-grades it, matching the original verdict. `build_chain_record`, the
+> lower-level API several other tests still use directly, does not capture
+> this -- it has no workspace to read from -- and a record built only
+> through it is not held to the standard (`check_chain`'s
+> `retains_candidates` heuristic). What is still **not** retained: worker
+> tool events beyond the transcript file already written to the workspace
+> (`adapters/pi_implementer.py`), and this run's own candidate capture is
+> still one plain workspace, not HP3's chained, isolated checkouts -- the
+> HP7 pre-run record names that composition gap as still open.
 
 Cost thresholds, a budget verdict, or any use of a recorded cost to decide
 anything. **Applying** any declaration the ledger records as unapplied —

@@ -45,6 +45,48 @@ superiority — D7's acceptance names it exactly:
   at all. `n` is frozen and **not extended after reading the result**; a
   second cell is a new proposal and a new pre-run record.
 
+## Two ways this run does not yet test the planned workflow
+
+**Added 2026-09-10, from Sol's review. Both are blocking, not merely
+disclosed** — a run that completes cleanly under either gap proves less than
+this record's own framing claims, and neither is resolved by anything else
+in this correction round.
+
+**HP3 isolation is not composed.** The design's one path is "inspected
+packet → bounded implementer → **isolated candidate** → explicit integration
+→ cumulative validation." This run's route executes all three phases in one
+plain workspace, never branching a phase from its predecessor's *accepted*
+commit in a disposable checkout the way `WorktreeTransaction` — and HP3,
+`satyrn-engine` — does. `run_and_record_chain` retains a real candidate
+snapshot per phase now (see the HP6 plan's second 2026-09-10 correction),
+which narrows what this gap costs but does not close it: a phase 3 that
+happens to build on phase 2's *rejected* work would go undetected, because
+nothing here stops it from reading phase 2's leftover files the way isolated
+checkouts would refuse to hand it. Composing HP3 is a cross-repository
+decision (`satyrn-engine` owns chained isolation; `ROADMAP.md`'s ownership
+split) and is not attempted here.
+
+**The implementer cannot run its own verification.** The adopted
+verification sentence is in every prompt (`self_test_command`:
+`uv run python -m pytest tests`), and `adapters/pi_implementer.py` gives Pi
+`read`, `write`, `edit` — no `bash`, so nothing the model can invoke actually
+runs that command. `declaration_ledger` already records
+`self_test_command: declared_not_applied` honestly; what this section adds
+is the workflow consequence: a live run under this record is not exercising
+the workflow the verification-instruction screen adopted, and no sentence
+from it may be read as evidence the verification policy held or failed.
+Closing this well would mean the harness — not the model — running
+`self_test_command` after each turn and retaining the result, which is a
+real, scoped fix that is not implemented in this correction round.
+
+**What this means for authorization.** A live run under this record's
+current settings would still prove *operability* — one real implementer
+completing a packet chain with HP6 now retaining candidate evidence and
+grading-order preservation — but would not exercise chained isolation or a
+working verification loop. Whether that is worth running before those two
+are addressed is the maintainer's call, not this document's; it is named
+here so the decision is made with the gap in view, not discovered after.
+
 ## The arm
 
 **Baseline only**, matching the existing phased-session record exactly —
@@ -202,6 +244,26 @@ graded live (`PhaseGrader` — this record has not yet named what plays that
 role outside the offline route's scripted fixtures). Those are CLI-driver
 concerns, not retention's, and are not resolved by this correction.
 
+**Corrected 2026-09-10, same day, by Sol's review.** The line above was
+already out of date when written: the first version of
+`run_and_record_chain` ran the *entire* chain, including every grader call,
+before writing anything, so a grader exception on phase 2 would have lost
+phase 1's already-graded decision too — "written before returning" was true
+of the function and false of the invariant it was meant to satisfy. It now
+persists twice per phase (candidate evidence at `after_handoff`, before
+grading; the decision the instant grading returns) and once more in a
+`finally` around the whole run, so a crash anywhere leaves the chain up to
+that point on disk, not just the record's own final call.
+`PhaseRecord.candidate_snapshot_path`/`_digest` also now hold each phase's
+actual file content, captured at the same pre-grading moment —
+`tests/test_chain_record.py`'s
+`test_offline_regrading_from_only_the_retained_candidate_snapshots`
+reconstructs a phase from only that content and re-grades it. A phase whose
+candidate has content but no snapshot on a record that otherwise retains
+them is now a `check_chain` finding, and a phase whose grading never
+completed is retained as `accepted=None` (a candidate, not a decision)
+rather than not retained at all.
+
 ## Preconditions, all required before the run starts
 
 1. **Resolved 2026-09-09.** A real implementer executable for the packet seam
@@ -229,6 +291,26 @@ concerns, not retention's, and are not resolved by this correction.
    phases behind a per-turn marker, and `--timeout` (default matching the
    600s in the table) reaches `subprocess.run` directly, so a hung model
    server now surfaces as HP6's crash path rather than hanging the run.
+
+   **Corrected again 2026-09-10, by Sol's review, same day.** The marker
+   that fix added was itself broken: it was written to a buffered file
+   object and never flushed before the child process received the same
+   file's raw descriptor, so the child's own bytes could reach disk first —
+   reproduced against a real `/bin/echo` child, not a mock, by Sol and
+   independently by this review. The marker write is now flushed
+   immediately before `subprocess.run`, and
+   `tests/integration/test_pi_implementer_ordering.py` drives a real child
+   process to witness the ordering directly, since the mocked-subprocess
+   unit tests write both the marker and the child's bytes through the same
+   Python buffer and cannot see this class of bug.
+
+   `declaration_ledger`'s `writable_paths` state is also corrected as of
+   2026-09-10: it no longer reports `applied` when every observed mutation
+   happened to stay in scope, since this adapter's own refusal to
+   self-enforce (two paragraphs up) means nothing here can tell "nothing
+   tried to leave scope" apart from "something stopped it." That case is now
+   `observed_compliant`, a weaker, honest claim — see the HP6 plan's
+   HP6.3 correction.
 2. **Acceptance for HP1–HP6.** The ordering rule in `ROADMAP.md` — "HP4, HP5
    and HP6 all gate HP7" — is stated against implementation, and all three
    (plus HP1/HP2) are implemented; **none has been through its Astra

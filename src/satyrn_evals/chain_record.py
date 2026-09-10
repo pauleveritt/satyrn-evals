@@ -19,6 +19,7 @@ decision reads back from the document, not that a candidate's bytes can be
 regraded from it; regrading the candidate itself is not attempted.
 """
 
+import hashlib
 import json
 import math
 import os
@@ -34,6 +35,7 @@ from satyrn_evals.attribution import (
     MutationKind,
     Snapshot,
     attribute,
+    diff_snapshots,
     snapshot,
 )
 from satyrn_evals.engine_contract import admits
@@ -81,12 +83,25 @@ DECLARATION_FIELDS: tuple[str, ...] = (
 class AppliedState(StrEnum):
     """What the runtime did with one packet declaration.
 
-    Three values on purpose, so absent is never spelled as applied and
+    Four values on purpose, so absent is never spelled as applied and
     unapplied is never spelled as absent: ``UNKNOWN`` is for a field this
     build has not yet classified, never a silent default for one it has.
+
+    ``APPLIED`` is reserved for a declaration whose enforcement is **known
+    to have run** -- a code path this build can name and point to, such as
+    ``assert_projection_is_clean`` actually executing on the executable seam
+    (``route.is_executable_seam``). ``OBSERVED_COMPLIANT`` is different and
+    deliberately weaker: every mutation this run observed happened to stay
+    in bounds, which is consistent with enforcement but does not establish
+    it -- nothing an implementer merely declines to do proves a restriction
+    would have stopped it from doing so. Corrected 2026-09-10 (Sol): the
+    first version of ``declaration_ledger`` spelled that second case
+    ``APPLIED`` too, so "the implementer happened not to leave scope" and
+    "something checked and blocked it" were the same recorded value.
     """
 
     APPLIED = "applied"
+    OBSERVED_COMPLIANT = "observed_compliant"
     DECLARED_NOT_APPLIED = "declared_not_applied"
     UNKNOWN = "unknown"
 
@@ -109,17 +124,21 @@ def declaration_ledger(
     so it is applied on the executable seam and declared-and-unapplied on the
     in-process one.
 
-    ``writable_paths`` is **derived from observation, not asserted.**
-    ``scripted_implementer`` happens to enforce its own scope, but that is a
-    property of one fixture, not of the route -- a real implementer on the
-    executable seam enforces nothing the route checks. So: ``unknown`` when
-    the implementer window was never observed (nothing to check);
-    ``declared_not_applied`` when an observed mutation lands outside the
-    packet's own ``writable_paths`` (proof the scope was not honoured);
-    ``applied`` only when every observed mutation admits within it. Staying
-    in scope does not *prove* enforcement -- nothing here does -- but a
-    mutation caught outside it proves the opposite, and that asymmetry is
-    the honest one to keep.
+    ``writable_paths`` is **derived from observation, not asserted,** and
+    never reaches ``applied``: nothing this build observes can name a code
+    path that actively enforces scope on an implementer's behalf --
+    ``scripted_implementer`` happens to enforce its own, but that is a
+    property of one fixture policing itself, not something the route or this
+    ledger can see or take credit for, and the real adapter deliberately
+    does not self-enforce at all (``adapters/pi_implementer.py``). So:
+    ``unknown`` when the implementer window was never observed (nothing to
+    check); ``declared_not_applied`` when an observed mutation lands outside
+    the packet's own ``writable_paths`` (unambiguous: the scope was not
+    honoured); ``observed_compliant`` when every observed mutation admits
+    within it -- **compliance, not enforcement.** An implementer that never
+    tried to leave scope looks identical to one a restriction actually
+    stopped, and this ledger does not have the evidence to tell them apart,
+    so it does not claim to.
     """
     if implementer_mutations is None:
         writable_state = AppliedState.UNKNOWN
@@ -129,7 +148,7 @@ def declaration_ledger(
     ):
         writable_state = AppliedState.DECLARED_NOT_APPLIED
     else:
-        writable_state = AppliedState.APPLIED
+        writable_state = AppliedState.OBSERVED_COMPLIANT
     return {
         "turn_budget": AppliedState.DECLARED_NOT_APPLIED,
         "tool_call_budget": AppliedState.DECLARED_NOT_APPLIED,
@@ -154,20 +173,47 @@ class PhaseRecord:
     ledger. ``implementer_cost``/``orchestrator_cost`` are ``None`` when
     nothing measured them, which the offline route always is; a zero must
     never stand in for unmeasured (HP6.4), so the constructor refuses one.
+
+    ``accepted``/``reason`` are ``None`` together, and only together: a
+    **candidate persisted, not yet graded**. Corrected 2026-09-10 (Sol): the
+    first version required a decision to exist before a phase could be
+    retained at all, which is backwards -- "preserve before judging" means
+    the candidate must survive a grader that never returns.
+    ``candidate_snapshot_path``/``_digest`` reference the actual file content
+    an implementer produced this phase, captured before grading and written
+    durably (``run_and_record_chain``) -- distinct from
+    ``implementer_mutations``, which names only paths and kinds. ``None``
+    when nothing captured it (``build_chain_record``, the lower-level API,
+    never does; it has no workspace to read from).
     """
 
     step_id: str
     packet: HandoffPacket
     result: ImplementerResult
-    accepted: bool
-    reason: str
+    accepted: bool | None
+    reason: str | None
     implementer_mutations: tuple[Mutation, ...] | None
     orchestrator_mutations: tuple[Mutation, ...] | None
     declaration_ledger: Mapping[str, AppliedState]
+    candidate_snapshot_path: str | None = None
+    candidate_snapshot_digest: str | None = None
     implementer_cost: float | None = None
     orchestrator_cost: float | None = None
 
     def __post_init__(self) -> None:
+        if (self.accepted is None) != (self.reason is None):
+            raise ChainRecordError(
+                "accepted and reason must both be set (graded) or both be "
+                "null (a persisted candidate awaiting grading), never one "
+                "without the other"
+            )
+        if (self.candidate_snapshot_path is None) != (
+            self.candidate_snapshot_digest is None
+        ):
+            raise ChainRecordError(
+                "candidate_snapshot_path and candidate_snapshot_digest must "
+                "both be set or both be null"
+            )
         for name in ("implementer_cost", "orchestrator_cost"):
             value = getattr(self, name)
             if value is None:
@@ -183,6 +229,13 @@ class PhaseRecord:
                     f"{value!r}; a zero, negative, NaN or infinite value is "
                     "not a stand-in for unmeasured"
                 )
+
+    @property
+    def graded(self) -> bool:
+        """Whether this phase has a decision yet -- the opposite of a
+        candidate persisted while grading was still in flight, or never
+        reached, because the chain crashed or the process died first."""
+        return self.accepted is not None
 
     @property
     def fallback(self) -> bool:
@@ -284,6 +337,19 @@ def build_chain_record(
     )
 
 
+def _write_text_durably(path: Path, text: str) -> None:
+    """Fsync then atomic replace -- the same durability shape as
+    ``write_chain_record``, factored out so candidate evidence gets the same
+    guarantee the chain record itself does."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write(text)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, path)
+
+
 def run_and_record_chain(
     task_dir: Path,
     manifest: TaskManifest,
@@ -308,36 +374,160 @@ def run_and_record_chain(
     is derived from ``implementer`` itself via ``route.is_executable_seam``,
     so a caller cannot mis-assert which seam a chain ran on.
 
-    Writes the record durably (``write_chain_record``, fsync then atomic
-    replace) **before returning** -- ``BRIEF.md`` invariant 1, "preserve
-    before judging," holds even if the caller never reads this function's
-    return value or crashes immediately after it returns.
+    **Corrected 2026-09-10 (Sol).** The first version ran the whole chain --
+    every phase, every grader call -- before writing anything durable, so a
+    grader that raised on phase 2 lost phase 1's already-accepted evidence
+    too. "Written before returning" is not "preserve before judging" when
+    everything happens inside one un-persisted call. This version persists
+    twice per phase and once more on any exit, success or not:
+
+    1. At ``after_handoff``, before the grader is even called: the packet,
+       the implementer's own reported result, and (new) the actual content
+       of every file the implementer's window touched -- ``candidate_files``
+       is not enough on its own to answer "what would a grader see"; this is
+       that answer, captured while it still exists.
+    2. The instant the grader returns for that phase (wrapped, not awaited
+       from ``run_phases``'s return value, which does not exist until the
+       whole chain is over): the decision lands on disk before the next
+       phase's packet is even built.
+    3. In a ``finally`` around the whole run: whatever is true at that point
+       -- complete, or a partial chain with its last phase still a persisted
+       candidate and no decision -- is what ``output_path`` holds.
 
     What this function does **not** do: materialize a workspace, apply a
     task's fixture, or decide a live run's budget or authorization. Those are
     a CLI driver's job, not retention's, and none exists yet for the packet
-    route -- the HP7 pre-run record names that gap.
+    route -- the HP7 pre-run record names that gap. It also does not compose
+    HP3's chained isolation (a different repository, ``satyrn-engine``) --
+    the workspace here is one plain directory across the whole chain, not a
+    sequence of isolated candidates, and that gap is named, not hidden, in
+    the HP7 pre-run record.
     """
     events: list[BoundaryEvent] = []
     records: list[tuple[str, str, Snapshot]] = []
+    packets_by_step: dict[str, HandoffPacket] = {}
+    results_by_step: dict[str, ImplementerResult] = {}
+    graded: dict[str, tuple[bool, str]] = {}
+    snapshots_by_step: dict[str, tuple[str, str]] = {}
+    order: list[str] = []
+    seam = is_executable_seam(implementer)
+    evidence_dir = output_path.with_name(output_path.stem + "-evidence")
+
+    def persist_partial() -> ChainRecord:
+        reported = {s: r.changed_files for s, r in results_by_step.items()}
+        ledger = attribute(records, reported)
+        attribution_by_step = {p.step_id: p for p in ledger.phases}
+        phases: list[PhaseRecord] = []
+        for step_id in order:
+            if step_id not in results_by_step:
+                continue  # opened, no candidate yet -- nothing to retain
+            attribution = attribution_by_step.get(step_id)
+            implementer_mutations = (
+                None if attribution is None else attribution.implementer
+            )
+            accepted, reason = graded.get(step_id, (None, None))
+            snap_path, snap_digest = snapshots_by_step.get(step_id, (None, None))
+            implementer_cost, orchestrator_cost = (costs or {}).get(
+                step_id, (None, None)
+            )
+            phases.append(
+                PhaseRecord(
+                    step_id=step_id,
+                    packet=packets_by_step[step_id],
+                    result=results_by_step[step_id],
+                    accepted=accepted,
+                    reason=reason,
+                    implementer_mutations=implementer_mutations,
+                    orchestrator_mutations=(
+                        None if attribution is None else attribution.orchestrator
+                    ),
+                    declaration_ledger=declaration_ledger(
+                        executable_seam=seam,
+                        packet=packets_by_step[step_id],
+                        implementer_mutations=implementer_mutations,
+                    ),
+                    candidate_snapshot_path=snap_path,
+                    candidate_snapshot_digest=snap_digest,
+                    implementer_cost=implementer_cost,
+                    orchestrator_cost=orchestrator_cost,
+                )
+            )
+        final_decision = next(
+            (e.decision for e in events if e.boundary == "chain_end"), None
+        )
+        record = ChainRecord(
+            version=CHAIN_RECORD_VERSION,
+            phases=tuple(phases),
+            final_decision=final_decision,
+        )
+        write_chain_record(output_path, record)
+        return record
+
+    def capture_candidate(step_id: str) -> None:
+        """Everything the implementer's own window changed, as text content
+        -- read now, because grading, cleanup, or a later phase can each
+        change or remove it before anyone asks again. Binary content is out
+        of scope here (read with ``surrogateescape``, which round-trips
+        arbitrary bytes through ``str`` losslessly for retention purposes,
+        but is not meant to be read as text by a consumer expecting one)."""
+        before_snap = next(
+            snap for sid, boundary, snap in reversed(records)
+            if sid == step_id and boundary == "before_handoff"
+        )
+        after_snap = records[-1][2]
+        mutations = diff_snapshots(before_snap, after_snap)
+        content = {
+            m.path: (workspace / m.path).read_text(
+                encoding="utf-8", errors="surrogateescape"
+            )
+            for m in mutations
+            if m.kind != "deleted" and (workspace / m.path).is_file()
+        }
+        payload = json.dumps(content, indent=2, sort_keys=True) + "\n"
+        path = evidence_dir / f"{step_id}-candidate.json"
+        _write_text_durably(path, payload)
+        digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+        snapshots_by_step[step_id] = (str(path), digest)
 
     def observe(event: BoundaryEvent) -> None:
         events.append(event)
         records.append((event.step_id, event.boundary, snapshot(workspace)))
+        if event.boundary == "before_handoff":
+            packets_by_step[event.step_id] = event.packet
+            if event.step_id not in order:
+                order.append(event.step_id)
+        elif event.boundary == "after_handoff":
+            assert event.result is not None
+            results_by_step[event.step_id] = event.result
+            capture_candidate(event.step_id)  # candidate evidence --
+            persist_partial()  # -- durable before grading runs
+        elif event.boundary == "chain_end" and event.decision is not None:
+            # The refusal and crash exit paths never call the grader, so
+            # their decision is only ever seen here, not through
+            # `instrumented_grader` below.
+            graded[event.decision.step_id] = (
+                event.decision.accepted, event.decision.reason
+            )
+            persist_partial()
 
-    decisions = run_phases(
-        task_dir, manifest, spec, implementer, workspace, grader,
-        base_revision=base_revision, turn_budget=turn_budget,
-        tool_call_budget=tool_call_budget, observer=observe,
-    )
-    reported = {d.step_id: d.result.changed_files for d in decisions}
-    ledger = attribute(records, reported)
-    record = build_chain_record(
-        decisions, events, ledger,
-        executable_seam=is_executable_seam(implementer),
-        costs=costs,
-    )
-    write_chain_record(output_path, record)
+    def instrumented_grader(step_id: str, ws: Path) -> tuple[str, str]:
+        verdict, reason = grader(step_id, ws)
+        # The one moment this phase's real verdict exists: before
+        # `run_phases` decides whether to build the next packet or return,
+        # and long before its own return value reaches this function.
+        graded[step_id] = (verdict == "pass", reason)
+        persist_partial()
+        return verdict, reason
+
+    try:
+        run_phases(
+            task_dir, manifest, spec, implementer, workspace,
+            instrumented_grader, base_revision=base_revision,
+            turn_budget=turn_budget, tool_call_budget=tool_call_budget,
+            observer=observe,
+        )
+    finally:
+        record = persist_partial()
     return record
 
 
@@ -352,7 +542,7 @@ class ChainFinding:
 def check_chain(record: ChainRecord) -> tuple[ChainFinding, ...]:
     """Findings a retained chain record exposes on its own -- no re-run.
 
-    Three kinds, and only three, because widening this into a pathology
+    Five kinds, and only five, because widening this into a pathology
     detector is explicitly out of scope:
 
     - a phase whose implementer window went unobserved;
@@ -367,6 +557,18 @@ def check_chain(record: ChainRecord) -> tuple[ChainFinding, ...]:
       ``PhaseRecord``. This is a **consistency check between two captures of
       the same run**, not a re-derivation from raw evidence -- nothing here
       recomputes a verdict from anything but the record's own fields.
+    - a phase with retained mutations but no candidate snapshot, **when this
+      record demonstrably retains candidate snapshots elsewhere** (any phase
+      with one at all). A record built by the lower-level
+      ``build_chain_record`` never captures snapshots and is not held to a
+      standard it never claimed; a record built by
+      ``run_and_record_chain``, which does, should have one for every phase
+      that has mutations to explain, and a phase missing one despite that is
+      the "missing worker evidence" case Sol asked to see rejected.
+    - a phase that is not yet graded (``phase.graded`` is ``False``) --
+      informational, not necessarily wrong (a live run interrupted
+      mid-grading is expected to show this), but a reader must be told
+      rather than left to notice ``accepted is None`` unaided.
 
     A phase with a real, observed zero mutations is **not** a finding --
     that is the seed-221 shape HP5 exists to report, and conflating it with
@@ -374,6 +576,9 @@ def check_chain(record: ChainRecord) -> tuple[ChainFinding, ...]:
     (HP6.6).
     """
     findings: list[ChainFinding] = []
+    retains_candidates = any(
+        phase.candidate_snapshot_path is not None for phase in record.phases
+    )
     for phase in record.phases:
         if phase.implementer_mutations is None:
             findings.append(
@@ -392,6 +597,21 @@ def check_chain(record: ChainRecord) -> tuple[ChainFinding, ...]:
                     "implementer mutation lies outside the packet's declared "
                     "writable_paths",
                 )
+            )
+        if (
+            retains_candidates
+            and phase.implementer_mutations
+            and phase.candidate_snapshot_path is None
+        ):
+            findings.append(
+                ChainFinding(
+                    phase.step_id,
+                    "phase has retained mutations but no candidate snapshot",
+                )
+            )
+        if not phase.graded:
+            findings.append(
+                ChainFinding(phase.step_id, "phase candidate persisted but not yet graded")
             )
     if record.final_decision is not None:
         closing = next(
@@ -427,10 +647,17 @@ def decisions_from_record(record: ChainRecord) -> list[PhaseDecision]:
     tuple and this reads whichever it is handed. It is **not** evidence that
     the retained decision was itself correct; that would require re-grading
     the retained candidate, which HP6 does not attempt.
+
+    A phase with no decision yet (``phase.graded`` is ``False`` -- a
+    candidate persisted while grading was in flight or never reached) is
+    excluded: there is no ``PhaseDecision`` to read back for one, by
+    definition, and a caller comparing this against ``run_phases``'s own
+    return value for a completed run will never see one there either.
     """
     return [
         PhaseDecision(phase.step_id, phase.accepted, phase.reason, phase.result)
         for phase in record.phases
+        if phase.graded
     ]
 
 
@@ -505,6 +732,8 @@ _PHASE_KEYS: frozenset[str] = frozenset(
         "implementer_mutations",
         "orchestrator_mutations",
         "declaration_ledger",
+        "candidate_snapshot_path",
+        "candidate_snapshot_digest",
         "implementer_cost",
         "orchestrator_cost",
     }
@@ -523,6 +752,8 @@ def _phase_record_to_dict(phase: PhaseRecord) -> dict[str, object]:
         "declaration_ledger": {
             name: state.value for name, state in phase.declaration_ledger.items()
         },
+        "candidate_snapshot_path": phase.candidate_snapshot_path,
+        "candidate_snapshot_digest": phase.candidate_snapshot_digest,
         "implementer_cost": phase.implementer_cost,
         "orchestrator_cost": phase.orchestrator_cost,
     }
@@ -540,8 +771,14 @@ def _phase_record_from_dict(data: Mapping[str, object]) -> PhaseRecord:
     reason = data["reason"]
     if not isinstance(packet, dict) or not isinstance(result, dict):
         raise ChainRecordError("persisted phase packet/result must be objects")
-    if not isinstance(accepted, bool) or not isinstance(reason, str):
-        raise ChainRecordError("persisted phase accepted/reason has the wrong shape")
+    if accepted is not None and not isinstance(accepted, bool):
+        raise ChainRecordError("persisted phase accepted must be a bool or null")
+    if reason is not None and not isinstance(reason, str):
+        raise ChainRecordError("persisted phase reason must be a string or null")
+    for name in ("candidate_snapshot_path", "candidate_snapshot_digest"):
+        value = data[name]
+        if value is not None and not isinstance(value, str):
+            raise ChainRecordError(f"persisted phase {name} must be a string or null")
     ledger_data = data["declaration_ledger"]
     if not isinstance(ledger_data, dict) or not all(
         isinstance(k, str) and isinstance(v, str) for k, v in ledger_data.items()
@@ -571,6 +808,8 @@ def _phase_record_from_dict(data: Mapping[str, object]) -> PhaseRecord:
         implementer_mutations=_mutations_from_list(data["implementer_mutations"]),
         orchestrator_mutations=_mutations_from_list(data["orchestrator_mutations"]),
         declaration_ledger=declaration,
+        candidate_snapshot_path=data["candidate_snapshot_path"],
+        candidate_snapshot_digest=data["candidate_snapshot_digest"],
         implementer_cost=data["implementer_cost"],
         orchestrator_cost=data["orchestrator_cost"],
     )

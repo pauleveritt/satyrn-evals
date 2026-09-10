@@ -261,6 +261,19 @@ declaration that the runtime does not actually apply is recorded as declared
 > **candidate** from its own bytes is not attempted by HP6 and stays out of
 > scope; the HP6 plan's own correction block (`2026-09-09-hp6-chain-retention.md`,
 > HP6.7) carries the full accounting.
+>
+> **Corrected again 2026-09-10, same review pass.** The line above is no
+> longer accurate as written: `run_and_record_chain` now captures each
+> phase's actual candidate file content before grading, durably, and a
+> default-tier test reconstructs a phase's workspace from nothing but that
+> retained content and re-grades it, matching the original decision. The
+> lower-level `build_chain_record` still does not — it has no workspace to
+> read from, and a record built only through it is not held to that
+> standard. Worker tool events remain retained only as the implementer
+> adapter's own transcript file, not referenced per-phase from the chain
+> record; and this still runs in one plain workspace across the whole chain,
+> not HP3's chained, isolated checkouts, which is a separate, still-open
+> composition gap the HP7 pre-run record names.
 
 **D7 — One bounded live route proof.** One orchestrated delivery of the three
 phases, `n` frozen at 1, the Baseline model, the adopted verification
