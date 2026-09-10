@@ -18,6 +18,14 @@ from satyrn_evals.turn_ledger import (
 REAL_TRANSCRIPT = (
     Path(__file__).parent / "data" / "real-session-phased-verify-transcript.jsonl"
 )
+#: The Engine-side sibling: `adapters/pi_implementer.py`'s own retained
+#: transcript from HP7's live route proof (2026-09-10), three phases in one
+#: file behind `events_from_pi_stdout`'s marker-skipping. TE1 froze its
+#: whole-attempt ceiling from Baseline evidence only, pending "Engine-side
+#: evidence" -- this is that evidence.
+REAL_ENGINE_TRANSCRIPT = (
+    Path(__file__).parent / "data" / "real-hp7-live-route-transcript.jsonl"
+)
 
 
 def _turn_start() -> dict[str, object]:
@@ -169,6 +177,22 @@ def test_events_from_pi_stdout_skips_blank_lines() -> None:
     text = "\n" + json.dumps({"type": "turn_start"}) + "\n\n"
     events = events_from_pi_stdout(text)
     assert len(events) == 1
+
+
+def test_the_real_engine_transcript_reports_twenty_two_whole_attempt_turns() -> None:
+    """The Engine-side sibling of `test_the_real_transcript_reports_twenty_
+    normal_turns`, closing TE1's own "revisit once Engine-side evidence
+    exists" note. This is `pi_implementer.py`'s own multi-phase file (three
+    real `deliver`-composed phases, HP7's live route proof), read through
+    the same library code a one-off report script used by hand -- not a
+    re-derivation, a reconciliation. All three phases' turns count toward
+    one whole-attempt total, matching the ceiling table's own unit."""
+    events = events_from_pi_stdout(REAL_ENGINE_TRANSCRIPT.read_text())
+    ledger = count_turns(events, starts_retained=True)
+    assert len(ledger.ended) == 22
+    assert all(o.kind == "normal" for o in ledger.ended)
+    assert ledger.observed_starts == 22
+    assert ledger.open_at_capture_end == 0
 
 
 # --- events_from_session_transcript -------------------------------------------
