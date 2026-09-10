@@ -17,15 +17,24 @@ pre-run record is narrow: **the harness runs it, and retains what happened.**
 
 ## What this is not
 
-This is not implementer self-correction. The TE plan's "implementer-local
-verification and correction" describes a model that runs its own tests,
-reads the failure, and fixes it within one turn's budget — a capability
-`pi_implementer.py`'s single bounded `--no-session` turn does not have, and
-building it would mean a multi-turn retry loop, a materially larger change
-this spec does not propose. This spec closes the narrower, already-named
-gap: `self_test_command` goes from *silently never applied* to *honestly
-applied-and-retained*, once, after the implementer's turn. Whether its result
-ever feeds back into another turn is future, separately authorized work.
+**Corrected 2026-09-10.** This section originally claimed `pi_implementer.py`
+lacks the turn capacity for self-correction and that closing this would need
+"a multi-turn retry loop." That reasoning was wrong: `pi --print --mode json`
+already runs a complete multi-generation agent interaction inside one process
+invocation, not one bounded turn — see the corresponding correction in
+`adapters/pi_implementer.py`'s module docstring. Pi's own tool loop already
+has the turn capacity; nothing here needs a new retry loop bolted on.
+
+This is still not implementer self-correction, but for the real reason: the
+harness runs `self_test_command` **after the process has already exited**,
+so there is no running invocation left for the result to reach. A design
+that actually closes the loop would expose the self-test as a **tool** Pi
+can call from inside its own invocation, letting Pi's existing tool loop
+carry the retry — not a new external retry mechanism. This spec closes the
+narrower, already-named gap only: `self_test_command` goes from *silently
+never applied* to *honestly applied-and-retained*, once, after the
+implementer's invocation exits. Wiring it as an in-invocation tool is
+separately scoped work, not attempted here.
 
 ## Where it runs
 

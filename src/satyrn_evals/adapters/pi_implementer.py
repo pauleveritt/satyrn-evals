@@ -1,11 +1,27 @@
-"""HP7's real implementer: one Pi turn per phase, behind HP2's executable seam.
+"""HP7's real implementer: one Pi invocation per phase, behind HP2's
+executable seam.
 
-Adapts a single ``pi --print --mode json`` turn to ``command_implementer``'s
-contract (``SATYRN_HANDOFF_PACKET`` in, ``SATYRN_IMPLEMENTER_RESULT`` out):
-read the worker's own packet projection, render it with
-``packet.render_projection`` -- the same rendering ``render_packet`` proves
-against the golden fixture, now actually read by something -- run one Pi turn
-on a ``read,write,edit`` surface, and report whatever the workspace shows
+**Corrected 2026-09-10.** "One Pi turn" was this module's own wording, and
+it is wrong: `pi --print --mode json` runs a complete agent interaction, not
+a single model generation. Tool execution inside that one process
+invocation can lead to another generation, repeatedly, each with its own
+``turn_start``/``turn_end`` pair in the event stream (pi's own
+``docs/json.md``, "Turn lifecycle"). Nothing on this seam bounds that --
+``turn_budget``/``tool_call_budget`` are declared in the packet and never
+applied (``chain_record.declaration_ledger``), and this invocation runs
+with ``--no-extensions --no-skills``, so none of Engine's own guards (the
+loop breaker, the progress rule) are loaded either. A doom loop is
+possible inside one phase's single process invocation, exactly as it is in
+a continuous Baseline session, and nothing here currently measures how
+many internal turns one invocation actually took.
+
+Adapts a single ``pi --print --mode json`` **process invocation** to
+``command_implementer``'s contract (``SATYRN_HANDOFF_PACKET`` in,
+``SATYRN_IMPLEMENTER_RESULT`` out): read the worker's own packet
+projection, render it with ``packet.render_projection`` -- the same
+rendering ``render_packet`` proves against the golden fixture, now
+actually read by something -- run one such invocation on a
+``read,write,edit`` surface, and report whatever the workspace shows
 changed. Changes are found by content digest (``attribution.snapshot``), not
 ``git diff``: a route workspace is a plain directory the route builds up
 phase by phase, not a git checkout the way an attempt's workspace is.
@@ -157,8 +173,10 @@ def parse_args(args: list[str]) -> tuple[str, tuple[str, ...], str, int]:
 def build_pi_argv(
     model: str, tools: tuple[str, ...], prompt: str, pi_bin: str = "pi"
 ) -> list[str]:
-    """One bounded Pi turn. Space-form model flag, matching every other
-    adapter in this repository (pi 0.84.4 rejects the equals form)."""
+    """One Pi process invocation, not one model turn -- see the module
+    docstring's 2026-09-10 correction. Space-form model flag, matching
+    every other adapter in this repository (pi 0.84.4 rejects the equals
+    form)."""
     if not prompt.strip():
         raise AdapterError("refusing to launch pi with an empty prompt")
     return [
