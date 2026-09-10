@@ -96,6 +96,33 @@ def test_build_pi_argv_is_space_form_and_one_shot() -> None:
     ]
 
 
+def test_no_self_test_command_adds_no_extension_or_tool() -> None:
+    argv = build_pi_argv(MODEL, ("read", "write"), "prompt")
+    assert "-e" not in argv
+    assert "run_self_test" not in ",".join(argv)
+
+
+def test_an_empty_self_test_command_adds_no_extension_or_tool() -> None:
+    argv = build_pi_argv(
+        MODEL, ("read", "write"), "prompt", self_test_command=()
+    )
+    assert "-e" not in argv
+
+
+def test_a_declared_self_test_command_adds_the_extension_and_tool() -> None:
+    argv = build_pi_argv(
+        MODEL,
+        ("read", "write"),
+        "prompt",
+        self_test_command=("uv", "run", "pytest"),
+    )
+    assert "-e" in argv
+    extension_path = argv[argv.index("-e") + 1]
+    assert extension_path.endswith("self_test_tool.ts")
+    tools_value = argv[argv.index("--tools") + 1]
+    assert "run_self_test" in tools_value.split(",")
+
+
 def test_an_empty_prompt_is_refused() -> None:
     with pytest.raises(AdapterError, match="empty prompt"):
         build_pi_argv(MODEL, ("read",), "   ")
@@ -201,10 +228,12 @@ class _FakeRun:
         self.raise_timeout = raise_timeout
         self.calls: list[list[str]] = []
         self.timeouts: list[object] = []
+        self.envs: list[object] = []
 
     def __call__(self, argv: list[str], **kwargs: object) -> object:
         self.calls.append(list(argv))
         self.timeouts.append(kwargs.get("timeout"))
+        self.envs.append(kwargs.get("env"))
         cwd = kwargs["cwd"]
         assert isinstance(cwd, Path)
         if self.raise_timeout:
@@ -272,6 +301,38 @@ def test_main_writes_a_refused_result_when_nothing_changed(
     result = json.loads(seam["result"].read_text())
     assert result["reported_outcome"] == "refused"
     assert result["changed_files"] == []
+
+
+def test_main_sets_the_self_test_env_var_when_declared(
+    seam: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """PROJECTION already declares a self_test_command; this is the
+    default shape every other main() test in this file already runs
+    under."""
+    fake = _FakeRun()
+    monkeypatch.setattr(pi_implementer.subprocess, "run", fake)
+    main(["--model", MODEL])
+    env = fake.envs[0]
+    assert isinstance(env, dict)
+    assert json.loads(env[pi_implementer.SELF_TEST_COMMAND_ENV]) == [
+        "uv", "run", "python", "-m", "pytest", "tests",
+    ]
+
+
+def test_main_omits_the_self_test_env_var_when_not_declared(
+    seam: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    projection_without_self_test = {
+        key: value for key, value in PROJECTION.items() if key != "self_test_command"
+    }
+    seam["packet"].write_text(json.dumps(projection_without_self_test))
+    fake = _FakeRun()
+    monkeypatch.setattr(pi_implementer.subprocess, "run", fake)
+    main(["--model", MODEL])
+    env = fake.envs[0]
+    assert isinstance(env, dict)
+    assert pi_implementer.SELF_TEST_COMMAND_ENV not in env
+    assert "-e" not in fake.calls[0]
 
 
 def test_the_transcript_is_written_and_excluded_from_the_diff(

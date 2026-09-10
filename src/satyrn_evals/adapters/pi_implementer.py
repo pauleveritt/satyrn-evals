@@ -93,6 +93,14 @@ DEFAULT_TOOLS: tuple[str, ...] = ("read", "write", "edit")
 #: name; this constant is what closes that gap on this seam.
 DEFAULT_TIMEOUT_SECONDS = 600
 
+#: The tool `self_test_tool.ts` registers, and the env var it reads its one
+#: fixed command from. Added to `-e`/`--tools`/the child's environment only
+#: when a packet declares a `self_test_command` -- see
+#: `docs/superpowers/specs/2026-09-10-self-test-tool-design.md`.
+RUN_SELF_TEST_TOOL_NAME = "run_self_test"
+SELF_TEST_COMMAND_ENV = "SATYRN_SELF_TEST_COMMAND"
+SELF_TEST_EXTENSION_PATH = Path(__file__).parent / "self_test_tool.ts"
+
 TRANSCRIPT_NAME = ".satyrn-implementer-transcript.jsonl"
 STDERR_NAME = ".satyrn-implementer-stderr.log"
 COUNTER_NAME = ".satyrn-implementer-call-counter"
@@ -171,15 +179,28 @@ def parse_args(args: list[str]) -> tuple[str, tuple[str, ...], str, int]:
 
 
 def build_pi_argv(
-    model: str, tools: tuple[str, ...], prompt: str, pi_bin: str = "pi"
+    model: str,
+    tools: tuple[str, ...],
+    prompt: str,
+    pi_bin: str = "pi",
+    *,
+    self_test_command: tuple[str, ...] | None = None,
 ) -> list[str]:
     """One Pi process invocation, not one model turn -- see the module
     docstring's 2026-09-10 correction. Space-form model flag, matching
     every other adapter in this repository (pi 0.84.4 rejects the equals
-    form)."""
+    form).
+
+    When ``self_test_command`` is declared, adds ``-e self_test_tool.ts``
+    -- an explicit extension path, which pi's own ``--help`` confirms
+    still loads under ``--no-extensions`` -- and ``run_self_test`` to the
+    tool allowlist. Neither is added when no command is declared: an
+    absent capability, not one that reliably throws when called.
+    """
     if not prompt.strip():
         raise AdapterError("refusing to launch pi with an empty prompt")
-    return [
+    effective_tools = tools
+    argv = [
         pi_bin,
         "--print",
         "--mode",
@@ -193,10 +214,12 @@ def build_pi_argv(
         "--no-themes",
         "--no-context-files",
         "--no-approve",
-        "--tools",
-        ",".join(tools),
-        prompt,
     ]
+    if self_test_command:
+        argv += ["-e", str(SELF_TEST_EXTENSION_PATH)]
+        effective_tools = (*tools, RUN_SELF_TEST_TOOL_NAME)
+    argv += ["--tools", ",".join(effective_tools), prompt]
+    return argv
 
 
 def read_env_paths(environment: Mapping[str, str]) -> tuple[Path, Path]:
@@ -285,6 +308,18 @@ def main(argv: list[str] | None = None) -> int:
         # kind of thing to catch, not three.
         raise AdapterError(str(exc)) from exc
 
+    raw_self_test_command = projection.get("self_test_command")
+    if raw_self_test_command is not None and not (
+        isinstance(raw_self_test_command, list)
+        and all(isinstance(token, str) for token in raw_self_test_command)
+    ):
+        raise AdapterError(
+            f"{PACKET_ENV} self_test_command must be a list of strings or null"
+        )
+    self_test_command = (
+        tuple(raw_self_test_command) if raw_self_test_command else None
+    )
+
     index = _next_call_index(workspace)
     marker = _marker(index)
     before = snapshot(workspace)
@@ -304,14 +339,22 @@ def main(argv: list[str] | None = None) -> int:
         # writes to the same descriptor.
         transcript.flush()
         stderr_log.flush()
+        child_env = session_child_environment(os.environ)
+        if self_test_command:
+            child_env = {
+                **child_env,
+                SELF_TEST_COMMAND_ENV: json.dumps(list(self_test_command)),
+            }
         subprocess.run(
-            build_pi_argv(model, tools, prompt, pi_bin),
+            build_pi_argv(
+                model, tools, prompt, pi_bin, self_test_command=self_test_command
+            ),
             cwd=workspace,
             stdout=transcript,
             stderr=stderr_log,
             check=True,
             timeout=timeout,
-            env=session_child_environment(os.environ),
+            env=child_env,
         )
     after = snapshot(workspace)
     changed = tuple(m.path for m in diff_snapshots(before, after))
