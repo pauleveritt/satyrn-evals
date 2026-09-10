@@ -68,8 +68,25 @@ def test_message_update_is_retained_as_model_stream_evidence() -> None:
 
 
 def test_unmapped_events_and_responses_are_skipped() -> None:
-    assert map_rpc_event({"type": "message_start"}, step_id="s", conversation_id="c") is None
     assert map_rpc_event({"type": "response", "success": True}, step_id="s", conversation_id="c") is None
+
+
+def test_turn_start_message_start_and_tool_execution_start_are_now_retained() -> None:
+    """Closes the turn_ledger gap named 2026-09-10
+    (docs/superpowers/specs/2026-09-10-turn-ledger-design.md): a Baseline
+    session transcript could not previously answer "how many turns
+    started" or "was one left open" at all, because these three event
+    types were dropped entirely rather than merely uncounted. Mapped to
+    kind "other" -- the same bucket message_update, agent_end and
+    auto_retry_end already use -- so no protocol schema change is needed;
+    _EVENT_KINDS already accepts "other"."""
+    for event_type in ("turn_start", "message_start", "tool_execution_start"):
+        event = {"type": event_type}
+        line = map_rpc_event(event, step_id="add-a", conversation_id="c-1")
+        assert line is not None, f"{event_type} must now be retained"
+        obj = json.loads(line)
+        assert obj["kind"] == "other"
+        assert obj["payload"] == event
 
 
 def test_pi_argv_uses_space_form_only() -> None:

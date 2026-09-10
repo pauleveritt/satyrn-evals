@@ -218,9 +218,13 @@ which are not loaded on this route; HP3 composition stays an explicit
 readiness blocker (see the HP7 row). A shared turn counter
 (`src/satyrn_evals/turn_ledger.py`) now answers "how many model turns did
 this transcript actually take" for either route's transcript shape, tested
-against a real retained transcript. One gap stays open: Baseline transcripts
-do not currently retain `turn_start` at all, so the started-request half of
-TE1's turn definition is not yet measurable there — named, not yet closed.
+against a real retained transcript. **The Baseline capture gap is now
+closed too** (`adapters/pi_session.py` retains `turn_start` as of
+2026-09-10) — measurable going forward, not yet demonstrated against a
+real post-fix trace, and already-retained transcripts from before the fix
+still can't answer it (a live-policy check misreads them as
+`starts_retained=True` with zero real starts; named and tested, not
+hidden).
 
 HP remains responsible for the composed, retained, regradable route; TE does
 not absorb unfinished HP requirements or reopen the paused single-task tuning

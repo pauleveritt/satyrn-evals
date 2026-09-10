@@ -82,18 +82,22 @@ reliably than a continuous session" — the configuration-bundle framing
 TE1's own text below already required is not new; this section is what
 applying it to the concrete, resolved pair requires.
 
-**One outstanding readiness gap, not yet closed by this resolution.**
-`adapters/pi_session.py`'s own event filter
-(`_SESSION_KINDS`) does not retain `turn_start`, so Baseline transcripts
-cannot currently answer "how many turns started" or "was one left open" —
-confirmed against a real retained transcript
-(`docs/superpowers/specs/2026-09-10-turn-ledger-design.md`). The turn
-ledger (`src/satyrn_evals/turn_ledger.py`) reports this honestly as unknown
-rather than a fabricated zero, which is necessary but not sufficient: TE1's
-own "started model generation request" turn definition below is not yet
-fully measurable for Baseline until this capture gap is separately closed.
-Treat the ledger's completion as an honest counter, not as full measurement
-coverage.
+**The Baseline readiness gap named above is now closed, 2026-09-10.**
+`adapters/pi_session.py`'s event filter (`_SESSION_KINDS`) now retains
+`turn_start`, `message_start` and `tool_execution_start` (mapped to kind
+`"other"`), so a Baseline session captured from here on can answer "how
+many turns started" and "was one left open" — not just ended-turn counts.
+One honesty caveat survives: `turn_ledger.events_from_session_transcript`'s
+`starts_retained` reflects the *live* policy, so reading an
+**already-retained** transcript from before this fix (including this
+design's own real fixture) still reports `starts_retained=True` while
+genuinely containing zero starts — a caller analyzing archived evidence
+must track each file's own capture-date policy, not trust the live check
+for anything not captured just now
+(`tests/test_turn_ledger.py::test_the_real_transcript_now_reads_starts_retained_true_despite_predating_the_fix`).
+No fresh Baseline evidence exists yet under the fixed policy; TE1's own
+"started model generation request" definition is measurable going
+forward, not yet demonstrated against a real post-fix trace.
 
 ## Entry: finish HP, do not redefine its acceptance
 

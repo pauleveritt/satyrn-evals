@@ -56,6 +56,17 @@ _SESSION_KINDS = {
     # Retained for evidence; terminal state is derived from them below.
     "agent_end": "other",
     "auto_retry_end": "other",
+    # Added 2026-09-10, closing the gap turn_ledger's own design doc names
+    # (docs/superpowers/specs/2026-09-10-turn-ledger-design.md): before
+    # this, a retained Baseline transcript could not answer "how many
+    # turns started" or "was one left open" at all -- these three types
+    # were dropped, not merely uncounted. Mapped to "other", the same
+    # bucket message_update/agent_end/auto_retry_end already use, so no
+    # protocol schema change is needed (session_protocol._EVENT_KINDS
+    # already accepts "other").
+    "turn_start": "other",
+    "message_start": "other",
+    "tool_execution_start": "other",
 }
 
 

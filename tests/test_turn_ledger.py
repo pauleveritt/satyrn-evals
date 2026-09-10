@@ -198,20 +198,55 @@ def test_starts_retained_reflects_the_real_session_kinds_policy() -> None:
     assert starts_retained == ("turn_start" in _SESSION_KINDS)
 
 
-def test_the_real_transcript_reports_twenty_normal_turns_with_starts_unknown() -> None:
-    """Acceptance criteria 1 and 8 together: the real transcript this
-    design was verified against, read through this module rather than a
-    one-off script."""
-    events, starts_retained = events_from_session_transcript(
-        REAL_TRANSCRIPT.read_text()
-    )
-    assert starts_retained is False
-    ledger = count_turns(events, starts_retained=starts_retained)
-    assert ledger.observed_starts is None
-    assert ledger.open_at_capture_end is None
-    assert ledger.unresolvable
+def test_the_real_transcript_reports_twenty_normal_turns() -> None:
+    """Acceptance criterion 1: the real transcript this design was
+    verified against, read through this module rather than a one-off
+    script. Ended-turn counting and classification do not depend on
+    starts_retained, so this assertion holds regardless of the capture
+    policy question the next test addresses."""
+    events, _ = events_from_session_transcript(REAL_TRANSCRIPT.read_text())
+    ledger = count_turns(events, starts_retained=False)
     assert len(ledger.ended) == 20
     assert all(o.kind == "normal" for o in ledger.ended)
     tool_use = sum(1 for o in ledger.ended if o.stop_reason == "toolUse")
     stop = sum(1 for o in ledger.ended if o.stop_reason == "stop")
     assert (tool_use, stop) == (17, 3)
+
+
+def test_the_real_transcript_now_reads_starts_retained_true_despite_predating_the_fix() -> None:
+    """A real, if narrow, honesty limitation, recorded rather than hidden.
+    pi_session._SESSION_KINDS now retains turn_start (2026-09-10), so
+    events_from_session_transcript's *live* starts_retained check reports
+    True for any file -- including this one, captured before that fix
+    landed and genuinely containing zero turn_start lines. Reading it with
+    starts_retained=True would report observed_starts=0, which is wrong:
+    20 turns demonstrably started (20 turn_end events exist). A caller
+    analyzing archived evidence must track each file's own capture-date
+    policy, never trust the live dynamic check for anything not captured
+    just now -- named here so a future reader does not rediscover this by
+    getting a silently wrong count."""
+    events, starts_retained = events_from_session_transcript(
+        REAL_TRANSCRIPT.read_text()
+    )
+    assert starts_retained is True  # today's policy, not this file's own
+    assert not any(e.get("type") == "turn_start" for e in events)  # but truly absent here
+
+
+def test_a_freshly_captured_session_shape_now_reports_real_starts() -> None:
+    """The forward-looking sibling: a transcript written under today's
+    policy (turn_start present) is read correctly, not just permitted to
+    claim starts_retained=True without evidence to back it."""
+    text = (
+        '{"type": "session_started", "conversation_id": "c-1"}\n'
+        '{"type": "event", "step_id": "s", "conversation_id": "c-1", '
+        '"kind": "other", "payload": {"type": "turn_start"}}\n'
+        '{"type": "event", "step_id": "s", "conversation_id": "c-1", '
+        '"kind": "turn_end", "payload": {"type": "turn_end", '
+        '"message": {"stopReason": "stop"}}}\n'
+    )
+    events, starts_retained = events_from_session_transcript(text)
+    assert starts_retained is True
+    ledger = count_turns(events, starts_retained=starts_retained)
+    assert ledger.observed_starts == 1
+    assert ledger.open_at_capture_end == 0
+    assert len(ledger.ended) == 1

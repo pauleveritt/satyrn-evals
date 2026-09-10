@@ -224,10 +224,19 @@ that dict ever changes without needing a matching edit here.
   function's contract (`turn_start` count must equal `turn_end` count, or
   refuse the whole document) is untouched. This module answers a different
   question for a different purpose and does not relax that one.
-- **Fixing `pi_session.py`'s capture filter** to retain `turn_start`. Named
-  as a real gap above; closing it is a separate, later decision, since it
-  changes what a live adapter retains going forward and does not help any
-  already-retained transcript.
+- ~~**Fixing `pi_session.py`'s capture filter** to retain `turn_start`.~~
+  **Done 2026-09-10** — `turn_start`, `message_start` and
+  `tool_execution_start` now map to kind `"other"`, the same bucket
+  `message_update`/`agent_end`/`auto_retry_end` already use, so no
+  protocol schema change was needed. Does not help any already-retained
+  transcript, including this design's own real fixture — see
+  `tests/test_turn_ledger.py::test_the_real_transcript_now_reads_starts_retained_true_despite_predating_the_fix`
+  for the resulting honesty caveat: reading an archived transcript
+  through `events_from_session_transcript`'s *live* `starts_retained`
+  check can now silently misreport zero starts for a file the fix
+  predates. A caller analyzing archived evidence must track each file's
+  own capture-date policy, not trust the live check for anything not
+  captured just now.
 - **Termination-evidence interpretation.** `count_turns` reports
   `open_at_capture_end` as a bare fact; deciding whether an open turn is
   "aborted" from an independent exit code or timeout is the caller's job,
