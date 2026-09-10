@@ -75,8 +75,22 @@ past artifact. Archived material does not set current policy.
   the feasibility of extending the app with stable complaint identity
   and a resolve/reopen lifecycle, resolving the one real preservation
   conflict it creates (a kw_only `id`/`status` field, so the existing
-  positional `Complaint` contract check still holds). Design only — no
-  grader tests, fixtures, or inference yet.
+  positional `Complaint` contract check still holds). Grader tests,
+  fixtures and the offline qualification suite are now built and
+  proven; no inference yet.
+- [Pre-run record: TE4 route proof](te4-route-proof-pre-run-record.md)
+  freezes one attempt per configuration on the new task, proving it
+  resolves and grades correctly live and grounding a turn ceiling in a
+  real transcript. Establishes neither completion reliability nor
+  turn efficiency, and does not authorize TE4's own screen.
+- [TE4 route proof — result](te4-route-proof-result.md) reports the
+  two attempts: Baseline completed all four phases but a phase-4 check
+  rejects a valid solution (a grader defect, not fixed here), and
+  Engine's phase-2-board timeout reproduced with the same signature as
+  TE2/HP8's own Engine-01 — 2 of Engine's 4 live phase-2-board attempts
+  have now run away, the other 2 completed in 8–9 turns. Recommends
+  investigating that pathology before TE4's screen, which is not
+  authorized by this result.
 - [Pre-run record: run_self_test live verification](self-test-tool-live-verification-pre-run-record.md)
   proposes one bounded `pi` invocation proving the self-test tool is
   reachable and its content legible, outside every TE denominator, and
@@ -124,6 +138,8 @@ hp7-live-route-proof-result
 te2-hp8-screen-pre-run-record
 te2-hp8-screen-result
 te4-harder-roadmap-design
+te4-route-proof-pre-run-record
+te4-route-proof-result
 self-test-tool-live-verification-pre-run-record
 first-engine-comparison-plan
 first-smoke-run-record

@@ -171,7 +171,7 @@ agent is asked to invent a decomposition.
 | **HP5** Role attribution | Every mutation attributed to orchestrator or implementer from retained events | Judging whether delegation helped; any new pathology detector | spec + plan | **accepted 2026-09-10** — five slices; attribution observes and never gates, and an unobserved window is reported unobserved rather than zero. Independent review proved never-gates with a byte-identical-decision test, confirmed zero-vs-unobserved is a real distinct code path rather than conflated, and confirmed a mixed-delivery chain splits attribution correctly; 100% statement and branch coverage on `attribution.py`/`route.py` |
 | **HP6** Chain retention | Instructions, packets, worker events, candidate, validation output, accept/reject with reason, cost per role, fallback labelled | Cost thresholds or a budget verdict | plan only | **accepted 2026-09-10** — seven slices; the widened `BoundaryEvent` replaced HP5's two-argument observer rather than adding a second injected callable, and the chain check keeps an unobserved implementer window and an observed zero on different verdicts. Two Astra/Sol review rounds (2026-09-10) found and closed: a whole-chain-then-write design that lost already-graded phases on a grader crash, candidate content retained as paths/kinds only with no offline regrade proof, and `writable_paths` reported `applied` on mere observed compliance. `run_and_record_chain` now persists per phase before grading and captures real candidate bytes; `AppliedState.OBSERVED_COMPLIANT` separates compliance from proven enforcement. A third, independent review confirmed all three fixes: crash survival via a mid-chain grader-crash test, offline regrading from retained bytes against a content-sensitive grader, and `OBSERVED_COMPLIANT` never remapped to `APPLIED` |
 | **HP7** Live route proof | One orchestrated delivery, `n` frozen at 1, Baseline model, the adopted verification instruction | Superiority of any kind; extending `n` after reading it | spec (pre-run record); [result](docs/current/hp7-live-route-proof-result.md) | **Run 2026-09-10, accepted with corrections, not reopened as infrastructure.** All three phases accepted (4/4, 10/10, 13/13 hidden checks), `check_chain` zero findings, model identity verified on all 22 turns, Pi called `run_self_test` live every phase (stronger than the harness-only report). Independent review found and this repo fixed: two stale `build_pi_argv` test mocks, a stale pre-run-record commit/tool-surface field, and named two real gaps — public regression tests eroded phase 2→3 (hidden oracle unaffected), and per-phase git provenance (`base_commit`/`candidate_commit`) is not durably retained, only in-memory. Full reconciliation in the result doc. Next: HP8, folded into TE2 below |
-| **HP8** Workflow comparison | Orchestrated route against the continuous-session route, same roadmap and prompt, triage at two attempts per configuration | Publication; mechanism attribution; wall-clock between contiguous arms | see [TE plan](docs/current/engine-turn-efficiency-plan.md), TE2–TE3; [result](docs/current/te2-hp8-screen-result.md) | **Run 2026-09-10, corrected 2026-09-10 after review.** Baseline completed 2/2 (3/3 phases each). Engine completed 1/2 — the other voided (phase-2-board timeout, `check_chain`: "implementer window never observed"; transcript fully retained — 65 turns, a genuine runaway loop, 58 byte-identical `write app.py` calls, 25 over the ceiling, unenforced). Completed-work turns: Engine-02's 31 is not fewer than Baseline's average 30.5. All-launched-attempts expenditure (ordinary-failure reading, per the plan's own rule): Engine averages 51 vs 30.5. Engine-02's public-test-quality finding (tests renamed phase to phase) shows no assertion loss, unlike HP7's; carried separately from that same attempt's first live self-test failure-recovery (app.py was correct throughout; the test lacked `follow_redirects=False`). TE3 not proposed; TE4 stays open; the runaway loop is worth investigating offline before either |
+| **HP8** Workflow comparison | Orchestrated route against the continuous-session route, same roadmap and prompt, triage at two attempts per configuration | Publication; mechanism attribution; wall-clock between contiguous arms | see [TE plan](docs/current/engine-turn-efficiency-plan.md), TE2–TE3; [result](docs/current/te2-hp8-screen-result.md) | **Run 2026-09-10, corrected 2026-09-10 after review.** Baseline completed 2/2 (3/3 phases each). Engine completed 1/2 — the other voided (phase-2-board timeout, `check_chain`: "implementer window never observed"; transcript fully retained — 65 turns, a genuine runaway loop, 58 byte-identical `write app.py` calls, 25 over the ceiling, unenforced). Completed-work turns: Engine-02's 31 is not fewer than Baseline's average 30.5. All-launched-attempts expenditure (ordinary-failure reading, per the plan's own rule): Engine averages 51 vs 30.5. Engine-02's public-test-quality finding (tests renamed phase to phase) shows no assertion loss, unlike HP7's; carried separately from that same attempt's first live self-test failure-recovery (app.py was correct throughout; the test lacked `follow_redirects=False`). TE3 not pursued, not reopened without new evidence; TE4 scoping started; the runaway loop is worth investigating offline before either |
 
 **Why some cycles are plan-only.** `docs/sdd.md` asks for designs
 proportionate to the change: work that moves an evaluation condition,
@@ -246,31 +246,17 @@ own Finding 1 (an accepted chain quietly dropped public regression
 tests). Decides whether an easy-work confirmation (TE3) is worth running;
 does not itself establish superiority.
 
-**Run 2026-09-10, corrected 2026-09-10 after review** (see the HP8 row
-and [result](docs/current/te2-hp8-screen-result.md)). Baseline completed
-both attempts; Engine completed one of two — the other a genuine
-runaway loop (65 turns in one phase, 58 byte-identical `write app.py`
-calls, no self-test invoked, killed by the 600s timeout, not by any
-turn/tool-call budget, which was declared but never enforced). On
-completion, the frozen and ordinary-failure readings of that attempt
-agree (1 of 2 for Engine either way). On turns they diverge: completed
-work only, Engine-02's 31 is not fewer than Baseline's average 30.5; all
-launched attempts, Engine averages 51 against Baseline's 30.5. Engine-02
-also carries the screen's only test-quality finding (tests renamed
-phase to phase, no assertion lost) and, separately, its first live
-observation of self-test failure-recovery (the app was correct
-throughout; only the test needed `follow_redirects=False`) — reported
-side by side, not netted. **TE3 is not pursued from this screen, and not
-reopened without new evidence** — not formally closed, since the
-runaway loop's cause is undiagnosed; a narrow, separately authorized
-amended-treatment screen could put the easy claim back on the table on
-its own new grounds later, but that is a distinct future decision, not
-a reason to hold this one open as active work. An unfavorable screen is
-a legitimate completion, not an invitation to re-run or search for a
-favorable task. **TE4 scoping started 2026-09-10** under the plan's own
-rule that a negative easy-work result does not by itself rule out the
-harder claim. The runaway loop remains worth investigating offline,
-against retained evidence, independently of TE4's progress.
+**Run and corrected 2026-09-10** — numbers and findings in the HP8 row
+above and the [result doc](docs/current/te2-hp8-screen-result.md); not
+repeated here. **TE3 is not pursued from this screen, and not reopened
+without new evidence** — not formally closed, since the runaway loop's
+cause is undiagnosed; a narrow, separately authorized amended-treatment
+screen could put the easy claim back on the table on its own new
+grounds later, a distinct future decision, not a reason to hold this
+one open as active work. An unfavorable screen is a legitimate
+completion, not an invitation to re-run. **TE4 scoping started
+2026-09-10** under the plan's own rule that a negative easy-work result
+does not by itself rule out the harder claim.
 
 **TE4, offline witnesses built and proven, 2026-09-10.**
 [Design](docs/current/te4-harder-roadmap-design.md) qualifies the
@@ -290,6 +276,21 @@ Full suite (1838 tests) and doc lint still pass. No live inference
 run — this proves the task is a fair **fixture**, not that it is a
 **workload**; TE4's own screen step needs its own separate
 authorization.
+
+**Route proof run and [reported](docs/current/te4-route-proof-result.md),
+2026-09-10.** Baseline-01 completed all four phases; its one phase-4
+failure is a grader defect (asserts `kw_only`, not the
+positional-construction behavior it exists to protect; not fixed yet).
+Engine-01 voided — phase-2-board timed out with the same runaway-write
+signature as TE2/HP8's own Engine-01 (58/53 byte-identical
+`write app.py` calls, zero assistant text both times). Real
+denominator: Engine has run phase-2-board live 4 times (HP7, TE2/HP8's
+Engine-02, and these two) — **2 of 4 ran away, 2 completed in 8–9
+turns**; Baseline completed it 9 of 9. Arm-specific. No ceiling
+declared — Engine has completed this task zero times.
+**Recommended, not authorized:** investigate the pathology offline
+(retained transcripts, no new inference) before TE4's screen, which
+would likely just re-spend both Engine attempts on the same wall.
 
 HP remains responsible for the composed, retained, regradable route; TE does
 not absorb unfinished HP requirements or reopen the paused single-task tuning

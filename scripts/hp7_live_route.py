@@ -14,6 +14,13 @@ were checked by hand before this script existed and are not repeated
 here as code -- they are one-shot checks the record itself names, not a
 reusable gate. This script starts from precondition 1's own remaining
 gap: no run against a real Pi process has happened yet.
+
+Generalized 2026-09-10 for
+`docs/current/te4-route-proof-pre-run-record.md`: `--task` and
+`--task-tree-sha256` default to HP7's own frozen values, so every prior
+invocation (HP7, the TE2/HP8 screen's Engine attempts) behaves exactly
+as before. A caller naming a different task must also name that task's
+own frozen digest -- there is no default drift check across tasks.
 """
 
 import argparse
@@ -38,6 +45,8 @@ from satyrn_evals.live_grading import live_session_grader  # noqa: E402
 from satyrn_evals.manifest import load_manifest, resolve_task  # noqa: E402
 from satyrn_evals.session_manifest import load_session_spec  # noqa: E402
 
+#: HP7's own frozen task and digest, kept as the default so every existing
+#: invocation is unaffected by the 2026-09-10 generalization below.
 TASK_NAME = "agentclinic-session-phased"
 FROZEN_TASK_TREE_SHA256 = (
     "1af60a147bcf6459fab39f2f94f75ba96968ae0dbfe1312ee52858d6b1053951"
@@ -74,6 +83,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--satyrn-engine-bin", type=Path, default=SIBLING_ENGINE_BIN,
     )
+    parser.add_argument(
+        "--task", default=TASK_NAME,
+        help="Task name to resolve under src/satyrn_evals/tasks/. "
+        "Defaults to HP7's own frozen task.",
+    )
+    parser.add_argument(
+        "--task-tree-sha256", default=FROZEN_TASK_TREE_SHA256,
+        help="Expected task tree digest; the run refuses to start if the "
+        "actual tree has drifted. Must be supplied together with --task "
+        "for any task other than HP7's own.",
+    )
     args = parser.parse_args(argv)
 
     if args.output_dir.exists():
@@ -83,7 +103,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"satyrn-engine binary not found: {args.satyrn_engine_bin}", file=sys.stderr)
         return 2
 
-    task_dir = resolve_task(TASK_NAME)
+    task_dir = resolve_task(args.task)
     manifest = load_manifest(task_dir)
     spec = load_session_spec(task_dir)
 
@@ -93,9 +113,9 @@ def main(argv: list[str] | None = None) -> int:
             h.update(p.relative_to(task_dir).as_posix().encode())
             h.update(p.read_bytes())
     actual_tree_sha256 = h.hexdigest()
-    if actual_tree_sha256 != FROZEN_TASK_TREE_SHA256:
+    if actual_tree_sha256 != args.task_tree_sha256:
         print(
-            f"task tree digest drifted: frozen {FROZEN_TASK_TREE_SHA256}, "
+            f"task tree digest drifted: frozen {args.task_tree_sha256}, "
             f"actual {actual_tree_sha256} -- refusing to run under a stale "
             "pre-run record",
             file=sys.stderr,
