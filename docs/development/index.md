@@ -33,6 +33,7 @@ cycles/index
 ../superpowers/plans/2026-09-10-turn-ledger
 ../superpowers/specs/2026-09-10-self-test-tool-design
 ../superpowers/plans/2026-09-10-self-test-tool
+../superpowers/specs/2026-09-10-hp3-composition-design
 ```
 
 The repository-root
