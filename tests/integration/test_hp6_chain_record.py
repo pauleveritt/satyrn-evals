@@ -14,13 +14,19 @@ caller that lied about which seam ran. Deriving it from the same
 must do too (see `chain_record.run_and_record_chain`).
 """
 
+import dataclasses
 import sys
 from pathlib import Path
 
 import pytest
 
 from satyrn_evals.attribution import Snapshot, attribute, snapshot
-from satyrn_evals.chain_record import AppliedState, build_chain_record, check_chain
+from satyrn_evals.chain_record import (
+    AppliedState,
+    build_chain_record,
+    check_chain,
+    run_and_record_chain,
+)
 from satyrn_evals.manifest import load_manifest
 from satyrn_evals.route import (
     BoundaryEvent,
@@ -107,3 +113,51 @@ def test_the_same_run_in_process_reports_redacts_declared_not_applied(
 
     for phase in record.phases:
         assert phase.declaration_ledger["redacts"] is AppliedState.DECLARED_NOT_APPLIED
+
+
+# --- self-test evidence: the harness runs self_test_command -----------------
+
+
+def test_a_run_and_recorded_chain_retains_a_passing_self_test(
+    tmp_path: Path,
+) -> None:
+    """`run_and_record_chain` is the only place that reads
+    `.satyrn-self-test-result.json` back off the workspace --
+    `build_chain_record` has no workspace to read one from. Controls
+    `self_test_command` directly rather than trusting the real task's own
+    (`uv run python -m pytest tests`, not deterministic against an empty
+    fixture workspace)."""
+    spec = dataclasses.replace(
+        load_session_spec(TASK), self_test_command=("true",)
+    )
+    implementer = command_implementer([sys.executable, str(FAKE)], tmp_path)
+    record = run_and_record_chain(
+        TASK, load_manifest(TASK), spec, implementer, tmp_path, _grade_pass,
+        tmp_path / "chain.json", base_revision="3e6607e533792ab0", **BUDGETS,
+    )
+    for phase in record.phases:
+        assert phase.self_test_outcome is not None
+        assert phase.self_test_outcome.ran is True
+        assert phase.self_test_outcome.exit_code == 0
+        assert phase.declaration_ledger["self_test_command"] is AppliedState.APPLIED
+
+
+def test_a_run_and_recorded_chain_retains_a_failing_self_test_without_gating(
+    tmp_path: Path,
+) -> None:
+    """The never-gates proof, end to end: a failing self-test on every
+    phase does not stop the chain or flip the grader's own accept
+    decision."""
+    spec = dataclasses.replace(
+        load_session_spec(TASK), self_test_command=("false",)
+    )
+    implementer = command_implementer([sys.executable, str(FAKE)], tmp_path)
+    record = run_and_record_chain(
+        TASK, load_manifest(TASK), spec, implementer, tmp_path, _grade_pass,
+        tmp_path / "chain.json", base_revision="3e6607e533792ab0", **BUDGETS,
+    )
+    for phase in record.phases:
+        assert phase.self_test_outcome.ran is True
+        assert phase.self_test_outcome.exit_code != 0
+        assert phase.accepted is True
+        assert phase.declaration_ledger["self_test_command"] is AppliedState.APPLIED

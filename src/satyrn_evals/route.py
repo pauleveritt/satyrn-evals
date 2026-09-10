@@ -18,7 +18,9 @@ What this module does **not** do: apply patches (every applier here is
 import json
 import math
 import os
+import shutil
 import subprocess
+import tempfile
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -534,31 +536,46 @@ def command_implementer(
 def _run_self_test(
     command: tuple[str, ...], workspace: Path, timeout: int
 ) -> SelfTestOutcome:  # pragma: no cover
-    """Runs one declared ``self_test_command`` in ``workspace`` and reports
-    what happened. Never raises: a self-test that cannot launch or that
-    times out is evidence for the retained record, not a route crash -- the
+    """Runs one declared ``self_test_command`` and reports what happened.
+    Never raises: a self-test that cannot launch or that times out is
+    evidence for the retained record, not a route crash -- the
     implementer's own result, already read by the caller, is unaffected
     either way. Integration tier only, for the same reason `implement` above
     is: this spawns.
+
+    **Runs against a disposable copy of ``workspace``, never the workspace
+    itself.** A real self-test command leaves its own filesystem footprint
+    -- pytest's own ``.pytest_cache``, ``__pycache__`` from compiling the
+    test files -- and ``workspace`` is the same tree ``attribution.snapshot``
+    walks for mutation attribution. Reproduced directly: running the real
+    task's ``self_test_command`` in-place flipped a phase's
+    ``writable_paths`` ledger entry from ``observed_compliant`` to
+    ``declared_not_applied``, because pytest's cache files, created between
+    the ``before_handoff`` and ``after_handoff`` snapshots, were
+    misattributed as an out-of-scope implementer mutation. A copy makes that
+    impossible by construction rather than by excluding more names.
     """
     start = time.monotonic()
-    try:
-        completed = subprocess.run(
-            list(command),
-            cwd=workspace,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return SelfTestOutcome(
-            command=command,
-            ran=False,
-            exit_code=None,
-            output="",
-            reason=str(exc),
-            duration_seconds=time.monotonic() - start,
-        )
+    with tempfile.TemporaryDirectory(prefix="satyrn-self-test-") as scratch:
+        scratch_workspace = Path(scratch) / "workspace"
+        shutil.copytree(workspace, scratch_workspace)
+        try:
+            completed = subprocess.run(
+                list(command),
+                cwd=scratch_workspace,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            return SelfTestOutcome(
+                command=command,
+                ran=False,
+                exit_code=None,
+                output="",
+                reason=str(exc),
+                duration_seconds=time.monotonic() - start,
+            )
     return SelfTestOutcome(
         command=command,
         ran=True,

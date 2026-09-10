@@ -47,6 +47,7 @@ from satyrn_evals.packet import (
     packet_to_dict,
 )
 from satyrn_evals.route import (
+    SELF_TEST_RESULT_NAME,
     BoundaryEvent,
     Implementer,
     ImplementerResult,
@@ -432,6 +433,7 @@ def run_and_record_chain(
     results_by_step: dict[str, ImplementerResult] = {}
     graded: dict[str, tuple[bool, str]] = {}
     snapshots_by_step: dict[str, tuple[str, str]] = {}
+    self_test_by_step: dict[str, SelfTestOutcome] = {}
     order: list[str] = []
     seam = is_executable_seam(implementer)
     evidence_dir = output_path.with_name(output_path.stem + "-evidence")
@@ -453,6 +455,7 @@ def run_and_record_chain(
             implementer_cost, orchestrator_cost = (costs or {}).get(
                 step_id, (None, None)
             )
+            self_test_outcome = self_test_by_step.get(step_id)
             phases.append(
                 PhaseRecord(
                     step_id=step_id,
@@ -468,9 +471,11 @@ def run_and_record_chain(
                         executable_seam=seam,
                         packet=packets_by_step[step_id],
                         implementer_mutations=implementer_mutations,
+                        self_test_ran=self_test_outcome is not None,
                     ),
                     candidate_snapshot_path=snap_path,
                     candidate_snapshot_digest=snap_digest,
+                    self_test_outcome=self_test_outcome,
                     implementer_cost=implementer_cost,
                     orchestrator_cost=orchestrator_cost,
                 )
@@ -511,6 +516,11 @@ def run_and_record_chain(
         _write_text_durably(path, payload)
         digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
         snapshots_by_step[step_id] = (str(path), digest)
+        self_test_path = workspace / SELF_TEST_RESULT_NAME
+        if self_test_path.is_file():
+            self_test_by_step[step_id] = self_test_outcome_from_dict(
+                json.loads(self_test_path.read_text(encoding="utf-8"))
+            )
 
     def observe(event: BoundaryEvent) -> None:
         events.append(event)
