@@ -41,6 +41,19 @@ type PhaseGrader = Callable[[str, Path], tuple[str, str]]
 verdict itself; the default tier scripts this and the integration tier passes
 the real ``SessionGrader``."""
 
+type Boundary = Literal["before_handoff", "after_handoff", "chain_end"]
+type BoundaryObserver = Callable[[str, Boundary], None]
+"""``(step_id, boundary) -> None``, called at each hand-off edge (HP5).
+
+The route says *when* a window opens and closes; what to record at that
+moment is the observer's business, which keeps a tree walk the route has no
+other use for out of the route. It is a callable injected the same way the
+implementer and the grader are, not a second plugin system: a test seam is
+the extension seam.
+
+``chain_end`` carries the last step's id, or ``""`` when a spec has no steps.
+"""
+
 RESULT_VERSION: int = 1
 
 PACKET_ENV = "SATYRN_HANDOFF_PACKET"
@@ -211,6 +224,7 @@ def run_phases(
     base_revision: str,
     turn_budget: int,
     tool_call_budget: int,
+    observer: BoundaryObserver | None = None,
 ) -> list[PhaseDecision]:
     """Run the spec's steps in order, stopping at the first rejection.
 
@@ -218,16 +232,31 @@ def run_phases(
     later phase build on a state nobody accepted. HP3 implements that
     properly against chained worktrees; holding it here keeps the two cycles
     from disagreeing.
+
+    ``observer`` is HP5's attribution seam and changes no decision: with none
+    given, this function behaves exactly as it did before HP5. Every exit
+    path emits ``chain_end``, including an implementer refusal and a grader
+    rejection -- a chain that stops early is when attribution matters most,
+    and it is the easiest window to leave unclosed.
     """
     decisions: list[PhaseDecision] = []
+    last_step_id = ""
+
+    def observe(step_id: str, boundary: Boundary) -> None:
+        if observer is not None:
+            observer(step_id, boundary)
+
     for step in spec.steps:
+        last_step_id = step.id
         packet = build_packet(
             task_dir, manifest, spec, step.id,
             base_revision=base_revision,
             turn_budget=turn_budget,
             tool_call_budget=tool_call_budget,
         )
+        observe(step.id, "before_handoff")
         result = implementer(packet)
+        observe(step.id, "after_handoff")
         match result.reported_outcome:
             case "refused":
                 decisions.append(
@@ -237,13 +266,16 @@ def run_phases(
                         result,
                     )
                 )
+                observe(step.id, "chain_end")
                 return decisions
             case _:
                 verdict, reason = grader(step.id, workspace)
                 accepted = verdict == "pass"
                 decisions.append(PhaseDecision(step.id, accepted, reason, result))
                 if not accepted:
+                    observe(step.id, "chain_end")
                     return decisions
+    observe(last_step_id, "chain_end")
     return decisions
 
 

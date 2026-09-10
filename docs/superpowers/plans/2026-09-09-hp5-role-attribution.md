@@ -121,3 +121,30 @@ uv run pytest -q -m integration tests/integration/test_hp2_route.py
 
 Five marked-tier failures in this worktree are unrelated and recorded in
 `BACKLOG.md`; they must not be read as this cycle's.
+
+## What the implementation found, recorded rather than edited away
+
+**The seed-221 implementer could not be written as first imagined.**
+`ImplementerResult` refuses `delivered` with no changed files, so a fake that
+delivers nothing and says so is impossible. The fixture therefore reports a
+file it never writes — which is the more dangerous shape anyway, and the one
+HP5.5 exists to record: a claim with no work behind it.
+
+**A repeated window is refused rather than resolved.** A second
+`before_handoff` for a step used to overwrite the first snapshot silently.
+Keeping the later half of an ambiguous recording would report a number
+computed from an arbitrary part of the evidence, so `attribute` now refuses
+both a doubly-opened and a doubly-closed window.
+
+**Five mutations, each killed.** Turning an unobserved window into an
+observed zero: 3 failures. Always attributing to the implementer: 6. Always
+attributing to the orchestrator: 9. Making `claimed_not_made` always empty: 1
+— that gate has a single test holding it by design, since its sibling is
+meant to pass unchanged. Dropping the `after_handoff` boundary from the
+route: 9.
+
+**Verification.** `just gates` exit 0; 1,695 default-tier tests;
+`satyrn_evals/attribution.py` and `satyrn_evals/route.py` both at 100%
+statement and branch coverage; `tests/integration/test_hp2_route.py` 7 passed
+in the marked tier. The five unrelated marked-tier failures recorded in
+`BACKLOG.md` are still present and are still not this cycle's.
