@@ -221,6 +221,26 @@ Whether recovery from repetition needs a guard neither route currently has
 is exactly what confirmation observes, not something to preempt by adding
 one now.
 
+**The shared whole-attempt turn ceiling, frozen 2026-09-10: 40 turns.**
+Checked against every real `agentclinic-session-phased` Baseline
+transcript on record, recomputed through `turn_ledger.count_turns` itself:
+
+| Attempt | Whole-attempt ended turns | phase-1 / phase-2 / phase-3 |
+|---|---|---|
+| `2026-09-09-session-phased-112550` | 15 | 6 / 5 / 4 |
+| `2026-09-09-session-phased-verify-114708` | 20 | 7 / 6 / 7 |
+| `2026-09-09-verify-triage-132612/01-control` | 15 | 6 / 5 / 4 |
+| `2026-09-09-verify-triage-132612/02-verification` | 25 | 7 / 6 / 12 |
+| `2026-09-09-verify-triage-132612/03-verification` | 22 | 9 / 8 / 5 |
+| `2026-09-09-verify-triage-132612/04-control` | 20 | 9 / 6 / 5 |
+
+Range 15–25 (mean ≈19.5), max per-phase 12, zero errors or aborts. 40 is
+roughly 1.5x the observed maximum — headroom over noise, sized the way
+HP7's own pre-run record sized its per-phase figure. **Baseline-side
+only**: Engine's real turn counts remain unmeasured (HP7 has not run
+live), so this is not yet checked against both sides of the pair; revisit
+once Engine-side evidence exists.
+
 **Exit:** the pair really exercises Engine versus Baseline, the turn accounting
 is reproducible, and the run can be bounded without hiding failed work. New
 operability checks are needed only for changed paths not covered by HP; use
