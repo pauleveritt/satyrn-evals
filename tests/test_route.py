@@ -23,12 +23,15 @@ from satyrn_evals.packet import HandoffPacket, build_packet
 from satyrn_evals.route import (
     ROUTE_SCENARIO,
     ImplementerResult,
+    SelfTestOutcome,
     command_implementer,
     implementer_result_from_dict,
     implementer_result_to_dict,
     is_executable_seam,
     run_phases,
     scripted_implementer,
+    self_test_outcome_from_dict,
+    self_test_outcome_to_dict,
 )
 from satyrn_evals.session_manifest import load_session_spec
 
@@ -111,6 +114,103 @@ def test_a_persisted_result_missing_a_key_fails_as_itself() -> None:
     del data["changed_files"]
     with pytest.raises(RouteError, match="missing changed_files"):
         implementer_result_from_dict(data)
+
+
+# --- Self-test evidence: the harness runs self_test_command -----------------
+
+SELF_TEST_GOLDEN = Path(__file__).parent / "data" / "self-test-outcome-golden.json"
+
+
+def test_a_ran_self_test_records_its_exit_code() -> None:
+    outcome = SelfTestOutcome(
+        command=("uv", "run", "pytest"),
+        ran=True,
+        exit_code=0,
+        output="1 passed\n",
+        reason=None,
+        duration_seconds=1.5,
+    )
+    assert outcome.exit_code == 0
+
+
+def test_a_ran_self_test_must_not_carry_a_reason() -> None:
+    with pytest.raises(RouteError, match="reason"):
+        SelfTestOutcome(
+            command=("true",), ran=True, exit_code=0, output="",
+            reason="should not be set", duration_seconds=0.1,
+        )
+
+
+def test_an_unrun_self_test_must_carry_a_reason() -> None:
+    with pytest.raises(RouteError, match="reason"):
+        SelfTestOutcome(
+            command=("true",), ran=False, exit_code=None, output="",
+            reason=None, duration_seconds=0.1,
+        )
+
+
+def test_an_unrun_self_test_must_not_carry_an_exit_code() -> None:
+    with pytest.raises(RouteError, match="exit_code"):
+        SelfTestOutcome(
+            command=("true",), ran=False, exit_code=1, output="",
+            reason="launch failed", duration_seconds=0.1,
+        )
+
+
+def test_an_unrun_self_test_must_not_carry_output() -> None:
+    with pytest.raises(RouteError, match="output"):
+        SelfTestOutcome(
+            command=("true",), ran=False, exit_code=None, output="stray",
+            reason="launch failed", duration_seconds=0.1,
+        )
+
+
+def test_self_test_command_must_be_a_non_empty_tuple() -> None:
+    with pytest.raises(RouteError, match="command"):
+        SelfTestOutcome(
+            command=(), ran=True, exit_code=0, output="", reason=None,
+            duration_seconds=0.1,
+        )
+
+
+def test_duration_seconds_must_be_non_negative_and_finite() -> None:
+    with pytest.raises(RouteError, match="duration_seconds"):
+        SelfTestOutcome(
+            command=("true",), ran=True, exit_code=0, output="", reason=None,
+            duration_seconds=-1.0,
+        )
+
+
+def test_the_golden_self_test_outcome_round_trips() -> None:
+    data = json.loads(SELF_TEST_GOLDEN.read_text())
+    assert self_test_outcome_to_dict(self_test_outcome_from_dict(data)) == data
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("command", "true"),
+        ("ran", "yes"),
+        ("exit_code", "0"),
+        ("output", 3),
+        ("reason", 3),
+        ("duration_seconds", "1.5"),
+    ],
+)
+def test_a_persisted_self_test_outcome_of_the_wrong_shape_is_refused(
+    field: str, value: object
+) -> None:
+    data = json.loads(SELF_TEST_GOLDEN.read_text())
+    data[field] = value
+    with pytest.raises(RouteError, match=field):
+        self_test_outcome_from_dict(data)
+
+
+def test_a_persisted_self_test_outcome_missing_a_key_fails_as_itself() -> None:
+    data = json.loads(SELF_TEST_GOLDEN.read_text())
+    del data["exit_code"]
+    with pytest.raises(RouteError, match="missing exit_code"):
+        self_test_outcome_from_dict(data)
 
 
 # --- HP2.2 the fake implementer ---------------------------------------------

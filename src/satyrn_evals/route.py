@@ -16,6 +16,7 @@ What this module does **not** do: apply patches (every applier here is
 """
 
 import json
+import math
 import os
 import subprocess
 from collections.abc import Callable, Mapping
@@ -63,6 +64,22 @@ path's ``SATYRN_ATTEMPT_PATCH``/``SATYRN_ATTEMPT_TRANSCRIPT``."""
 
 _RESULT_KEYS = frozenset(
     {"changed_files", "reported_outcome", "message", "version"}
+)
+
+SELF_TEST_RESULT_NAME = ".satyrn-self-test-result.json"
+"""Written by ``command_implementer`` after a packet's declared
+``self_test_command`` runs on the executable seam -- never on the in-process
+seam, and never when a packet declares no command. Listed in
+``attribution.HARNESS_FILES`` so it is retained evidence, never a mutation
+attributed to either role."""
+
+DEFAULT_SELF_TEST_TIMEOUT_SECONDS = 600
+"""Matches ``adapters.pi_implementer.DEFAULT_TIMEOUT_SECONDS`` -- the same
+``self_test_command`` (``uv run python -m pytest tests``) HP7's pre-run
+record already reasoned about at that figure."""
+
+_SELF_TEST_KEYS = frozenset(
+    {"command", "ran", "exit_code", "output", "reason", "duration_seconds"}
 )
 
 
@@ -128,6 +145,115 @@ def implementer_result_from_dict(data: Mapping[str, object]) -> ImplementerResul
         reported_outcome=outcome,  # type: ignore[arg-type]
         message=message,
         version=version,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class SelfTestOutcome:
+    """What the harness saw when it ran a packet's declared
+    ``self_test_command`` once, after the implementer's own turn. Never a
+    verdict: ``ran``/``exit_code`` are retained evidence, and nothing here
+    feeds ``PhaseDecision.accepted`` -- that stays ``PhaseGrader``'s alone.
+    """
+
+    command: tuple[str, ...]
+    ran: bool
+    exit_code: int | None
+    output: str
+    reason: str | None
+    duration_seconds: float
+
+    def __post_init__(self) -> None:
+        if not self.command or any(
+            not isinstance(c, str) or not c for c in self.command
+        ):
+            raise RouteError(
+                "self_test outcome command must be a non-empty tuple of "
+                "non-blank strings"
+            )
+        if self.ran:
+            if (
+                self.exit_code is None
+                or isinstance(self.exit_code, bool)
+                or not isinstance(self.exit_code, int)
+            ):
+                raise RouteError(
+                    "a ran self-test must record an integer exit_code"
+                )
+            if self.reason is not None:
+                raise RouteError("a ran self-test must not carry a reason")
+        else:
+            if self.exit_code is not None:
+                raise RouteError(
+                    "a self-test that did not run must not carry an exit_code"
+                )
+            if not self.reason:
+                raise RouteError(
+                    "a self-test that did not run must carry a reason"
+                )
+            if self.output:
+                raise RouteError(
+                    "a self-test that did not run must not carry output"
+                )
+        if (
+            isinstance(self.duration_seconds, bool)
+            or not isinstance(self.duration_seconds, (int, float))
+            or not math.isfinite(self.duration_seconds)
+            or self.duration_seconds < 0
+        ):
+            raise RouteError(
+                "self_test duration_seconds must be a non-negative finite "
+                "number"
+            )
+
+
+def self_test_outcome_to_dict(outcome: SelfTestOutcome) -> dict[str, object]:
+    return {
+        "command": list(outcome.command),
+        "ran": outcome.ran,
+        "exit_code": outcome.exit_code,
+        "output": outcome.output,
+        "reason": outcome.reason,
+        "duration_seconds": outcome.duration_seconds,
+    }
+
+
+def self_test_outcome_from_dict(data: Mapping[str, object]) -> SelfTestOutcome:
+    if missing := sorted(_SELF_TEST_KEYS - set(data)):
+        raise RouteError(
+            f"persisted self_test outcome is missing {', '.join(missing)}"
+        )
+    command = data["command"]
+    if not isinstance(command, list) or not all(
+        isinstance(c, str) for c in command
+    ):
+        raise RouteError("persisted self_test command must be a list of strings")
+    ran = data["ran"]
+    if not isinstance(ran, bool):
+        raise RouteError("persisted self_test ran must be a bool")
+    exit_code = data["exit_code"]
+    if exit_code is not None and (
+        isinstance(exit_code, bool) or not isinstance(exit_code, int)
+    ):
+        raise RouteError(
+            "persisted self_test exit_code must be an integer or null"
+        )
+    output = data["output"]
+    if not isinstance(output, str):
+        raise RouteError("persisted self_test output must be a string")
+    reason = data["reason"]
+    if reason is not None and not isinstance(reason, str):
+        raise RouteError("persisted self_test reason must be a string or null")
+    duration = data["duration_seconds"]
+    if isinstance(duration, bool) or not isinstance(duration, (int, float)):
+        raise RouteError("persisted self_test duration_seconds must be a number")
+    return SelfTestOutcome(
+        command=tuple(command),
+        ran=ran,
+        exit_code=exit_code,
+        output=output,
+        reason=reason,
+        duration_seconds=float(duration),
     )
 
 

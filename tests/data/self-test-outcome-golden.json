@@ -1,0 +1,8 @@
+{
+  "command": ["uv", "run", "python", "-m", "pytest", "tests"],
+  "ran": true,
+  "exit_code": 0,
+  "output": "1 passed in 0.01s\n",
+  "reason": null,
+  "duration_seconds": 1.23
+}
