@@ -152,12 +152,14 @@ tool's behavior does not require proving Pi calls it.
 4. **A command that exceeds the bound timeout** throws, driven by a real
    process that actually outlives a short timeout, `result.killed` true.
 5. **No `SATYRN_SELF_TEST_COMMAND` set** — proven only at the
-   `pi_implementer.py`/`command_implementer` wiring level (Python): the
-   tool is never registered and never named in `--tools` for a packet
-   declaring no `self_test_command`, so this case has no Node-side
-   behavior to test at all.
-6. **`command_implementer` sets the env var only when declared**, and
-   unsets/omits it otherwise — a default-tier Python test on the argv/env
+   `pi_implementer.py` wiring level (Python), **not** `command_implementer`
+   (that seam stays adapter-agnostic; it already owns the separate,
+   already-shipped post-exit harness self-test and knows nothing about
+   `-e` or pi-specific env vars): `build_pi_argv` never adds `-e` or the
+   tool name to `--tools` for a packet declaring no `self_test_command`,
+   so this case has no Node-side behavior to test at all.
+6. **`pi_implementer.main()` sets the env var only when declared**, and
+   omits it otherwise — a default-tier Python test on the argv/env
    construction, not on `pi.exec` itself.
 
 ## What this does not do
