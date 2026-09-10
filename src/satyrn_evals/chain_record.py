@@ -4,14 +4,19 @@
 caller drops it (``route.py``); the packets it built and HP5's attribution
 are gone with it. This module turns one run's ``BoundaryEvent`` stream and
 attribution ledger into a durable ``ChainRecord`` from which the
-accept-or-reject sequence recomputes (``decisions_from_record``), and it
-names the two things a chain can otherwise hide: an unobserved implementer
-step (``check_chain``), and a packet declaration the runtime never applied
-(``declaration_ledger``).
+accept-or-reject sequence reads back losslessly (``decisions_from_record`` --
+a read-back, not an independent recomputation from raw evidence; see its own
+docstring), and it names three things a chain can otherwise hide: an
+unobserved implementer step, an implementer mutation outside its own packet's
+declared scope, and a packet declaration the runtime never applied
+(together, ``check_chain`` and ``declaration_ledger``).
 
 Nothing here applies a declaration the ledger records as unapplied, decides a
 cost threshold, or runs a real engine -- HP6 retains what happened; it does
-not change what the route does.
+not change what the route does. What is retained is mutation **paths and
+kinds**, not patch content -- "re-scorable" here means every accept/reject
+decision reads back from the document, not that a candidate's bytes can be
+regraded from it; regrading the candidate itself is not attempted.
 """
 
 import json
@@ -20,8 +25,10 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
+from typing import get_args
 
-from satyrn_evals.attribution import ChainLedger, Mutation
+from satyrn_evals.attribution import ChainLedger, Mutation, MutationKind
+from satyrn_evals.engine_contract import admits
 from satyrn_evals.errors import ChainRecordError
 from satyrn_evals.packet import (
     HandoffPacket,
@@ -37,6 +44,11 @@ from satyrn_evals.route import (
 )
 
 CHAIN_RECORD_VERSION: int = 1
+
+# `__value__` is the TypeAliasType accessor, same trick `packet.py` uses for
+# `PacketRole`: it unwraps `type X = ...` to the Literal underneath, so the
+# alias stays the single source of the valid kinds.
+_MUTATION_KINDS: frozenset[str] = frozenset(get_args(MutationKind.__value__))
 
 #: The packet declarations this cycle tracks. Not every ``HandoffPacket``
 #: field: ``objective``, ``facts`` and ``preserve`` are content the
@@ -65,28 +77,51 @@ class AppliedState(StrEnum):
     UNKNOWN = "unknown"
 
 
-def declaration_ledger(*, executable_seam: bool) -> dict[str, AppliedState]:
-    """What the offline route does with each tracked declaration.
+def declaration_ledger(
+    *,
+    executable_seam: bool,
+    packet: HandoffPacket,
+    implementer_mutations: tuple[Mutation, ...] | None,
+) -> dict[str, AppliedState]:
+    """What this run's own evidence says about each tracked declaration.
 
-    Static per field: the route's handling of a field does not vary packet
-    to packet, only with which seam ran it. ``turn_budget``, ``tool_call_budget``,
-    ``self_test_command`` and ``base_revision`` are built into every packet
-    and read nowhere outside ``packet.py`` and the ``build_packet`` call
-    (``route.py``) -- no code counts a turn, runs the self-test command, or
-    checks out the named revision, so all four are declared and unapplied.
-    ``writable_paths`` is enforced by the implementer against itself
-    (``scripted_implementer``, ``PacketError`` on scope), never by the route,
-    so it is applied regardless of seam. ``redacts`` is the one field that
-    takes both values from the same task: ``assert_projection_is_clean`` runs
-    only inside ``command_implementer``, so it is applied on the executable
-    seam and declared-and-unapplied on the in-process one.
+    ``turn_budget``, ``tool_call_budget``, ``self_test_command`` and
+    ``base_revision`` are built into every packet and read nowhere outside
+    ``packet.py`` and the ``build_packet`` call (``route.py``) -- no code
+    counts a turn, runs the self-test command, or checks out the named
+    revision, so all four are always declared and unapplied on this route.
+    ``redacts`` is the one field that takes both values from the same task:
+    ``assert_projection_is_clean`` runs only inside ``command_implementer``,
+    so it is applied on the executable seam and declared-and-unapplied on the
+    in-process one.
+
+    ``writable_paths`` is **derived from observation, not asserted.**
+    ``scripted_implementer`` happens to enforce its own scope, but that is a
+    property of one fixture, not of the route -- a real implementer on the
+    executable seam enforces nothing the route checks. So: ``unknown`` when
+    the implementer window was never observed (nothing to check);
+    ``declared_not_applied`` when an observed mutation lands outside the
+    packet's own ``writable_paths`` (proof the scope was not honoured);
+    ``applied`` only when every observed mutation admits within it. Staying
+    in scope does not *prove* enforcement -- nothing here does -- but a
+    mutation caught outside it proves the opposite, and that asymmetry is
+    the honest one to keep.
     """
+    if implementer_mutations is None:
+        writable_state = AppliedState.UNKNOWN
+    elif any(
+        not admits(packet.writable_paths, mutation.path)
+        for mutation in implementer_mutations
+    ):
+        writable_state = AppliedState.DECLARED_NOT_APPLIED
+    else:
+        writable_state = AppliedState.APPLIED
     return {
         "turn_budget": AppliedState.DECLARED_NOT_APPLIED,
         "tool_call_budget": AppliedState.DECLARED_NOT_APPLIED,
         "self_test_command": AppliedState.DECLARED_NOT_APPLIED,
         "base_revision": AppliedState.DECLARED_NOT_APPLIED,
-        "writable_paths": AppliedState.APPLIED,
+        "writable_paths": writable_state,
         "redacts": (
             AppliedState.APPLIED
             if executable_seam
@@ -104,7 +139,7 @@ class PhaseRecord:
     carried into the retained document rather than only into the live
     ledger. ``implementer_cost``/``orchestrator_cost`` are ``None`` when
     nothing measured them, which the offline route always is; a zero must
-    never stand in for unmeasured (HP6.4).
+    never stand in for unmeasured (HP6.4), so the constructor refuses one.
     """
 
     step_id: str
@@ -117,6 +152,21 @@ class PhaseRecord:
     declaration_ledger: Mapping[str, AppliedState]
     implementer_cost: float | None = None
     orchestrator_cost: float | None = None
+
+    def __post_init__(self) -> None:
+        for name in ("implementer_cost", "orchestrator_cost"):
+            value = getattr(self, name)
+            if value is None:
+                continue
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or value <= 0
+            ):
+                raise ChainRecordError(
+                    f"{name} must be a positive number or null: {value!r}; a "
+                    "zero or negative value is not a stand-in for unmeasured"
+                )
 
     @property
     def fallback(self) -> bool:
@@ -185,6 +235,9 @@ def build_chain_record(
                 "decided phase must have opened a before_handoff window"
             )
         attribution = attribution_by_step.get(decision.step_id)
+        implementer_mutations = (
+            None if attribution is None else attribution.implementer
+        )
         implementer_cost, orchestrator_cost = costs.get(
             decision.step_id, (None, None)
         )
@@ -195,14 +248,14 @@ def build_chain_record(
                 result=decision.result,
                 accepted=decision.accepted,
                 reason=decision.reason,
-                implementer_mutations=(
-                    None if attribution is None else attribution.implementer
-                ),
+                implementer_mutations=implementer_mutations,
                 orchestrator_mutations=(
                     None if attribution is None else attribution.orchestrator
                 ),
                 declaration_ledger=declaration_ledger(
-                    executable_seam=executable_seam
+                    executable_seam=executable_seam,
+                    packet=packet,
+                    implementer_mutations=implementer_mutations,
                 ),
                 implementer_cost=implementer_cost,
                 orchestrator_cost=orchestrator_cost,
@@ -226,14 +279,26 @@ class ChainFinding:
 def check_chain(record: ChainRecord) -> tuple[ChainFinding, ...]:
     """Findings a retained chain record exposes on its own -- no re-run.
 
-    Two kinds, and only two, because widening this into a pathology detector
-    is explicitly out of scope: a phase whose implementer window went
-    unobserved, and a phase whose independently-captured closing decision
-    (``final_decision``, taken at ``chain_end``) disagrees with the decision
-    retained on its own ``PhaseRecord``. A phase with a real, observed zero
-    mutations is **not** a finding -- that is the seed-221 shape HP5 exists
-    to report, and conflating it with "nobody looked" is the one mistake this
-    function exists to refuse (HP6.6).
+    Three kinds, and only three, because widening this into a pathology
+    detector is explicitly out of scope:
+
+    - a phase whose implementer window went unobserved;
+    - a phase whose implementer left a mutation outside its own packet's
+      declared ``writable_paths`` -- the same evidence
+      ``declaration_ledger`` reads to mark that field
+      ``declared_not_applied``, surfaced here as a finding rather than left
+      for a reader to notice only by inspecting the ledger by hand;
+    - a phase whose two independently-captured copies of its closing
+      decision disagree: the one taken at the route's ``chain_end`` boundary
+      (``final_decision``) against the one retained on its own
+      ``PhaseRecord``. This is a **consistency check between two captures of
+      the same run**, not a re-derivation from raw evidence -- nothing here
+      recomputes a verdict from anything but the record's own fields.
+
+    A phase with a real, observed zero mutations is **not** a finding --
+    that is the seed-221 shape HP5 exists to report, and conflating it with
+    "nobody looked" is the one mistake this function exists to refuse
+    (HP6.6).
     """
     findings: list[ChainFinding] = []
     for phase in record.phases:
@@ -242,6 +307,17 @@ def check_chain(record: ChainRecord) -> tuple[ChainFinding, ...]:
                 ChainFinding(
                     phase.step_id,
                     "implementer window was never observed",
+                )
+            )
+        elif any(
+            not admits(phase.packet.writable_paths, mutation.path)
+            for mutation in phase.implementer_mutations
+        ):
+            findings.append(
+                ChainFinding(
+                    phase.step_id,
+                    "implementer mutation lies outside the packet's declared "
+                    "writable_paths",
                 )
             )
     if record.final_decision is not None:
@@ -256,21 +332,28 @@ def check_chain(record: ChainRecord) -> tuple[ChainFinding, ...]:
             findings.append(
                 ChainFinding(
                     closing.step_id,
-                    "recomputed decision disagrees with the retained one",
+                    "the chain_end-captured decision disagrees with the "
+                    "decision retained on the phase record",
                 )
             )
     return tuple(findings)
 
 
 def decisions_from_record(record: ChainRecord) -> list[PhaseDecision]:
-    """Re-derive the accept-or-reject sequence from the record alone.
+    """Read the accept-or-reject sequence back from the record alone.
 
-    No task directory, no manifest, no grader: every field a ``PhaseDecision``
-    needs is already retained on the matching ``PhaseRecord``. Proves the
-    document is sufficient, across all three exit paths run_phases can take
-    -- delivered to the end, stopped by an implementer refusal, stopped by a
-    grader rejection -- since each leaves a different-length ``phases``
-    tuple and this reads whichever it is handed.
+    This is a **lossless read-back**, not an independent recomputation from
+    raw evidence: every field a ``PhaseDecision`` needs is already retained
+    verbatim on the matching ``PhaseRecord``, so this cannot disagree with
+    what was stored by construction. What it proves is narrower and still the
+    point -- BRIEF.md invariant 1's "recomputes from retained artifacts" --
+    that the document alone, with no task directory, no manifest and no
+    grader, carries everything ``PhaseDecision`` needs, across all three exit
+    paths run_phases can take (delivered to the end, an implementer refusal,
+    a grader rejection), since each leaves a different-length ``phases``
+    tuple and this reads whichever it is handed. It is **not** evidence that
+    the retained decision was itself correct; that would require re-grading
+    the retained candidate, which HP6 does not attempt.
     """
     return [
         PhaseDecision(phase.step_id, phase.accepted, phase.reason, phase.result)
@@ -284,8 +367,13 @@ def _mutation_to_dict(mutation: Mutation) -> dict[str, object]:
 
 def _mutation_from_dict(data: Mapping[str, object]) -> Mutation:
     path, kind = data.get("path"), data.get("kind")
-    if not isinstance(path, str) or not isinstance(kind, str):
-        raise ChainRecordError("persisted mutation must have string path and kind")
+    if not isinstance(path, str) or not path.strip():
+        raise ChainRecordError("persisted mutation path must be non-blank text")
+    if kind not in _MUTATION_KINDS:
+        raise ChainRecordError(
+            f"persisted mutation kind must be one of {sorted(_MUTATION_KINDS)}: "
+            f"{kind!r}"
+        )
     return Mutation(path, kind)  # type: ignore[arg-type]
 
 
@@ -388,8 +476,19 @@ def _phase_record_from_dict(data: Mapping[str, object]) -> PhaseRecord:
         raise ChainRecordError("persisted declaration_ledger must be a str->str map")
     for cost_name in ("implementer_cost", "orchestrator_cost"):
         cost = data[cost_name]
-        if cost is not None and not isinstance(cost, (int, float)):
+        if cost is not None and (
+            isinstance(cost, bool) or not isinstance(cost, (int, float))
+        ):
             raise ChainRecordError(f"persisted {cost_name} must be a number or null")
+    declaration: dict[str, AppliedState] = {}
+    for name, value in ledger_data.items():
+        try:
+            declaration[name] = AppliedState(value)
+        except ValueError as exc:
+            raise ChainRecordError(
+                f"persisted declaration_ledger[{name!r}] is not a known "
+                f"applied state: {value!r}"
+            ) from exc
     return PhaseRecord(
         step_id=step_id,
         packet=packet_from_dict(packet),
@@ -398,9 +497,7 @@ def _phase_record_from_dict(data: Mapping[str, object]) -> PhaseRecord:
         reason=reason,
         implementer_mutations=_mutations_from_list(data["implementer_mutations"]),
         orchestrator_mutations=_mutations_from_list(data["orchestrator_mutations"]),
-        declaration_ledger={
-            name: AppliedState(value) for name, value in ledger_data.items()
-        },
+        declaration_ledger=declaration,
         implementer_cost=data["implementer_cost"],
         orchestrator_cost=data["orchestrator_cost"],
     )

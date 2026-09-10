@@ -217,6 +217,44 @@ def test_an_implementer_that_refuses_stops_the_route(tmp_path: Path) -> None:
     assert "refused" in decisions[0].reason
 
 
+def test_an_implementer_that_crashes_stops_the_route_without_propagating(
+    tmp_path: Path,
+) -> None:
+    """HP6: the live seam's most likely first failure. A crash closes the
+    chain the way a refusal does, so the caller still has something to
+    retain, rather than losing every decision the run had already made."""
+
+    def crasher(packet: HandoffPacket) -> ImplementerResult:
+        raise RuntimeError("subprocess died")
+
+    decisions = run_phases(
+        TASK, load_manifest(TASK), load_session_spec(TASK), crasher, tmp_path,
+        _grader(_ALL_PASS), base_revision="3e6607e533792ab0", **BUDGETS,
+    )
+    assert len(decisions) == 1
+    assert decisions[0].accepted is False
+    assert "crashed" in decisions[0].reason
+    assert "subprocess died" in decisions[0].reason
+    assert decisions[0].result.reported_outcome == "refused"
+
+
+def test_a_route_contract_violation_still_propagates_rather_than_being_retained(
+    tmp_path: Path,
+) -> None:
+    """The sibling of the crash test: a broken implementer -- one that
+    violates HP2's own contract -- is a bug to surface loudly, not a run
+    outcome to fold into a retained decision."""
+
+    def broken(packet: HandoffPacket) -> ImplementerResult:
+        raise RouteError("this implementer double is malformed")
+
+    with pytest.raises(RouteError, match="malformed"):
+        run_phases(
+            TASK, load_manifest(TASK), load_session_spec(TASK), broken, tmp_path,
+            _grader(_ALL_PASS), base_revision="3e6607e533792ab0", **BUDGETS,
+        )
+
+
 def test_the_route_grades_rather_than_trusting_the_implementer(
     tmp_path: Path,
 ) -> None:

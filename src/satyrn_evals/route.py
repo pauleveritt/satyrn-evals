@@ -258,6 +258,15 @@ def run_phases(
     path emits ``chain_end``, including an implementer refusal and a grader
     rejection -- a chain that stops early is when attribution matters most,
     and it is the easiest window to leave unclosed.
+
+    An implementer that **raises** (HP6: the live seam's most likely first
+    failure -- a subprocess dying, a network error) closes the chain the same
+    way a refusal does, with a synthesized ``ImplementerResult`` naming the
+    exception, rather than unwinding the stack and leaving the caller with no
+    ``decisions`` at all to retain. A ``RouteError`` is different: it means
+    the implementer violated HP2's own contract (a broken test double, a
+    malformed result), which is a bug to surface loudly during development,
+    not a run outcome to retain, so it is re-raised unchanged.
     """
     decisions: list[PhaseDecision] = []
     last_step_id = ""
@@ -282,7 +291,23 @@ def run_phases(
             tool_call_budget=tool_call_budget,
         )
         observe(step.id, "before_handoff", packet=packet)
-        result = implementer(packet)
+        try:
+            result = implementer(packet)
+        except RouteError:
+            raise
+        except Exception as exc:
+            crash_result = ImplementerResult(
+                changed_files=(),
+                reported_outcome="refused",
+                message=f"implementer crashed: {exc}",
+            )
+            observe(step.id, "after_handoff", result=crash_result)
+            decision = PhaseDecision(
+                step.id, False, f"implementer crashed: {exc}", crash_result,
+            )
+            decisions.append(decision)
+            observe(step.id, "chain_end", decision=decision)
+            return decisions
         observe(step.id, "after_handoff", result=result)
         match result.reported_outcome:
             case "refused":
