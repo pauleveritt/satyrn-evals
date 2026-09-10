@@ -47,10 +47,10 @@ superiority — D7's acceptance names it exactly:
 
 ## Two ways this run does not yet test the planned workflow
 
-**Added 2026-09-10, from Sol's review. Both are blocking, not merely
+**Added 2026-09-10, from Sol's review. Both were blocking, not merely
 disclosed** — a run that completes cleanly under either gap proves less than
-this record's own framing claims, and neither is resolved by anything else
-in this correction round.
+this record's own framing claims. One is now closed; see the correction
+below the other's paragraph.
 
 **HP3 isolation is not composed.** The design's one path is "inspected
 packet → bounded implementer → **isolated candidate** → explicit integration
@@ -79,13 +79,23 @@ Closing this well would mean the harness — not the model — running
 `self_test_command` after each turn and retaining the result, which is a
 real, scoped fix that is not implemented in this correction round.
 
+**Resolved 2026-09-10.** `command_implementer` now runs the packet's
+declared `self_test_command` once, after the implementer's own turn, on the
+executable seam only, and retains the outcome
+([design](../superpowers/specs/2026-09-10-self-test-harness-design.md),
+[plan](../superpowers/plans/2026-09-10-self-test-harness.md)).
+`declaration_ledger` reports `self_test_command: applied` when the harness
+ran it, never a verdict: the exit code never reaches `PhaseRecord.accepted`.
+A live run under this record now exercises a working verification loop;
+only chained isolation remains open below.
+
 **What this means for authorization.** A live run under this record's
 current settings would still prove *operability* — one real implementer
-completing a packet chain with HP6 now retaining candidate evidence and
-grading-order preservation — but would not exercise chained isolation or a
-working verification loop. Whether that is worth running before those two
-are addressed is the maintainer's call, not this document's; it is named
-here so the decision is made with the gap in view, not discovered after.
+completing a packet chain with HP6 now retaining candidate evidence,
+grading-order preservation, and a real self-test outcome — but would not
+exercise chained isolation. The maintainer's decision: **block HP7 on HP3
+composition** rather than run without it, so this precondition stays
+outstanding until chained isolation is composed into this route.
 
 ## The arm
 
