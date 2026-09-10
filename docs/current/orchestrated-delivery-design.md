@@ -247,6 +247,21 @@ step carrying no retained events **fails** the chain check, which is the
 declaration that the runtime does not actually apply is recorded as declared
 **and** not applied, never as applied.
 
+> **Corrected 2026-09-10, by the Astra-style acceptance review of the HP6
+> implementation.** "Recomputes from retained artifacts" is met only in a
+> narrower sense than the sentence claims. What HP6 retains is mutation
+> **paths and kinds**, never patch content, so there is nothing to re-grade a
+> decision's correctness against; `decisions_from_record` reads each phase's
+> stored fields back losslessly rather than independently re-deriving them,
+> and by construction cannot disagree with what was stored. What the
+> acceptance line actually proves — the document alone, with no task
+> directory, no manifest and no grader, carries every field the accept/reject
+> sequence needs, across all three exit paths `run_phases` can take — still
+> holds and is BRIEF.md invariant 1's real content. Re-scoring the retained
+> **candidate** from its own bytes is not attempted by HP6 and stays out of
+> scope; the HP6 plan's own correction block (`2026-09-09-hp6-chain-retention.md`,
+> HP6.7) carries the full accounting.
+
 **D7 — One bounded live route proof.** One orchestrated delivery of the three
 phases, `n` frozen at 1, the Baseline model, the adopted verification
 instruction on the implementer.

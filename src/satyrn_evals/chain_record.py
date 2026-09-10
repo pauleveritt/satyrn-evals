@@ -20,6 +20,7 @@ regraded from it; regrading the candidate itself is not attempted.
 """
 
 import json
+import math
 import os
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -161,11 +162,13 @@ class PhaseRecord:
             if (
                 isinstance(value, bool)
                 or not isinstance(value, (int, float))
+                or not math.isfinite(value)
                 or value <= 0
             ):
                 raise ChainRecordError(
-                    f"{name} must be a positive number or null: {value!r}; a "
-                    "zero or negative value is not a stand-in for unmeasured"
+                    f"{name} must be a positive, finite number or null: "
+                    f"{value!r}; a zero, negative, NaN or infinite value is "
+                    "not a stand-in for unmeasured"
                 )
 
     @property
@@ -553,12 +556,18 @@ def write_chain_record(path: Path, record: ChainRecord) -> None:
     """Write the record durably: fsync the file, then replace atomically.
 
     Mirrors ``session_record.write_session_record``'s shape exactly, so a
-    reader of either finds the same durability guarantee.
+    reader of either finds the same durability guarantee. ``allow_nan=False``
+    is defense in depth, not the primary guard: ``PhaseRecord.__post_init__``
+    already refuses a non-finite cost at construction, so this only fires if
+    some other ``float`` field ever goes non-finite -- a silent ``NaN``
+    written as the bare JSON token is precisely the "unmeasured wearing a
+    number" shape HP6.4 exists to refuse, and a loud ``ValueError`` here beats
+    a value that reads back silently.
     """
     data = chain_record_to_dict(record)
     tmp = path.with_name(path.name + ".tmp")
     with open(tmp, "w", encoding="utf-8") as f:
-        f.write(json.dumps(data, indent=2) + "\n")
+        f.write(json.dumps(data, indent=2, allow_nan=False) + "\n")
         f.flush()
         os.fsync(f.fileno())
     os.replace(tmp, path)

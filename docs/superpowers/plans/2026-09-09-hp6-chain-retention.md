@@ -142,7 +142,24 @@ chain stopped by a grader rejection — all three exit paths, since a
 recomputation that only handles the happy path retains nothing about the
 runs that matter.
 
-## Explicitly not in HP6
+> **Corrected 2026-09-10, by the Astra-style acceptance review.** "Recomputes"
+> and "re-derives" overstate what HP6.7 and HP6.6's second finding actually
+> do. `decisions_from_record` reads `step_id`/`accepted`/`reason`/`result`
+> back off each `PhaseRecord` verbatim into a `PhaseDecision`; it cannot
+> disagree with what was stored, by construction, because nothing independent
+> is recomputed from raw evidence — HP6 retains mutation **paths and kinds**,
+> not patch content, so there is nothing to re-grade a decision against.
+> What the acceptance criterion actually proves, and the only thing it ever
+> could given what is retained, is narrower and still real: the document
+> alone, with no task directory, no manifest and no grader, carries every
+> field the sequence needs, across all three exit paths. HP6.6's
+> "recomputed decision disagrees" finding is, likewise, a consistency check
+> between two independently *captured* copies of one run's closing decision
+> (the `chain_end` boundary event and the phase's own record), not a
+> recomputation from anything else. Regrading a retained candidate from its
+> bytes is not attempted and is not in scope. This also corrects D6's
+> acceptance line in `orchestrated-delivery-design.md`, which the same
+> review flagged for the identical overstatement.
 
 Cost thresholds, a budget verdict, or any use of a recorded cost to decide
 anything. **Applying** any declaration the ledger records as unapplied —

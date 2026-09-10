@@ -264,7 +264,7 @@ def test_a_zero_cost_is_refused_as_a_stand_in_for_unmeasured(
         tmp_path, scripted_implementer(ROUTE_SCENARIO, tmp_path)
     )
     pair = (costs.get("implementer"), costs.get("orchestrator"))
-    with pytest.raises(ChainRecordError, match="zero or negative"):
+    with pytest.raises(ChainRecordError, match="not a stand-in for unmeasured"):
         build_chain_record(
             decisions, events, ledger, executable_seam=False,
             costs={STEPS[0]: pair},
@@ -275,11 +275,40 @@ def test_a_negative_cost_is_refused(tmp_path: Path) -> None:
     decisions, events, ledger = _run_chain(
         tmp_path, scripted_implementer(ROUTE_SCENARIO, tmp_path)
     )
-    with pytest.raises(ChainRecordError, match="zero or negative"):
+    with pytest.raises(ChainRecordError, match="not a stand-in for unmeasured"):
         build_chain_record(
             decisions, events, ledger, executable_seam=False,
             costs={STEPS[0]: (-1.0, None)},
         )
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_a_non_finite_cost_is_refused(tmp_path: Path, value: float) -> None:
+    """A NaN cost is unmeasured wearing a number: `value <= 0` alone lets it
+    through, since every comparison against NaN is False."""
+    decisions, events, ledger = _run_chain(
+        tmp_path, scripted_implementer(ROUTE_SCENARIO, tmp_path)
+    )
+    with pytest.raises(ChainRecordError, match="finite"):
+        build_chain_record(
+            decisions, events, ledger, executable_seam=False,
+            costs={STEPS[0]: (value, None)},
+        )
+
+
+def test_a_nan_cost_cannot_be_written_even_if_construction_is_bypassed(
+    tmp_path: Path,
+) -> None:
+    """Defense in depth: `write_chain_record` refuses a non-finite float on
+    its own, in case a future caller ever reaches a `PhaseRecord` carrying
+    one some other way than `PhaseRecord.__init__` -- which is the only path
+    `__post_init__` actually guards. ``object.__setattr__`` bypasses a frozen
+    dataclass's own immutability the same way, to reach that state directly
+    rather than assume it is unreachable."""
+    record = _delivered_record(tmp_path)
+    object.__setattr__(record.phases[0], "implementer_cost", float("nan"))
+    with pytest.raises(ValueError, match="not JSON compliant|NaN"):
+        write_chain_record(tmp_path / "chain.json", record)
 
 
 # --- HP6.5: orchestrator fallback, labelled from observation -----------------
