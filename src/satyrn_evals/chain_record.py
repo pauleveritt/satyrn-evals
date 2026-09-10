@@ -39,6 +39,7 @@ from satyrn_evals.attribution import (
     snapshot,
 )
 from satyrn_evals.engine_contract import admits
+from satyrn_evals.engine_evidence import git_diff_mutations, git_show_content
 from satyrn_evals.errors import ChainRecordError
 from satyrn_evals.manifest import TaskManifest
 from satyrn_evals.packet import (
@@ -561,6 +562,102 @@ def run_and_record_chain(
         )
     finally:
         record = persist_partial()
+    return record
+
+
+def run_and_record_engine_chain(
+    task_dir: Path,
+    manifest: TaskManifest,
+    spec: SessionSpec,
+    implementer: Implementer,
+    receipts: list[dict[str, object]],
+    repo: Path,
+    grader: PhaseGrader,
+    output_path: Path,
+    *,
+    turn_budget: int,
+    tool_call_budget: int,
+) -> ChainRecord:
+    """Retention for the engine-composed route: git-backed evidence, not a
+    directory snapshot -- the isolated worktree each phase ran in is
+    already gone by the time this runs (`delivery.py` deletes it on
+    success). `orchestrator_mutations` is `()` for every phase, never
+    `None`: no window exists in which an orchestrator could act between
+    isolated, disposable worktrees, so there is nothing to leave
+    unobserved. `receipts` is read after `run_phases` returns, in the same
+    order phases ran -- `engine_command_implementer`'s own side channel
+    for the git commits `ImplementerResult` has no field for.
+
+    **Known gap, not parity with `run_and_record_chain`:** no per-phase
+    persistence and no `finally` -- a crash mid-chain here loses
+    everything, not just the in-flight phase, unlike HP6's own
+    crash-safety guarantee. Named in the HP3 composition plan as
+    follow-on work, not silently carried forward as if it had parity.
+    """
+    events: list[BoundaryEvent] = []
+
+    def observe(event: BoundaryEvent) -> None:
+        events.append(event)
+
+    decisions = run_phases(
+        task_dir, manifest, spec, implementer, repo, grader,
+        base_revision="engine-composed",  # declared_not_applied regardless
+        turn_budget=turn_budget, tool_call_budget=tool_call_budget,
+        observer=observe,
+    )
+    packets = {
+        e.step_id: e.packet for e in events
+        if e.boundary == "before_handoff" and e.packet is not None
+    }
+    evidence_dir = output_path.with_name(output_path.stem + "-evidence")
+    phases: list[PhaseRecord] = []
+    for decision, receipt in zip(decisions, receipts, strict=True):
+        base_commit = receipt.get("base_commit")
+        candidate_commit = receipt.get("candidate_commit")
+        implementer_mutations: tuple[Mutation, ...] | None = None
+        snap_path: str | None = None
+        snap_digest: str | None = None
+        if isinstance(base_commit, str) and isinstance(candidate_commit, str):
+            implementer_mutations = git_diff_mutations(repo, base_commit, candidate_commit)
+            content = {
+                m.path: git_show_content(repo, candidate_commit, m.path)
+                for m in implementer_mutations
+                if m.kind != "deleted"
+            }
+            content = {k: v for k, v in content.items() if v is not None}
+            payload = json.dumps(content, indent=2, sort_keys=True) + "\n"
+            path = evidence_dir / f"{decision.step_id}-candidate.json"
+            _write_text_durably(path, payload)
+            snap_path = str(path)
+            snap_digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+        phases.append(
+            PhaseRecord(
+                step_id=decision.step_id,
+                packet=packets[decision.step_id],
+                result=decision.result,
+                accepted=decision.accepted,
+                reason=decision.reason,
+                implementer_mutations=implementer_mutations,
+                orchestrator_mutations=(),
+                declaration_ledger=declaration_ledger(
+                    executable_seam=True,
+                    packet=packets[decision.step_id],
+                    implementer_mutations=implementer_mutations,
+                    self_test_ran=False,
+                ),
+                candidate_snapshot_path=snap_path,
+                candidate_snapshot_digest=snap_digest,
+            )
+        )
+    final_decision = next(
+        (e.decision for e in events if e.boundary == "chain_end"), None
+    )
+    record = ChainRecord(
+        version=CHAIN_RECORD_VERSION,
+        phases=tuple(phases),
+        final_decision=final_decision,
+    )
+    write_chain_record(output_path, record)
     return record
 
 
