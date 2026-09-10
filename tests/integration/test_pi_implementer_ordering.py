@@ -39,7 +39,7 @@ def test_the_marker_precedes_real_child_output_in_the_transcript(
     monkeypatch.setattr(
         pi_implementer,
         "build_pi_argv",
-        lambda model, tools, prompt, pi_bin: ["/bin/echo", "real-child-output"],
+        lambda model, tools, prompt, pi_bin, **_: ["/bin/echo", "real-child-output"],
     )
 
     pi_implementer.main(["--model", "irrelevant", "--pi-bin", "/bin/echo"])
@@ -69,7 +69,7 @@ def test_the_marker_precedes_real_child_output_across_two_phases(
     monkeypatch.setattr(
         pi_implementer,
         "build_pi_argv",
-        lambda model, tools, prompt, pi_bin: ["/bin/echo", "turn-output"],
+        lambda model, tools, prompt, pi_bin, **_: ["/bin/echo", "turn-output"],
     )
 
     pi_implementer.main(["--model", "irrelevant", "--pi-bin", "/bin/echo"])
