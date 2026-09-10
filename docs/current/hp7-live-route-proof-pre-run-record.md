@@ -317,6 +317,16 @@ rather than not retained at all.
    acceptance review yet.** Spending a budgeted live run on unaccepted
    machinery risks re-doing the run after a review finding changes retained
    behavior.
+
+   **Resolved 2026-09-10.** HP1, HP2, HP4, HP5 and HP6 are all accepted, each
+   by an independent Astra-style review with no memory of the implementation
+   work, verifying spec/plan claims against current code and tests rather
+   than the implementer's own summary (`ROADMAP.md`, HP cycle table). No
+   findings, no open design questions on any of the five. HP3 remains
+   unaccepted — it is `satyrn-engine`'s own acceptance, tracked in that
+   repository, not this precondition — and is the subject of precondition 1's
+   sibling gap below (chained isolation is not composed into this route at
+   all, independent of HP3's acceptance status).
 3. **The environment the preamble promises must exist**, exactly as the
    phased-session record's precondition 1 required: materialize `base/`, run
    the pinned install, confirm `fastapi`, `turbohtml`, `pytest` import at the
