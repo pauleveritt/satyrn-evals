@@ -29,6 +29,7 @@ cycles/index
 ../superpowers/specs/2026-09-09-hp1-handoff-packet-design
 ../superpowers/specs/2026-09-10-self-test-harness-design
 ../superpowers/plans/2026-09-10-self-test-harness
+../superpowers/specs/2026-09-10-turn-ledger-design
 ```
 
 The repository-root
