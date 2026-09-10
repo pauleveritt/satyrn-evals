@@ -24,14 +24,21 @@ from grader_tests._seed import SEED_COMPLAINTS, Complaint
 def test_complaint_identity_is_stable_and_keyword_only():
     field_map = {f.name: f for f in fields(Complaint)}
     assert {"id", "status"} <= field_map.keys()
-    assert field_map["id"].kw_only is True
-    assert field_map["status"].kw_only is True
 
     # The existing positional contract (agent_name, text) must still
     # construct -- this is the preservation proof the identity field must
-    # not break.
+    # not break. This is a behavioral check, not a mechanism check: how
+    # id/status achieve that (kw_only, or plain fields with defaults
+    # placed after the required two) is the solver's choice, not the
+    # prompt's. A live Baseline transcript (2026-09-10) found a valid
+    # solution using the second mechanism that an earlier, stricter
+    # version of this test wrongly rejected by asserting `kw_only is
+    # True` directly -- see docs/current/te4-route-proof-result.md,
+    # Finding 1.
     first = Complaint("first", "First complaint")
     second = Complaint("second", "Second complaint")
+    assert first.agent_name == "first"
+    assert first.text == "First complaint"
     assert first.id != second.id
     assert second.id > first.id
     assert first.status == "open"

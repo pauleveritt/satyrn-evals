@@ -55,13 +55,16 @@ tests only the mechanism, not the behavior it exists to protect. The
 fix is to delete the two `kw_only` assertions and keep (optionally
 strengthen, e.g. asserting `first.agent_name == "first"`) the
 positional-construction lines already present — the same shape
-`test_complaint_model_contract_is_preserved` already uses. **Not fixed
-in this document**: applying that edit, re-running the qualification
-suite, and re-confirming `known-broken` still fails the same way (it
-should — that fixture makes `id` a required positional field with no
-default at all, which the corrected check would still catch) needs its
-own small pass, separate from this result. Until that lands,
-`agentclinic-complaint-lifecycle`'s phase-4 check is known to reject at
+`test_complaint_model_contract_is_preserved` already uses.
+
+**Fixed 2026-09-10.** The two `kw_only` assertions are removed;
+`test_complaint_identity_is_stable_and_keyword_only` now also asserts
+`first.agent_name`/`first.text`. The qualification suite (8 tests)
+still passes in full, `known-broken` still fails the same way (its
+`id` field has no default at all, a behavioral break the corrected
+check still catches), and Baseline-01's own real `models.py` — the
+concrete case that motivated this — now re-grades 18/18 through
+`satyrn_evals.grade` directly. Until this landed,
 least one valid solution.
 
 ## Finding 2: Engine's phase-2-board timeout reproduced, same signature, second independent occurrence
@@ -182,3 +185,12 @@ Neither finding changes TE4's own status: no completion-reliability or
 turn-efficiency claim was ever on the table for this bounded proof, and
 none is claimed here. **TE4's screen is not proposed or authorized by
 this result.**
+
+**Follow-up, 2026-09-10.** The recommended offline investigation is
+done — see
+[the phase-2-board runaway investigation](phase-2-board-runaway-investigation.md):
+a specific, reproducible mechanism (a destructive `edit` that deletes
+the phase-1 home route, converging on a file with an import bug never
+caught because `run_self_test` is never called), found by comparing
+this attempt against the three other real Engine phase-2-board
+transcripts on record.

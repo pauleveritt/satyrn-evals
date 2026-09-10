@@ -85,12 +85,18 @@ past artifact. Archived material does not set current policy.
   turn efficiency, and does not authorize TE4's own screen.
 - [TE4 route proof — result](te4-route-proof-result.md) reports the
   two attempts: Baseline completed all four phases but a phase-4 check
-  rejects a valid solution (a grader defect, not fixed here), and
+  rejected a valid solution (a grader defect, **fixed** 2026-09-10), and
   Engine's phase-2-board timeout reproduced with the same signature as
   TE2/HP8's own Engine-01 — 2 of Engine's 4 live phase-2-board attempts
   have now run away, the other 2 completed in 8–9 turns. Recommends
   investigating that pathology before TE4's screen, which is not
   authorized by this result.
+- [Phase-2-board runaway — investigation](phase-2-board-runaway-investigation.md)
+  compares all four real Engine phase-2-board transcripts on record and
+  finds a specific, reproducible mechanism: a destructive `edit` that
+  deletes the phase-1 home route, converging on a file with an import
+  bug never caught because `run_self_test` is never called. Names a
+  candidate remedy; authorizes no test of it.
 - [Pre-run record: run_self_test live verification](self-test-tool-live-verification-pre-run-record.md)
   proposes one bounded `pi` invocation proving the self-test tool is
   reachable and its content legible, outside every TE denominator, and
@@ -140,6 +146,7 @@ te2-hp8-screen-result
 te4-harder-roadmap-design
 te4-route-proof-pre-run-record
 te4-route-proof-result
+phase-2-board-runaway-investigation
 self-test-tool-live-verification-pre-run-record
 first-engine-comparison-plan
 first-smoke-run-record
