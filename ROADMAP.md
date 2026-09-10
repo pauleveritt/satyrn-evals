@@ -210,6 +210,18 @@ claims and decide. Count every role and failed attempt. Historical screens
 remain outside fresh confirmation denominators. Each confirmation freezes its
 practical thresholds, statistical design and authorized budget before launch.
 
+**TE1 progress, 2026-09-10.** The actual pair is resolved: continuous Pi
+(Baseline) against Phase HP's packet route with HP3 composed (Engine) —
+`arms/engine.json` is a different, paused comparison and is not this pair.
+This tests the workflow bundle, never Engine's own in-conversation guards,
+which are not loaded on this route; HP3 composition stays an explicit
+readiness blocker (see the HP7 row). A shared turn counter
+(`src/satyrn_evals/turn_ledger.py`) now answers "how many model turns did
+this transcript actually take" for either route's transcript shape, tested
+against a real retained transcript. One gap stays open: Baseline transcripts
+do not currently retain `turn_start` at all, so the started-request half of
+TE1's turn definition is not yet measurable there — named, not yet closed.
+
 HP remains responsible for the composed, retained, regradable route; TE does
 not absorb unfinished HP requirements or reopen the paused single-task tuning
 campaign below. Negative and inconclusive results are legitimate completion,

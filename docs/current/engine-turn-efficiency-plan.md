@@ -35,6 +35,66 @@ Either claim may be supported, contradicted, or inconclusive independently.
 conditions and ceiling, not an absolute capability limit. These two roadmaps
 do not establish that Engine is generally better across development work.
 
+## The treatment, resolved 2026-09-10
+
+TE1 found the pair this document was originally written against does not
+exist as such. `arms/engine.json` — pinned to `engine_commit: fc22622`,
+predating HP3, driving `satyrn-engine attempt` — is the paused engine
+comparison's arm, a different campaign, and must not be read as this
+phase's Engine configuration. **The actual pair, adopted here as the
+treatment:**
+
+- **Baseline:** the continuous Pi session, `adapters/pi_session.py`, one
+  conversation carried through all three phases.
+- **Engine:** Phase HP's orchestrated packet route —
+  `route.run_phases` dispatching bounded per-phase handoffs to a real
+  implementer (`adapters/pi_implementer.py`), **with HP3's chained
+  isolation composed into it.**
+
+**This tests a workflow bundle — packet-bounded scope, explicit per-phase
+facts, and (once composed) isolated worktrees preventing cross-phase
+contamination — never Engine's own in-conversation guards.** The loop
+breaker and progress rule are Pi extensions; `pi_implementer.py` invokes Pi
+with `--no-extensions --no-skills`, so neither loads. This corrects TE1's
+own later text below ("Existing Engine breaker behavior is part of the
+frozen treatment") — no breaker behavior is in this treatment at all, and
+TE draws no conclusion about it. Any turn savings Engine shows here come
+from the bundle's structure, not from a mechanism this route never
+exercises; attributing a result to a specific mechanism, rather than the
+bundle, needs a separately controlled ablation (TE6 already says this).
+
+**HP3 composition is an explicit readiness blocker**, not a detail to
+finish quietly alongside confirmation. TE does not launch against the
+uncomposed route.
+[`hp7-live-route-proof-pre-run-record.md`](hp7-live-route-proof-pre-run-record.md)
+already blocks HP7 on this by the same maintainer decision; TE inherits
+the block rather than re-deciding it. `satyrn-engine`'s own roadmap names
+the concrete external-interface and contract-mapping gap that composition
+needs (`satyrn-engine/ROADMAP.md`, "Composing HP3 into satyrn-evals").
+
+**TE's two goals survive this correction; only their attribution changes.**
+Fewer turns on easy work both configurations complete, and more reliable
+completion of harder work within a shared ceiling, remain the claims
+TE2-TE5 test. What changed is what a positive result would mean: not
+"Engine's guards prevent doom loops" (untested here, since they are never
+loaded), but "this workflow bundle needs fewer turns / completes more
+reliably than a continuous session" — the configuration-bundle framing
+TE1's own text below already required is not new; this section is what
+applying it to the concrete, resolved pair requires.
+
+**One outstanding readiness gap, not yet closed by this resolution.**
+`adapters/pi_session.py`'s own event filter
+(`_SESSION_KINDS`) does not retain `turn_start`, so Baseline transcripts
+cannot currently answer "how many turns started" or "was one left open" —
+confirmed against a real retained transcript
+(`docs/superpowers/specs/2026-09-10-turn-ledger-design.md`). The turn
+ledger (`src/satyrn_evals/turn_ledger.py`) reports this honestly as unknown
+rather than a fabricated zero, which is necessary but not sufficient: TE1's
+own "started model generation request" turn definition below is not yet
+fully measurable for Baseline until this capture gap is separately closed.
+Treat the ledger's completion as an honest counter, not as full measurement
+coverage.
+
 ## Entry: finish HP, do not redefine its acceptance
 
 HP owns the operable route; TE owns confirmation. Do not move unfinished HP
@@ -150,8 +210,12 @@ and phases without resets at handoffs, plus a whole-attempt safety deadline
 and token/resource limits. Check representative retained traces before
 proposing values. Record how concurrent/in-flight calls are bounded; a textual
 packet budget is not enforcement. Do not add a harness repeat cutoff when
-recovery from repetition is the question. Existing Engine breaker behavior is
-part of the frozen treatment, not a newly imposed censoring rule.
+recovery from repetition is the question. **Corrected 2026-09-10** (see "The
+treatment, resolved" above): no Engine breaker behavior is loaded in this
+treatment at all, so there is none to call part of the frozen treatment.
+Whether recovery from repetition needs a guard neither route currently has
+is exactly what confirmation observes, not something to preempt by adding
+one now.
 
 **Exit:** the pair really exercises Engine versus Baseline, the turn accounting
 is reproducible, and the run can be bounded without hiding failed work. New
