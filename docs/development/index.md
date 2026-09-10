@@ -31,6 +31,7 @@ cycles/index
 ../superpowers/plans/2026-09-10-self-test-harness
 ../superpowers/specs/2026-09-10-turn-ledger-design
 ../superpowers/plans/2026-09-10-turn-ledger
+../superpowers/specs/2026-09-10-self-test-tool-design
 ```
 
 The repository-root
