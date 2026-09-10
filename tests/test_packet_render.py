@@ -257,3 +257,29 @@ def test_render_projection_omits_an_absent_self_test_command() -> None:
     text = render_projection(worker_projection(packet))
     assert "self_test_command" not in text
     assert "objective" in text
+
+
+@pytest.mark.parametrize(
+    "projection",
+    [
+        {"facts": ["FastAPI"]},  # missing entirely
+        {"objective": None, "facts": ["FastAPI"]},
+        {"objective": "   ", "facts": ["FastAPI"]},
+        {"objective": 5, "facts": ["FastAPI"]},
+    ],
+)
+def test_render_projection_refuses_a_missing_or_blank_objective(
+    projection: dict[str, object],
+) -> None:
+    """A projection missing `objective` must not silently render whatever
+    fields it does have and launch an implementer on nothing -- the same
+    rule `HandoffPacket.__post_init__` already enforces for the packet
+    itself (`_check_text`)."""
+    with pytest.raises(PacketError, match="objective"):
+        render_projection(projection)
+
+
+def test_render_projection_accepts_the_real_objective() -> None:
+    """The sibling: a real projection's `objective` passes."""
+    packet = _packet()
+    assert "objective" in render_projection(worker_projection(packet))

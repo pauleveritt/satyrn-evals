@@ -52,11 +52,12 @@ import json
 import os
 import subprocess
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 
 from satyrn_evals.adapters.pi_session import session_child_environment
 from satyrn_evals.attribution import diff_snapshots, snapshot
-from satyrn_evals.errors import UsageError
+from satyrn_evals.errors import PacketError, UsageError
 from satyrn_evals.packet import render_projection
 from satyrn_evals.route import (
     PACKET_ENV,
@@ -180,6 +181,52 @@ def build_pi_argv(
     ]
 
 
+def read_env_paths(environment: Mapping[str, str]) -> tuple[Path, Path]:
+    """Where the packet crosses in and the result must cross out.
+
+    Mirrors ``attempt_pi.read_artifact_paths``: a missing or blank variable
+    is refused by name rather than reaching a bare ``KeyError`` from
+    ``os.environ[...]``. Both paths are resolved, so a relative
+    ``SATYRN_IMPLEMENTER_RESULT`` is anchored to the caller's cwd rather than
+    silently producing a workspace directory nothing else agrees on.
+    """
+    packet = environment.get(PACKET_ENV, "")
+    if not packet:
+        raise AdapterError(f"{PACKET_ENV} is required")
+    result = environment.get(RESULT_ENV, "")
+    if not result:
+        raise AdapterError(f"{RESULT_ENV} is required")
+    return Path(packet).resolve(), Path(result).resolve()
+
+
+def read_projection(packet_path: Path) -> dict[str, object]:
+    """The worker's own packet projection: read and parsed legibly.
+
+    Corrected 2026-09-10: the first version read this with a bare
+    ``json.loads(packet_path.read_text())``, so a missing file, an unreadable
+    one, or malformed JSON each surfaced as a raw traceback rather than an
+    ``AdapterError`` -- the same loud-but-illegible shape every other
+    exception this adapter can hit was already refused for.
+    """
+    try:
+        text = packet_path.read_text()
+    except OSError as exc:
+        raise AdapterError(
+            f"cannot read {PACKET_ENV} ({packet_path}): {exc}"
+        ) from exc
+    try:
+        projection = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise AdapterError(
+            f"{PACKET_ENV} ({packet_path}) is not valid JSON: {exc}"
+        ) from exc
+    if not isinstance(projection, dict):
+        raise AdapterError(
+            f"{PACKET_ENV} ({packet_path}) must be a JSON object"
+        )
+    return projection
+
+
 def result_from_mutation(paths: tuple[str, ...]) -> ImplementerResult:
     """The one honest reading of a diff: something changed, or nothing did.
 
@@ -206,12 +253,19 @@ def main(argv: list[str] | None = None) -> int:
     model, tools, pi_bin, timeout = parse_args(
         list(sys.argv[1:] if argv is None else argv)
     )
-    packet_path = Path(os.environ[PACKET_ENV])
-    result_path = Path(os.environ[RESULT_ENV])
+    packet_path, result_path = read_env_paths(os.environ)
     workspace = result_path.parent
 
-    projection = json.loads(packet_path.read_text())
-    prompt = render_projection(projection)
+    projection = read_projection(packet_path)
+    try:
+        prompt = render_projection(projection)
+    except PacketError as exc:
+        # `render_projection` refuses a shape defect (a non-object, an
+        # empty one, a missing objective) as `PacketError`. Re-raised as
+        # this adapter's own exception type so every failure this module can
+        # produce -- a bad env var, malformed JSON, a shape defect -- is one
+        # kind of thing to catch, not three.
+        raise AdapterError(str(exc)) from exc
 
     index = _next_call_index(workspace)
     marker = _marker(index)

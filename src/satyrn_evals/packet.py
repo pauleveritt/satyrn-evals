@@ -274,6 +274,15 @@ def render_projection(projection: Mapping[str, object]) -> str:
     golden fixture and every analysis path already use; this exists so the
     text a real implementer reads is provably the same rendering, not a
     second, divergent one.
+
+    **Corrected 2026-09-10, by the Astra-style acceptance review.** The first
+    version refused only a non-``Mapping`` or an empty projection, so a
+    projection missing ``objective`` -- corrupted, or from a packet builder
+    bug -- rendered whatever fields it did have and launched an implementer
+    on an instruction that says nothing about what to do. ``objective`` is
+    the one field ``HandoffPacket.__post_init__`` itself refuses to be blank
+    (``_check_text``); a worker-facing render must refuse the same way, not
+    silently degrade.
     """
     if not isinstance(projection, Mapping):
         raise PacketError("worker projection must be a JSON object")
@@ -281,6 +290,12 @@ def render_projection(projection: Mapping[str, object]) -> str:
         raise PacketError(
             "worker projection is empty: nothing to render, which is not "
             "the same as nothing to say"
+        )
+    objective = projection.get("objective")
+    if not isinstance(objective, str) or not objective.strip():
+        raise PacketError(
+            "worker projection is missing a non-blank objective: "
+            f"{objective!r}"
         )
     return _render_blocks(lambda name: projection.get(name))
 

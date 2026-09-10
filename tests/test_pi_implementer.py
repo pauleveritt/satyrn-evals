@@ -17,6 +17,8 @@ from satyrn_evals.adapters.pi_implementer import (
     build_pi_argv,
     main,
     parse_args,
+    read_env_paths,
+    read_projection,
     result_from_mutation,
 )
 from satyrn_evals.route import PACKET_ENV, RESULT_ENV
@@ -117,6 +119,70 @@ def test_an_empty_diff_is_refused_not_a_silent_delivery() -> None:
     assert result.message
 
 
+# --- legible failures, not bare tracebacks -----------------------------------
+
+
+def test_read_env_paths_refuses_a_missing_packet_var() -> None:
+    with pytest.raises(AdapterError, match=PACKET_ENV):
+        read_env_paths({RESULT_ENV: "/tmp/result.json"})
+
+
+def test_read_env_paths_refuses_a_missing_result_var() -> None:
+    with pytest.raises(AdapterError, match=RESULT_ENV):
+        read_env_paths({PACKET_ENV: "/tmp/packet.json"})
+
+
+def test_read_env_paths_resolves_a_relative_result_path(tmp_path: Path) -> None:
+    """A relative `SATYRN_IMPLEMENTER_RESULT` must anchor to the caller's
+    cwd rather than silently producing a workspace directory nothing else
+    agrees on -- caught by resolving both paths."""
+    import os
+
+    old_cwd = Path.cwd()
+    os.chdir(tmp_path)
+    try:
+        _, result_path = read_env_paths(
+            {PACKET_ENV: "packet.json", RESULT_ENV: "out/result.json"}
+        )
+    finally:
+        os.chdir(old_cwd)
+    assert result_path.is_absolute()
+    assert result_path == (tmp_path / "out" / "result.json").resolve()
+
+
+def test_read_env_paths_accepts_real_absolute_paths(tmp_path: Path) -> None:
+    packet, result = read_env_paths(
+        {PACKET_ENV: str(tmp_path / "p.json"), RESULT_ENV: str(tmp_path / "r.json")}
+    )
+    assert packet == (tmp_path / "p.json").resolve()
+    assert result == (tmp_path / "r.json").resolve()
+
+
+def test_read_projection_refuses_a_missing_file(tmp_path: Path) -> None:
+    with pytest.raises(AdapterError, match="cannot read"):
+        read_projection(tmp_path / "does-not-exist.json")
+
+
+def test_read_projection_refuses_malformed_json(tmp_path: Path) -> None:
+    path = tmp_path / "packet.json"
+    path.write_text("{not json")
+    with pytest.raises(AdapterError, match="not valid JSON"):
+        read_projection(path)
+
+
+def test_read_projection_refuses_a_json_list(tmp_path: Path) -> None:
+    path = tmp_path / "packet.json"
+    path.write_text("[1, 2, 3]")
+    with pytest.raises(AdapterError, match="JSON object"):
+        read_projection(path)
+
+
+def test_read_projection_accepts_a_real_projection(tmp_path: Path) -> None:
+    path = tmp_path / "packet.json"
+    path.write_text(json.dumps(PROJECTION))
+    assert read_projection(path) == PROJECTION
+
+
 # --- main(), subprocess replaced ---------------------------------------------
 
 
@@ -166,6 +232,21 @@ def seam(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, Path]:
     monkeypatch.setenv(PACKET_ENV, str(packet_path))
     monkeypatch.setenv(RESULT_ENV, str(result_path))
     return {"packet": packet_path, "result": result_path, "workspace": tmp_path}
+
+
+def test_main_refuses_a_corrupted_packet_before_launching_pi(
+    seam: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The concrete failure a review reproduced against the first version:
+    a projection missing `objective` rendered its other fields and launched
+    Pi anyway. It must now refuse before `subprocess.run` is ever called."""
+    seam["packet"].write_text(json.dumps({"facts": ["FastAPI 0.115"]}))
+    fake = _FakeRun()
+    monkeypatch.setattr(pi_implementer.subprocess, "run", fake)
+    with pytest.raises(AdapterError, match="objective"):
+        main(["--model", MODEL])
+    assert fake.calls == []
+    assert not seam["result"].exists()
 
 
 def test_main_writes_a_delivered_result_when_pi_changes_the_workspace(
