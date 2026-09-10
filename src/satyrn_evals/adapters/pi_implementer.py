@@ -26,10 +26,26 @@ construction rather than by observation. So every mutation Pi actually made
 is reported, in or out of scope, and HP6's ``check_chain`` -- which now
 checks exactly this -- is what says whether the scope held.
 
-A Pi process that exits non-zero is not handled here: ``command_implementer``
-runs it under ``subprocess.run(..., check=True)``, and ``route.run_phases``
-(HP6) converts that ``CalledProcessError`` into a retained, refused decision
-rather than losing the chain.
+A Pi process that exits non-zero, or that outlives ``--timeout``, is not
+handled here: ``command_implementer`` runs this adapter under
+``subprocess.run(..., check=True)``, and ``route.run_phases`` (HP6) converts
+a ``CalledProcessError`` (which a ``subprocess.TimeoutExpired`` on the Pi
+child also becomes, once it propagates out of ``main`` unhandled) into a
+retained, refused decision rather than losing the chain.
+
+**Corrected 2026-09-10, by the Astra-style acceptance review.** The first
+version opened the transcript and stderr files in truncating (``wb``) mode,
+so a three-phase chain retained only its last phase's evidence -- silently
+contradicting the HP7 pre-run record's own precondition that model identity
+comes from "the transcript's own field" after the run. Both now open in
+append (``ab``) mode with a marker line ahead of each turn's bytes, driven by
+a small on-disk counter -- the same shape ``fake_implementer.py`` already
+uses to track its own position without a packet carrying a step id. The
+first version also had no timeout anywhere on this seam, while the pre-run
+record declared one; ``--timeout`` now reaches ``subprocess.run`` directly.
+And Pi's stderr went to ``DEVNULL``; it is now captured for the same reason
+the transcript is -- a live model failure retained with no diagnostic at all
+is worse than one retained late.
 """
 
 import json
@@ -54,11 +70,36 @@ from satyrn_evals.route import (
 #: surface; this is HP2's bounded-implementer surface.
 DEFAULT_TOOLS: tuple[str, ...] = ("read", "write", "edit")
 
+#: Matches the HP7 pre-run record's frozen `--step-timeout 600s`
+#: (`docs/current/hp7-live-route-proof-pre-run-record.md`). A record naming a
+#: figure no code applies is the declared-vs-applied defect HP6.3 exists to
+#: name; this constant is what closes that gap on this seam.
+DEFAULT_TIMEOUT_SECONDS = 600
+
 TRANSCRIPT_NAME = ".satyrn-implementer-transcript.jsonl"
+STDERR_NAME = ".satyrn-implementer-stderr.log"
+COUNTER_NAME = ".satyrn-implementer-call-counter"
 """Written into the workspace itself, alongside `.satyrn-packet.json` and
 `.satyrn-result.json` -- and, like them, listed in
-`attribution.HARNESS_FILES` so it is retained evidence, never a mutation
-attributed to either role."""
+`attribution.HARNESS_FILES` so they are retained evidence, never a mutation
+attributed to either role. One fixed name apiece, appended to across phases,
+rather than one file per phase: `attribution.snapshot`'s exclusion list
+matches exact relative paths, not a pattern, so a per-phase filename would
+need a wider change to that shared module for three bookkeeping files' sake."""
+
+
+def _next_call_index(workspace: Path) -> int:
+    """This adapter's own position, tracked the way `fake_implementer.py`
+    tracks its: a packet carries no step id on purpose, so nothing here can
+    read one, and the workspace is the only shared state across calls."""
+    counter = workspace / COUNTER_NAME
+    index = int(counter.read_text()) if counter.is_file() else 0
+    counter.write_text(str(index + 1))
+    return index
+
+
+def _marker(index: int) -> bytes:
+    return json.dumps({"adapter_marker": "turn_start", "index": index}).encode() + b"\n"
 
 
 class AdapterError(UsageError):
@@ -71,10 +112,10 @@ def _value(args: list[str], index: int, flag: str) -> str:
     return args[index + 1]
 
 
-def parse_args(args: list[str]) -> tuple[str, tuple[str, ...], str]:
+def parse_args(args: list[str]) -> tuple[str, tuple[str, ...], str, int]:
     """``--model`` (required), ``--tools`` (default `read,write,edit`),
-    ``--pi-bin``."""
-    model, tools, pi_bin = "", DEFAULT_TOOLS, "pi"
+    ``--pi-bin``, ``--timeout`` seconds (default `DEFAULT_TIMEOUT_SECONDS`)."""
+    model, tools, pi_bin, timeout = "", DEFAULT_TOOLS, "pi", DEFAULT_TIMEOUT_SECONDS
     index = 0
     while index < len(args):
         match args[index]:
@@ -91,11 +132,25 @@ def parse_args(args: list[str]) -> tuple[str, tuple[str, ...], str]:
             case "--pi-bin":
                 pi_bin = _value(args, index, "--pi-bin")
                 index += 2
+            case "--timeout":
+                raw_timeout = _value(args, index, "--timeout")
+                try:
+                    timeout = int(raw_timeout)
+                except ValueError:
+                    raise AdapterError(
+                        f"--timeout must be an integer number of seconds: "
+                        f"{raw_timeout!r}"
+                    ) from None
+                if timeout <= 0:
+                    raise AdapterError(
+                        f"--timeout must be positive: {timeout!r}"
+                    )
+                index += 2
             case token:
                 raise AdapterError(f"unknown adapter argument: {token!r}")
     if not model:
         raise AdapterError("--model is required")
-    return model, tools, pi_bin
+    return model, tools, pi_bin, timeout
 
 
 def build_pi_argv(
@@ -148,7 +203,9 @@ def result_from_mutation(paths: tuple[str, ...]) -> ImplementerResult:
 
 
 def main(argv: list[str] | None = None) -> int:
-    model, tools, pi_bin = parse_args(list(sys.argv[1:] if argv is None else argv))
+    model, tools, pi_bin, timeout = parse_args(
+        list(sys.argv[1:] if argv is None else argv)
+    )
     packet_path = Path(os.environ[PACKET_ENV])
     result_path = Path(os.environ[RESULT_ENV])
     workspace = result_path.parent
@@ -156,15 +213,22 @@ def main(argv: list[str] | None = None) -> int:
     projection = json.loads(packet_path.read_text())
     prompt = render_projection(projection)
 
+    index = _next_call_index(workspace)
+    marker = _marker(index)
     before = snapshot(workspace)
-    transcript_path = workspace / TRANSCRIPT_NAME
-    with open(transcript_path, "wb") as transcript:
+    with (
+        open(workspace / TRANSCRIPT_NAME, "ab") as transcript,
+        open(workspace / STDERR_NAME, "ab") as stderr_log,
+    ):
+        transcript.write(marker)
+        stderr_log.write(marker)
         subprocess.run(
             build_pi_argv(model, tools, prompt, pi_bin),
             cwd=workspace,
             stdout=transcript,
-            stderr=subprocess.DEVNULL,
+            stderr=stderr_log,
             check=True,
+            timeout=timeout,
             env=session_child_environment(os.environ),
         )
     after = snapshot(workspace)

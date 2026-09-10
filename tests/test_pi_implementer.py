@@ -36,15 +36,16 @@ PROJECTION = {
 
 
 def test_default_tools_are_read_write_edit_and_never_bash() -> None:
-    model, tools, pi_bin = parse_args(["--model", MODEL])
+    model, tools, pi_bin, timeout = parse_args(["--model", MODEL])
     assert model == MODEL
     assert tools == ("read", "write", "edit")
     assert "bash" not in tools
     assert pi_bin == "pi"
+    assert timeout == pi_implementer.DEFAULT_TIMEOUT_SECONDS
 
 
 def test_explicit_tools_parse_in_the_order_given() -> None:
-    _, tools, _ = parse_args(["--model", MODEL, "--tools", "read,edit"])
+    _, tools, _, _ = parse_args(["--model", MODEL, "--tools", "read,edit"])
     assert tools == ("read", "edit")
 
 
@@ -61,6 +62,21 @@ def test_an_unknown_argument_is_refused() -> None:
 def test_empty_tools_value_is_refused() -> None:
     with pytest.raises(AdapterError, match="--tools needs"):
         parse_args(["--model", MODEL, "--tools", ""])
+
+
+def test_an_explicit_timeout_parses() -> None:
+    _, _, _, timeout = parse_args(["--model", MODEL, "--timeout", "120"])
+    assert timeout == 120
+
+
+def test_a_non_integer_timeout_is_refused() -> None:
+    with pytest.raises(AdapterError, match="--timeout must be an integer"):
+        parse_args(["--model", MODEL, "--timeout", "soon"])
+
+
+def test_a_non_positive_timeout_is_refused() -> None:
+    with pytest.raises(AdapterError, match="--timeout must be positive"):
+        parse_args(["--model", MODEL, "--timeout", "0"])
 
 
 # --- pi argv -----------------------------------------------------------------
@@ -105,22 +121,38 @@ def test_an_empty_diff_is_refused_not_a_silent_delivery() -> None:
 
 
 class _FakeRun:
-    def __init__(self, *, exit_code: int = 0, writes: dict[str, str] | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        exit_code: int = 0,
+        writes: dict[str, str] | None = None,
+        stderr_text: bytes = b"",
+        raise_timeout: bool = False,
+    ) -> None:
         self.exit_code = exit_code
         self.writes = writes or {}
+        self.stderr_text = stderr_text
+        self.raise_timeout = raise_timeout
         self.calls: list[list[str]] = []
+        self.timeouts: list[object] = []
 
     def __call__(self, argv: list[str], **kwargs: object) -> object:
         self.calls.append(list(argv))
+        self.timeouts.append(kwargs.get("timeout"))
         cwd = kwargs["cwd"]
         assert isinstance(cwd, Path)
+        if self.raise_timeout:
+            raise subprocess.TimeoutExpired(argv, kwargs.get("timeout"))
         for name, text in self.writes.items():
             path = cwd / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(text)
         stdout = kwargs["stdout"]
-        assert hasattr(stdout, "write")
+        stderr = kwargs["stderr"]
+        assert hasattr(stdout, "write") and hasattr(stderr, "write")
         stdout.write(b'{"type": "agent_start"}\n')  # type: ignore[union-attr]
+        if self.stderr_text:
+            stderr.write(self.stderr_text)  # type: ignore[union-attr]
         if kwargs.get("check") and self.exit_code != 0:
             raise subprocess.CalledProcessError(self.exit_code, argv)
         return subprocess.CompletedProcess(argv, self.exit_code)
@@ -172,9 +204,45 @@ def test_the_transcript_is_written_and_excluded_from_the_diff(
 
     transcript = seam["workspace"] / pi_implementer.TRANSCRIPT_NAME
     assert transcript.is_file()
-    assert transcript.read_bytes().strip() == b'{"type": "agent_start"}'
+    assert b'{"type": "agent_start"}' in transcript.read_bytes()
     result = json.loads(seam["result"].read_text())
     assert pi_implementer.TRANSCRIPT_NAME not in result["changed_files"]
+
+
+def test_the_transcript_and_stderr_accumulate_across_phases(
+    seam: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Corrected 2026-09-10: the first version truncated both files every
+    call, so only the last phase's evidence survived a chain. Three calls in
+    the same workspace -- exactly what `run_phases` does, once per step --
+    must leave all three phases' bytes on disk, each behind its own marker."""
+    fake = _FakeRun(writes={"app.py": "# built\n"}, stderr_text=b"warning: slow turn\n")
+    monkeypatch.setattr(pi_implementer.subprocess, "run", fake)
+
+    for _ in range(3):
+        main(["--model", MODEL])
+
+    transcript_text = (seam["workspace"] / pi_implementer.TRANSCRIPT_NAME).read_bytes()
+    stderr_text = (seam["workspace"] / pi_implementer.STDERR_NAME).read_bytes()
+    assert transcript_text.count(b'{"type": "agent_start"}') == 3
+    assert transcript_text.count(b'"adapter_marker"') == 3
+    assert b'"index": 0' in transcript_text and b'"index": 2' in transcript_text
+    assert stderr_text.count(b"warning: slow turn") == 3
+    counter = seam["workspace"] / pi_implementer.COUNTER_NAME
+    assert counter.read_text() == "3"
+
+
+def test_stderr_is_captured_rather_than_discarded(
+    seam: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake = _FakeRun(stderr_text=b"model server unreachable\n")
+    monkeypatch.setattr(pi_implementer.subprocess, "run", fake)
+    main(["--model", MODEL])
+
+    stderr_log = seam["workspace"] / pi_implementer.STDERR_NAME
+    assert b"model server unreachable" in stderr_log.read_bytes()
+    result = json.loads(seam["result"].read_text())
+    assert pi_implementer.STDERR_NAME not in result["changed_files"]
 
 
 def test_a_crashing_pi_process_propagates_rather_than_writing_a_result(
@@ -186,4 +254,35 @@ def test_a_crashing_pi_process_propagates_rather_than_writing_a_result(
     monkeypatch.setattr(pi_implementer.subprocess, "run", fake)
     with pytest.raises(subprocess.CalledProcessError):
         main(["--model", MODEL])
+    assert not seam["result"].exists()
+
+
+def test_the_default_timeout_reaches_subprocess_run(
+    seam: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake = _FakeRun()
+    monkeypatch.setattr(pi_implementer.subprocess, "run", fake)
+    main(["--model", MODEL])
+    assert fake.timeouts == [pi_implementer.DEFAULT_TIMEOUT_SECONDS]
+
+
+def test_an_explicit_timeout_reaches_subprocess_run(
+    seam: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake = _FakeRun()
+    monkeypatch.setattr(pi_implementer.subprocess, "run", fake)
+    main(["--model", MODEL, "--timeout", "45"])
+    assert fake.timeouts == [45]
+
+
+def test_a_hung_pi_process_propagates_as_a_timeout_rather_than_hanging(
+    seam: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A `TimeoutExpired` here is not handled specially: it propagates out
+    of `main` the same as any other crash, for `run_phases`'s HP6 crash
+    handling to retain one layer up."""
+    fake = _FakeRun(raise_timeout=True)
+    monkeypatch.setattr(pi_implementer.subprocess, "run", fake)
+    with pytest.raises(subprocess.TimeoutExpired):
+        main(["--model", MODEL, "--timeout", "5"])
     assert not seam["result"].exists()

@@ -140,7 +140,7 @@ question; it inherits the answer.
 | `base_revision` | the task tree sha256 above |
 | `turn_budget` | 20 |
 | `tool_call_budget` | 30 |
-| `--step-timeout` | 600s, matching the phased-session record's reasoning: the 2026-09-01 spike censored two of four Phase-3 runs at 300s |
+| `--timeout` | 600s, matching the phased-session record's reasoning: the 2026-09-01 spike censored two of four Phase-3 runs at 300s |
 
 **`turn_budget`/`tool_call_budget` are declared, not enforced, on this
 route.** HP6.3's declaration ledger records both `declared_not_applied` for
@@ -208,6 +208,16 @@ cleanup (`BRIEF.md` invariant 1). Specifically:
    at the adapter's pure surface (`tests/test_pi_implementer.py`,
    `subprocess.run` replaced) — **no run against a real Pi process has
    happened**, which is precondition 4 below, unchanged.
+
+   **Corrected 2026-09-10, by a second Astra-style review pass.** The first
+   version of this adapter truncated its transcript and stderr files every
+   phase, so only the last phase's evidence would have survived this very
+   run, contradicting precondition 4's own "from the transcript's own field"
+   requirement below; and the `--timeout` this table declares reached no
+   code at all. Both are fixed: transcript and stderr now append across
+   phases behind a per-turn marker, and `--timeout` (default matching the
+   600s in the table) reaches `subprocess.run` directly, so a hung model
+   server now surfaces as HP6's crash path rather than hanging the run.
 2. **Acceptance for HP1–HP6.** The ordering rule in `ROADMAP.md` — "HP4, HP5
    and HP6 all gate HP7" — is stated against implementation, and all three
    (plus HP1/HP2) are implemented; **none has been through its Astra
