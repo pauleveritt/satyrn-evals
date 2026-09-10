@@ -53,9 +53,13 @@ past artifact. Archived material does not set current policy.
   freezes the conditions, per-arm surfaces, limits, and stopping rules for the
   route verification and the four-attempt screen, before anything is spent.
 - [Pre-run record: HP7 live route proof](hp7-live-route-proof-pre-run-record.md)
-  freezes one bounded packet-route chain, states it establishes operability
-  and not superiority, and names the missing real-implementer adapter as the
-  blocking precondition. Authorizes nothing.
+  freezes one bounded packet-route chain and states it establishes
+  operability, not superiority. Corrected 2026-09-10 before any inference to
+  the HP3-composed route; both named blocking gaps closed the same day.
+- [HP7 live route proof — result](hp7-live-route-proof-result.md) reports
+  the one run this record authorized: all three phases accepted, real
+  chained isolation, zero `check_chain` findings, model identity verified
+  from the transcript.
 - [Pre-run record: run_self_test live verification](self-test-tool-live-verification-pre-run-record.md)
   proposes one bounded `pi` invocation proving the self-test tool is
   reachable and its content legible, outside every TE denominator, and
@@ -99,6 +103,7 @@ session-ordering-baseline-pre-run-record
 agentclinic-phase-session-proposal
 misleading-locus-r3-pre-run-record
 hp7-live-route-proof-pre-run-record
+hp7-live-route-proof-result
 self-test-tool-live-verification-pre-run-record
 first-engine-comparison-plan
 first-smoke-run-record
