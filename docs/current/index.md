@@ -60,6 +60,11 @@ past artifact. Archived material does not set current policy.
   the one run this record authorized: all three phases accepted, real
   chained isolation, zero `check_chain` findings, model identity verified
   from the transcript.
+- [Pre-run record: TE2/HP8 screen](te2-hp8-screen-pre-run-record.md)
+  instantiates the TE plan's decided "HP8 is this screen" design: two
+  attempts per configuration, frozen questions on completion and turn
+  efficiency, and a public-test-quality review alongside the hidden pass
+  count. Decides whether a confirmation is worth running, not superiority.
 - [Pre-run record: run_self_test live verification](self-test-tool-live-verification-pre-run-record.md)
   proposes one bounded `pi` invocation proving the self-test tool is
   reachable and its content legible, outside every TE denominator, and
@@ -104,6 +109,7 @@ agentclinic-phase-session-proposal
 misleading-locus-r3-pre-run-record
 hp7-live-route-proof-pre-run-record
 hp7-live-route-proof-result
+te2-hp8-screen-pre-run-record
 self-test-tool-live-verification-pre-run-record
 first-engine-comparison-plan
 first-smoke-run-record
