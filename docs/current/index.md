@@ -65,6 +65,18 @@ past artifact. Archived material does not set current policy.
   attempts per configuration, frozen questions on completion and turn
   efficiency, and a public-test-quality review alongside the hidden pass
   count. Decides whether a confirmation is worth running, not superiority.
+- [TE2/HP8 screen — result](te2-hp8-screen-result.md) reports the four
+  attempts, corrected 2026-09-10 after review: Baseline completed both;
+  Engine completed one of two, the other a genuine runaway loop. Turn
+  efficiency is inconclusive on completed work and unfavorable on
+  all-launched-attempts expenditure. TE3 is not pursued, not reopened
+  without new evidence; TE4 scoping starts separately.
+- [TE4 harder roadmap — design](te4-harder-roadmap-design.md) qualifies
+  the feasibility of extending the app with stable complaint identity
+  and a resolve/reopen lifecycle, resolving the one real preservation
+  conflict it creates (a kw_only `id`/`status` field, so the existing
+  positional `Complaint` contract check still holds). Design only — no
+  grader tests, fixtures, or inference yet.
 - [Pre-run record: run_self_test live verification](self-test-tool-live-verification-pre-run-record.md)
   proposes one bounded `pi` invocation proving the self-test tool is
   reachable and its content legible, outside every TE denominator, and
@@ -110,6 +122,8 @@ misleading-locus-r3-pre-run-record
 hp7-live-route-proof-pre-run-record
 hp7-live-route-proof-result
 te2-hp8-screen-pre-run-record
+te2-hp8-screen-result
+te4-harder-roadmap-design
 self-test-tool-live-verification-pre-run-record
 first-engine-comparison-plan
 first-smoke-run-record

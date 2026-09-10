@@ -1,8 +1,13 @@
 """HP4.2 -- the renderer consults the declaration instead of probing.
 
-The golden table below is the whole shipped fleet. Ten of the eleven tasks
-declare nothing and are here to prove HP4 did not move them; the eleventh,
-``agentclinic-session-phased``, is the one HP4 exists for.
+The golden table below is the whole shipped fleet. Ten of the twelve tasks
+declare nothing and are here to prove HP4 did not move them.
+``agentclinic-session-phased`` is the one HP4 exists for: an empty-skeleton
+base where ``templates``/``tests`` do not exist on disk until the model
+creates them, so the probe cannot tell they are meant to be directories.
+``agentclinic-complaint-lifecycle`` (TE4) shares that exact topology --
+same bare base, same two directories built from nothing -- so it declares
+the same way, not as a second instance of the defect HP4 fixes.
 """
 
 import json
@@ -15,6 +20,12 @@ from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, load_manifest
 
 #: The rendered patterns every shipped task produces, pinned as data.
 FLEET: dict[str, tuple[str, ...]] = {
+    "agentclinic-complaint-lifecycle": (
+        "app.py",
+        "models.py",
+        "templates/*",
+        "tests/*",
+    ),
     "agentclinic-repair-depth-2": ("app.py", "models.py", "templates/*", "tests/*"),
     "agentclinic-repair-depth-3": ("app.py", "models.py", "templates/*", "tests/*"),
     "agentclinic-repair-framing-2": ("app.py", "models.py", "templates/*", "tests/*"),
@@ -63,10 +74,12 @@ def test_each_shipped_task_renders_its_pinned_patterns(name: str) -> None:
     assert rendered == FLEET[name]
 
 
-def test_the_phased_task_is_the_only_declaring_task() -> None:
-    """HP4 is scoped to the one task the probe gets wrong."""
+def test_only_the_empty_skeleton_tasks_declare() -> None:
+    """HP4 is scoped to the tasks the probe gets wrong -- an empty base
+    where the model builds `templates`/`tests` from nothing. Both tasks
+    with that topology declare; no other shipped task does."""
     declaring = [n for n in _shipped() if load_manifest(DEFAULT_TASKS_ROOT / n).source_dirs is not None]
-    assert declaring == ["agentclinic-session-phased"]
+    assert declaring == ["agentclinic-complaint-lifecycle", "agentclinic-session-phased"]
 
 
 def test_the_probe_would_get_the_phased_task_wrong(tmp_path) -> None:

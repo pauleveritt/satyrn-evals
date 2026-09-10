@@ -70,6 +70,9 @@ the loop's *recovery* half — a failing result feeding back into a
 correction — has still never been observed live. Proving tool discovery
 again is not worth a second smoke; proving the recovery path needs a
 task engineered to fail at least once, which this run's task was not.
+**Closed 2026-09-10:** the TE2/HP8 screen's Engine-02 attempt hit a
+failing self-test in phase 3 and recovered from it live — see
+[that result](te2-hp8-screen-result.md), "Self-test recovery."
 
 ## Cost, by role, never summed
 

@@ -123,13 +123,12 @@ could instead introduce another unproductive loop. Default to studying this
 as separately authorized follow-on work, motivated by retained HP/TE failures,
 not enabling it silently during a TE screen or confirmation.
 
-If this outer loop is essential to the Engine configuration the maintainer
-intends to use, explicitly amend the selected treatment and test the candidate
-before TE confirmation. Do not confirm a configuration already intended for
-replacement. Use a separately authorized bounded candidate screen, keep its
-observations outside confirmation, then freeze the adopted behavior and rerun
-only the preparation checks affected by the change. No configuration changes
-are allowed within a confirmation batch.
+If this outer loop is essential to the intended Engine configuration, amend
+the treatment explicitly and test it before TE confirmation — never confirm
+a configuration already intended for replacement. Screen it as a separately
+authorized bounded candidate, keep those observations outside confirmation,
+then freeze the adopted behavior and rerun only the affected preparation
+checks. No configuration changes inside a confirmation batch.
 
 Any outer-loop candidate must use public validation feedback, never hidden
 grader output; retain every failed candidate, validation result and dispatch;
@@ -225,13 +224,14 @@ roughly 1.5x the observed maximum. **Engine-side evidence, 2026-09-10**
 (HP7): one real chain, 22 whole-attempt turns (6/8/8), zero errors/aborts,
 via `turn_ledger.count_turns` on the real transcript
 (`test_the_real_engine_transcript_reports_twenty_two_whole_attempt_turns`)
-— inside Baseline's range, under 40; one attempt, not a distribution, but
-not contradicted.
+— inside Baseline's range, under 40; one attempt, not a distribution.
 
-**Exit, met 2026-09-10:** the pair exercises both sides for real (HP3,
-HP7), accounting is reproducible on both sides' real transcripts through
-the same code, and 40 is checked, not asserted. New operability checks
-only for changed paths not covered by HP, outside the denominator.
+**Exit, met 2026-09-10 for pairing and accounting; the ceiling qualified
+2026-09-10.** "40 checked, not asserted" holds only for completed
+attempts (HP7 22, Engine-02 31) — TE2/HP8's voided Engine-01 ran 65
+turns in one phase alone, unenforced, confirming the warning above; see
+[the result](te2-hp8-screen-result.md). New operability checks only for
+changed paths not covered by HP, outside the denominator.
 
 ## TE2–TE3 — easy-roadmap efficiency
 
