@@ -47,6 +47,10 @@ past artifact. Archived material does not set current policy.
 - [Pre-run record: misleading-locus R3](misleading-locus-r3-pre-run-record.md)
   freezes the conditions, per-arm surfaces, limits, and stopping rules for the
   route verification and the four-attempt screen, before anything is spent.
+- [Pre-run record: HP7 live route proof](hp7-live-route-proof-pre-run-record.md)
+  freezes one bounded packet-route chain, states it establishes operability
+  and not superiority, and names the missing real-implementer adapter as the
+  blocking precondition. Authorizes nothing.
 - [First useful engine comparison](first-engine-comparison-plan.md) is paused,
   not queued. Its live smoke is complete; further comparison requires a useful
   question and its own frozen, authorized budget.
@@ -83,6 +87,7 @@ orchestrated-delivery-design
 session-ordering-baseline-pre-run-record
 agentclinic-phase-session-proposal
 misleading-locus-r3-pre-run-record
+hp7-live-route-proof-pre-run-record
 first-engine-comparison-plan
 first-smoke-run-record
 triage-candidate
