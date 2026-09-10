@@ -143,13 +143,22 @@ applies here too, one run early. Nothing enforces `writable_paths` on this
 seam either (see precondition 1); that is HP6's `check_chain` to report, not
 this adapter's to prevent.
 
+**Corrected 2026-09-10, from independent review of this run's own
+transcript.** This section understated the actual surface: `run_self_test`
+is added to the tool allowlist (`build_pi_argv`'s own
+`self_test_command` branch) whenever the packet declares one, which it
+always does for this task. `bash` is still never available; `run_self_test`
+is a fixed-command tool, not a shell. See the execution reconciliation in
+[the result doc](hp7-live-route-proof-result.md#execution-reconciliation)
+for what the live transcript shows Pi actually doing with it.
+
 ## The task and the route
 
 | Field | Value |
 |---|---|
 | Task | `agentclinic-session-phased` |
 | Task tree sha256 | `1af60a147bcf6459fab39f2f94f75ba96968ae0dbfe1312ee52858d6b1053951` |
-| Repo commit | `275f963` (`HP6: retain the chain, so a decision survives the process that made it`), clean tree |
+| ~~Repo commit~~ | ~~`275f963`~~ — **stale; see the execution reconciliation in [the result doc](hp7-live-route-proof-result.md#execution-reconciliation)** for the commit that actually ran |
 | ~~Route~~ | ~~`satyrn_evals.route.run_phases`, the executable seam (`command_implementer`), observed by an HP6 recorder~~ — **superseded 2026-09-10, before any inference, below** |
 
 **Corrected 2026-09-10, before any inference.** HP3 composition closed
