@@ -229,11 +229,13 @@ class _FakeRun:
         self.calls: list[list[str]] = []
         self.timeouts: list[object] = []
         self.envs: list[object] = []
+        self.cwds: list[object] = []
 
     def __call__(self, argv: list[str], **kwargs: object) -> object:
         self.calls.append(list(argv))
         self.timeouts.append(kwargs.get("timeout"))
         self.envs.append(kwargs.get("env"))
+        self.cwds.append(kwargs.get("cwd"))
         cwd = kwargs["cwd"]
         assert isinstance(cwd, Path)
         if self.raise_timeout:
@@ -255,11 +257,18 @@ class _FakeRun:
 
 @pytest.fixture()
 def seam(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, Path]:
+    """`main()` is called in-process here, not via a real subprocess with
+    an explicit `cwd=` the way `command_implementer` sets one -- so
+    `edit_dir` (`Path.cwd()`) must be chdir'd to `tmp_path` explicitly to
+    reproduce the same "edit_dir == harness_dir" shape HP2's real seam
+    gets for free. Without this, `main()`'s edits would land wherever the
+    test runner's own cwd happens to be, not in `tmp_path` at all."""
     packet_path = tmp_path / ".satyrn-packet.json"
     result_path = tmp_path / ".satyrn-result.json"
     packet_path.write_text(json.dumps(PROJECTION))
     monkeypatch.setenv(PACKET_ENV, str(packet_path))
     monkeypatch.setenv(RESULT_ENV, str(result_path))
+    monkeypatch.chdir(tmp_path)
     return {"packet": packet_path, "result": result_path, "workspace": tmp_path}
 
 
@@ -333,6 +342,40 @@ def test_main_omits_the_self_test_env_var_when_not_declared(
     assert isinstance(env, dict)
     assert pi_implementer.SELF_TEST_COMMAND_ENV not in env
     assert "-e" not in fake.calls[0]
+
+
+def test_edit_dir_and_harness_dir_can_differ(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The property the edit/harness split exists for: Pi's own edits land
+    in cwd, never in the harness bookkeeping directory, when the two are
+    not the same path -- proven by actually separating them, not by
+    reading the implementation and trusting it. HP2's own seam keeps them
+    identical (see the sibling tests above and below, all built on the
+    `seam` fixture, which sets cwd nowhere and lets them default to the
+    same tmp_path); this is the seam HP3 composition needs instead."""
+    edit_dir = tmp_path / "worktree"
+    edit_dir.mkdir()
+    harness_dir = tmp_path / "harness"
+    harness_dir.mkdir()
+    packet_path = harness_dir / ".satyrn-packet.json"
+    result_path = harness_dir / ".satyrn-result.json"
+    packet_path.write_text(json.dumps(PROJECTION))
+    monkeypatch.setenv(PACKET_ENV, str(packet_path))
+    monkeypatch.setenv(RESULT_ENV, str(result_path))
+    monkeypatch.chdir(edit_dir)
+
+    fake = _FakeRun(writes={"app.py": "# built\n"})
+    monkeypatch.setattr(pi_implementer.subprocess, "run", fake)
+    assert main(["--model", MODEL]) == 0
+
+    assert fake.cwds[0] == edit_dir
+    assert (edit_dir / "app.py").is_file()
+    assert not (harness_dir / "app.py").exists()
+    assert (harness_dir / pi_implementer.TRANSCRIPT_NAME).is_file()
+    assert not (edit_dir / pi_implementer.TRANSCRIPT_NAME).exists()
+    result = json.loads(result_path.read_text())
+    assert result["changed_files"] == ["app.py"]
 
 
 def test_the_transcript_is_written_and_excluded_from_the_diff(

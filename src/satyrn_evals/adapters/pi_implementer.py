@@ -21,10 +21,17 @@ Adapts a single ``pi --print --mode json`` **process invocation** to
 projection, render it with ``packet.render_projection`` -- the same
 rendering ``render_packet`` proves against the golden fixture, now
 actually read by something -- run one such invocation on a
-``read,write,edit`` surface, and report whatever the workspace shows
+``read,write,edit`` surface, and report whatever the edit directory shows
 changed. Changes are found by content digest (``attribution.snapshot``), not
-``git diff``: a route workspace is a plain directory the route builds up
-phase by phase, not a git checkout the way an attempt's workspace is.
+``git diff``: for HP2's ``command_implementer`` seam, the edit directory
+is a plain directory the route builds up phase by phase, not a git
+checkout the way an attempt's workspace is. **Split 2026-09-10**, for HP3
+composition: what this module edits (``edit_dir``, ``Path.cwd()``) and
+where its own bookkeeping lives (``harness_dir``, derived from
+``RESULT_ENV``) are two different paths now, not one derived from the
+other -- identical for HP2's seam (behavior-preserving there), genuinely
+different for the engine-composed seam, where ``edit_dir`` really is an
+isolated git worktree.
 
 **No ``bash``, on purpose.** The packet's own ``self_test_command`` is
 declared and never applied on this seam (HP6.3's ``declaration_ledger``) --
@@ -113,11 +120,14 @@ matches exact relative paths, not a pattern, so a per-phase filename would
 need a wider change to that shared module for three bookkeeping files' sake."""
 
 
-def _next_call_index(workspace: Path) -> int:
+def _next_call_index(harness_dir: Path) -> int:
     """This adapter's own position, tracked the way `fake_implementer.py`
     tracks its: a packet carries no step id on purpose, so nothing here can
-    read one, and the workspace is the only shared state across calls."""
-    counter = workspace / COUNTER_NAME
+    read one, and the harness directory is the only shared state across
+    calls -- `harness_dir`, not `edit_dir`: HP3's engine seam gets a fresh
+    `edit_dir` (isolated worktree) every call, but the same `harness_dir`
+    across the whole chain."""
+    counter = harness_dir / COUNTER_NAME
     index = int(counter.read_text()) if counter.is_file() else 0
     counter.write_text(str(index + 1))
     return index
@@ -295,7 +305,19 @@ def main(argv: list[str] | None = None) -> int:
         list(sys.argv[1:] if argv is None else argv)
     )
     packet_path, result_path = read_env_paths(os.environ)
-    workspace = result_path.parent
+    # Split 2026-09-10, for HP3 composition. `harness_dir` is where the
+    # packet/result cross and where bookkeeping files (transcript, stderr,
+    # counter) land -- unchanged in role, still `result_path.parent`.
+    # `edit_dir` is where Pi actually edits and what `snapshot` observes --
+    # `Path.cwd()`, not derived from `RESULT_ENV` at all. For HP2's
+    # existing `command_implementer` seam these are the same directory by
+    # construction (it sets `cwd=workspace` and `RESULT_ENV` under that
+    # same `workspace`), so this is behavior-preserving there. For the
+    # engine-composed seam, `deliver` sets this process's own `cwd` to an
+    # isolated worktree while `RESULT_ENV`/`PACKET_ENV` point to a scratch
+    # directory outside it, so harness files never land in a candidate.
+    harness_dir = result_path.parent
+    edit_dir = Path.cwd()
 
     projection = read_projection(packet_path)
     try:
@@ -320,12 +342,12 @@ def main(argv: list[str] | None = None) -> int:
         tuple(raw_self_test_command) if raw_self_test_command else None
     )
 
-    index = _next_call_index(workspace)
+    index = _next_call_index(harness_dir)
     marker = _marker(index)
-    before = snapshot(workspace)
+    before = snapshot(edit_dir)
     with (
-        open(workspace / TRANSCRIPT_NAME, "ab") as transcript,
-        open(workspace / STDERR_NAME, "ab") as stderr_log,
+        open(harness_dir / TRANSCRIPT_NAME, "ab") as transcript,
+        open(harness_dir / STDERR_NAME, "ab") as stderr_log,
     ):
         transcript.write(marker)
         stderr_log.write(marker)
@@ -349,14 +371,14 @@ def main(argv: list[str] | None = None) -> int:
             build_pi_argv(
                 model, tools, prompt, pi_bin, self_test_command=self_test_command
             ),
-            cwd=workspace,
+            cwd=edit_dir,
             stdout=transcript,
             stderr=stderr_log,
             check=True,
             timeout=timeout,
             env=child_env,
         )
-    after = snapshot(workspace)
+    after = snapshot(edit_dir)
     changed = tuple(m.path for m in diff_snapshots(before, after))
 
     result_path.write_text(
