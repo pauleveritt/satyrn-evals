@@ -1,0 +1,17 @@
+diff --git a/src/textkit/__init__.py b/src/textkit/__init__.py
+index c17dd80..780667c 100644
+--- a/src/textkit/__init__.py
++++ b/src/textkit/__init__.py
+@@ -17,3 +17,12 @@ def wrap(text: str, width: int) -> str:
+         else:
+             out[-1] = f"{out[-1]} {word}"
+     return "\n".join(out)
++
++
++def summarize(text: str, width: int) -> str:
++    """First sentence, normalized, cut to width with an ellipsis when cut."""
++    ends = [i for i in (text.find(t) for t in ".!?") if i != -1]
++    sentence = normalize(text[: min(ends)] if ends else text)
++    if len(sentence) <= width:
++        return sentence
++    return sentence[: width - 1].rstrip() + "…"

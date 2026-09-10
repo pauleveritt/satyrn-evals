@@ -23,8 +23,16 @@ EVENT_TYPES = frozenset(
         "message_update", "message_end", "tool_execution_start",
         "tool_execution_update", "tool_execution_end", "agent_end",
         "agent_settled", "entry_appended",
+        "compaction_start", "compaction_end",
     }
 )
+# `compaction_start`/`compaction_end` added 2026-09-08. Without them the parser
+# returned `unknown_event` for every transcript whose context window filled --
+# it was blind to exactly the cells where accumulation happened, which is the
+# regime a session evaluation needs to see. Two v13c Engine cells read
+# `unmeasured: unknown_event` for this reason. Like `tool_execution_update`
+# they are recognised and counted as NOTHING: compaction is a measurement,
+# never a fault and never a tool call.
 # `tool_execution_update` added by the V10 amendment of 2026-09-05, forced by
 # the Baseline V5d smoke: that transcript carried 23 starts, 23 ends and 49
 # updates, so the whole cell read `unmeasured: unknown_event` and V11c's

@@ -918,3 +918,94 @@ def test_a_well_formed_edit_is_still_measured() -> None:
     )
     assert block.measured is True
     assert block.tool_calls["edit"] == 1
+
+
+# --- 2026-09-08: compaction events, and a repair that was NOT made ---
+#
+# The R1 batch found two things in the parser. Only one was a defect.
+#
+# NOT a defect: three Baseline cells carried an `edit` whose args are
+# `{"edits": [{oldText, newText}]}` with no top-level path, and the cells read
+# `malformed`. Relaxing R5 to admit that shape was drafted and then abandoned,
+# because the paired `tool_execution_end` shows pi REFUSING each call --
+# `isError: true`, "Validation failed for tool \"edit\": - path: must have
+# required properties path" -- in
+# `~/satyrn-smokes/2026-09-08-misleading-locus-r1-201314/screen/`
+# `cell-012-baseline`, `cell-036-baseline` and `cell-070-baseline`. Counting it
+# would manufacture `tool_calls` from a call that never executed. This is the
+# second occurrence of the shape; the first was corrected on 2026-09-05 and is
+# pinned by `test_an_edit_without_a_top_level_path_is_malformed` above. What
+# remains owed is unchanged: an axis that COUNTS an invalid tool call instead
+# of voiding the cell -- a proposal, not a parser relaxation.
+#
+# A defect: `compaction_start`/`compaction_end` were absent from the
+# vocabulary, so any transcript whose context window filled read
+# `unmeasured: unknown_event`. The parser was blind to exactly the cells where
+# accumulation happened.
+
+
+def _document(*executions: str) -> str:
+    """One turn wrapping the given execution lines, with a full terminal."""
+    return "\n".join([
+        '{"type": "session", "version": 3, "cwd": "/w"}',
+        '{"type": "agent_start"}',
+        '{"type": "turn_start"}',
+        *executions,
+        '{"type": "turn_end", "message": {"role": "assistant", "content": []}}',
+        '{"type": "agent_end"}',
+        '{"type": "agent_settled"}',
+    ])
+
+
+def test_compaction_events_are_measured() -> None:
+    """A transcript whose context window filled must still be countable.
+
+    Compaction is a measurement, not a fault; a parser blind to it drops
+    precisely the cells where accumulation happened.
+    """
+    document = _document(
+        '{"type": "compaction_start"}',
+        '{"type": "tool_execution_start", "toolCallId": "1", '
+        '"toolName": "read", "args": {"path": "app.py"}}',
+        '{"type": "tool_execution_end", "toolCallId": "1", '
+        '"toolName": "read", "result": {}}',
+        '{"type": "compaction_end"}',
+    )
+    result = count_transcript(document, had_patch=True)
+    assert result.measured is True
+    assert result.reason is None
+    assert result.tool_calls == {"read": 1}
+
+
+def test_compaction_events_are_counted_as_nothing() -> None:
+    """Recognised, like tool_execution_update: they add no tool call."""
+    result = count_transcript(
+        _document('{"type": "compaction_start"}', '{"type": "compaction_end"}'),
+        had_patch=True,
+    )
+    assert result.measured is True
+    assert result.tool_calls == {}
+
+
+def test_an_unknown_event_is_still_unknown() -> None:
+    """Refusal sibling: the vocabulary was widened for two names, not opened."""
+    assert _unmeasured(_document('{"type": "telepathy_start"}')).reason == (
+        "unknown_event"
+    )
+
+
+def test_todays_pathless_batch_edit_is_still_malformed() -> None:
+    """The second occurrence of the refused shape, pinned with its evidence.
+
+    Blocks carrying neither a path nor anything else pi accepts: the call was
+    refused, so the cell is voided rather than counted. Sibling success is
+    `test_a_well_formed_edit_is_still_measured` above.
+    """
+    document = _document(
+        '{"type": "tool_execution_start", "toolCallId": "1", "toolName": '
+        '"edit", "args": {"edits": [{"oldText": "a", "newText": "b"}]}}',
+        '{"type": "tool_execution_end", "toolCallId": "1", "toolName": '
+        '"edit", "isError": true, "result": {"content": [{"type": "text", '
+        '"text": "Validation failed for tool \\"edit\\""}]}}',
+    )
+    assert _unmeasured(document).reason == "malformed"

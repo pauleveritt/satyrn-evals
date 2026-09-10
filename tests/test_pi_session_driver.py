@@ -309,7 +309,9 @@ def test_main_shell_spawns_serves_and_reaps(
     )
     result: dict[str, object] = {}
     thread = threading.Thread(
-        target=lambda: result.update(code=main(["--provider", "fake", "--model", "m"])),
+        target=lambda: result.update(
+            code=main(["--provider", "fake", "--model", "m", "--tools", "read"])
+        ),
         daemon=True,
     )
     thread.start()
@@ -509,8 +511,38 @@ def test_pi_child_argv_and_runtime_env_carry_no_overlay_names():
     manifest = load_manifest(task_dir)
     assert manifest.grader_overlay is not None
     names = _overlay_declared_names(task_dir, manifest.grader_overlay)
-    argv_text = " ".join(build_pi_argv(provider="p", model="m", pi_bin="pi"))
+    argv_text = " ".join(
+        build_pi_argv(provider="p", model="m", tools=("read",), pi_bin="pi")
+    )
     env_text = " ".join(f"{k}={v}" for k, v in _SESSION_RUNTIME_ENV.items())
     for name in names:
         assert name not in argv_text
         assert name not in env_text
+
+
+def test_session_child_environment_strips_the_harness_virtualenv() -> None:
+    """The evals repo's own VIRTUAL_ENV/PATH entries never reach Pi's child.
+
+    Regression for 2026-09-09 session-phased-verify RESULT.md finding 2:
+    the session adapter previously spawned Pi with a raw
+    ``{**os.environ, **_SESSION_RUNTIME_ENV}``, leaking the harness's
+    virtualenv into the solver's shell.
+    """
+    venv = "/Users/pauleveritt/projects/pauleveritt/satyrn-evals-engine-comparison/.venv"
+    environ = {
+        "VIRTUAL_ENV": venv,
+        "PATH": f"{venv}/bin:/usr/bin:/bin",
+        "HOME": "/Users/pauleveritt",
+    }
+    cleaned = pi_session.session_child_environment(environ)
+    assert "VIRTUAL_ENV" not in cleaned
+    assert f"{venv}/bin" not in cleaned["PATH"].split(os.pathsep)
+
+
+def test_session_child_environment_preserves_a_clean_environ() -> None:
+    """With no VIRTUAL_ENV set, every input variable survives unchanged."""
+    environ = {"HOME": "/Users/pauleveritt", "PATH": "/usr/bin:/bin"}
+    cleaned = pi_session.session_child_environment(environ)
+    for key, value in environ.items():
+        assert cleaned[key] == value
+    assert cleaned["PYTHONDONTWRITEBYTECODE"] == "1"

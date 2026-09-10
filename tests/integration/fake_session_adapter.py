@@ -3,12 +3,13 @@
 Usage: fake_session_adapter.py SCENARIO [--marker PATH]
 Scenarios: clean | scope | wrong-id | wrong-id-event | output-limit |
 hang | die-after-one | die-mid-read | garbage | event-wrong-step |
-wrong-step-terminal | chaos-close-line | close-fail
+wrong-step-terminal | chaos-close-line | close-fail | timeout
 The adapter edits the worktree like a competent executor would: feature
 steps append the matching feature to solution.py, review edits nothing.
 """
 
 import json
+import signal
 import sys
 import time
 from pathlib import Path
@@ -78,6 +79,18 @@ def main() -> int:
         if msg.get("type") != "prompt":
             continue
         step = msg["step_id"]
+        if scenario == "timeout":
+            # Ignore SIGTERM so terminate_and_reap's first wait() expires
+            # and the reap costs the SIGKILL-escalation second, not the
+            # graceful one. terminate_and_reap is called with
+            # timeout=step_timeout (adapter_process.py:123, from
+            # session.py:510), so this first wait is 1.0s only because
+            # this test passes step_timeout=1.0 -- this is what makes the
+            # elapsed-time assertion discriminate a correct sample (before
+            # the reap, ~1.0s) from a wrongly-placed one (after the reap,
+            # ~2.0s).
+            signal.signal(signal.SIGTERM, lambda *_: None)
+            continue  # accept the prompt and emit nothing: deadline fires
         if marker is not None and step == "review":
             Path(marker).write_text("prompted")
         if step in FEATURES and scenario in (

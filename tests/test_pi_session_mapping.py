@@ -73,7 +73,9 @@ def test_unmapped_events_and_responses_are_skipped() -> None:
 
 
 def test_pi_argv_uses_space_form_only() -> None:
-    argv = build_pi_argv("anthropic", "claude-x", pi_bin="/custom/pi")
+    argv = build_pi_argv(
+        "anthropic", "claude-x", ("read", "bash"), pi_bin="/custom/pi"
+    )
     assert argv[:4] == ["/custom/pi", "--mode", "rpc", "--no-session"]
     assert "--provider" in argv and "anthropic" in argv
     assert "--model" in argv and "claude-x" in argv

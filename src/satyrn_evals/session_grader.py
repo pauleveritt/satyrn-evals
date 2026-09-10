@@ -3,8 +3,9 @@
 Runs only after the adapter is torn down. The feature grader copies the
 base, applies the checkpoint patch, overlays the grader-only files, and
 runs the cumulative hidden selection; the preservation grader runs the
-declared public selectors on the last captured checkpoint without the
-overlay. A scope violation skips that checkpoint's hidden grading but is
+declared public selectors at every captured checkpoint without the
+overlay (per-checkpoint since 2026-09-08 -- last-checkpoint-only grading
+could not see a base regression that a later step repaired). A scope violation skips that checkpoint's hidden grading but is
 a candidate failure, never infrastructure unavailability (2026-09-01
 spec, Offline grading).
 """
@@ -45,6 +46,45 @@ def _protected_public_test_files(spec: SessionSpec) -> frozenset[str]:
     return frozenset(module for module in files if module)
 
 
+def _touches_protected(step: StepRecord, protected: frozenset[str]) -> bool:
+    """Whether this checkpoint's patch touched a declared preservation file."""
+    return any(
+        within_source(violation, tuple(protected))
+        for violation in step.scope_violations
+    )
+
+
+def _preservation_dirs(protected: frozenset[str]) -> tuple[str, ...]:
+    """The directories the declared preservation files live in."""
+    return tuple(
+        sorted({os.path.dirname(path) for path in protected if os.path.dirname(path)})
+    )
+
+
+def _blocks_feature_grading(step: StepRecord, protected: frozenset[str]) -> bool:
+    """Whether this checkpoint's out-of-scope writes should cost it a verdict.
+
+    A scope violation remains a candidate failure (2026-09-01 spec), and a
+    write outside the declared areas still skips hidden grading. The single
+    exemption, added 2026-09-08: a file the solver ADDED alongside the
+    preservation tests, which is not itself one of them.
+
+    Why only that: over twelve sessions, 9 of 12 wrote something under
+    `tests/`, because writing tests is what a coding agent does. Two of those
+    were new files, and losing a checkpoint's verdict over them measures the
+    task's phrasing rather than the solver. Editing a declared preservation
+    file stays disqualifying -- that is the circularity the guard exists for --
+    and a write anywhere else stays disqualifying too.
+    """
+    if _touches_protected(step, protected):
+        return True
+    allowed = _preservation_dirs(protected)
+    return any(
+        not (allowed and within_source(violation, allowed))
+        for violation in step.scope_violations
+    )
+
+
 def _cumulative_selectors(spec: SessionSpec, index: int) -> tuple[str, ...]:
     """The ordered union of hidden selectors introduced through step ``index``."""
     selectors: list[str] = []
@@ -71,77 +111,97 @@ class SessionGrader:
         receipt_dir.mkdir(exist_ok=True)
         graded: list[StepRecord] = []
         unavailable = False
+        protected = _protected_public_test_files(spec)
         for index, step in enumerate(record.steps):
-            if step.scope_violations or step.patch_path is None:
-                # the full patch stays in evidence; hidden grading skipped
-                graded.append(step)
-                continue
-            patch_path = session_dir / step.patch_path
-            cumulative = _cumulative_selectors(spec, index)
-            feature_receipt = receipt_dir / f"{index + 1:02d}-{step.step_id}.json"
-            receipt = self._grade(patch_path, feature_receipt, overlay, cumulative)
-            if receipt is not None:
-                graded.append(
-                    dataclasses.replace(
-                        step,
+            current = step
+            if step.patch_path is None or _blocks_feature_grading(step, protected):
+                # Hidden grading is skipped only for contact with a DECLARED
+                # preservation file (2026-09-08, narrowed from "any scope
+                # violation"). Measured over twelve sessions, 9 of 12 wrote
+                # something under `tests/` -- writing tests is what a coding
+                # agent does -- and every one lost its feature verdict to a
+                # guard aimed at circularity it could not cause: feature
+                # grading runs against the overlay, materialised over the
+                # workspace, so a model-authored file elsewhere cannot forge a
+                # hidden pass. `scope_violations` still records every
+                # out-of-scope path and the session code is unchanged; only
+                # what blocks a verdict has narrowed.
+                pass
+            else:
+                patch_path = session_dir / step.patch_path
+                cumulative = _cumulative_selectors(spec, index)
+                feature_receipt = receipt_dir / f"{index + 1:02d}-{step.step_id}.json"
+                receipt = self._grade(patch_path, feature_receipt, overlay, cumulative)
+                if receipt is not None:
+                    current = dataclasses.replace(
+                        current,
                         feature_verdict=receipt.verdict.value,
                         feature_receipt_path=os.fspath(
                             feature_receipt.relative_to(session_dir)
                         ),
                     )
-                )
-                if receipt.verdict is Verdict.UNAVAILABLE:
-                    unavailable = True
-            else:
-                # grading failed: the captured step stays in the record
-                graded.append(step)
-                unavailable = True
-        if graded and graded[-1].patch_path is not None:
-            last = graded[-1]
-            protected = _protected_public_test_files(spec)
-            if any(
-                within_source(violation, tuple(protected))
-                for violation in last.scope_violations
-            ):
-                # the patch edited a protected public test: grading
-                # preservation against the model's own edited test would
-                # be circular (a passing receipt would not evidence
-                # preserved base behavior). Record the scope violation
-                # (already on the step) and mark preservation explicitly
-                # not meaningful.
-                graded[-1] = dataclasses.replace(
-                    last, preservation_verdict=PRESERVATION_INVALID
-                )
-            else:
-                preservation_receipt = (
-                    receipt_dir / f"preservation-{last.step_id}.json"
-                )
-                # preservation grades the patch as captured — the full
-                # evidence patch — so a scope violation is a candidate
-                # failure, never infrastructure unavailability.
-                assert last.patch_path is not None  # a graded step carried a patch
-                receipt = self._grade(
-                    session_dir / last.patch_path,
-                    preservation_receipt,
-                    None,
-                    spec.base_preservation_selectors,
-                    enforce_allowlist=False,
-                    auto_overlay=False,
-                )
-                if receipt is not None:
-                    graded[-1] = dataclasses.replace(
-                        last,
-                        preservation_verdict=receipt.verdict.value,
-                        preservation_receipt_path=os.fspath(
-                            preservation_receipt.relative_to(session_dir)
-                        ),
-                    )
                     if receipt.verdict is Verdict.UNAVAILABLE:
                         unavailable = True
                 else:
+                    # grading failed: the captured step stays in the record
                     unavailable = True
+            # Preservation at EVERY checkpoint (2026-09-08), not only the last.
+            # A base behaviour broken mid session and repaired before the end
+            # was previously invisible, and one left broken was reported only
+            # as a final-state fact with no record of when it broke. Cumulative
+            # feature selectors already catch a later prompt regressing an
+            # earlier feature; this was the remaining hole, and seeing it is
+            # why a session evaluation exists.
+            if current.patch_path is not None and spec.base_preservation_selectors:
+                current, step_unavailable = self._grade_preservation(
+                    current, spec, protected, session_dir, receipt_dir
+                )
+                unavailable = unavailable or step_unavailable
+            graded.append(current)
         code = SessionCode.GRADE_UNAVAILABLE if unavailable else record.code
         return dataclasses.replace(record, code=code, steps=tuple(graded))
+
+    def _grade_preservation(
+        self,
+        step: StepRecord,
+        spec: SessionSpec,
+        protected: frozenset[str],
+        session_dir: Path,
+        receipt_dir: Path,
+    ) -> tuple[StepRecord, bool]:
+        """One checkpoint's base-preservation verdict, and whether it failed.
+
+        Preservation grades the patch as captured -- the full evidence patch --
+        so a scope violation is a candidate failure, never infrastructure
+        unavailability. The one exception is a patch that edited a protected
+        public test: grading preservation against the model's own edited test
+        would be circular, since a passing receipt would not evidence preserved
+        base behaviour. That checkpoint is marked explicitly not meaningful,
+        and its neighbours are unaffected.
+        """
+        if _touches_protected(step, protected):
+            return dataclasses.replace(
+                step, preservation_verdict=PRESERVATION_INVALID
+            ), False
+        assert step.patch_path is not None  # the caller checked
+        receipt_path = receipt_dir / f"preservation-{step.step_id}.json"
+        receipt = self._grade(
+            session_dir / step.patch_path,
+            receipt_path,
+            None,
+            spec.base_preservation_selectors,
+            enforce_allowlist=False,
+            auto_overlay=False,
+        )
+        if receipt is None:
+            return step, True
+        return dataclasses.replace(
+            step,
+            preservation_verdict=receipt.verdict.value,
+            preservation_receipt_path=os.fspath(
+                receipt_path.relative_to(session_dir)
+            ),
+        ), receipt.verdict is Verdict.UNAVAILABLE
 
     def _grade(
         self,

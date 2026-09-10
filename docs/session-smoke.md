@@ -16,7 +16,7 @@ spec's Delta 3. Manual, deliberately not automated, never a counted cell.
 export SMOKE_OUTPUT="$HOME/projects/satyrn-v6-scratch/sessions/smoke-session-mechanics-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$SMOKE_OUTPUT"
 uv run satyrn-evals session session-mechanics --output "$SMOKE_OUTPUT" -- \
-    satyrn-evals-session-pi --provider PROVIDER --model MODEL
+    satyrn-evals-session-pi --provider PROVIDER --model MODEL --tools read,bash,edit,write
 
 (The adapter is invoked as the bare console script, resolved through the
 PATH `uv run` provides. Prefixed `uv run satyrn-evals-session-pi` inside
@@ -26,6 +26,30 @@ the fixture's, and `uv` would try to resolve the script in that project.)
 
 `SMOKE_OUTPUT` is durable and uniquely named — never `/tmp`. Its path is
 recorded with the outcome in the verification record.
+
+## `--tools` is required, and it is not optional politeness
+
+The adapter refuses to launch without it. Before 2026-09-08 it passed no tool
+restriction, so a session ran on whatever the installed runtime exposed; the
+first bounded Baseline session reached the installed `pi-subagents` extension
+and dispatched a **detached** worker that wrote files across two checkpoint
+boundaries with no retained events. The adapter now also passes
+`--no-extensions`, `--no-skills`, `--no-prompt-templates` and
+`--no-context-files`, because an allowlist alone would not have stopped it: the
+tool came from an extension.
+
+**Verify the effective surface, not the requested one.** After a run, check the
+retained transcript for tool names outside the allowlist:
+
+```bash
+python3 -c "
+import json,collections
+c=collections.Counter()
+for l in open('SESSION_DIR/transcript.jsonl'):
+    tc=((json.loads(l).get('payload') or {}).get('assistantMessageEvent') or {}).get('toolCall')
+    if isinstance(tc,dict) and tc.get('name'): c[tc['name']]+=1
+print(dict(c))"
+```
 
 ## Read, always: `session-record.json`
 

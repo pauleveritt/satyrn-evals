@@ -172,6 +172,12 @@ if [ -z "$ENGINE_PINNING_ARM" ]; then
   HEAD_SHA=""
   ACTUAL_ENGINE_TS=""
   ACTUAL_MUTATOR_TS=""
+  # A batch whose arms pin no engine never enters the else branch below, where
+  # this is otherwise assigned, and `set -u` then killed the record write AFTER
+  # every check had passed (2026-09-09, the first Baseline-only batch to use
+  # preflight). Assigned here rather than defaulted at the point of use, so the
+  # no-engine path holds a real value instead of relying on a `:-`.
+  VERIFIED_DIGESTS=""
   ok "no arm in this batch pins an engine commit; engine checks not applicable"
 else
 PINNED_COMMIT="$(pin "$ENGINE_PINNING_ARM" pins engine_commit)"
@@ -300,7 +306,7 @@ cat > "$OUTPUT/preflight.json" <<JSON
 {
   "evals_commit": "$EVALS_SHA",
   "engine_commit": "$HEAD_SHA",
-  "engine_digests": {$VERIFIED_DIGESTS
+  "engine_digests": {${VERIFIED_DIGESTS:-}
   },
   "pi": "$ACTUAL_PI",
   "model": "$PI_MODEL",

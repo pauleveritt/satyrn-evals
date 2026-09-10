@@ -13,10 +13,20 @@ arm-substrate
 lessons
 ../pathologies
 ../remediations
+cycles/index
 ../sdd
 ../current/index
 ../current/first-milestone-design
 ../current/first-milestone-plan
+../superpowers/plans/2026-09-09-agentclinic-phased-session
+../superpowers/specs/2026-09-09-agentclinic-phased-session-design
+../superpowers/plans/2026-09-09-hp1-handoff-packet
+../superpowers/plans/2026-09-09-hp2-offline-route
+../superpowers/plans/2026-09-09-hp4-declared-directories
+../superpowers/plans/2026-09-09-hp5-role-attribution
+../superpowers/specs/2026-09-09-hp5-role-attribution-design
+../superpowers/plans/2026-09-09-hp6-chain-retention
+../superpowers/specs/2026-09-09-hp1-handoff-packet-design
 ```
 
 The repository-root

@@ -69,6 +69,54 @@ deterministic regression test for the reproducible component; that test proves
 the component handles the saved request or artifact, not that a model will make
 better choices.
 
+## Comparison policy
+
+These bind any comparison this repository runs, not one experiment. Each was
+learned by getting it wrong.
+
+**Declare both questions before the run.** An outcome question and a cost
+question. Cost measures — turns, tool calls, terminal-response token usage —
+are reported whatever the outcome shows: equal pass counts do not erase an
+efficiency difference. If cost will decide adoption, its decision rule is
+declared beforehand too, because a threshold chosen after seeing the figures is
+a rule chosen from the data.
+
+**An informed selection is legitimate; a hidden one is not.** Choosing the next
+experiment from earlier observations is how investigation proceeds. What is
+forbidden is concealing that the choice was informed, pooling exploratory
+results into a confirmatory denominator, or changing an experiment after seeing
+its outcome. Disclose the prior observation, keep its counts outside the new
+denominator, and label the run a replication.
+
+**A power figure carries its test and its assumptions.** Name the test, the
+independence and fixed-rate assumptions, and the alternative. Power against a
+**stipulated** effect worth acting on, never against an effect observed in an
+earlier underpowered batch — that estimate is biased upward, and designing to
+it buys less power than it appears to.
+
+**Checkpoints verify execution integrity, and nothing else.** Verify identity,
+artifact integrity, and execution health. Stop remaining launches only when
+evidence **establishes** an infrastructure failure. Preserve ordinary
+unsuccessful attempts in their assigned denominator. If the cause is uncertain,
+pause for diagnosis without replacing the attempt.
+
+**Outcome-shaped signals are not stop triggers.** Refusals, command timeouts,
+deadline expiries, and schema or tool refusals are behaviour an arm can
+produce, and are usually part of what is being measured. Stopping when they
+appear selectively truncates whichever arm is struggling. `MODEL_ERROR` and
+contamination flags are diagnosed, not classified automatically — an
+out-of-memory and a model failing on hard inputs wear the same code. Blindness
+to pass/fail counts is **necessary and not sufficient**: a trigger correlated
+with an arm's difficulty is an outcome-dependent stop whether or not anyone
+read the tally.
+
+**Never restart from zero by default.** Establish which attempts are affected
+and whether the repair changes the comparison's conditions. A healthy
+interrupted run resumes. A materially changed condition means a separately
+authorized replacement experiment, with the original partial batch reported
+separately on its own terms. Neither licenses silently replacing unfavourable
+observations.
+
 Measure setup, command, and grading durations before optimizing infrastructure.
 Short-run promises require a bound around the whole attempt, not merely a
 model-command timeout. Keep task workspaces isolated; investigate cache reuse,
@@ -77,9 +125,24 @@ the limiting stage.
 
 ## What comes next
 
-The current milestone qualifies only `agentclinic-repair-depth-3` at R3 and
-proves one repeatable synthetic route from a frozen execution description to
-retained, re-scorable results. Its design and plan live in `docs/current/`.
+The current milestone qualifies `agentclinic-repair-depth-3` at R3 and, as of
+2026-09-08, `agentclinic-repair-misleading-locus` at R3 — the latter with witnesses
+derived from real suite runs and a verified live route. Two comparisons have
+run on it. At `R3`, four cells, 2/2 in each arm, no outcome difference
+detected. At `R1`, 36 cells per arm: **Baseline 33/36, Engine 36/36, one-sided
+Fisher p = 0.1197** against a predeclared `alpha = 0.05` — the criterion is not
+met and the earlier advantage did not replicate — while the predeclared
+secondary measure found Engine reaching the same outcomes at roughly 1.4x less
+input and three fewer turns per attempt.
+
+A first bounded **session** then ran on `session-ordering-regression`
+(Baseline, one session). It established the live session route and
+per-checkpoint preservation grading, and found that the session adapter passes
+no `--tools`: the model dispatched a **detached subagent** whose work never
+entered the retained transcript. Freezing the session tool surface is a
+prerequisite for any session that counts. The milestone also proves
+one repeatable synthetic route from a frozen execution description to retained,
+re-scorable results. Its design and plan live in `docs/current/`.
 `ROADMAP.md` says what is active and what remains outside this repository's
 immediate control.
 

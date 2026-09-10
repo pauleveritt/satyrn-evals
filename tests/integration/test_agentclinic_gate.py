@@ -20,6 +20,10 @@ import time
 from pathlib import Path
 
 import pytest
+from test_agentclinic_manifests import (  # type: ignore[missing-import]  # pytest sibling resolution (tests/ on sys.path)
+    QUALIFIED,
+    qualification_path,
+)
 
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, load_manifest
 from satyrn_evals.verdict import load_hook_result
@@ -96,9 +100,8 @@ def _run_base_with_hook(state: str, tmp_path: Path) -> dict:
     return json.loads(hook.read_text())
 
 
-def _qualification_record() -> dict:
-    path = _task("depth-3") / "qualification.json"
-    return json.loads(path.read_text())
+def _qualification_record(state: str, rung: str = "R3") -> dict:
+    return json.loads(qualification_path(_task(state), rung).read_text())
 
 
 def _run_qualification_suite(
@@ -158,16 +161,23 @@ def _nonpassing_ids(data: dict) -> list[str]:
     return sorted(test_id for test_id, outcome in data["outcomes"].items() if outcome != "passed")
 
 
-def test_depth_3_r3_qualification_witnesses_match_the_authored_record(
-    tmp_path: Path,
+@pytest.mark.parametrize(("state", "rung"), QUALIFIED)
+def test_qualification_witnesses_match_the_authored_record(
+    state: str, rung: str, tmp_path: Path
 ) -> None:
-    """The three R3 witnesses are fresh hook evidence, not command status."""
-    task_dir = _task("depth-3")
+    """Each witness row is fresh hook evidence, not command status.
+
+    Run per (task, rung), even though a rung changes only the contract text
+    handed to the solver and cannot reach the public suite or the overlay. The
+    record says as much; this row is what makes that a checked claim rather
+    than an assumption.
+    """
+    task_dir = _task(state)
     manifest = load_manifest(task_dir)
-    record = _qualification_record()
+    record = _qualification_record(state, rung)
 
     assert record["task"] == manifest.name
-    assert record["rung"] == "R3"
+    assert record["rung"] == rung
     assert "public_command" not in record
     assert manifest.public_suite
     assert {behavior["assessment"] for behavior in record["behaviors"]} == {"justified"}
@@ -177,18 +187,19 @@ def test_depth_3_r3_qualification_witnesses_match_the_authored_record(
         for check in behavior["hidden_checks"]
     } == set(manifest.expected_test_ids)
 
+    assert len(record["witnesses"]) >= 3, state
     for witness in record["witnesses"]:
         patch = task_dir / witness["patch"] if witness["patch"] else None
         public = _run_qualification_suite(
             task_dir,
-            tmp_path / witness["id"] / "public",
+            tmp_path / rung / witness["id"] / "public",
             argv=list(manifest.public_suite),
             patch=patch,
             include_hidden_overlay=False,
         )
         hidden = _run_qualification_suite(
             task_dir,
-            tmp_path / witness["id"] / "hidden",
+            tmp_path / rung / witness["id"] / "hidden",
             argv=[*manifest.oracle, *manifest.expected_test_ids],
             patch=patch,
             include_hidden_overlay=True,
@@ -198,7 +209,7 @@ def test_depth_3_r3_qualification_witnesses_match_the_authored_record(
         assert public["executed_test_ids"], witness["id"]
         assert public["executed_test_ids"] == sorted(witness["public"]["expected_executed_ids"])
         assert "skipped" not in public["outcomes"].values(), witness["id"]
-        assert _nonpassing_ids(public) == witness["public"]["expected_nonpassing_ids"]
+        assert _nonpassing_ids(public) == sorted(witness["public"]["expected_nonpassing_ids"])
         assert hidden["collect_errors"] == [], witness["id"]
         assert hidden["executed_test_ids"], witness["id"]
         assert hidden["executed_test_ids"] == sorted(manifest.expected_test_ids)
@@ -207,7 +218,7 @@ def test_depth_3_r3_qualification_witnesses_match_the_authored_record(
 
 
 def test_depth_3_r3_record_maps_the_declared_omission_to_its_hidden_check() -> None:
-    record = _qualification_record()
+    record = _qualification_record("depth-3")
     behaviors = {behavior["id"]: behavior for behavior in record["behaviors"]}
     incomplete = next(witness for witness in record["witnesses"] if witness["id"] == "partial-no-303")
 
@@ -215,6 +226,47 @@ def test_depth_3_r3_record_maps_the_declared_omission_to_its_hidden_check() -> N
     omitted = behaviors["see-other-redirect"]
     assert incomplete["hidden_expected_nonpassing_ids"] == omitted["hidden_checks"]
     assert incomplete["public"]["expected_nonpassing_ids"] == omitted["public_tests"]
+
+
+def test_misleading_locus_r3_record_names_the_exact_preservation_checks_it_breaks() -> None:
+    """The wrong repair edits the board template instead of the handler.
+
+    It is a discriminating witness only if the record names *which* preservation
+    checks it breaks: an overall failure is not evidence, because the seam it
+    leaves unrepaired fails anyway. The two named sets must exhaust the
+    witness's failing set, and each must be a check the behavior it is filed
+    under actually owns.
+    """
+    record = _qualification_record("misleading-locus")
+    behaviors = {behavior["id"]: behavior for behavior in record["behaviors"]}
+    wrong = next(w for w in record["witnesses"] if w["id"] == "known-broken")
+
+    assert wrong["omits_behavior_ids"] == ["record-posted-complaint"]
+    assert wrong["violates_behavior_ids"] == ["preserve-page-board-and-redirect-behavior"]
+    assert wrong["violated_hidden_checks"] == [
+        "test_acceptance.py::test_complaints_board_still_renders_seed_complaint_details"
+    ]
+
+    violated = set(wrong["violated_hidden_checks"])
+    assert violated <= set(behaviors["preserve-page-board-and-redirect-behavior"]["hidden_checks"])
+    omitted = set(behaviors["record-posted-complaint"]["hidden_checks"])
+    assert violated.isdisjoint(omitted)
+    assert sorted(violated | omitted) == sorted(wrong["hidden_expected_nonpassing_ids"])
+
+    # The sibling direction, from the row that ISOLATES the change: `base` and
+    # `known-broken` differ by exactly this witness's patch (the template, and
+    # nothing else), so a check that is silent at base and fires here tracks
+    # the wrong repair rather than the unrepaired seam. `known-good` differs in
+    # two ways at once and cannot make that argument on its own; it is asserted
+    # here only as the all-clear end of the range. Naming the checks rather
+    # than comparing to `[]` is deliberate: an equality against the empty list
+    # stays green if `violated_hidden_checks` is renamed to something no
+    # witness ever fails.
+    base = next(w for w in record["witnesses"] if w["id"] == "base")
+    good = next(w for w in record["witnesses"] if w["id"] == "known-good")
+    assert violated.isdisjoint(base["hidden_expected_nonpassing_ids"])
+    assert violated.isdisjoint(good["hidden_expected_nonpassing_ids"])
+    assert good["hidden_expected_nonpassing_ids"] == []
 
 
 @pytest.mark.parametrize("state", ASSERTION_STATES)

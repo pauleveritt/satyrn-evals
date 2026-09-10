@@ -48,6 +48,44 @@ class TaskManifest:
     #: hook or the overlay directory anyway, because a guarantee with two
     #: independent reasons survives one of them being edited away.
     public_suite: tuple[str, ...] = ()
+    #: Which ``source_paths`` entries are directories, declared rather than
+    #: probed. ``None`` means the manifest does not say, and the Engine
+    #: contract renderer falls back to probing ``base/`` -- which is why this
+    #: is ``None`` and not ``()``: an empty declaration is a claim that the
+    #: task has no directory entries, and the renderer refuses it against a
+    #: tree that holds one. HP4.
+    source_dirs: tuple[str, ...] | None = None
+
+
+def _validate_source_dirs(
+    value: object, source_paths: tuple[str, ...]
+) -> tuple[str, ...] | None:
+    """Validate the optional directory declaration against ``source_paths``.
+
+    Absent stays absent: ``None`` is not ``()``, because the renderer treats
+    the two differently. An entry that names nothing in ``source_paths`` is
+    refused rather than ignored, since a declaration the renderer silently
+    drops is worse than no declaration at all.
+    """
+    match value:
+        case None:
+            return None
+        case list() if all(isinstance(entry, str) and entry for entry in value):
+            declared = tuple(value)
+        case _:
+            raise ManifestError(
+                "source_dirs must be a list of non-empty strings"
+            )
+    seen: set[str] = set()
+    for entry in declared:
+        if entry in seen:
+            raise ManifestError(f"source_dirs repeats entry: {entry}")
+        seen.add(entry)
+        if entry not in source_paths:
+            raise ManifestError(
+                f"source_dirs names {entry!r}, which is not in source_paths"
+            )
+    return declared
 
 
 def _validate_public_suite(value: object, grader_overlay: str | None) -> tuple[str, ...]:
@@ -282,6 +320,7 @@ def load_manifest(task_dir: Path) -> TaskManifest:
     engine_contract = _validate_engine_contract(task_dir, data.get("engine_contract"))
     grader_overlay = _validate_grader_overlay(task_dir, data.get("grader_overlay"))
     public_suite = _validate_public_suite(data.get("public_suite"), grader_overlay)
+    source_dirs = _validate_source_dirs(data.get("source_dirs"), sources)
     visibility_raw = data.get("oracle_visibility", "visible")
     if visibility_raw not in ("visible", "hidden"):
         raise ManifestError(
@@ -312,6 +351,7 @@ def load_manifest(task_dir: Path) -> TaskManifest:
         oracle_visibility=visibility,
         contracts=contracts,
         public_suite=public_suite,
+        source_dirs=source_dirs,
     )
 
 

@@ -38,6 +38,7 @@ from satyrn_evals.manifest import TaskManifest, load_manifest, resolve_task
 from satyrn_evals.overlay import OverlaySpec, load_overlay
 from satyrn_evals.patch import within_source
 from satyrn_evals.session_manifest import (
+    DEFAULT_SESSION_SPEC,
     SessionSpec,
     assert_no_overlay_names,
     load_session_spec,
@@ -133,6 +134,7 @@ def _capture_checkpoint(
     overlay: OverlaySpec | None = None,
     visibility: str = "visible",
     transcript_prior_len: int = 0,
+    elapsed_seconds: float | None = None,
 ) -> StepRecord:
     capture = build_cumulative_patch(
         workspace.worktree, workspace.base_sha, workspace._environment
@@ -225,6 +227,7 @@ def _capture_checkpoint(
         turn_count=turn_count,
         tool_count=tool_count,
         context_events=context_events,
+        elapsed_seconds=elapsed_seconds,
         contamination=contamination,
     )
 
@@ -239,11 +242,12 @@ def run_session(
     step_timeout: float = 600.0,
     close_timeout: float = 30.0,
     grader: SessionGrader | None = None,
+    session_spec: str = DEFAULT_SESSION_SPEC,
 ) -> SessionRecord:
     """Run one session against TASK and return the durable record."""
     task_dir = resolve_task(task, tasks_root)
     manifest = load_manifest(task_dir)
-    spec = load_session_spec(task_dir)
+    spec = load_session_spec(task_dir, spec_name=session_spec)
     overlay = load_overlay(task_dir, manifest)
     # prompt-authoring guard: a hidden session task must not name an
     # overlay path; refuse (exit 2) before any workspace is built.
@@ -394,16 +398,19 @@ def _drive(
                 # step_timeout bounds the WHOLE prompt, not one idle wait:
                 # a deadline set when the prompt is sent, so a chatty
                 # adapter cannot reset the budget by emitting events.
-                step_deadline = time.monotonic() + step_timeout
+                step_started = time.monotonic()
+                step_deadline = step_started + step_timeout
                 turn_count = tool_count = context_events = 0
                 outcome = ""
                 stop: _Stop | None = None
+                # Set instead of reaping immediately: reaping happens once,
+                # after step_elapsed is sampled below, so teardown is never
+                # counted as part of the step's own elapsed time.
+                needs_reap = False
                 while True:
                     remaining = step_deadline - time.monotonic()
                     if remaining <= 0:
-                        # reap first, then snapshot: no late descendant
-                        # may mutate a patch after its digest is recorded.
-                        adapter.terminate_and_reap(step_timeout)
+                        needs_reap = True
                         stop = _Stop(
                             SessionCode.STEP_TIMEOUT,
                             f"step {spec_step.id} exceeded "
@@ -413,7 +420,7 @@ def _drive(
                     try:
                         raw = adapter.read_line(max(remaining, 0.01))
                     except AdapterTimeout as exc:
-                        adapter.terminate_and_reap(step_timeout)
+                        needs_reap = True
                         stop = _Stop(
                             SessionCode.STEP_TIMEOUT,
                             f"step {spec_step.id} exceeded "
@@ -421,7 +428,7 @@ def _drive(
                         )
                         break
                     if raw is None:
-                        adapter.terminate_and_reap(step_timeout)
+                        needs_reap = True
                         stop = _Stop(
                             SessionCode.ADAPTER_ERROR,
                             f"adapter exited during step {spec_step.id}",
@@ -495,8 +502,13 @@ def _drive(
                                 f"unexpected message during step {spec_step.id}",
                             )
                             break
-                if outcome != "settled" and stop is None:
-                    # non-settled terminal: reap first, then snapshot.
+                # Sample once, at the point the step's event loop exits and
+                # BEFORE any reap: a reaped adapter's cleanup is not the
+                # model's spending (DIAGNOSTIC ONLY -- see StepRecord).
+                step_elapsed = time.monotonic() - step_started
+                if needs_reap or (outcome != "settled" and stop is None):
+                    # reap first, then snapshot: no late descendant may
+                    # mutate a patch after its digest is recorded.
                     adapter.terminate_and_reap(step_timeout)
                 # capture before cleanup, on every path (BRIEF rule 3)
                 checkpoints.append(
@@ -507,6 +519,7 @@ def _drive(
                         manifest.source_paths,
                         overlay=overlay, visibility=manifest.oracle_visibility,
                         transcript_prior_len=transcript_consumed,
+                        elapsed_seconds=step_elapsed,
                     )
                 )
                 # the checkpoint captured the transcript as of now: advance the

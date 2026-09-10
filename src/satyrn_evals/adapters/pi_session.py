@@ -24,9 +24,10 @@ import select
 import subprocess
 import sys
 import uuid
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import BinaryIO, Protocol, TextIO, cast
 
+from satyrn_evals.attempt_pi import clean_pi_environment
 from satyrn_evals.errors import ProtocolError
 
 # Session runtime policy: the model's python tool runs must not leave
@@ -84,8 +85,28 @@ def terminal_outcome_from_agent_end(obj: dict[str, object]) -> str | None:
             return "settled"
 
 
-def build_pi_argv(provider: str, model: str, pi_bin: str = "pi") -> list[str]:
-    """The Pi invocation: space-form flags only."""
+def build_pi_argv(
+    provider: str,
+    model: str,
+    tools: Sequence[str],
+    pi_bin: str = "pi",
+) -> list[str]:
+    """The Pi invocation: space-form flags only, on a declared tool surface.
+
+    Every discovery path is off and the surface is the ``tools`` allowlist.
+    This is not decoration. Launched without it (before 2026-09-08) a session
+    ran on whatever the installed runtime exposed; the first bounded Baseline
+    session reached the installed ``pi-subagents`` extension and dispatched a
+    **detached** worker that wrote files across two checkpoint boundaries with
+    no retained events. ``--tools`` alone would not have prevented it, because
+    the tool came from an extension -- so extension discovery is disabled too,
+    exactly as the attempt adapter does.
+    """
+    if not tools:
+        raise ProtocolError(
+            "--tools is required: a session with an unstated tool surface "
+            "cannot produce accountable evidence"
+        )
     return [
         pi_bin,
         "--mode",
@@ -95,6 +116,12 @@ def build_pi_argv(provider: str, model: str, pi_bin: str = "pi") -> list[str]:
         provider,
         "--model",
         model,
+        "--no-extensions",
+        "--no-skills",
+        "--no-prompt-templates",
+        "--no-context-files",
+        "--tools",
+        ",".join(tools),
     ]
 
 
@@ -144,8 +171,9 @@ class _PiHandle(Protocol):
     def wait(self, timeout: float) -> int: ...
 
 
-def _parse_args(args: list[str]) -> tuple[str, str, str]:
+def _parse_args(args: list[str]) -> tuple[str, str, tuple[str, ...], str]:
     provider, model, pi_bin = "anthropic", "", "pi"
+    tools: tuple[str, ...] = ()
     index = 0
     while index < len(args):
         match args[index]:
@@ -155,6 +183,11 @@ def _parse_args(args: list[str]) -> tuple[str, str, str]:
             case "--model":
                 model = args[index + 1]
                 index += 2
+            case "--tools":
+                tools = tuple(
+                    name for name in args[index + 1].split(",") if name.strip()
+                )
+                index += 2
             case "--pi-bin":
                 pi_bin = args[index + 1]
                 index += 2
@@ -162,7 +195,12 @@ def _parse_args(args: list[str]) -> tuple[str, str, str]:
                 raise ProtocolError(f"unknown adapter argument: {args[index]!r}")
     if not model:
         raise ProtocolError("--model is required")
-    return provider, model, pi_bin
+    if not tools:
+        # Required rather than defaulted: a default of "everything" is the
+        # defect this fixes, and a default of "nothing" would silently
+        # disarm the session instead of refusing it.
+        raise ProtocolError("--tools is required")
+    return provider, model, tools, pi_bin
 
 
 def _serve(
@@ -307,6 +345,19 @@ def _serve(
                     current_step = None
 
 
+def session_child_environment(environ: Mapping[str, str]) -> dict[str, str]:
+    """The env for the Pi child: Evals' own virtualenv stripped, runtime overlaid.
+
+    Reuses ``attempt_pi.clean_pi_environment`` rather than reimplementing
+    it — the session adapter previously spawned Pi with a raw
+    ``{**os.environ, **_SESSION_RUNTIME_ENV}``, which let this repo's own
+    ``VIRTUAL_ENV``/``PATH`` reach the model's shell (see 2026-09-09
+    session-phased-verify RESULT.md, finding 2).
+    """
+    cleaned = clean_pi_environment(environ)
+    return {**cleaned, **_SESSION_RUNTIME_ENV}
+
+
 def reap(proc: _PiHandle) -> None:
     """Stop and reap the pi child: close stdin, TERM, then KILL on refusal."""
     with contextlib.suppress(OSError):
@@ -323,16 +374,16 @@ def reap(proc: _PiHandle) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    provider, model, pi_bin = _parse_args(
+    provider, model, tools, pi_bin = _parse_args(
         list(sys.argv[1:] if argv is None else argv)
     )
     conversation_id = f"pi-{uuid.uuid4().hex[:12]}"
     proc = subprocess.Popen(
-        build_pi_argv(provider, model, pi_bin),
+        build_pi_argv(provider, model, tools, pi_bin),
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
-        env={**os.environ, **_SESSION_RUNTIME_ENV},
+        env=session_child_environment(os.environ),
     )
     assert proc.stdin is not None and proc.stdout is not None
     # Popen satisfies the _PiHandle seam at runtime; pyrefly's structural

@@ -111,3 +111,15 @@ class SessionSpecError(UsageError):
 
 class ProtocolError(SatyrnError):
     """The adapter violated the session protocol; the sequence stops."""
+
+
+class PacketError(UsageError):
+    """Exit 2: a handoff packet violates the HP1 packet contract."""
+
+
+class RouteError(UsageError):
+    """Exit 2: an implementer result or a routed phase violates HP2's contract."""
+
+
+class ChainRecordError(UsageError):
+    """Exit 2: a persisted chain record violates HP6's data contract."""

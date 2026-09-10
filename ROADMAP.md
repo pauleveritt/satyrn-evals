@@ -1,41 +1,310 @@
 # Roadmap
 
-## Current milestone
+## Proposed next work: one AgentClinic addition
 
-Build one dependable route from a qualified task-condition to a retained,
-re-scorable result. The milestone qualifies only
-`agentclinic-repair-depth-3` at `R3`, then proves a two-attempt synthetic
-route before any separate model-run budget is requested.
+**Status 2026-09-09. The phased AgentClinic session workload exists, is
+qualified, and has run three times; the proposed next work is Phase HP,
+orchestrated delivery.** Nothing produced so far speaks to Engine versus
+Baseline on a session workload in either direction, and no Engine session arm
+exists. The phase and its eight cycles are below; the paragraphs before it
+record how each stage got here.
 
-Acceptance, design decisions, and the ordered work are in
-[the first-milestone design](docs/current/first-milestone-design.md) and
-[plan](docs/current/first-milestone-plan.md). The active documents are the
-source of truth for this work.
+**Status 2026-09-08.** The suite sequence completed at `R3` (four cells,
+Baseline 2/2 and Engine 2/2, no outcome difference detected;
+`~/satyrn-smokes/2026-09-08-misleading-locus-r3-174721/RESULT.md`). A fresh
+**R1 comparison then ran to its declared design** — 36 cells per arm, tally
+accepted 72/72, model identity verified in all 72 transcripts:
+
+- **Primary: Baseline 33/36, Engine 36/36, one-sided Fisher p = 0.1197**
+  against a predeclared `alpha = 0.05`. The criterion is **not met**: the
+  earlier large outcome advantage did not replicate at the specified
+  threshold. Given Baseline's realized 33/36, the best possible Engine result
+  would also have been p = 0.1197.
+- **Secondary, declared in advance: Engine reached the same outcomes for
+  less.** On successful cells, medians of 10 turns / 9 tool calls / 11,222
+  input / 500 output against Baseline's 13 / 12 / 15,934 / 674. Descriptive;
+  monetary cost is unmeasured on a local provider.
+- Every Baseline non-success in the batch is `REPEAT_LIMIT`.
+
+Counts, recompute and the decision:
+`~/satyrn-smokes/2026-09-08-misleading-locus-r1-201314/RESULT.md`.
+
+**Sessions: started, and blocked on one prerequisite.** The instrument measures
+one request per cell against a fresh workspace, so it cannot exercise a
+*sequence of new user requests* — where a later request regresses earlier work,
+or acts on state formed several requests ago. That gap is independent of the R1
+outcome. Three things landed against it on 2026-09-08:
+
+- Base preservation is now graded at **every** checkpoint, not only the last,
+  so a regression is visible at the checkpoint that caused it.
+- `session-ordering-regression` is a task built around a real cross-prompt
+  dependency, with three checkpoint patches witnessing pass → break → restore
+  on both the feature and preservation axes, verified through the real grader.
+- One bounded Baseline session ran
+  (`~/satyrn-smokes/2026-09-08-session-ordering-baseline-220737/RESULT.md`).
+  All three prompts settled on one conversation; the route and the
+  per-checkpoint grading both work.
+
+That first run found a prerequisite that blocked any session intended to count:
+the adapter passed no `--tools`, so the model reached an installed extension and
+dispatched a **detached subagent** that wrote two files across two checkpoint
+boundaries with **no retained events**. **Both repairs have since landed** — an
+effective tool boundary (allowlist plus `--no-extensions`, since the worker came
+from an extension) and a writable-scope statement in every prompt — and a
+**second session verified them**
+(`~/satyrn-smokes/2026-09-08-session-ordering-baseline2-230325/RESULT.md`):
+`COMPLETE`, no tool outside the allowlist, no detached dispatch, zero scope
+violations, and three real per-checkpoint preservation verdicts.
+
+A second run then exposed a fairness defect — the hidden checks demanded the
+ellipsis character and punctuation handling that the prompt never stated, so no
+solver could finish step 1. The task had been authored as a **grader fixture**
+and run as a **workload** without qualification, which `BRIEF.md`'s two
+selection rules forbid. **It is now qualified**: the prompts state what the
+checks require, `QUALIFICATION-NOTE.md` maps every hidden check to the
+accessible text, and `fixtures/prompt-faithful.patch` plus a fairness gate hold
+it there — an implementation written only from the prompts must pass, verified
+by mutation.
+
+**A third session then ran clean**
+(`~/satyrn-smokes/2026-09-08-session-ordering-baseline3-231223/RESULT.md`):
+`COMPLETE`, surface held, zero scope violations, and **every checkpoint passing
+both axes** — the first time any session reached step 1's feature.
+
+**The cross-prompt regression still did not occur, and now we know why.** The
+solver satisfied step 2 with `name.split()` rather than by refactoring
+`normalize` into a shared helper, so nothing could break. The task **offers**
+the hazard; it does not force it. At `n=1` that is an observation, not a rate.
+Making it reliable would mean forcing contact with the shared code, which
+trades away the accident the task is modelling — a design choice belonging in
+its own proposal. **No session runs are queued.**
+
+**The phased AgentClinic session task: all three tasks landed, and Task 3 has
+run.** [The plan](docs/superpowers/plans/2026-09-09-agentclinic-phased-session.md)
+adds a second, independent session workload: one growing checkout carried
+through three ordered development requests (home page, then the complaints
+board, then adding a complaint), with the depth-3 acceptance assertions
+extracted into three independently collectable modules so each phase grades
+on its own. Task 1 (sampling `elapsed_seconds` live instead of deriving it,
+and allowing an app-less `base/` so a session task can ship no application)
+and Task 2 (the `agentclinic-session-phased` task itself, its per-phase
+graders, and its witnesses — `known-good`, `known-broken`,
+`regression`, `contaminated`, and `prompt-faithful`, all qualified through
+the real grader) are both committed.
+
+**Task 3 has run, three times, all Baseline and all retained under
+`~/satyrn-smokes/`:** a discovery session at `n=1` without the verification
+instruction (`2026-09-09-session-phased-112550`), which found a genuine
+cross-phase regression; an `n=1` session with it
+(`2026-09-09-session-phased-verify-114708`), which exposed two environment
+defects, both since fixed; and the **four-session matched triage screen**
+(`2026-09-09-verify-triage-132612`), two control and two verification,
+recorded in [the frozen screen](docs/current/agentclinic-verification-triage-screen.md).
+
+**The prompt experiment is closed.** The verification sentence is **adopted as
+an operating policy** for session prompts: it states a desirable behaviour and
+supplies a command that works, where an uninstructed session spent calls
+discovering one. That adoption is **a judgment, not a demonstrated correctness
+or reliability improvement** — the screen's own control verified unprompted in
+one session of two, all four sessions passed every check, and four sessions
+separate nothing. **No confirmation campaign is queued**, and the screen's
+counts stay outside the denominator of any later experiment.
+
+**The proposed next phase is orchestrated delivery**, not a longer Engine
+conversation, and it is an **adaptation of SwiftStar's already-exercised
+design** rather than a new one: this same phased roadmap carried through
+bounded implementer handoffs, each phase branched from its predecessor's
+accepted commit, with every packet, decision, role-attributed mutation and
+cost retained ([the proposal](docs/current/orchestrated-delivery-design.md)),
+**recorded below as Phase HP** and sequenced into eight feature cycles. It supersedes
+Part 2 of [the next-agent brief](docs/current/next-agent-brief-engine-on-phased.md),
+which scoped an Engine session arm; that arm survives only as a comparison
+condition. Neither document authorizes implementation or inference, and each
+live stage needs its own budget authorization.
+
+[The suite brief](docs/current/agentclinic-suite-brief.md) proposes finishing
+the existing engine repairs, qualifying one additional useful task-condition,
+verifying its live route, and then running a matched four-attempt Engine and
+Baseline screen — two interleaved attempts per arm — before deciding what the
+evidence warrants. Selection is driven by distinct repair behavior, not a
+favorable historical score and not by which task separates the arms. The screen
+is a planned stage rather than an afterthought, and four attempts observe
+without establishing superiority. This is bounded suite development, not a
+restart of the paused comparison or a pathology audit. The brief authorizes no
+implementation, merge, commit, or inference; each live stage needs its own
+budget authorization.
+
+## Phase HP — the handoff packet
+
+**Proposed 2026-09-09, not started, authorizing nothing.** Design:
+[orchestrated delivery](docs/current/orchestrated-delivery-design.md), an
+adaptation of SwiftStar's exercised implementation rather than a new
+orchestration design. **Ownership is settled:** `satyrn-engine` owns packet
+execution, chained isolation and candidate production; `satyrn-evals` owns
+the packet schema, the arm, capture, grading, attribution and comparison.
+Cycles marked *engine* need mirrored entries in that repository's own
+roadmap; this table does not govern it.
+
+The one path being built, and the only one: **inspected packet → bounded
+implementer → isolated candidate → explicit integration → cumulative
+validation.** The packet is built deterministically and reviewed, not authored
+by an orchestrator unsupervised — autonomous authoring is measured at 3/8
+against 8/8 by hand and is **out of scope for the phase** (the amendment in
+the design names the evidence). The workload is the existing
+`agentclinic-session-phased` task. No second workload is authored, and no
+agent is asked to invent a decomposition.
+
+| Cycle | In scope | Out of scope | Artifacts | Status |
+|---|---|---|---|---|
+| **HP1** Packet schema | The typed packet mapped from SwiftStar's field set: objective, pinned facts, base revision, writable scope, behaviour to preserve, worker self-test command, redactions, budgets. **No parent validation command** — sourcing one from the task's `oracle` would put the hidden oracle hook in a document the implementer reads | Executing a packet; anything engine-side; fields this path does not need | spec + plan | **implemented, awaiting acceptance** — five slices; three review rounds recorded in the spec's correction blocks, the third closing an oracle-hook leak through `self_test_command` |
+| **HP2** Offline route | The three phases end to end against a fake implementer on the engine seam, no model | Real inference; isolation (HP3); attribution (HP5) | plan only | **implemented, awaiting acceptance** — five slices split across the tier line; a review round added the worker projection and joined the executable seam to the real grader |
+| **HP3** Chained isolation *(engine)* | Phase N branches from phase N-1's accepted commit; a refused phase stops the chain with no candidate ref | Pools, parallel dispatch, retry | spec + plan | **implemented in `satyrn-engine`, awaiting acceptance** — three slices; a review round made a candidate-less success a refusal and proved retention by resolving refs |
+| **HP4** File creation | Declared directory source paths, so an empty-skeleton directory is distinguishable from a creation target | A trailing slash as the settled syntax; relaxing scope enforcement | plan only | **implemented, awaiting acceptance** — four slices; the declaration surfaced two fakes checking scope by the prefix rule against fnmatch patterns |
+| **HP5** Role attribution | Every mutation attributed to orchestrator or implementer from retained events | Judging whether delegation helped; any new pathology detector | spec + plan | **implemented, awaiting acceptance** — five slices; attribution observes and never gates, and an unobserved window is reported unobserved rather than zero |
+| **HP6** Chain retention | Instructions, packets, worker events, candidate, validation output, accept/reject with reason, cost per role, fallback labelled | Cost thresholds or a budget verdict | plan only | **implemented, awaiting acceptance** — seven slices; the widened `BoundaryEvent` replaced HP5's two-argument observer rather than adding a second injected callable, and the chain check keeps an unobserved implementer window and an observed zero on different verdicts. Two Astra/Sol review rounds (2026-09-10) found and closed: a whole-chain-then-write design that lost already-graded phases on a grader crash, candidate content retained as paths/kinds only with no offline regrade proof, and `writable_paths` reported `applied` on mere observed compliance. `run_and_record_chain` now persists per phase before grading and captures real candidate bytes; `AppliedState.OBSERVED_COMPLIANT` separates compliance from proven enforcement |
+| **HP7** Live route proof | One orchestrated delivery, `n` frozen at 1, Baseline model, the adopted verification instruction | Superiority of any kind; extending `n` after reading it | spec (pre-run record) | pre-run record written (`docs/current/hp7-live-route-proof-pre-run-record.md`); precondition 1 resolved — a real Pi implementer adapter exists (`adapters/pi_implementer.py`), proven only at its pure surface, no real Pi process run yet. **Two blocking gaps disclosed, not resolved:** this route composes no HP3 chained isolation (one plain workspace, not isolated per-phase checkouts — a cross-repository decision), and the implementer has no `bash` so it cannot run the adopted `self_test_command` itself. Not authorized to run: HP1–HP6 acceptance and a separate budget authorization are both still outstanding |
+| **HP8** Workflow comparison | Orchestrated route against the continuous-session route, same roadmap and prompt, triage at two attempts per configuration | Publication; mechanism attribution; wall-clock between contiguous arms | spec (pre-run record) | proposed, separately authorized |
+
+**Why some cycles are plan-only.** `docs/sdd.md` asks for designs
+proportionate to the change: work that moves an evaluation condition,
+evidence boundary, task contract or interpretation earns a spec, and the rest
+does not. HP1, HP3, HP5, HP7 and HP8 each move one of those. HP2, HP4 and HP6
+implement decisions those specs already fixed.
+
+**Ordering.** HP1 gates HP2 and HP3. HP4, HP5 and HP6 all gate HP7 — a run
+that cannot create files, cannot attribute a mutation, or cannot be re-scored
+is not worth its inference. HP7 gates HP8.
+
+**Two limits carried into every cycle, from SwiftStar's own records.** Its
+live campaign substitutes harness-defined scope and commands for the model's
+packet parameters, so it does not jointly validate packet authoring,
+isolation and integration
+(`swiftstar/Sources/swiftstar-agenttest/main.swift:1297-1305`). And a passing
+workflow can hide a silent implementer: seed 221 passed with **0 mutations**
+in all three dispatched phases
+(`swiftstar/captures/agenttest/20260829-212715-roadmap-user-story-directive/campaign-stdout.txt:14-16`).
+HP5 exists because of the second one.
+
+## After HP: Phase TE — fewer wasted turns, more work within budget
+
+**Proposed 2026-09-10; not started, no inference authorized.**
+[The execution plan](docs/current/engine-turn-efficiency-plan.md) follows HP
+with two independent claims: Engine uses fewer total model turns on an easy
+AgentClinic roadmap both configurations reliably complete; and Engine completes
+one harder roadmap more reliably within a practical shared turn ceiling.
+Turns are the outcome, not a proxy for speed. Reduced unproductive looping is
+the explanation to investigate, not a conclusion inferred from lower totals.
+
+The sequence is: identify the actual pair and audit accounting; reuse HP8 or
+run a necessary easy screen; confirm easy efficiency with a quality guardrail;
+qualify and screen one harder roadmap; confirm harder completion; review both
+claims and decide. Count every role and failed attempt. Historical screens
+remain outside fresh confirmation denominators. Each confirmation freezes its
+practical thresholds, statistical design and authorized budget before launch.
+
+HP remains responsible for the composed, retained, regradable route; TE does
+not absorb unfinished HP requirements or reopen the paused single-task tuning
+campaign below. Negative and inconclusive results are legitimate completion,
+not invitations to extend a batch or search for a favorable task.
+
+## Paused: the engine comparison
+
+**The comparison is paused. Do not restart it.** Stages 1 and 2 are complete —
+the live route works and its evidence regrades — and stage 3 was stopped after
+naming a candidate, because the candidate was chosen for being measurable in
+retained traces rather than for addressing a problem that matters in use. That
+is too weak a reason to spend.
+
+No evaluation is queued, and none should be manufactured. The next one is
+pulled by a real development need: a concrete engine problem whose relevance is
+established first, then evaluated with the cheapest existing condition. A
+negative result closes a question rather than prompting a search for another
+lever.
+
+The ordered work, if a need reopens it, is in
+[the first engine comparison plan](docs/current/first-engine-comparison-plan.md),
+and the candidate record in `docs/current/triage-candidate.md` says what was
+closed and why. Each live stage would carry its own frozen, explicitly
+authorized budget. This roadmap authorizes no spending and no model inference.
+
+What the pause produced instead: two engine defects found by inspecting
+model-facing messages and fixed without any model run — a post-edit region that
+could report truncation while showing none of the change, and a loop breaker
+that refused to let a model inspect or test a file it had just edited.
+
+## Accepted baseline
+
+The offline milestone is accepted. `agentclinic-repair-depth-3` is qualified at
+`R3`, with base, known-good, and declared-incomplete witnesses.
+`agentclinic-repair-misleading-locus` is qualified at `R3` as of 2026-09-08,
+with base, known-good, and a preservation-violating known-broken witness, all
+three derived from real public and hidden suite runs. Its live route is
+verified, and a matched four-cell screen ran at that rung: **Baseline 2/2,
+Engine 2/2**. The screen **detected no outcome difference** and cannot
+support a general comparison conclusion. Four observations also say nothing
+about whether `R3` is a ceiling; retained as a regression and route condition,
+and its discriminating power at that rung is simply unmeasured. Why it was selected, and what it adds that `depth-3` does
+not, is in the task's own `SELECTION-NOTE.md`. Its synthetic
+route proves the edit, test, artifact, and grade flow and re-scores retained
+artifacts offline. The whole-attempt deadline then bounded setup, command,
+preservation, grading, and cleanup without discarding evidence. Their
+[design](docs/current/first-milestone-design.md),
+[plan](docs/current/first-milestone-plan.md),
+[deadline design](docs/current/whole-attempt-deadline-design.md), and
+[deadline plan](docs/current/whole-attempt-deadline-plan.md) remain the
+contracts the next sequence preserves rather than reopens.
+
+The first-milestone fixture launcher has a synthetic identity. Its output is
+not live evidence and is never relabelled as such.
 
 ## State and dependencies
 
-The evaluation core already captures attempts, preserves evidence, grades
-offline, and can re-score retained artifacts. The milestone checks that one
-condition's public task feedback, hidden oracle coverage, deliberate incomplete
-repair, and declared execution path agree.
+The evaluation core captures attempts, preserves evidence, grades from hook
+results, and re-scores retained patches without a new model run. It records no
+per-attempt duration on a normal completion and no token usage of its own;
+timing needs external measurement and usage survives only inside a retained
+transcript.
 
-The documentation reset defines the public vocabulary and command surface.
-Implementation work begins only after its Astra review. Model runs have their
-own budget and are not authorized by this work. The milestone does not repair
-or extend telemetry, census, or reporting machinery.
+What the comparison needs from outside this repository is a concrete
+engine/model combination, a reachable model server, and an authorized budget
+for each live stage. The engine is an external dependency: a recommendation
+from this work does not authorize editing or merging it.
 
-The engine, model server, and any real execution environment are external
-dependencies. This repository can define and test the seam, fixture
-qualification, evidence retention, and offline re-scoring. A real engine
-comparison waits for a frozen configuration and the separately authorized run.
+Evaluating a different engine checkout needs only its own arm file, a synced
+virtual environment on `PATH`, and preflight's `--engine-repo`; that checkout
+must be committed and clean, because preflight verifies its revision against
+the arm's pin. Comparing two engine revisions inside one batch needs more:
+`ArmName` is a closed vocabulary and the tally groups its counts by that name,
+so two engine configurations would pool into one denominator. This need not
+mean extending the vocabulary: separate configuration-specific schedules and
+output roots, sharing one frozen interleaving order, keep the denominators
+apart without new platform work. The triage stage picks an approach before it
+freezes a matched pair.
+
+Retained live evidence for `depth-3` is reported by condition rather than
+pooled. At `R3`, 6 of 6 baseline attempts pass with `gemma-4-12B`, 6 of 6 pass
+with `gemma-4-26b`, and the one engine-arm attempt — the 2026-09-08 smoke —
+passes. At `R1`, no baseline attempt passes in any recorded batch, and 1 of 24
+engine attempts passes at the pinned engine. At `R0`, no baseline attempt
+passes at either model. Refusals are counted separately from fail verdicts, and
+the earlier batches ran under limits and an evals revision that differ from the
+smoke's condition.
+
+Both arms now pass at `R3`, on 12 baseline attempts and 1 engine attempt.
+Whether `R3` can distinguish engine configurations is **not** settled by that:
+one engine attempt beside baseline runs under different limits cannot decide
+it. The triage stage names the engine change and the behavior it predicts
+first, and only then judges whether `R3` exercises that behavior. `depth-2` at
+`R1` is an exploratory lead, not on its own a reason to change conditions.
 
 ## Completion
 
-The milestone completes when depth-3/R3 has documented
-public/hidden/incomplete-repair witnesses; its bounded synthetic route proves
-actual edit/test/artifact/grade flow plus between-attempt resume and
-mid-attempt recovery-needed preservation; and its result can be regenerated
-from retained artifacts. The detailed acceptance criteria are in the design.
+The sequence completes when one bounded live route has worked, the selected
+engine question has been addressed by the declared confirmation analysis, the
+decision is reproducible from retained evidence, and the final review accepts
+the conclusion and its stated limits. A negative or inconclusive decision
+satisfies it. A blocked smoke or an abandoned triage screen is reported as
+partial progress, not completion.
 
-Historical phase labels, probes, and result narratives are archived outside
-the active reading path.
+Historical phase labels, probes, and result narratives are archived outside the
+active reading path.

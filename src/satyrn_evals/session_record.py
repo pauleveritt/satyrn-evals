@@ -62,6 +62,12 @@ class StepRecord:
     turn_count: int = 0
     tool_count: int = 0
     context_events: int = 0
+    #: Wall-clock seconds this step's prompt took, sampled when the step
+    #: settles and BEFORE teardown -- a reaped adapter's cleanup is not the
+    #: model's spending. A DIAGNOSTIC ONLY: the arms differ in tool surface,
+    #: so an elapsed-time gap between them measures the harness, not the
+    #: model. ``None`` means unmeasured, which is not the same as instant.
+    elapsed_seconds: float | None = None
     contamination: dict | None = None
 
 
@@ -190,6 +196,7 @@ def load_session_record(path: Path) -> SessionRecord:
             turn_count=step.get("turn_count", 0),
             tool_count=step.get("tool_count", 0),
             context_events=step.get("context_events", 0),
+            elapsed_seconds=step.get("elapsed_seconds"),
             contamination=step.get("contamination"),
         )
         for step in data.pop("steps", ())

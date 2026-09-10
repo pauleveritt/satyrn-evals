@@ -13,6 +13,8 @@ satyrn-evals = "satyrn_evals.cli:main"
 satyrn-evals-session-pi = "satyrn_evals.adapters.pi_session:main"
 # The Baseline arm's attempt adapter (arms/baseline.json names this).
 satyrn-evals-attempt-pi = "satyrn_evals.attempt_pi:main"
+# HP7's real implementer, behind HP2's executable seam (route.command_implementer).
+satyrn-evals-implementer-pi = "satyrn_evals.adapters.pi_implementer:main"
 
 [build-system]
 requires = ["hatchling"]

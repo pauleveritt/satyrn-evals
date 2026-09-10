@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "steps": [
+    {
+      "id": "phase-1-home",
+      "kind": "feature",
+      "prompt": "Dependencies are pinned in pyproject.toml and uv.lock, and `uv run` provisions them from the lock; do not install packages yourself or add new dependencies. You may write only app.py, models.py, files under templates/,\nand files under tests/. Adding tests under tests/ is expected. Before finishing, run `uv run python -m pytest tests`. Address failures caused by your changes without weakening tests, and report the command and result.\n\n## Phase 1 — Home Page\n\n- Create `app.py` with the FastAPI application instance\n- Create `templates/` directory\n- Create `templates/base.html` — shared Jinja2 layout with:\n  - HTML5 doctype and `<html lang=\"en\">`\n  - `<head>` with charset, viewport meta, Bootstrap 5 CSS CDN link\n  - `<link>` favicon pointing to `https://www.python.org/static/favicon.ico`\n  - A title block (default: \"AgentClinic\")\n  - A simple navbar with \"AgentClinic\" brand and links to Home (`/`) and Complaints (`/complaints`)\n  - A `{% block content %}` for page-specific content\n  - Bootstrap 5 JS bundle CDN at bottom of `<body>`\n- Create `templates/home.html` that extends `base.html` with:\n  - A hero/jumbotron section with the tagline: *\"Come in. Sit down. Tell us about your human.\"*\n  - A brief welcoming paragraph about the clinic\n- Add the `/` route in `app.py` returning the home template\n- Add a `if __name__ == \"__main__\"` block to run with `uvicorn.run(\"app:app\", reload=True)`\n- Write a smoke test in `tests/test_app.py`:\n  - Import `TestClient` from `starlette.testclient`\n  - `GET /` returns status 200\n  - Response body contains the tagline text\n",
+      "facts": [
+        "The web framework is FastAPI; the application instance lives in app.py.",
+        "Templates are Jinja2 under templates/, and every page extends base.html.",
+        "Dependencies are pinned in pyproject.toml and uv.lock and provisioned by uv run; do not install packages or add dependencies.",
+        "Only app.py, models.py, files under templates/ and files under tests/ may be written."
+      ],
+      "new_feature_selectors": [
+        "grader_tests/test_phase1_home.py::test_home_has_html5_doctype",
+        "grader_tests/test_phase1_home.py::test_home_html_element_declares_english_language",
+        "grader_tests/test_phase1_home.py::test_home_still_returns_200_and_tagline",
+        "grader_tests/test_phase1_home.py::test_home_still_has_navigation_links"
+      ]
+    },
+    {
+      "id": "phase-2-board",
+      "kind": "feature",
+      "prompt": "Dependencies are pinned in pyproject.toml and uv.lock, and `uv run` provisions them from the lock; do not install packages yourself or add new dependencies. You may write only app.py, models.py, files under templates/,\nand files under tests/. Adding tests under tests/ is expected. Before finishing, run `uv run python -m pytest tests`. Address failures caused by your changes without weakening tests, and report the command and result.\n\n## Phase 2 — Complaints Board\n\n- Create `models.py` with a `Complaint` dataclass:\n  - Fields: `agent_name: str`, `text: str`, `timestamp: datetime`\n  - Add `from dataclasses import dataclass, field` and `from datetime import datetime, timezone`\n  - Set `timestamp` with `field(default_factory=lambda: datetime.now(timezone.utc))` so each new complaint receives its own UTC creation timestamp\n- Create a module-level list `complaints: list[Complaint]` in `models.py`\n- Populate `complaints` with 3-5 seed complaints (generic AI-agent gripes like unclear instructions, contradictory feedback, scope creep), including the exact text `Scope creep never ends.`\n- Add `GET /complaints` route in `app.py`:\n  - Import `complaints` from `models`\n  - Return `templates/complaints.html` passing the complaints list as context\n- Create `templates/complaints.html` that extends `base.html` with:\n  - A heading: \"Complaints Board\"\n  - Loop through complaints and render each as a Bootstrap card showing agent name, timestamp (formatted) showing year, month and day, and complaint text\n- Write tests in `tests/test_app.py`:\n  - `GET /complaints` returns 200 and contains `Scope creep never ends.`\n",
+      "facts": [
+        "The web framework is FastAPI; the application instance lives in app.py.",
+        "Templates are Jinja2 under templates/, and every page extends base.html.",
+        "Complaint state lives in models.py as a dataclass and a module-level list.",
+        "Dependencies are pinned in pyproject.toml and uv.lock and provisioned by uv run; do not install packages or add dependencies.",
+        "Only app.py, models.py, files under templates/ and files under tests/ may be written."
+      ],
+      "new_feature_selectors": [
+        "grader_tests/test_phase2_board.py::test_complaints_board_still_has_its_heading",
+        "grader_tests/test_phase2_board.py::test_complaints_board_still_lists_seed_complaint",
+        "grader_tests/test_phase2_board.py::test_complaints_board_still_renders_seed_complaint_details",
+        "grader_tests/test_phase2_board.py::test_complaints_board_preserves_the_shared_layout",
+        "grader_tests/test_phase2_board.py::test_complaint_model_contract_is_preserved",
+        "grader_tests/test_phase2_board.py::test_seed_complaint_count_is_preserved"
+      ]
+    },
+    {
+      "id": "phase-3-add",
+      "kind": "feature",
+      "prompt": "Dependencies are pinned in pyproject.toml and uv.lock, and `uv run` provisions them from the lock; do not install packages yourself or add new dependencies. You may write only app.py, models.py, files under templates/,\nand files under tests/. Adding tests under tests/ is expected. Before finishing, run `uv run python -m pytest tests`. Address failures caused by your changes without weakening tests, and report the command and result.\n\n## Phase 3 — Add Complaint\n\n- Add a form at the bottom of `templates/complaints.html` with:\n  - `POST` method to `/complaints`\n  - Text input named agent_name\n  - Textarea named text\n  - Submit button\n- Add `POST /complaints` route in `app.py`:\n  - Import `Complaint` from `models`\n  - Read `agent_name` and `text` from form data (`Form` from `fastapi`)\n  - Create a new `Complaint` and append to the `complaints` list\n  - Redirect to `GET /complaints` (use `RedirectResponse` with status 303)\n- Write tests in `tests/test_app.py`:\n  - `POST /complaints` with `agent_name` and `text`, using `follow_redirects=False`, returns 303 with `Location: /complaints`\n  - After `POST /complaints`, `GET /complaints` response includes the newly added complaint\n",
+      "facts": [
+        "The web framework is FastAPI; the application instance lives in app.py.",
+        "Templates are Jinja2 under templates/, and every page extends base.html.",
+        "Complaint state lives in models.py as a dataclass and a module-level list.",
+        "Form handling uses Form from fastapi, and a redirect uses RedirectResponse.",
+        "Dependencies are pinned in pyproject.toml and uv.lock and provisioned by uv run; do not install packages or add dependencies.",
+        "Only app.py, models.py, files under templates/ and files under tests/ may be written."
+      ],
+      "new_feature_selectors": [
+        "grader_tests/test_phase3_add.py::test_complaints_board_renders_add_complaint_form",
+        "grader_tests/test_phase3_add.py::test_post_complaint_redirects_to_complaints_board",
+        "grader_tests/test_phase3_add.py::test_posted_complaint_appears_on_complaints_board"
+      ]
+    }
+  ],
+  "base_preservation_selectors": [],
+  "self_test_command": [
+    "uv",
+    "run",
+    "python",
+    "-m",
+    "pytest",
+    "tests"
+  ]
+}

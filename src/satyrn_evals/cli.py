@@ -18,6 +18,7 @@ from satyrn_evals.rescore import regrade_attempt, summarize_output
 from satyrn_evals.run import run
 from satyrn_evals.session import run_session
 from satyrn_evals.session_grader import SessionGrader
+from satyrn_evals.session_manifest import DEFAULT_SESSION_SPEC
 from satyrn_evals.session_record import SessionCode
 from satyrn_evals.verdict import Verdict
 from satyrn_evals.workspace import DEFAULT_TIMEOUT
@@ -136,6 +137,7 @@ def main(argv: list[str] | None = None) -> int:
                 grader=SessionGrader(
                     task_dir=resolve_task(args.task, tasks_root=Path(args.tasks_root))
                 ),
+                session_spec=args.session_spec,
             )
             match record.code:
                 case (
@@ -337,6 +339,14 @@ session_p.add_argument(
     type=positive_finite_timeout,
     default=30.0,
     help="seconds for graceful adapter close (default: 30)",
+)
+session_p.add_argument(
+    "--session-spec",
+    default=DEFAULT_SESSION_SPEC,
+    help=(
+        "spec file inside the task directory to load "
+        f"(default: {DEFAULT_SESSION_SPEC}; must be a bare *.json filename)"
+    ),
 )
 
 build_census_parser(sub)
