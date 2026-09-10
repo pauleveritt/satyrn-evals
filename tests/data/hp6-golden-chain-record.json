@@ -99,6 +99,7 @@
         "reported_outcome": "delivered",
         "version": 1
       },
+      "self_test_outcome": null,
       "step_id": "phase-1-home"
     },
     {
@@ -189,6 +190,7 @@
         "reported_outcome": "delivered",
         "version": 1
       },
+      "self_test_outcome": null,
       "step_id": "phase-2-board"
     },
     {
@@ -276,6 +278,7 @@
         "reported_outcome": "delivered",
         "version": 1
       },
+      "self_test_outcome": null,
       "step_id": "phase-3-add"
     }
   ],

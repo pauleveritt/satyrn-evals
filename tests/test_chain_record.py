@@ -20,6 +20,7 @@ from satyrn_evals.chain_record import (
     CHAIN_RECORD_VERSION,
     AppliedState,
     ChainRecord,
+    PhaseRecord,
     build_chain_record,
     chain_record_from_dict,
     chain_record_to_dict,
@@ -37,6 +38,7 @@ from satyrn_evals.route import (
     ROUTE_SCENARIO,
     BoundaryEvent,
     ImplementerResult,
+    SelfTestOutcome,
     is_executable_seam,
     run_phases,
     scripted_implementer,
@@ -137,15 +139,35 @@ def _packet(step_id: str) -> HandoffPacket:
     )
 
 
-def test_offline_declares_four_fields_regardless_of_observation() -> None:
+def test_offline_declares_three_fields_regardless_of_observation() -> None:
     packet = _packet("phase-1-home")
     ledger = declaration_ledger(
         executable_seam=False, packet=packet, implementer_mutations=()
     )
-    for name in (
-        "turn_budget", "tool_call_budget", "self_test_command", "base_revision",
-    ):
+    for name in ("turn_budget", "tool_call_budget", "base_revision"):
         assert ledger[name] is AppliedState.DECLARED_NOT_APPLIED
+
+
+def test_self_test_command_is_declared_not_applied_unless_the_harness_ran_it() -> None:
+    """The sibling of `redacts`'s seam-derived value: this one is driven by
+    whether the harness reports it actually ran the command, not by which
+    seam a chain used."""
+    packet = _packet("phase-1-home")
+    assert (
+        declaration_ledger(
+            executable_seam=False, packet=packet, implementer_mutations=()
+        )["self_test_command"]
+        is AppliedState.DECLARED_NOT_APPLIED
+    )
+    assert (
+        declaration_ledger(
+            executable_seam=False,
+            packet=packet,
+            implementer_mutations=(),
+            self_test_ran=True,
+        )["self_test_command"]
+        is AppliedState.APPLIED
+    )
 
 
 def test_redacts_is_declared_not_applied_in_process_and_applied_on_the_executable_seam() -> None:
@@ -230,6 +252,58 @@ def test_an_out_of_scope_mutation_is_a_check_chain_finding(tmp_path: Path) -> No
     assert len(findings) == 1
     assert findings[0].step_id == STEPS[0]
     assert "outside the packet's declared writable_paths" in findings[0].reason
+
+
+# --- self-test evidence: the harness runs self_test_command -----------------
+
+
+def test_a_built_record_carries_no_self_test_outcome(tmp_path: Path) -> None:
+    """`build_chain_record` has no workspace to read one from -- the same
+    shape `candidate_snapshot_path` already uses for the same reason."""
+    record = _delivered_record(tmp_path)
+    for phase in record.phases:
+        assert phase.self_test_outcome is None
+
+
+def test_a_phase_record_with_a_self_test_outcome_round_trips() -> None:
+    outcome = SelfTestOutcome(
+        command=("uv", "run", "pytest"),
+        ran=True,
+        exit_code=1,
+        output="1 failed\n",
+        reason=None,
+        duration_seconds=2.0,
+    )
+    packet = _packet("phase-1-home")
+    record = ChainRecord(
+        version=CHAIN_RECORD_VERSION,
+        phases=(
+            PhaseRecord(
+                step_id="phase-1-home",
+                packet=packet,
+                result=ImplementerResult(
+                    changed_files=("app.py",),
+                    reported_outcome="delivered",
+                    message=None,
+                ),
+                accepted=True,
+                reason="scripted pass",
+                implementer_mutations=(Mutation("app.py", "created"),),
+                orchestrator_mutations=(),
+                declaration_ledger=declaration_ledger(
+                    executable_seam=True,
+                    packet=packet,
+                    implementer_mutations=(Mutation("app.py", "created"),),
+                    self_test_ran=True,
+                ),
+                self_test_outcome=outcome,
+            ),
+        ),
+        final_decision=None,
+    )
+    data = chain_record_to_dict(record)
+    assert data["phases"][0]["self_test_outcome"]["exit_code"] == 1
+    assert chain_record_from_dict(data) == record
 
 
 # --- HP6.4: cost per role, null when unmeasured ------------------------------

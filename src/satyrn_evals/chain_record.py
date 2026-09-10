@@ -52,10 +52,13 @@ from satyrn_evals.route import (
     ImplementerResult,
     PhaseDecision,
     PhaseGrader,
+    SelfTestOutcome,
     implementer_result_from_dict,
     implementer_result_to_dict,
     is_executable_seam,
     run_phases,
+    self_test_outcome_from_dict,
+    self_test_outcome_to_dict,
 )
 from satyrn_evals.session_manifest import SessionSpec
 
@@ -111,18 +114,25 @@ def declaration_ledger(
     executable_seam: bool,
     packet: HandoffPacket,
     implementer_mutations: tuple[Mutation, ...] | None,
+    self_test_ran: bool = False,
 ) -> dict[str, AppliedState]:
     """What this run's own evidence says about each tracked declaration.
 
-    ``turn_budget``, ``tool_call_budget``, ``self_test_command`` and
-    ``base_revision`` are built into every packet and read nowhere outside
-    ``packet.py`` and the ``build_packet`` call (``route.py``) -- no code
-    counts a turn, runs the self-test command, or checks out the named
-    revision, so all four are always declared and unapplied on this route.
-    ``redacts`` is the one field that takes both values from the same task:
-    ``assert_projection_is_clean`` runs only inside ``command_implementer``,
-    so it is applied on the executable seam and declared-and-unapplied on the
-    in-process one.
+    ``turn_budget``, ``tool_call_budget`` and ``base_revision`` are built
+    into every packet and read nowhere outside ``packet.py`` and the
+    ``build_packet`` call (``route.py``) -- no code counts a turn or checks
+    out the named revision, so both are always declared and unapplied on
+    this route. ``redacts`` is the one field that takes both values from the
+    same task: ``assert_projection_is_clean`` runs only inside
+    ``command_implementer``, so it is applied on the executable seam and
+    declared-and-unapplied on the in-process one. ``self_test_command``
+    reaches ``applied`` only when the caller reports the harness actually
+    ran it this phase (``route.command_implementer``, after the
+    implementer's own turn) -- ``self_test_ran``, supplied by
+    ``run_and_record_chain`` from the retained
+    ``.satyrn-self-test-result.json``, never asserted by a caller that has
+    not observed one. ``build_chain_record``, which has no workspace to
+    observe from, always passes the default ``False``.
 
     ``writable_paths`` is **derived from observation, not asserted,** and
     never reaches ``applied``: nothing this build observes can name a code
@@ -152,7 +162,11 @@ def declaration_ledger(
     return {
         "turn_budget": AppliedState.DECLARED_NOT_APPLIED,
         "tool_call_budget": AppliedState.DECLARED_NOT_APPLIED,
-        "self_test_command": AppliedState.DECLARED_NOT_APPLIED,
+        "self_test_command": (
+            AppliedState.APPLIED
+            if self_test_ran
+            else AppliedState.DECLARED_NOT_APPLIED
+        ),
         "base_revision": AppliedState.DECLARED_NOT_APPLIED,
         "writable_paths": writable_state,
         "redacts": (
@@ -185,6 +199,12 @@ class PhaseRecord:
     ``implementer_mutations``, which names only paths and kinds. ``None``
     when nothing captured it (``build_chain_record``, the lower-level API,
     never does; it has no workspace to read from).
+
+    ``self_test_outcome`` is the harness's own record of running the
+    packet's declared ``self_test_command`` once, on the executable seam
+    only -- ``None`` when the seam never ran one (the in-process seam, or a
+    packet declaring none), the same absence shape
+    ``candidate_snapshot_path`` already uses.
     """
 
     step_id: str
@@ -199,6 +219,7 @@ class PhaseRecord:
     candidate_snapshot_digest: str | None = None
     implementer_cost: float | None = None
     orchestrator_cost: float | None = None
+    self_test_outcome: SelfTestOutcome | None = None
 
     def __post_init__(self) -> None:
         if (self.accepted is None) != (self.reason is None):
@@ -325,9 +346,11 @@ def build_chain_record(
                     executable_seam=executable_seam,
                     packet=packet,
                     implementer_mutations=implementer_mutations,
+                    self_test_ran=False,
                 ),
                 implementer_cost=implementer_cost,
                 orchestrator_cost=orchestrator_cost,
+                self_test_outcome=None,
             )
         )
     return ChainRecord(
@@ -736,6 +759,7 @@ _PHASE_KEYS: frozenset[str] = frozenset(
         "candidate_snapshot_digest",
         "implementer_cost",
         "orchestrator_cost",
+        "self_test_outcome",
     }
 )
 
@@ -756,6 +780,10 @@ def _phase_record_to_dict(phase: PhaseRecord) -> dict[str, object]:
         "candidate_snapshot_digest": phase.candidate_snapshot_digest,
         "implementer_cost": phase.implementer_cost,
         "orchestrator_cost": phase.orchestrator_cost,
+        "self_test_outcome": (
+            None if phase.self_test_outcome is None
+            else self_test_outcome_to_dict(phase.self_test_outcome)
+        ),
     }
 
 
@@ -799,6 +827,11 @@ def _phase_record_from_dict(data: Mapping[str, object]) -> PhaseRecord:
                 f"persisted declaration_ledger[{name!r}] is not a known "
                 f"applied state: {value!r}"
             ) from exc
+    raw_outcome = data["self_test_outcome"]
+    if raw_outcome is not None and not isinstance(raw_outcome, dict):
+        raise ChainRecordError(
+            "persisted self_test_outcome must be an object or null"
+        )
     return PhaseRecord(
         step_id=step_id,
         packet=packet_from_dict(packet),
@@ -812,6 +845,9 @@ def _phase_record_from_dict(data: Mapping[str, object]) -> PhaseRecord:
         candidate_snapshot_digest=data["candidate_snapshot_digest"],
         implementer_cost=data["implementer_cost"],
         orchestrator_cost=data["orchestrator_cost"],
+        self_test_outcome=(
+            None if raw_outcome is None else self_test_outcome_from_dict(raw_outcome)
+        ),
     )
 
 
