@@ -63,41 +63,28 @@ from the bundle's structure, not from a mechanism this route never
 exercises; attributing a result to a specific mechanism, rather than the
 bundle, needs a separately controlled ablation (TE6 already says this).
 
-**HP3 composition is an explicit readiness blocker**, not a detail to
-finish quietly alongside confirmation. TE does not launch against the
-uncomposed route.
-[`hp7-live-route-proof-pre-run-record.md`](hp7-live-route-proof-pre-run-record.md)
-already blocks HP7 on this by the same maintainer decision; TE inherits
-the block rather than re-deciding it. `satyrn-engine`'s own roadmap names
-the concrete external-interface and contract-mapping gap that composition
-needs (`satyrn-engine/ROADMAP.md`, "Composing HP3 into satyrn-evals").
+**HP3 composition was an explicit readiness blocker; closed 2026-09-10**
+(`ROADMAP.md`, HP3 row) — TE launched against the uncomposed route for
+neither HP7 nor here.
 
-**TE's two goals survive this correction; only their attribution changes.**
-Fewer turns on easy work both configurations complete, and more reliable
-completion of harder work within a shared ceiling, remain the claims
-TE2-TE5 test. What changed is what a positive result would mean: not
-"Engine's guards prevent doom loops" (untested here, since they are never
-loaded), but "this workflow bundle needs fewer turns / completes more
-reliably than a continuous session" — the configuration-bundle framing
-TE1's own text below already required is not new; this section is what
-applying it to the concrete, resolved pair requires.
+**TE's two goals survive this correction; only their attribution
+changes.** Fewer turns on easy work, more reliable harder-work completion
+within a shared ceiling, remain the claims TE2-TE5 test — not "Engine's
+guards prevent doom loops" (never loaded here), but "this workflow bundle
+needs fewer turns / completes more reliably than a continuous session."
 
 **The Baseline readiness gap named above is now closed, 2026-09-10.**
 `adapters/pi_session.py`'s event filter (`_SESSION_KINDS`) now retains
-`turn_start`, `message_start` and `tool_execution_start` (mapped to kind
-`"other"`), so a Baseline session captured from here on can answer "how
-many turns started" and "was one left open" — not just ended-turn counts.
-One honesty caveat survives: `turn_ledger.events_from_session_transcript`'s
-`starts_retained` reflects the *live* policy, so reading an
-**already-retained** transcript from before this fix (including this
-design's own real fixture) still reports `starts_retained=True` while
-genuinely containing zero starts — a caller analyzing archived evidence
-must track each file's own capture-date policy, not trust the live check
-for anything not captured just now
-(`tests/test_turn_ledger.py::test_the_real_transcript_now_reads_starts_retained_true_despite_predating_the_fix`).
-No fresh Baseline evidence exists yet under the fixed policy; TE1's own
-"started model generation request" definition is measurable going
-forward, not yet demonstrated against a real post-fix trace.
+`turn_start`, `message_start` and `tool_execution_start`, so a Baseline
+session captured from here on answers "how many turns started" and "was
+one left open," not just ended-turn counts. Caveat:
+`events_from_session_transcript`'s `starts_retained` reflects the *live*
+policy, so an already-retained pre-fix transcript (including this
+design's own fixture) misreports `starts_retained=True` with genuinely
+zero starts — a caller must track each file's own capture-date policy,
+not trust the live check for anything not captured just now
+(`test_the_real_transcript_now_reads_starts_retained_true_despite_predating_the_fix`).
+No fresh Baseline evidence exists yet under the fixed policy.
 
 ## Entry: finish HP, do not redefine its acceptance
 
@@ -155,8 +142,7 @@ neither fallback nor a later successful repair erases the earlier failure.
 These distinctions preserve [HP's scope](orchestrated-delivery-design.md):
 implementer self-testing is part of the initial route; post-handoff repair
 campaigns and orchestrator-written fallback are excluded unless separately
-selected, reviewed and frozen as the treatment. Earlier SwiftStar repair-loop
-and one-shot-first designs are candidate evidence, not one universal policy.
+selected, reviewed and frozen as the treatment.
 
 ## Sequence and exit evidence
 
@@ -235,16 +221,17 @@ transcript on record, recomputed through `turn_ledger.count_turns` itself:
 | `2026-09-09-verify-triage-132612/04-control` | 20 | 9 / 6 / 5 |
 
 Range 15–25 (mean ≈19.5), max per-phase 12, zero errors or aborts. 40 is
-roughly 1.5x the observed maximum — headroom over noise, sized the way
-HP7's own pre-run record sized its per-phase figure. **Baseline-side
-only**: Engine's real turn counts remain unmeasured (HP7 has not run
-live), so this is not yet checked against both sides of the pair; revisit
-once Engine-side evidence exists.
+roughly 1.5x the observed maximum. **Engine-side evidence, 2026-09-10**
+(HP7): one real chain, 22 whole-attempt turns (6/8/8), zero errors/aborts,
+via `turn_ledger.count_turns` on the real transcript
+(`test_the_real_engine_transcript_reports_twenty_two_whole_attempt_turns`)
+— inside Baseline's range, under 40; one attempt, not a distribution, but
+not contradicted.
 
-**Exit:** the pair really exercises Engine versus Baseline, the turn accounting
-is reproducible, and the run can be bounded without hiding failed work. New
-operability checks are needed only for changed paths not covered by HP; use
-one bounded attempt on each affected path, outside the scored denominator.
+**Exit, met 2026-09-10:** the pair exercises both sides for real (HP3,
+HP7), accounting is reproducible on both sides' real transcripts through
+the same code, and 40 is checked, not asserted. New operability checks
+only for changed paths not covered by HP, outside the denominator.
 
 ## TE2–TE3 — easy-roadmap efficiency
 
@@ -252,12 +239,25 @@ Start with the existing qualified `agentclinic-session-phased` roadmap.
 “Easy” is a hypothesis for this exact pair, not a permanent task label or a
 conclusion from four passes. Keep the roadmap fixed through confirmation.
 
-Use HP8 as the screen if its actual pair, workload and observables match.
-Otherwise declare the mismatch and authorize at most two fresh attempts per
-configuration as triage. Inspect completion, total turns and representative
-traces, including contrary examples. Do not repeat a screen until a favorable
-one appears. A promising result informs the confirmation design; it is not
-pooled into it. If no useful efficiency hypothesis survives, close this claim
+**Decided 2026-09-10: HP8 is this screen, not a separate campaign** — its
+design satisfies "use HP8 as the screen," now that HP3/HP7 give Engine
+real exercise. `ROADMAP.md`'s HP8 row points here rather than its own
+spec: HP8 the label, TE the direction. **Frozen questions:** both
+configurations complete the roadmap at two attempts each; does Engine use
+fewer total started turns (TE1's unit) without sacrificing required
+behavior — read from **hidden checks and a public-quality review
+together**, per HP7's Finding 1
+([result](hp7-live-route-proof-result.md)): public test files are diffed
+phase to phase, and replacing rather than extending prior tests is a
+finding even when the hidden oracle accepts it.
+
+Otherwise, if the actual pair, workload or observables have drifted from
+HP8's own design by the time this runs, declare the mismatch and authorize
+at most two fresh attempts per configuration as triage instead. Inspect
+completion, total turns and representative traces, including contrary
+examples. Do not repeat a screen until a favorable one appears. A promising
+result informs the confirmation design; it is not pooled into it. If no
+useful efficiency hypothesis survives, close this claim
 without a larger run rather than treating repetition as the default remedy.
 
 For confirmation, success means every required phase completes and the
