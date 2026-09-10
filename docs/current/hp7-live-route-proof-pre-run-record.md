@@ -97,6 +97,18 @@ exercise chained isolation. The maintainer's decision: **block HP7 on HP3
 composition** rather than run without it, so this precondition stays
 outstanding until chained isolation is composed into this route.
 
+**Resolved 2026-09-10, together with the route correction above.** The
+self-test fix two paragraphs up closed the gap on `command_implementer`
+only — `engine_command_implementer`, the seam this run now actually uses,
+is a different closure with no self-test wiring of its own, and no live
+workspace survives a successful `deliver` call for one to run against
+even if it had. Closed the same way: the harness materializes the real
+candidate commit via `git archive` and runs `self_test_command` there,
+retaining the outcome on the receipt
+(`satyrn-evals@00c7cdf`). **Both gaps this section named are now closed
+on the route this run will actually use.** Authorization is HP7's own,
+separate from this document, per its opening paragraph.
+
 ## The arm
 
 **Baseline only**, matching the existing phased-session record exactly —
@@ -138,7 +150,24 @@ this adapter's to prevent.
 | Task | `agentclinic-session-phased` |
 | Task tree sha256 | `1af60a147bcf6459fab39f2f94f75ba96968ae0dbfe1312ee52858d6b1053951` |
 | Repo commit | `275f963` (`HP6: retain the chain, so a decision survives the process that made it`), clean tree |
-| Route | `satyrn_evals.route.run_phases`, the executable seam (`command_implementer`), observed by an HP6 recorder |
+| ~~Route~~ | ~~`satyrn_evals.route.run_phases`, the executable seam (`command_implementer`), observed by an HP6 recorder~~ — **superseded 2026-09-10, before any inference, below** |
+
+**Corrected 2026-09-10, before any inference.** HP3 composition closed
+the same day (`satyrn-evals@9115608`..`141f3bb`, independently accepted).
+The route above named `command_implementer` because chained isolation was
+explicitly out of scope when this record was written ("Composing HP3 is
+... not attempted here"). Running that seam now would complete a chain
+in one plain workspace and prove nothing about isolation — exactly the
+gap this record's own "Two ways this run does not yet test the planned
+workflow" section named as blocking. **The route for this run is now
+`engine_command_implementer` / `run_and_record_engine_chain`**
+(`src/satyrn_evals/adapters/engine_delivery.py`,
+`src/satyrn_evals/chain_record.py`): each phase runs through a real
+`satyrn-engine deliver --base` call, in its own isolated worktree,
+branched from the prior phase's accepted commit. This is a value chosen
+*before* any inference under this record, correcting a precondition that
+changed, not a value tuned after reading a result — the distinction this
+document's own opening paragraph exists to enforce.
 
 Recompute the task tree digest:
 
