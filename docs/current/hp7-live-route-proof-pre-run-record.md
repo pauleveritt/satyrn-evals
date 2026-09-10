@@ -63,15 +63,21 @@ baseline arm.
 | Compaction | enabled, reserve 16384 |
 | Temperature | 1.0 |
 
-**Tool surface is HP2's, not the session adapter's.** The implementer side of
-`command_implementer` gives a worker `read`/`write`/`edit` against its
-declared `writable_paths` and nothing else — there is no `bash` on this seam,
-by design (`route.py` module docstring: "What this module does **not**
-do: apply patches ... or decide verdicts"). This is **not** the
+**Tool surface is the adapter's, not `command_implementer`'s.** `route.py`'s
+executable seam is only an argv and two env vars —
+`command_implementer` itself enforces nothing about what a worker may touch,
+a correction to this record's own earlier wording, caught by the Astra-style
+review (`route.py` module docstring: "What this module does **not** do:
+apply patches ... or decide verdicts" is a statement about the *route*, not a
+guarantee about any implementer behind it). The tool surface for this run is
+`adapters/pi_implementer.py`'s own choice: `read`, `write`, `edit`, and
+**no** `bash`, passed to Pi's `--tools` flag. This is **not** the
 `read,bash,edit,write` surface the phased-session pre-run record used, and no
 sentence from this run may be read against that one as if the surface were
 held constant — the confound `orchestrated-delivery-design.md` names for D8
-applies here too, one run early.
+applies here too, one run early. Nothing enforces `writable_paths` on this
+seam either (see precondition 1); that is HP6's `check_chain` to report, not
+this adapter's to prevent.
 
 ## The task and the route
 
@@ -187,19 +193,21 @@ cleanup (`BRIEF.md` invariant 1). Specifically:
 
 ## Preconditions, all required before the run starts
 
-1. **A real implementer executable for the packet seam does not exist yet,
-   and building one is not authorized by this record.** `command_implementer`
-   (`route.py`) is proven only against `tests/integration/fake_implementer.py`
-   and the test-fixture executable it is — nothing today bridges a
-   `HandoffPacket`'s worker projection to a real Baseline (Pi) invocation
-   reading `SATYRN_HANDOFF_PACKET` and writing `SATYRN_IMPLEMENTER_RESULT`.
-   Building that bridge is itself a normal, reviewable, and reasonably small
-   change — but per `AGENTS.md`, "if the fix is larger than the measurement
-   it unblocks, stop and ask," and a new executable adapter that mediates a
-   real model's writes is exactly the kind of thing to name and let the
-   maintainer decide on, rather than fold silently into a "pre-run" step.
-   **This is the blocking precondition.** Everything else below assumes it
-   is resolved first.
+1. **Resolved 2026-09-09.** A real implementer executable for the packet seam
+   now exists: `adapters/pi_implementer.py`
+   (`satyrn-evals-implementer-pi`), one bounded `pi --print --mode json`
+   turn on a `read,write,edit` surface — no `bash`, which is *why*
+   `self_test_command` stays declared-and-unapplied on this seam rather than
+   something to reconcile — with changed files found by content digest
+   (`attribution.snapshot`) rather than `git diff`, since a route workspace
+   is a plain directory, not a git checkout. **It deliberately does not
+   enforce `writable_paths` on itself**, unlike the test fixtures: a real
+   adapter policing its own declared scope would make
+   `declaration_ledger`'s `writable_paths` state true by construction, which
+   is exactly the capture-integrity gap HP6.3 exists to catch. Proven only
+   at the adapter's pure surface (`tests/test_pi_implementer.py`,
+   `subprocess.run` replaced) — **no run against a real Pi process has
+   happened**, which is precondition 4 below, unchanged.
 2. **Acceptance for HP1–HP6.** The ordering rule in `ROADMAP.md` — "HP4, HP5
    and HP6 all gate HP7" — is stated against implementation, and all three
    (plus HP1/HP2) are implemented; **none has been through its Astra

@@ -27,9 +27,17 @@ type MutationKind = Literal["created", "deleted", "modified"]
 #: name rather than matched by a pattern so that adding one is a visible
 #: decision. ``.satyrn-packet.json`` and ``.satyrn-result.json`` are written
 #: by ``route.command_implementer``; ``.phase-counter`` by the executable
-#: fake, which stands in for a worker that tracks its own position.
+#: fake, which stands in for a worker that tracks its own position;
+#: ``.satyrn-implementer-transcript.jsonl`` by the real Pi implementer
+#: adapter (``adapters/pi_implementer.py``), which is retained evidence, not
+#: a mutation to attribute to either role.
 HARNESS_FILES: frozenset[str] = frozenset(
-    {".satyrn-packet.json", ".satyrn-result.json", ".phase-counter"}
+    {
+        ".satyrn-packet.json",
+        ".satyrn-result.json",
+        ".phase-counter",
+        ".satyrn-implementer-transcript.jsonl",
+    }
 )
 
 

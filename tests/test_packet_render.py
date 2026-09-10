@@ -22,6 +22,8 @@ from satyrn_evals.packet import (
     assert_redactions_absent,
     build_packet,
     render_packet,
+    render_projection,
+    worker_projection,
 )
 from satyrn_evals.session_manifest import load_session_spec
 
@@ -227,3 +229,31 @@ def test_an_empty_projection_is_refused_rather_than_passing() -> None:
 
     with pytest.raises(PacketError, match="nothing to check"):
         assert_projection_is_clean(_packet(), {})
+
+
+# --- HP7: rendering the projection, which is what a real adapter reads -----
+
+
+def test_render_projection_matches_render_packet_over_the_real_projection() -> None:
+    """The provable claim `render_packet`'s own docstring makes -- "the text
+    an implementer receives" -- is only true if a worker's actual JSON
+    projection renders identically to the pre-projection object."""
+    packet = _packet("phase-3-add")
+    assert render_projection(worker_projection(packet)) == render_packet(packet)
+
+
+def test_render_projection_refuses_a_non_mapping() -> None:
+    with pytest.raises(PacketError, match="JSON object"):
+        render_projection(["not", "a", "mapping"])  # type: ignore[arg-type]
+
+
+def test_render_projection_refuses_an_empty_projection() -> None:
+    with pytest.raises(PacketError, match="nothing to render"):
+        render_projection({})
+
+
+def test_render_projection_omits_an_absent_self_test_command() -> None:
+    packet = _packet(self_test_command=None)
+    text = render_projection(worker_projection(packet))
+    assert "self_test_command" not in text
+    assert "objective" in text

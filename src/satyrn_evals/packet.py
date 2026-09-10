@@ -24,6 +24,7 @@ on the builder (slice 3), so the two cannot drift apart.
 
 import json
 import shlex
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, get_args
@@ -230,26 +231,58 @@ strings would refuse itself. ``role``, ``version`` and the budgets are
 metadata, not instructions."""
 
 
-def render_packet(packet: HandoffPacket) -> str:
-    """The text an implementer receives, for exactly ``RENDERED_FIELDS``."""
+def _render_blocks(get: Callable[[str], object]) -> str:
+    """Build the rendered text for exactly ``RENDERED_FIELDS``, from any
+    getter -- an attribute lookup on a real ``HandoffPacket``, or a plain
+    ``dict.get`` on a worker's JSON projection. The two differ only in
+    whether a sequence field arrives as a ``tuple`` or a JSON ``list``, which
+    is why both are matched below rather than only ``tuple``.
+    """
     blocks: list[str] = []
     for name in RENDERED_FIELDS:
-        match getattr(packet, name):
+        match get(name):
             case None:
                 continue
             case str() as text:
                 blocks.append(f"## {name}\n\n{text}")
-            case tuple() as argv if argv and name == "self_test_command":
+            case (tuple() | list()) as argv if argv and name == "self_test_command":
                 # An argv rendered one token per bullet is not a command. The
                 # implementer needs something runnable, so it is joined with
                 # shell quoting rather than listed.
                 blocks.append(f"## {name}\n\n    {shlex.join(argv)}")
-            case tuple() as entries if entries:
+            case (tuple() | list()) as entries if entries:
                 body = "\n".join(f"- {entry}" for entry in entries)
                 blocks.append(f"## {name}\n\n{body}")
             case _:
                 continue
     return "\n\n".join(blocks) + "\n"
+
+
+def render_packet(packet: HandoffPacket) -> str:
+    """The text an implementer receives, for exactly ``RENDERED_FIELDS``."""
+    return _render_blocks(lambda name: getattr(packet, name))
+
+
+def render_projection(projection: Mapping[str, object]) -> str:
+    """The same rendering, over a worker's own JSON projection.
+
+    This is what a real implementer adapter actually calls
+    (``adapters/pi_implementer.py``): a worker never holds a ``HandoffPacket``
+    object, only what crossed the process boundary as
+    ``worker_projection``'s JSON. ``render_packet`` above renders the same
+    ``RENDERED_FIELDS`` from the pre-projection object, which is what the
+    golden fixture and every analysis path already use; this exists so the
+    text a real implementer reads is provably the same rendering, not a
+    second, divergent one.
+    """
+    if not isinstance(projection, Mapping):
+        raise PacketError("worker projection must be a JSON object")
+    if not projection:
+        raise PacketError(
+            "worker projection is empty: nothing to render, which is not "
+            "the same as nothing to say"
+        )
+    return _render_blocks(lambda name: projection.get(name))
 
 
 def worker_projection(packet: HandoffPacket) -> dict[str, object]:

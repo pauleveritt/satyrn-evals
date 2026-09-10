@@ -73,6 +73,7 @@ def test_every_harness_file_is_excluded_by_name(tmp_path: Path) -> None:
         ".satyrn-packet.json",
         ".satyrn-result.json",
         ".phase-counter",
+        ".satyrn-implementer-transcript.jsonl",
     } == HARNESS_FILES
     before = snapshot(tmp_path)
     for name in HARNESS_FILES:
