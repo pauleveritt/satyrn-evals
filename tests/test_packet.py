@@ -11,9 +11,15 @@ states that rule once, on the builder, so the two cannot drift apart.
 import dataclasses
 
 import pytest
+import yaml
 
 from satyrn_evals.errors import PacketError, UsageError
-from satyrn_evals.packet import PACKET_VERSION, HandoffPacket
+from satyrn_evals.packet import (
+    PACKET_VERSION,
+    HandoffPacket,
+    contract_yaml,
+    render_packet,
+)
 
 _FIELDS: dict[str, object] = {
     "objective": "Create app.py with the FastAPI application instance.",
@@ -148,3 +154,54 @@ def test_the_packet_carries_no_parent_validation_command() -> None:
         "role",
         "version",
     }
+
+
+# --- HP3 composition: packet -> satyrn-engine Contract -----------------------
+
+
+def test_contract_yaml_carries_the_four_contract_fields() -> None:
+    packet = _packet()
+    data = yaml.safe_load(contract_yaml(packet, "phase-1-home"))
+    assert set(data) == {"id", "task", "writable_paths", "test_command"}
+    assert data["id"] == "phase-1-home"
+    assert data["writable_paths"] == list(packet.writable_paths)
+    assert data["test_command"] == list(packet.self_test_command or [])
+
+
+def test_contract_yaml_task_is_the_same_rendering_pi_implementer_sends() -> None:
+    """Not a second renderer -- the same text render_packet already
+    produces, so the model sees identical words whichever seam runs it."""
+    packet = _packet()
+    data = yaml.safe_load(contract_yaml(packet, "phase-1-home"))
+    assert data["task"] == render_packet(packet)
+
+
+def test_contract_yaml_never_carries_redacts_or_role_or_budgets() -> None:
+    packet = _packet()
+    text = contract_yaml(packet, "phase-1-home")
+    for selector in packet.redacts:
+        assert selector not in text
+    data = yaml.safe_load(text)
+    assert "role" not in data
+    assert "turn_budget" not in data
+    assert "tool_call_budget" not in data
+    assert "redacts" not in data
+
+
+def test_contract_yaml_with_no_self_test_command_reports_an_empty_list() -> None:
+    packet = _packet(self_test_command=None)
+    data = yaml.safe_load(contract_yaml(packet, "phase-1-home"))
+    assert data["test_command"] == []
+
+
+def test_contract_yaml_round_trips_arbitrary_task_text_safely() -> None:
+    """The reason this uses a real YAML emitter rather than hand-assembled
+    text: task content is arbitrary prose that can contain colons, quotes,
+    and newlines, any of which a naive emitter gets wrong silently."""
+    packet = _packet(
+        facts=("A colon: here", 'A "quoted" fact', "Line one\nline two"),
+    )
+    data = yaml.safe_load(contract_yaml(packet, "phase-1-home"))
+    assert "A colon: here" in data["task"]
+    assert 'A "quoted" fact' in data["task"]
+    assert "Line one\nline two" in data["task"]

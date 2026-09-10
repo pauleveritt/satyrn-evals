@@ -29,6 +29,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, get_args
 
+import yaml
+
 from satyrn_evals.contamination import scan_texts
 from satyrn_evals.engine_contract import writable_paths
 from satyrn_evals.errors import PacketError
@@ -261,6 +263,33 @@ def _render_blocks(get: Callable[[str], object]) -> str:
 def render_packet(packet: HandoffPacket) -> str:
     """The text an implementer receives, for exactly ``RENDERED_FIELDS``."""
     return _render_blocks(lambda name: getattr(packet, name))
+
+
+def contract_yaml(packet: HandoffPacket, contract_id: str) -> str:
+    """One phase's ``HandoffPacket``, rendered as a ``satyrn-engine``
+    Contract (``id``, ``task``, ``writable_paths``, ``test_command``) --
+    the only four fields that format understands. ``task`` reuses
+    ``render_packet`` verbatim rather than a second rendering: the model
+    sees the same words whether this packet crosses as a worker
+    projection (HP2's seam) or a Contract (HP3's composed seam).
+    ``redacts``, ``role`` and the two budgets do not cross -- ``redacts``
+    especially must not, the same boundary the worker projection already
+    enforces.
+
+    Emitted with a real YAML library, not hand-assembled text: ``task`` is
+    arbitrary prose (facts, objective text) that can contain colons,
+    quotes and newlines, any of which a naive emitter would get wrong
+    silently.
+    """
+    return yaml.safe_dump(
+        {
+            "id": contract_id,
+            "task": render_packet(packet),
+            "writable_paths": list(packet.writable_paths),
+            "test_command": list(packet.self_test_command or ()),
+        },
+        sort_keys=False,
+    )
 
 
 def render_projection(projection: Mapping[str, object]) -> str:

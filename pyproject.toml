@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.14,<3.15"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-dependencies = []
+dependencies = ["pyyaml"]
 
 [project.scripts]
 satyrn-evals = "satyrn_evals.cli:main"
