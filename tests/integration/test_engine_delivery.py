@@ -5,6 +5,7 @@ an external dependency this repository does not vendor or require
 (ROADMAP.md, "State and dependencies").
 """
 
+import dataclasses
 import subprocess
 import sys
 from pathlib import Path
@@ -15,7 +16,11 @@ from satyrn_evals.adapters.engine_delivery import (
     engine_command_implementer,
     init_engine_repo,
 )
-from satyrn_evals.chain_record import load_chain_record, run_and_record_engine_chain
+from satyrn_evals.chain_record import (
+    AppliedState,
+    load_chain_record,
+    run_and_record_engine_chain,
+)
 from satyrn_evals.manifest import load_manifest
 from satyrn_evals.packet import build_packet
 from satyrn_evals.session_manifest import load_session_spec
@@ -126,6 +131,76 @@ def test_run_and_record_engine_chain_retains_a_real_two_phase_chain(
     import json as _json
     saved = _json.loads(Path(first.candidate_snapshot_path).read_text())
     assert saved  # real file content, not empty
+    # This task's own session.json declares a real self_test_command, so a
+    # full run through this route already exercises the harness-run self-test
+    # wired into `engine_command_implementer`, not just the offline seam's.
+    assert first.self_test_outcome is not None
+    assert first.self_test_outcome.ran is True
+    assert first.declaration_ledger["self_test_command"] is AppliedState.APPLIED
+
+
+def test_a_passing_self_test_command_runs_against_the_real_candidate_commit(
+    tmp_path: Path,
+) -> None:
+    """The engine seam's own version of HP7's second closed gap: no live
+    workspace survives `deliver` (the isolated worktree is deleted on
+    success), so the harness materializes the real candidate commit via
+    `git archive` before running the declared command against it."""
+    base_dir = TASK / "base"
+    repo = tmp_path / "repo"
+    init_engine_repo(base_dir, repo)
+    implementer, receipts = engine_command_implementer(
+        repo, str(SIBLING_ENGINE_BIN),
+        [sys.executable, str(FAKE_IMPLEMENTER)],
+        timeout=60.0, harness_root=tmp_path / "harness",
+    )
+    packet = dataclasses.replace(_packet("phase-1-home"), self_test_command=("true",))
+
+    result = implementer(packet)
+
+    assert result.reported_outcome == "delivered"
+    outcome = receipts[-1]["self_test_outcome"]
+    assert outcome["ran"] is True
+    assert outcome["exit_code"] == 0
+
+
+def test_a_failing_self_test_command_is_retained_with_its_exit_code(
+    tmp_path: Path,
+) -> None:
+    base_dir = TASK / "base"
+    repo = tmp_path / "repo"
+    init_engine_repo(base_dir, repo)
+    implementer, receipts = engine_command_implementer(
+        repo, str(SIBLING_ENGINE_BIN),
+        [sys.executable, str(FAKE_IMPLEMENTER)],
+        timeout=60.0, harness_root=tmp_path / "harness",
+    )
+    packet = dataclasses.replace(_packet("phase-1-home"), self_test_command=("false",))
+
+    result = implementer(packet)
+
+    assert result.reported_outcome == "delivered"
+    outcome = receipts[-1]["self_test_outcome"]
+    assert outcome["ran"] is True
+    assert outcome["exit_code"] != 0
+
+
+def test_no_self_test_command_writes_no_outcome_in_the_receipt(
+    tmp_path: Path,
+) -> None:
+    base_dir = TASK / "base"
+    repo = tmp_path / "repo"
+    init_engine_repo(base_dir, repo)
+    implementer, receipts = engine_command_implementer(
+        repo, str(SIBLING_ENGINE_BIN),
+        [sys.executable, str(FAKE_IMPLEMENTER)],
+        timeout=60.0, harness_root=tmp_path / "harness",
+    )
+    packet = dataclasses.replace(_packet("phase-1-home"), self_test_command=None)
+
+    implementer(packet)
+
+    assert "self_test_outcome" not in receipts[-1]
 
 
 def test_a_grader_crash_on_phase_two_still_leaves_phase_one_retained(

@@ -10,11 +10,18 @@ import json
 import os
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 from satyrn_evals.errors import RouteError
 from satyrn_evals.packet import HandoffPacket, contract_yaml, worker_projection
-from satyrn_evals.route import Implementer, ImplementerResult
+from satyrn_evals.route import (
+    DEFAULT_SELF_TEST_TIMEOUT_SECONDS,
+    Implementer,
+    ImplementerResult,
+    run_self_test,
+    self_test_outcome_to_dict,
+)
 
 
 def init_engine_repo(base_dir: Path, repo_dir: Path) -> str:
@@ -69,6 +76,21 @@ def build_deliver_argv(
     return argv
 
 
+def _materialize_commit(repo: Path, commit: str, dest: Path) -> None:
+    """Extract `commit`'s tree into `dest` without touching `repo`'s own
+    checkout -- there isn't one to touch: `deliver` runs each phase in a
+    temporary worktree it deletes on success, so no live directory holding
+    that phase's files survives past the receipt. `git archive` reads
+    straight from the object store, the same reason `engine_evidence.py`
+    uses `git show` rather than a live file read.
+    """
+    archive = subprocess.run(
+        ["git", "archive", "--format=tar", commit],
+        cwd=repo, capture_output=True, check=True,
+    )
+    subprocess.run(["tar", "-x", "-C", str(dest)], input=archive.stdout, check=True)
+
+
 def engine_command_implementer(
     repo: Path,
     satyrn_engine_bin: str,
@@ -77,12 +99,18 @@ def engine_command_implementer(
     timeout: float,
     harness_root: Path,
     initial_base: str | None = None,
+    self_test_timeout: int = DEFAULT_SELF_TEST_TIMEOUT_SECONDS,
 ) -> tuple[Implementer, list[dict[str, object]]]:
     """Returns `(implementer, receipts)`. `receipts` is appended to, one
     parsed JSON receipt per call, in phase order -- `run_and_record_engine_chain`
     reads it after the chain finishes; nothing about `ImplementerResult`
     itself carries a candidate commit, so this is the side channel that
-    does.
+    does. A successful receipt also carries `self_test_outcome` (a
+    `self_test_outcome_to_dict` payload) when the packet declares
+    `self_test_command` -- the same evidence `command_implementer` retains
+    on the offline seam, run here against a `git archive` of the real
+    candidate commit rather than a live workspace copy, since none exists
+    on this seam once `deliver` returns.
     """
     receipts: list[dict[str, object]] = []
     state: dict[str, str | None] = {"base": initial_base}
@@ -128,6 +156,18 @@ def engine_command_implementer(
 
         if receipt.get("code") == "OK" and receipt.get("changed_paths"):
             state["base"] = receipt.get("candidate_commit")
+            if packet.self_test_command:
+                with tempfile.TemporaryDirectory(
+                    prefix="satyrn-engine-self-test-"
+                ) as scratch:
+                    candidate_dir = Path(scratch)
+                    _materialize_commit(
+                        repo, str(receipt["candidate_commit"]), candidate_dir
+                    )
+                    outcome = run_self_test(
+                        packet.self_test_command, candidate_dir, self_test_timeout
+                    )
+                receipt["self_test_outcome"] = self_test_outcome_to_dict(outcome)
             return ImplementerResult(
                 changed_files=tuple(receipt["changed_paths"]),
                 reported_outcome="delivered",

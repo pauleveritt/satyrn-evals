@@ -519,7 +519,7 @@ def command_implementer(
             )
         result = implementer_result_from_dict(json.loads(result_path.read_text()))
         if packet.self_test_command:
-            outcome = _run_self_test(
+            outcome = run_self_test(
                 packet.self_test_command, workspace, self_test_timeout
             )
             self_test_path.write_text(json.dumps(self_test_outcome_to_dict(outcome)))
@@ -533,7 +533,7 @@ def command_implementer(
     return implement  # pragma: no cover
 
 
-def _run_self_test(
+def run_self_test(
     command: tuple[str, ...], workspace: Path, timeout: int
 ) -> SelfTestOutcome:  # pragma: no cover
     """Runs one declared ``self_test_command`` and reports what happened.

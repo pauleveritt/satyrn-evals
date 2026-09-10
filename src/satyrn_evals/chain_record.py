@@ -607,6 +607,7 @@ def run_and_record_engine_chain(
     graded: dict[str, tuple[bool, str]] = {}
     snapshots_by_step: dict[str, tuple[str, str]] = {}
     mutations_by_step: dict[str, tuple[Mutation, ...] | None] = {}
+    self_test_by_step: dict[str, SelfTestOutcome] = {}
     order: list[str] = []
     evidence_dir = output_path.with_name(output_path.stem + "-evidence")
     receipts_consumed = 0
@@ -619,6 +620,7 @@ def run_and_record_engine_chain(
             accepted, reason = graded.get(step_id, (None, None))
             snap_path, snap_digest = snapshots_by_step.get(step_id, (None, None))
             implementer_mutations = mutations_by_step.get(step_id)
+            self_test_outcome = self_test_by_step.get(step_id)
             phases.append(
                 PhaseRecord(
                     step_id=step_id,
@@ -632,10 +634,11 @@ def run_and_record_engine_chain(
                         executable_seam=True,
                         packet=packets_by_step[step_id],
                         implementer_mutations=implementer_mutations,
-                        self_test_ran=False,
+                        self_test_ran=self_test_outcome is not None,
                     ),
                     candidate_snapshot_path=snap_path,
                     candidate_snapshot_digest=snap_digest,
+                    self_test_outcome=self_test_outcome,
                 )
             )
         final_decision = next(
@@ -652,6 +655,9 @@ def run_and_record_engine_chain(
     def capture_candidate(step_id: str, receipt: dict[str, object]) -> None:
         base_commit = receipt.get("base_commit")
         candidate_commit = receipt.get("candidate_commit")
+        raw_self_test = receipt.get("self_test_outcome")
+        if isinstance(raw_self_test, dict):
+            self_test_by_step[step_id] = self_test_outcome_from_dict(raw_self_test)
         if not (isinstance(base_commit, str) and isinstance(candidate_commit, str)):
             return
         mutations = git_diff_mutations(repo, base_commit, candidate_commit)
