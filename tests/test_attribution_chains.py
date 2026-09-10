@@ -18,7 +18,7 @@ from satyrn_evals.manifest import load_manifest
 from satyrn_evals.packet import HandoffPacket
 from satyrn_evals.route import (
     ROUTE_SCENARIO,
-    Boundary,
+    BoundaryEvent,
     ImplementerResult,
     run_phases,
     scripted_implementer,
@@ -36,8 +36,8 @@ def _grade_pass(step_id: str, workspace: Path) -> tuple[str, str]:
 
 
 def _observer(workspace: Path, records: list[tuple[str, str, Snapshot]]):
-    def observe(step_id: str, boundary: Boundary) -> None:
-        records.append((step_id, boundary, snapshot(workspace)))
+    def observe(event: BoundaryEvent) -> None:
+        records.append((event.step_id, event.boundary, snapshot(workspace)))
 
     return observe
 
@@ -53,10 +53,10 @@ def _run(workspace: Path, implementer, orchestrator=None):
     records: list[tuple[str, str, Snapshot]] = []
     observe = _observer(workspace, records)
 
-    def watched(step_id: str, boundary: Boundary) -> None:
-        observe(step_id, boundary)
-        if orchestrator is not None and boundary == "after_handoff":
-            orchestrator(step_id, workspace)
+    def watched(event: BoundaryEvent) -> None:
+        observe(event)
+        if orchestrator is not None and event.boundary == "after_handoff":
+            orchestrator(event.step_id, workspace)
             # The orchestrator acted after its window opened; the window
             # closes at the next boundary, which the route emits.
 

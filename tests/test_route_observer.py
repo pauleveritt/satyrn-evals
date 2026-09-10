@@ -14,7 +14,7 @@ from satyrn_evals.manifest import load_manifest
 from satyrn_evals.packet import HandoffPacket
 from satyrn_evals.route import (
     ROUTE_SCENARIO,
-    Boundary,
+    BoundaryEvent,
     ImplementerResult,
     run_phases,
     scripted_implementer,
@@ -54,8 +54,8 @@ def _run(tmp_path: Path, verdicts, observer=None, implementer=None):
 def _recorder() -> tuple[list[tuple[str, str]], object]:
     seen: list[tuple[str, str]] = []
 
-    def observe(step_id: str, boundary: Boundary) -> None:
-        seen.append((step_id, boundary))
+    def observe(event: BoundaryEvent) -> None:
+        seen.append((event.step_id, event.boundary))
 
     return seen, observe
 
@@ -114,8 +114,8 @@ def test_after_handoff_fires_before_grading(tmp_path: Path) -> None:
     workspace, or a grader that writes would be attributed to the worker."""
     order: list[str] = []
 
-    def observe(step_id: str, boundary: Boundary) -> None:
-        order.append(f"{boundary}:{step_id}")
+    def observe(event: BoundaryEvent) -> None:
+        order.append(f"{event.boundary}:{event.step_id}")
 
     def grade(step_id: str, workspace: Path) -> tuple[str, str]:
         order.append(f"grade:{step_id}")
@@ -135,8 +135,33 @@ def test_an_observer_that_raises_is_not_swallowed(tmp_path: Path) -> None:
     surface later as an unobserved window, which reads like a finding about
     the run rather than a bug in the harness."""
 
-    def observe(step_id: str, boundary: Boundary) -> None:
+    def observe(event: BoundaryEvent) -> None:
         raise RouteError("observer is broken")
 
     with pytest.raises(RouteError, match="observer is broken"):
         _run(tmp_path, _ALL_PASS, observe)
+
+
+def test_the_event_carries_the_packet_result_and_decision_at_their_edges(
+    tmp_path: Path,
+) -> None:
+    """HP6: the widened seam. ``packet`` at ``before_handoff``, ``result`` at
+    ``after_handoff``, ``decision`` at ``chain_end`` -- the other fields are
+    ``None`` at every boundary, since nothing at that edge produced them."""
+    events: list[BoundaryEvent] = []
+    _run(tmp_path, _ALL_PASS, events.append)
+    by_edge = {(e.step_id, e.boundary): e for e in events}
+
+    opening = by_edge[(STEPS[0], "before_handoff")]
+    assert opening.packet is not None
+    assert opening.result is None and opening.decision is None
+
+    closing = by_edge[(STEPS[0], "after_handoff")]
+    assert closing.result is not None
+    assert closing.packet is None and closing.decision is None
+
+    ending = by_edge[(STEPS[-1], "chain_end")]
+    assert ending.decision is not None
+    assert ending.decision.step_id == STEPS[-1]
+    assert ending.decision.accepted is True
+    assert ending.packet is None and ending.result is None

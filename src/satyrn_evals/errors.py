@@ -119,3 +119,7 @@ class PacketError(UsageError):
 
 class RouteError(UsageError):
     """Exit 2: an implementer result or a routed phase violates HP2's contract."""
+
+
+class ChainRecordError(UsageError):
+    """Exit 2: a persisted chain record violates HP6's data contract."""

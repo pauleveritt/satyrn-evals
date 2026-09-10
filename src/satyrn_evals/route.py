@@ -42,8 +42,8 @@ verdict itself; the default tier scripts this and the integration tier passes
 the real ``SessionGrader``."""
 
 type Boundary = Literal["before_handoff", "after_handoff", "chain_end"]
-type BoundaryObserver = Callable[[str, Boundary], None]
-"""``(step_id, boundary) -> None``, called at each hand-off edge (HP5).
+type BoundaryObserver = Callable[["BoundaryEvent"], None]
+"""``(event) -> None``, called at each hand-off edge (HP5, widened HP6).
 
 The route says *when* a window opens and closes; what to record at that
 moment is the observer's business, which keeps a tree walk the route has no
@@ -213,6 +213,26 @@ class PhaseDecision:
     result: ImplementerResult
 
 
+@dataclass(frozen=True, slots=True)
+class BoundaryEvent:
+    """One hand-off edge, and the content available there (HP6).
+
+    HP5's observer carried only ``(step_id, boundary)``; retention needs the
+    packet, the result and the decision, and those exist at three different
+    edges, so the event carries all three and leaves two ``None`` at every
+    boundary rather than the route growing a second injected callable.
+    ``packet`` is set at ``before_handoff``, ``result`` at ``after_handoff``,
+    ``decision`` at ``chain_end`` -- attribution reads only ``step_id`` and
+    ``boundary`` and ignores the rest, which is the whole of its adaptation.
+    """
+
+    step_id: str
+    boundary: Boundary
+    packet: HandoffPacket | None = None
+    result: ImplementerResult | None = None
+    decision: PhaseDecision | None = None
+
+
 def run_phases(
     task_dir: Path,
     manifest: TaskManifest,
@@ -242,9 +262,16 @@ def run_phases(
     decisions: list[PhaseDecision] = []
     last_step_id = ""
 
-    def observe(step_id: str, boundary: Boundary) -> None:
+    def observe(
+        step_id: str,
+        boundary: Boundary,
+        *,
+        packet: HandoffPacket | None = None,
+        result: ImplementerResult | None = None,
+        decision: PhaseDecision | None = None,
+    ) -> None:
         if observer is not None:
-            observer(step_id, boundary)
+            observer(BoundaryEvent(step_id, boundary, packet, result, decision))
 
     for step in spec.steps:
         last_step_id = step.id
@@ -254,28 +281,28 @@ def run_phases(
             turn_budget=turn_budget,
             tool_call_budget=tool_call_budget,
         )
-        observe(step.id, "before_handoff")
+        observe(step.id, "before_handoff", packet=packet)
         result = implementer(packet)
-        observe(step.id, "after_handoff")
+        observe(step.id, "after_handoff", result=result)
         match result.reported_outcome:
             case "refused":
-                decisions.append(
-                    PhaseDecision(
-                        step.id, False,
-                        f"implementer refused: {result.message or 'no reason given'}",
-                        result,
-                    )
+                decision = PhaseDecision(
+                    step.id, False,
+                    f"implementer refused: {result.message or 'no reason given'}",
+                    result,
                 )
-                observe(step.id, "chain_end")
+                decisions.append(decision)
+                observe(step.id, "chain_end", decision=decision)
                 return decisions
             case _:
                 verdict, reason = grader(step.id, workspace)
                 accepted = verdict == "pass"
-                decisions.append(PhaseDecision(step.id, accepted, reason, result))
+                decision = PhaseDecision(step.id, accepted, reason, result)
+                decisions.append(decision)
                 if not accepted:
-                    observe(step.id, "chain_end")
+                    observe(step.id, "chain_end", decision=decision)
                     return decisions
-    observe(last_step_id, "chain_end")
+    observe(last_step_id, "chain_end", decision=decisions[-1] if decisions else None)
     return decisions
 
 

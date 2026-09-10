@@ -12,7 +12,7 @@ from satyrn_evals.manifest import load_manifest
 from satyrn_evals.packet import HandoffPacket
 from satyrn_evals.route import (
     ROUTE_SCENARIO,
-    Boundary,
+    BoundaryEvent,
     ImplementerResult,
     run_phases,
     scripted_implementer,
@@ -27,10 +27,10 @@ BUDGETS = {"turn_budget": 40, "tool_call_budget": 60}
 def _run(workspace: Path, implementer, orchestrator=None):
     records: list[tuple[str, str, Snapshot]] = []
 
-    def observe(step_id: str, boundary: Boundary) -> None:
-        records.append((step_id, boundary, snapshot(workspace)))
-        if orchestrator is not None and boundary == "after_handoff":
-            orchestrator(step_id, workspace)
+    def observe(event: BoundaryEvent) -> None:
+        records.append((event.step_id, event.boundary, snapshot(workspace)))
+        if orchestrator is not None and event.boundary == "after_handoff":
+            orchestrator(event.step_id, workspace)
 
     decisions = run_phases(
         TASK, load_manifest(TASK), load_session_spec(TASK), implementer,
