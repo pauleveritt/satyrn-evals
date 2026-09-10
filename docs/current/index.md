@@ -29,6 +29,11 @@ past artifact. Archived material does not set current policy.
   implementer handoffs over chained isolated checkouts, with role attribution
   required so a passing workflow cannot hide a silent implementer. It
   supersedes the brief's Part 2 and authorizes nothing.
+- [After HP: turn efficiency and harder work](engine-turn-efficiency-plan.md)
+  sequences two focused claims: fewer total model turns without sacrificing
+  easy-roadmap quality, then more reliable completion of one harder roadmap
+  within a shared turn ceiling. It separates confirmation from exploratory
+  screens and from the hypothesis that reduced looping explains an advantage.
 - [Next-agent brief: correct the screen, then put Engine on the phased
   workload](next-agent-brief-engine-on-phased.md) is the current handoff: six
   documentation corrections that need no new run — **applied 2026-09-09** —
@@ -84,6 +89,7 @@ agentclinic-session-phased-verification-pre-run-record
 agentclinic-verification-triage-screen
 next-agent-brief-engine-on-phased
 orchestrated-delivery-design
+engine-turn-efficiency-plan
 session-ordering-baseline-pre-run-record
 agentclinic-phase-session-proposal
 misleading-locus-r3-pre-run-record

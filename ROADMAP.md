@@ -161,8 +161,8 @@ agent is asked to invent a decomposition.
 | **HP3** Chained isolation *(engine)* | Phase N branches from phase N-1's accepted commit; a refused phase stops the chain with no candidate ref | Pools, parallel dispatch, retry | spec + plan | **implemented in `satyrn-engine`, awaiting acceptance** — three slices; a review round made a candidate-less success a refusal and proved retention by resolving refs |
 | **HP4** File creation | Declared directory source paths, so an empty-skeleton directory is distinguishable from a creation target | A trailing slash as the settled syntax; relaxing scope enforcement | plan only | **implemented, awaiting acceptance** — four slices; the declaration surfaced two fakes checking scope by the prefix rule against fnmatch patterns |
 | **HP5** Role attribution | Every mutation attributed to orchestrator or implementer from retained events | Judging whether delegation helped; any new pathology detector | spec + plan | **implemented, awaiting acceptance** — five slices; attribution observes and never gates, and an unobserved window is reported unobserved rather than zero |
-| **HP6** Chain retention | Instructions, packets, worker events, candidate, validation output, accept/reject with reason, cost per role, fallback labelled | Cost thresholds or a budget verdict | plan only | **implemented, awaiting acceptance** — seven slices; the widened `BoundaryEvent` replaced HP5's two-argument observer rather than adding a second injected callable, and the chain check keeps an unobserved implementer window and an observed zero on different verdicts |
-| **HP7** Live route proof | One orchestrated delivery, `n` frozen at 1, Baseline model, the adopted verification instruction | Superiority of any kind; extending `n` after reading it | spec (pre-run record) | proposed, budgeted |
+| **HP6** Chain retention | Instructions, packets, worker events, candidate, validation output, accept/reject with reason, cost per role, fallback labelled | Cost thresholds or a budget verdict | plan only | **implemented, awaiting acceptance** — seven slices; the widened `BoundaryEvent` replaced HP5's two-argument observer rather than adding a second injected callable, and the chain check keeps an unobserved implementer window and an observed zero on different verdicts. Two Astra/Sol review rounds (2026-09-10) found and closed: a whole-chain-then-write design that lost already-graded phases on a grader crash, candidate content retained as paths/kinds only with no offline regrade proof, and `writable_paths` reported `applied` on mere observed compliance. `run_and_record_chain` now persists per phase before grading and captures real candidate bytes; `AppliedState.OBSERVED_COMPLIANT` separates compliance from proven enforcement |
+| **HP7** Live route proof | One orchestrated delivery, `n` frozen at 1, Baseline model, the adopted verification instruction | Superiority of any kind; extending `n` after reading it | spec (pre-run record) | pre-run record written (`docs/current/hp7-live-route-proof-pre-run-record.md`); precondition 1 resolved — a real Pi implementer adapter exists (`adapters/pi_implementer.py`), proven only at its pure surface, no real Pi process run yet. **Two blocking gaps disclosed, not resolved:** this route composes no HP3 chained isolation (one plain workspace, not isolated per-phase checkouts — a cross-repository decision), and the implementer has no `bash` so it cannot run the adopted `self_test_command` itself. Not authorized to run: HP1–HP6 acceptance and a separate budget authorization are both still outstanding |
 | **HP8** Workflow comparison | Orchestrated route against the continuous-session route, same roadmap and prompt, triage at two attempts per configuration | Publication; mechanism attribution; wall-clock between contiguous arms | spec (pre-run record) | proposed, separately authorized |
 
 **Why some cycles are plan-only.** `docs/sdd.md` asks for designs
@@ -184,6 +184,28 @@ workflow can hide a silent implementer: seed 221 passed with **0 mutations**
 in all three dispatched phases
 (`swiftstar/captures/agenttest/20260829-212715-roadmap-user-story-directive/campaign-stdout.txt:14-16`).
 HP5 exists because of the second one.
+
+## After HP: Phase TE — fewer wasted turns, more work within budget
+
+**Proposed 2026-09-10; not started, no inference authorized.**
+[The execution plan](docs/current/engine-turn-efficiency-plan.md) follows HP
+with two independent claims: Engine uses fewer total model turns on an easy
+AgentClinic roadmap both configurations reliably complete; and Engine completes
+one harder roadmap more reliably within a practical shared turn ceiling.
+Turns are the outcome, not a proxy for speed. Reduced unproductive looping is
+the explanation to investigate, not a conclusion inferred from lower totals.
+
+The sequence is: identify the actual pair and audit accounting; reuse HP8 or
+run a necessary easy screen; confirm easy efficiency with a quality guardrail;
+qualify and screen one harder roadmap; confirm harder completion; review both
+claims and decide. Count every role and failed attempt. Historical screens
+remain outside fresh confirmation denominators. Each confirmation freezes its
+practical thresholds, statistical design and authorized budget before launch.
+
+HP remains responsible for the composed, retained, regradable route; TE does
+not absorb unfinished HP requirements or reopen the paused single-task tuning
+campaign below. Negative and inconclusive results are legitimate completion,
+not invitations to extend a batch or search for a favorable task.
 
 ## Paused: the engine comparison
 
