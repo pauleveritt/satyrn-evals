@@ -50,6 +50,50 @@ They remain outside every TE confirmation denominator. A packet wrapper
 around Baseline Pi is not, by naming it so, an Engine arm; and a workflow
 comparison alone is not evidence about a particular Engine mechanism.
 
+## Repair ownership: the initial configuration and follow-on work
+
+**Implementer-local verification and correction are included.** Before handing
+back a candidate, the implementer may run the prescribed public pytest command,
+inspect failures, correct application code, and rerun within its remaining
+budget. One handoff does not mean one model generation or no opportunity to
+repair. HP1's [packet spec](../superpowers/specs/2026-09-09-hp1-handoff-packet-design.md)
+already gives `self_test_command` to the implementer's own feedback loop;
+an adapter that cannot execute it is an HP readiness gap, not a decision to
+forbid self-correction. Both configurations need equivalent verification
+capabilities; a bounded test tool can supply them without unrestricted `bash`.
+Removing tests or weakening assertions must not count as repairing the app;
+independent grading still decides whether the requirements were met.
+
+**Orchestrator-directed repair is a different engine change.** After a returned
+candidate fails public validation, the orchestrator could dispatch a targeted
+repair request. Its hypothesis is that a fresh handoff with useful failure
+feedback rescues work in fewer total turns than continued local repair. It
+could instead introduce another unproductive loop. Default to studying this
+as separately authorized follow-on work, motivated by retained HP/TE failures,
+not enabling it silently during a TE screen or confirmation.
+
+If this outer loop is essential to the Engine configuration the maintainer
+intends to use, explicitly amend the selected treatment and test the candidate
+before TE confirmation. Do not confirm a configuration already intended for
+replacement. Use a separately authorized bounded candidate screen, keep its
+observations outside confirmation, then freeze the adopted behavior and rerun
+only the preparation checks affected by the change. No configuration changes
+are allowed within a confirmation batch.
+
+Any outer-loop candidate must use public validation feedback, never hidden
+grader output; retain every failed candidate, validation result and dispatch;
+and predeclare a redispatch limit inside the shared whole-attempt turn ceiling.
+Handoffs do not replenish the budget. **Direct orchestrator-written repair is
+a third, explicitly labelled fallback condition**, not an interchangeable
+implementation of redispatch. Attribute and count all work in every role;
+neither fallback nor a later successful repair erases the earlier failure.
+
+These distinctions preserve [HP's scope](orchestrated-delivery-design.md):
+implementer self-testing is part of the initial route; post-handoff repair
+campaigns and orchestrator-written fallback are excluded unless separately
+selected, reviewed and frozen as the treatment. Earlier SwiftStar repair-loop
+and one-shot-first designs are candidate evidence, not one universal policy.
+
 ## Sequence and exit evidence
 
 | Step | Work | Exit evidence | GPU/model inference |
