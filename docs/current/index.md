@@ -56,6 +56,11 @@ past artifact. Archived material does not set current policy.
   freezes one bounded packet-route chain, states it establishes operability
   and not superiority, and names the missing real-implementer adapter as the
   blocking precondition. Authorizes nothing.
+- [Pre-run record: run_self_test live verification](self-test-tool-live-verification-pre-run-record.md)
+  proposes one bounded `pi` invocation proving the self-test tool is
+  reachable and its content legible, outside every TE denominator, and
+  names the unresolved pi version mismatch as a blocking precondition.
+  Authorizes nothing.
 - [First useful engine comparison](first-engine-comparison-plan.md) is paused,
   not queued. Its live smoke is complete; further comparison requires a useful
   question and its own frozen, authorized budget.
@@ -94,6 +99,7 @@ session-ordering-baseline-pre-run-record
 agentclinic-phase-session-proposal
 misleading-locus-r3-pre-run-record
 hp7-live-route-proof-pre-run-record
+self-test-tool-live-verification-pre-run-record
 first-engine-comparison-plan
 first-smoke-run-record
 triage-candidate
