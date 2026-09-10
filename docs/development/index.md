@@ -28,6 +28,7 @@ cycles/index
 ../superpowers/plans/2026-09-09-hp6-chain-retention
 ../superpowers/specs/2026-09-09-hp1-handoff-packet-design
 ../superpowers/specs/2026-09-10-self-test-harness-design
+../superpowers/plans/2026-09-10-self-test-harness
 ```
 
 The repository-root
