@@ -58,9 +58,24 @@ issue was the check demanding one specific *mechanism*; this check
 demands the actual *behavior*, and the behavior genuinely broke).
 
 **Engine-02: a real self-test failure, followed by a misdiagnosed
-fix attempt, then a timeout** — not the destructive-edit-and-repeat
-signature (phase-2-board's own pathology). The implementer's own
-`tests/test_app.py`:
+fix attempt, then a timeout.**
+
+**Corrected 2026-09-11**, after
+[the phase-4-guardrail round-2 result](te4-phase4-guardrail-reverification-round2-result.md)'s
+own review found this wrong on direct re-check: this line originally
+said "not the destructive-edit-and-repeat signature (phase-2-board's
+own pathology)." It is that signature. This attempt's phase-4 tool
+call 5 destructively replaces `create_complaint` with the resolve
+route in a single `oldText`/`newText` edit; call 8 then restores
+`create_complaint` via a second targeted `edit`, inserted additively
+right after `GET /complaints`. The route-preservation question is a
+red herring for why this attempt ultimately fails, though — the
+restored route is correct, and the redirect-trap misdiagnosis below is
+what actually times it out. But the claim that this mechanism was
+absent here was wrong, and it is now the earliest known occurrence of
+the destructive-edit-then-restore pattern at phase 4, predating every
+later attempt this document family classified it against. The
+implementer's own `tests/test_app.py`:
 
 ```python
 response = client.post(f"/complaints/{original_id}/resolve")

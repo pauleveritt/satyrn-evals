@@ -180,15 +180,16 @@ past artifact. Archived material does not set current policy.
   for the redirect-trap pattern, classifying it as testing friction
   outside what a design-ambiguity closure should touch. Authorizes
   nothing yet.
-- [Round 2 — result](te4-phase4-guardrail-reverification-round2-result.md):
-  **the first two full completions ever on this task family**, 18/18
-  hidden checks each. Both attempts still made the destructive edit
-  the guardrail targets, but both caught and reversed it themselves
-  before self-test ever ran — the first time this self-correction has
-  been seen at phase 4. Across all 4 phase-4-guardrail-era attempts,
-  the edit still occurs 3 of 4 (same as pre-guardrail); what's new is
-  what happens after it, not whether it happens. 2 of 13 cumulative;
-  not a completion rate. Independent review pending.
+- [Round 2 — result](te4-phase4-guardrail-reverification-round2-result.md),
+  **corrected after review**: **the first two full completions ever on
+  this task family**, 18/18 hidden checks each. Both attempts still
+  made the destructive edit the guardrail targets and both restored
+  it — but restoring it is not new (found, on correction, in 2 earlier
+  attempts that restored the same way and still timed out); what
+  actually distinguishes these two is only that they finished within
+  budget afterward, unexplained by anything in this record. Across all
+  4 phase-4-guardrail-era attempts, the edit still occurs 3 of 4 (same
+  as pre-guardrail). 2 of 13 cumulative; not a completion rate.
 - [Pre-run record: run_self_test live verification](self-test-tool-live-verification-pre-run-record.md)
   proposes one bounded `pi` invocation proving the self-test tool is
   reachable and its content legible, outside every TE denominator, and

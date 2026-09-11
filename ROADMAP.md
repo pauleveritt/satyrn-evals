@@ -280,17 +280,16 @@ meant final content intact, never that the edit never happened
 (tightening-3's row corrected the same way). The `303` redirect-trap
 pattern recurs in 6 of 9, resolved correctly in only 1.
 
-**[Round 2](docs/current/te4-phase4-guardrail-reverification-round2-result.md):
+**[Round 2, corrected after review](docs/current/te4-phase4-guardrail-reverification-round2-result.md):
 the first two full completions ever on this task family, 18/18 hidden
-checks each.** Both attempts still made the destructive edit — 3 of 4
-phase-4-guardrail-era attempts now show it, the same rate as
-pre-guardrail — but both caught and reversed it themselves before
-self-test ever ran, restoring the route additively. That is new: not
-whether the edit happens, but that the model twice recovered from it
-unprompted. Engine has completed the full task **2 of 13 times**; not
-a rate, and not yet a turn ceiling (43, 49 turns). Independent review
-pending before drawing further conclusions. TE4's screen still not
-proposed or authorized.
+checks each.** Both attempts still made the destructive edit and both
+restored it — 3 of 4 phase-4-guardrail-era attempts show the edit, same
+rate as pre-guardrail. Restoring it is not new (2 earlier attempts did
+the same and still timed out); what distinguishes these two is only
+finishing within budget afterward, unexplained here. Engine has
+completed the full task **2 of 13 times**; not a rate, and not yet a
+turn ceiling (43, 49 turns). TE4's screen still not proposed or
+authorized.
 
 HP remains responsible for the composed, retained, regradable route; TE does
 not absorb unfinished HP requirements or reopen the paused single-task tuning

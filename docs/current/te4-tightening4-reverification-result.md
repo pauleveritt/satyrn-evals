@@ -63,6 +63,16 @@ implementer never connected that `422` to `id` being `None`, made
 several more edits chasing the wrong problem, and ran out of time at
 25 phase-4 turns.
 
+**Also missed, added 2026-09-11** (found reviewing
+[the phase-4-guardrail round-2 result](te4-phase4-guardrail-reverification-round2-result.md)):
+this attempt's `app.py` edits also show the destructive-edit-then-restore
+pattern — tool call 7 destructively replaces `create_complaint` with
+the resolve route, and call 10 restores it via a second targeted
+`edit`. The route itself is not what causes this attempt's eventual
+timeout (the `__post_init__` bug is), but the pattern was present and
+undocumented here; it is not unique to Engine-02 above or to this
+document's own classification of it as new there.
+
 **Engine-02: a destructive edit deleted an already-accepted route** —
 the same mechanism named in
 [the phase-2-board runaway investigation](phase-2-board-runaway-investigation.md),
