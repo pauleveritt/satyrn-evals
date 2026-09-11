@@ -28,47 +28,36 @@ splitting at `session` boundaries (`[6,8,10,23]`, `[6,7,9,23]`, `[6,8,11,19]`,
 destroyed / 4 of 7 restored", or "6 of 18". Those numbers were derived ad hoc
 at authoring time and survive only as prose.
 
-**Six causes, each drawn from the correction record** (`f89ba99`, `127e254`,
-`c12dd05`, `b5e00ab`, `2196428`, `d57007c`, `057abc0`, `d691a92`, `2e6e818`,
-`9d77f40`, `b05dc49`, `82da340` — twelve correction or verification commits
-across Phase TE):
+**Six causes, each drawn from the correction record** (twelve correction or
+verification commits across Phase TE):
 
-1. **No committed derivation for any forensic number.** Reviewers re-derive by hand each pass, each
-   pass differs, and the error runs both ways — the redirect-trap count went `1 of 9` → `2 of 9` →
-   `1 of 9` across two review rounds.
-2. **The two arms' retained evidence has different layouts and different phase-attribution
-   mechanisms.** Baseline carries `step_id`; Engine is four positional `session` blocks with no phase
-   label. A hand-count must use two methods, which is how an arm-asymmetric denominator appeared
+1. **No committed derivation for any forensic number.** Reviewers re-derive by
+   hand each pass, each pass differs, and the error runs both ways — the
+   redirect-trap count went `1 of 9` → `2 of 9` → `1 of 9`.
+2. **The two arms' evidence has different layouts and attribution mechanisms.**
+   Baseline carries `step_id`; Engine is positional `session` blocks with no
+   label. Two hand-counting methods produced an arm-asymmetric denominator
    (`6 of 8` Engine against all-attempts Baseline, corrected to `6 of 10`).
-3. **Measures are re-operationalized per claim, and sometimes the operationalization does not match
-   the claim.** A `"== 303"` substring match caught a printed source line and an unrelated
-   `405 == 303`; "no public-test-quality concern" measured test-file *additivity* when the claim was
-   about tests *passing* and reports being *honest*, which is why a fabricated pytest transcript went
-   unnoticed; a rejected `edit` was written up twice as an "inert no-op."
-4. **Prose is the transport layer.** Numbers and framings move doc-to-doc, so an error migrates and a
-   reader cannot tell derived values from copied ones. Live in the tree: `docs/current/index.md:234`
-   still reads "the opposite of 'Engine completes harder work more reliably'" while
-   `te6-explain-and-decide.md:255` reads "not that Baseline is the more reliable configuration." The
-   correction never reached the carrier.
-5. **There is no committed QA for forensic or interpretive numbers.** The scoping matters: committed
-   QA *does* exist for run-time bookkeeping (`turn_ledger`, `check_chain`, `chain.json`'s per-phase
-   `self_test_outcome`, `session-record.json`'s `turn_count`). What is missing is derivation for the
-   numbers written *about* a run.
-6. **The claims themselves have no home but prose.** There is no registry of what was claimed,
-   against which measure and population. Fixing derivations without one is temporary.
+3. **Measures are re-operationalized per claim, and can miss the claim.** A
+   `"== 303"` substring match caught a printed source line and an unrelated
+   `405 == 303`; test-file *additivity* was read as tests *passing* and reports
+   being *honest*, so a fabricated pytest transcript went unnoticed.
+4. **Prose is the transport layer.** An error migrates and a reader cannot tell
+   derived from copied; `index.md:234` still read the stale framing while
+   `te6-explain-and-decide.md:255` held the correction.
+5. **No committed QA for forensic or interpretive numbers.** Committed QA does
+   exist for run-time bookkeeping (`turn_ledger`, `check_chain`, `chain.json`,
+   `session-record.json`); missing is derivation for what is written *about* a run.
+6. **The claims have no home but prose** — no registry of what was claimed,
+   against which measure and population.
 
 **A committed instrument was wrong about the Engine arm.** `census.py`'s
-`KNOWN_TOOL_NAMES` lacked the packet route's `run_self_test`, so
-`detect_unknown_tool` returned **8** on the screen Engine-02 transcript;
-`detect_noop_edit` put a *rejected* edit ("Could not find the exact text") and a
-*true* no-op ("No changes made… identical content") in one bucket, returning
-`2`, one of each; `pathology.py`'s `TOOL_NAMES` had the same staleness.
-`count_transcript` refused that transcript (`malformed`) — **not** for the
-multi-session shape, which is real (four `adapter_marker` lines, four `session`
-events), but because `_header_ok` met the leading
-`{"adapter_marker": "turn_start", "index": 0}` line; dropping that header left
-`unknown_event`, the same vocabulary gap. The arm-neutral instrument could not
-read the Engine arm. **V2b repaired all of it** (product 3 below).
+`KNOWN_TOOL_NAMES` lacked `run_self_test` (8 unknown-tool hits on screen
+Engine-02), `detect_noop_edit` bucketed a rejected edit with a true no-op, and
+`pathology.py` shared the staleness. `count_transcript` refused the transcript
+as `malformed` — on the leading `adapter_marker` header, not the multi-session
+shape (which is real); dropping the header left `unknown_event`, the same
+vocabulary gap. **V2b repaired all of it.**
 
 ## What this is not
 
@@ -378,22 +367,18 @@ commit it read them under, per `AGENTS.md`'s currency rule, before measuring.
 
 ## Review round
 
-Reviewed 2026-09-11 by GLM 5.3 (`zai`) at `xhigh` thinking on a working tree at `82da340`. Twelve
-findings, disposition recorded rather than silently applied:
+Reviewed 2026-09-11 by GLM 5.3 (`zai`) at `xhigh`, working tree `82da340`.
+Twelve findings; dispositions recorded. **Accepted:** the inventory precedes
+tooling and includes carriers; the earlier claim that `census.py` "already
+distinguishes" a rejected edit was wrong; the denominator binding is the real
+fix; Track A confirms or corrects but does not originate; all four reopen
+bounds and the exit condition; the citation, commit-count, doc-cap and
+cross-repo-bookkeeping corrections. **Scoped correction:** forensic and
+interpretive numbers, not all QA. **Resolved differently:** every Track A cycle
+publishes reconciliation findings (the object test), rather than merging V1+V2.
 
-- **Accepted:** the claim inventory must precede tooling and include carriers; `census.py` "already
-  distinguishes" a rejected edit was **wrong** (corrected above); the denominator binding is the real
-  fix; Track A confirms or corrects but does not originate; all four reopen bounds and the exit
-  condition; the citation, commit-count, doc-cap and cross-repo-bookkeeping corrections.
-- **Accepted with a scoping correction:** "review is the only QA" was overstated; cause 5 now says
-  forensic/interpretive numbers, cause 6 added.
-- **Resolved differently than proposed:** instead of merging V1+V2 or a maintainer amendment, every
-  Track A cycle publishes reconciliation findings (the object test above); the maintainer accepted
-  this on 2026-09-11, and V3 stays a separate close-out cycle.
-
-**Maintainer verification, 2026-09-11.** A separate pass checked the design's load-bearing claims
-against the tree and retained artifacts. Two wrong attributions are corrected above: (F1) the
-`malformed` refusal was the adapter-marker header plus the vocabulary gap, not the multi-session
-shape; (F2) `census_root` could not discover the packet-route transcript, so discovery was folded
-into V2 product 3. Three nits were applied: the carrier-commit test scoped here, `verification_claim`
-reworded as a binding, and the cross-repo roadmap update made an explicit checklist item.
+**Maintainer verification, 2026-09-11** corrected two attributions — the
+`malformed` cause (header plus vocabulary gap, F1) and `census_root` discovery
+(F2, folded into V2 product 3) — and scoped the carrier-commit test, reworded
+`verification_claim` as a binding, and made the cross-repo roadmap update an
+explicit checklist item.
