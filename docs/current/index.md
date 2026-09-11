@@ -194,6 +194,15 @@ past artifact. Archived material does not set current policy.
   freezes 3 more Engine attempts at the unchanged post-guardrail
   prompt, asking only whether round 2's two completions recur at all —
   no further prompt change. Authorizes nothing yet.
+- [Completion-recurrence check — result](te4-completion-recurrence-check-result.md):
+  2 more full completions (18/18 each) and one phase-2-board runaway
+  recurrence (the *original* import-bug pathology, not a phase-4
+  issue). Across all 6 phase-4-guardrail-era attempts that reached
+  phase 4, every attempt that restored the destructively-edited route
+  went on to pass all 18 checks (4 of 4); every attempt that didn't
+  restore it failed to complete (2 of 2) — a clean, small-sample split
+  worth stating exactly, not a rate. Cumulative: 4 of 16. Independent
+  review pending before proposing TE4's own screen.
 - [Pre-run record: run_self_test live verification](self-test-tool-live-verification-pre-run-record.md)
   proposes one bounded `pi` invocation proving the self-test tool is
   reachable and its content legible, outside every TE denominator, and
@@ -258,6 +267,7 @@ te4-phase4-guardrail-reverification-result
 te4-phase4-guardrail-reverification-round2-pre-run-record
 te4-phase4-guardrail-reverification-round2-result
 te4-completion-recurrence-check-pre-run-record
+te4-completion-recurrence-check-result
 self-test-tool-live-verification-pre-run-record
 first-engine-comparison-plan
 first-smoke-run-record
