@@ -227,6 +227,17 @@ past artifact. Archived material does not set current policy.
   fully-fixed prompt is clean both times, tests included. Per the
   plan's own rule for a "both pass" screen: report it, don't enlarge
   the budget or shop for a harder variant.
+- [TE6 — explain the result and decide](te6-explain-and-decide.md)
+  closes Phase TE's two claims against the full evidence assembled.
+  Claim 1 (easy work) is inconclusive, closed, not reopened. Claim 2
+  (harder work) is **not supported**: Baseline is 3 of 3 on
+  `agentclinic-complaint-lifecycle`, Engine 6 of 18 — the opposite of
+  "Engine completes harder work more reliably." A verification-honesty
+  finding (one Engine attempt fabricated a passing test report) shows
+  the hidden-grader pass rate alone would have missed a real quality
+  gap. No further live spending or TE5 confirmation is proposed;
+  broader generalization is separately authorized work only if a
+  development need warrants it.
 - [Pre-run record: run_self_test live verification](self-test-tool-live-verification-pre-run-record.md)
   proposes one bounded `pi` invocation proving the self-test tool is
   reachable and its content legible, outside every TE denominator, and
@@ -294,6 +305,7 @@ te4-completion-recurrence-check-pre-run-record
 te4-completion-recurrence-check-result
 te4-screen-pre-run-record
 te4-screen-result
+te6-explain-and-decide
 self-test-tool-live-verification-pre-run-record
 first-engine-comparison-plan
 first-smoke-run-record

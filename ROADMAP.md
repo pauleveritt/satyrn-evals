@@ -195,10 +195,11 @@ HP5 exists because of the second one.
 
 ## After HP: Phase TE — fewer wasted turns, more work within budget
 
-**Proposed 2026-09-10; TE1 closed for pairing/accounting, ceiling
-qualified; TE2 run, both frozen questions read against Engine; TE3 not
-pursued, not reopened without new evidence; TE4 scoping under way, its
-phase-2-board guardrail adopted into `agentclinic-complaint-lifecycle`.**
+**Proposed 2026-09-10; closed 2026-09-11 at [TE6](docs/current/te6-explain-and-decide.md).
+TE1 closed for pairing/accounting, ceiling qualified; TE2 run, both
+frozen questions read against Engine; TE3 not pursued, not reopened;
+TE4 qualified, screened, and closed — the harder-work claim is not
+supported. No further live Phase TE spending is proposed.**
 [The execution plan](docs/current/engine-turn-efficiency-plan.md) follows HP
 with two independent claims: Engine uses fewer total model turns on an easy
 AgentClinic roadmap both configurations reliably complete; and Engine completes
@@ -293,9 +294,8 @@ the pre-fix conditions Engine failed under, so not evidence it is
 immune to them. The harder-roadmap claim is not supported on current evidence.
 
 HP remains responsible for the composed, retained, regradable route; TE does
-not absorb unfinished HP requirements or reopen the paused single-task tuning
-campaign below. Negative and inconclusive results are legitimate completion,
-not invitations to extend a batch or search for a favorable task.
+not absorb unfinished HP requirements or reopen the paused single-task
+tuning campaign below. Negative and inconclusive results are legitimate completion, not invitations to extend a batch or search for a favorable task.
 
 ## Paused: the engine comparison
 
