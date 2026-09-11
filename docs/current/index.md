@@ -194,15 +194,18 @@ past artifact. Archived material does not set current policy.
   freezes 3 more Engine attempts at the unchanged post-guardrail
   prompt, asking only whether round 2's two completions recur at all —
   no further prompt change. Authorizes nothing yet.
-- [Completion-recurrence check — result](te4-completion-recurrence-check-result.md):
-  2 more full completions (18/18 each) and one phase-2-board runaway
-  recurrence (the *original* import-bug pathology, not a phase-4
-  issue). Across all 6 phase-4-guardrail-era attempts that reached
-  phase 4, every attempt that restored the destructively-edited route
-  went on to pass all 18 checks (4 of 4); every attempt that didn't
-  restore it failed to complete (2 of 2) — a clean, small-sample split
-  worth stating exactly, not a rate. Cumulative: 4 of 16. Independent
-  review pending before proposing TE4's own screen.
+- [Completion-recurrence check — result](te4-completion-recurrence-check-result.md),
+  **corrected after review**: 2 more full completions (18/18 each) and
+  one phase-2-board runaway recurrence (the *original* import-bug
+  pathology, not a phase-4 issue). A first draft's clean 4-of-4-vs-2-of-2
+  split was cherry-picked (restricted to the guardrail era, missing 3
+  attempts on record that also restored and still failed). Restated
+  against all 13 phase-4-reaching Engine attempts: restoring the
+  destructively-edited route is necessary for completion (0 of 6
+  non-restorations pass) but not sufficient (4 of 7 restorations pass;
+  the other 3 all time out, none is submitted-and-rejected) — turn
+  budget, not correctness, is the remaining bottleneck, unexplained
+  here. Cumulative: 4 of 16.
 - [Pre-run record: run_self_test live verification](self-test-tool-live-verification-pre-run-record.md)
   proposes one bounded `pi` invocation proving the self-test tool is
   reachable and its content legible, outside every TE denominator, and

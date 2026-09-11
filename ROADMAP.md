@@ -275,15 +275,19 @@ rate as pre-guardrail. Restoring it is not new (2 earlier attempts did
 the same and still timed out); what distinguishes these two is only
 finishing within budget afterward, unexplained here.
 
-**[Completion-recurrence check](docs/current/te4-completion-recurrence-check-result.md):
+**[Completion-recurrence check, corrected after review](docs/current/te4-completion-recurrence-check-result.md):
 2 more full completions, 1 phase-2-board runaway recurrence (the
-*original* import-bug pathology, unrelated to phase 4).** Across all 6
-phase-4-guardrail-era phase-4-reaching attempts: **every attempt that
-restored the destructively-edited route completed (4 of 4); every
-attempt that didn't, didn't (2 of 2)** — a clean small-sample split,
-not a rate. Engine has completed the full task **4 of 16 times**.
-Enough to make TE4's own screen a live option; not yet proposed.
-Independent review pending.
+*original* import-bug pathology, unrelated to phase 4).** A first draft
+claimed a clean 4-of-4-vs-2-of-2 split by restricting to the
+guardrail-era attempts only, missing 3 attempts on record that also
+restored the route and still failed. Restated against all 13
+phase-4-reaching Engine attempts: restoring the route is **necessary**
+(0 of 6 non-restorations passed) but **not sufficient** (4 of 7
+restorations passed; the other 3 all timed out, none was
+submitted-and-rejected) — the real bottleneck for a restoring attempt
+is turn/time budget, unexplained by anything on record. Engine has
+completed the full task **4 of 16 times**. Enough to make TE4's own
+screen a live option; not yet proposed.
 
 HP remains responsible for the composed, retained, regradable route; TE does
 not absorb unfinished HP requirements or reopen the paused single-task tuning
