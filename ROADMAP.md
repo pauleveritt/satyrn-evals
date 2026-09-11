@@ -261,36 +261,36 @@ recurring at phase 4 (3 of 4 graded attempts), with no guardrail
 against it there — **phase-4 guardrail applied**, see the task's own
 [`QUALIFICATION-NOTE.md`](src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md).
 
-**[Phase-4-guardrail round 1](docs/current/te4-phase4-guardrail-reverification-result.md),
-corrected twice: 0/3 complete.** The guardrail's own edit still
-recurred (7 of 9 phase-4-reaching attempts overall, 4 of 9 not
-self-correcting) at the same rate as phase 2's. The `303` redirect-trap
-pattern recurs in 6 of 9, resolved correctly in only 1.
+**Phase-4-guardrail re-verification, three rounds, several corrections
+along the way**
+([round 1](docs/current/te4-phase4-guardrail-reverification-result.md),
+[round 2](docs/current/te4-phase4-guardrail-reverification-round2-result.md),
+[completion-recurrence check](docs/current/te4-completion-recurrence-check-result.md)):
+round 1 was 0/3; round 2 gave the first two full completions ever on
+this task family (18/18 each); the recurrence check added 2 more.
+Across all 13 phase-4-reaching Engine attempts on record, the
+guardrail's own destructive edit still occurs regardless of the
+guardrail (11 of 13); restoring it is **necessary** for completion (0
+of 6 non-restorations pass) but **not sufficient** (4 of 7 restorations
+pass; the other 3 all time out, none submitted-and-rejected) — the
+real bottleneck is turn/time budget, unexplained by anything on
+record. Engine had completed the full task **4 of 16 times** before
+the screen below.
 
-**[Round 2, corrected after review](docs/current/te4-phase4-guardrail-reverification-round2-result.md):
-the first two full completions ever on this task family, 18/18 each.**
-Both still made the destructive edit and both restored it — restoring
-was not new (2 earlier attempts did the same and still timed out).
-
-**[Completion-recurrence check, corrected after review](docs/current/te4-completion-recurrence-check-result.md):
-2 more full completions, 1 phase-2-board runaway recurrence (the
-*original* import-bug pathology, unrelated to phase 4).** A first draft
-claimed a clean 4-of-4-vs-2-of-2 split by restricting to the
-guardrail-era attempts only, missing 3 attempts on record that also
-restored the route and still failed. Restated against all 13
-phase-4-reaching Engine attempts: restoring the route is **necessary**
-(0 of 6 non-restorations passed) but **not sufficient** (4 of 7
-restorations passed; the other 3 all timed out, none was
-submitted-and-rejected) — the real bottleneck for a restoring attempt
-is turn/time budget, unexplained by anything on record. Engine has
-completed the full task **4 of 16 times**.
-
-**[TE4 screen](docs/current/te4-screen-pre-run-record.md) proposed and
-frozen**: 2 attempts per configuration, per the plan's own TE4 step —
-Baseline's only data point on this task predates every tightening and
-guardrail, so this is its first fresh attempt under current
-conditions. Declared shared ceiling: 75 turns (≈1.5x Engine's observed
-completion max), stated as thin. A screen, not a confirmation.
+**[TE4 screen run and reported](docs/current/te4-screen-result.md):
+both configurations, both attempts, all clean — 18/18 each, a "both
+pass" outcome.** Baseline's first data under the current, fully-fixed
+prompt is clean both times (43, 32 turns); Engine's cumulative record
+on this task family is now **6 of 18**. No turn-efficiency contrast at
+this n — Baseline's mean (37.5) is lower than Engine's (46), the
+opposite of TE's own hypothesis, though n=2 per arm cannot support
+either direction. Per the plan's own rule for this outcome: reported
+plainly, not treated as grounds to enlarge the screen or design TE5's
+confirmation. On the full evidence assembled across TE4, Baseline (3
+of 3 on this task family) has needed none of the four tightenings or
+two guardrails built for Engine and shows no turn-cost disadvantage —
+the harder-roadmap claim this phase set out to test is not supported
+on current evidence.
 
 HP remains responsible for the composed, retained, regradable route; TE does
 not absorb unfinished HP requirements or reopen the paused single-task tuning

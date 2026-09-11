@@ -213,6 +213,15 @@ past artifact. Archived material does not set current policy.
   fully-fixed prompt state. Declares a thin, explicitly-caveated
   75-turn shared ceiling from Engine's 4 completions alone. A screen,
   not a confirmation — its outcome is not pooled into any later one.
+- [TE4 screen — result](te4-screen-result.md): **both configurations
+  complete both attempts, 18/18 each** — a "both pass" screen outcome.
+  Baseline's first data under the current, fully-fixed prompt is clean
+  both times; Engine's cumulative record on this task family is 6 of
+  18. No turn-efficiency contrast for Engine at this n — if anything,
+  Baseline's mean (37.5) is lower than Engine's (46), the opposite of
+  the TE hypothesis, though neither direction is supportable at n=2.
+  Per the plan's own rule for this outcome: report it, don't enlarge
+  the budget or shop for a harder variant. Independent review pending.
 - [Pre-run record: run_self_test live verification](self-test-tool-live-verification-pre-run-record.md)
   proposes one bounded `pi` invocation proving the self-test tool is
   reachable and its content legible, outside every TE denominator, and
@@ -279,6 +288,7 @@ te4-phase4-guardrail-reverification-round2-result
 te4-completion-recurrence-check-pre-run-record
 te4-completion-recurrence-check-result
 te4-screen-pre-run-record
+te4-screen-result
 self-test-tool-live-verification-pre-run-record
 first-engine-comparison-plan
 first-smoke-run-record
