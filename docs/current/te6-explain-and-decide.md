@@ -21,8 +21,9 @@ repeating any one result's own detail.
 ## Claim 1 (easy work): closed, unresolved, not reopened
 
 TE2/HP8's screen (2 attempts per configuration) found Baseline 2/2,
-Engine 1/2 (the other a genuine phase-2-board runaway, later
-diagnosed and fixed for the *other* task family). On completed work,
+Engine 1/2 (the other a genuine phase-2-board runaway, later diagnosed
+and mitigated — not fixed outright, see below — via a guardrail
+adopted only into the *other* task family). On completed work,
 Engine's one success (31 turns) was not fewer than Baseline's average
 (30.5); on all-launched-attempts expenditure, Engine averaged 51
 against Baseline's 30.5. **TE3, the confirmation this screen would
@@ -37,11 +38,12 @@ easy-work screen's own terms, closed without further live spending**.
 **Population and missingness.** 18 Engine attempts and 3 Baseline
 attempts on `agentclinic-complaint-lifecycle` are on record across this
 whole sequence (route proof; phase-2 guardrail candidate-then-adopted;
-guardrail re-verification; tightenings 3 and 4; the phase-4 guardrail's
-three re-verification rounds; the 2-per-configuration screen). No
-attempt was discarded or excluded from a denominator without a stated
-reason (voided timeouts and refused/unreadable records are reported,
-not dropped). The isolated 2-phase candidate-probe task
+guardrail re-verification; tightenings 3 and 4; the completion-rate
+check; the phase-4 guardrail's three re-verification rounds; the
+2-per-configuration screen). No attempt was discarded or excluded from
+a denominator without a stated reason (voided timeouts and
+refused/unreadable records are reported, not dropped). The isolated
+2-phase candidate-probe task
 (`agentclinic-phase2-guardrail-candidate`, 3 Engine + 1 Baseline) is
 correctly excluded from this family's own tally — different task,
 already noted at the time.
@@ -69,11 +71,15 @@ is not evidence it would have been immune to the ambiguities Engine's
 four fixes closed** — it was never stress-tested against them the way
 Engine was, because it never needed a second attempt to reveal a
 problem. The honest reading is: on the *current, fully-fixed* prompt,
-Baseline is 2/2 and Engine is 6 of 8 phase-4-reaching attempts across
-the whole phase-4-guardrail era (round 1's 2 phase-4-reaching attempts,
-both non-completions, plus round 2's 2, the completion-recurrence
-check's 2, and the screen's 2 — 6 of those 8 complete) — still
-favoring Baseline, but on a much smaller, more comparable base.
+Baseline is 2/2. **Corrected**: this document's own first draft
+compared that to "6 of 8 phase-4-reaching attempts," a phase-4-reaching-only
+denominator that quietly excludes 2 phase-2-board runaways
+(`p4guardrail-engine-02`, `recurrence-engine-02`) under this identical
+prompt — exactly the kind of unstated denominator exclusion this
+section's own opening paragraph promises not to make. Counting all 10
+attempts under the current prompt (not just the 8 that reached phase
+4), Engine is **6 of 10**. Still favoring Baseline, but on a much
+smaller, more comparable base than the full 3-vs-18.
 
 **Quality guardrail.** This is where TE6 asks for more than a pass
 count, and where this sequence's own review process surfaced the most
@@ -110,31 +116,45 @@ support either direction with confidence.
 A small rubric, applied to the two mechanisms that recur most across
 this evidence base:
 
-- **The destructive-edit-then-restore pattern is, on balance,
-  productive recovery, not waste.** Recomputed directly across all 15
+- **The destructive-edit-then-restore pattern is mostly, but not
+  purely, productive recovery.** Recomputed directly across all 15
   phase-4-reaching Engine attempts on record (13 before the screen plus
   its own 2): destroyed in 13 of 15 (2 never touched the route), of
   which 9 were restored before the phase ended and 6 of those 9
-  completed. Restoration itself uses new information each time (a
-  failing self-test in some cases, the model's own re-reading in
-  others) to make a targeted, additive fix, not a repeated failed
-  cycle — the route reappears exactly where the guardrail's own wording
-  describes. This is the TE plan's own named case, "a failing test
-  followed by a successful correction is productive recovery, not
-  automatically a wasted repair loop" — confirmed directly, not
-  assumed.
+  completed. Restoration usually uses new information (a failing
+  self-test in some cases, the model's own re-reading in others — though
+  for 2 of the 9 restorations, `p4guardrail-round2-engine-02` and
+  `recurrence-engine-01`, no transcript evidence shows what prompted the
+  fix) to make a targeted, additive fix. **Corrected**: this document's
+  first draft said the pattern was "not a repeated failed cycle,"
+  overlooking that both screen attempts destroy the same route *twice*
+  each (restore, then destroy again, then restore again) — a genuine
+  repeated cycle, already named in
+  [the screen result](te4-screen-result.md). The pattern is closer to
+  the TE plan's own named case, "a failing test followed by a
+  successful correction is productive recovery, not automatically a
+  wasted repair loop," than to pure waste, but it is not the clean
+  single-correction story a first pass suggested.
 - **The redirect-trap pattern, by contrast, is genuinely unproductive
-  in most of its occurrences.** Recomputed the same way: at least one
-  self-test shows the `assert status_code == 303` failure in 11 of 15
-  phase-4-reaching attempts. Diagnosing and fixing it (adding
-  `follow_redirects=False` to the offending test) is rare — the
-  guardrail re-verification's Engine-01 is the clearest case on record.
-  Elsewhere it recurs unresolved through a timeout, or — in the
+  in most of its occurrences.** **Corrected**: the first draft's count
+  of 11 of 15 used a substring match (`"== 303"`) that also caught a
+  passing assertion's printed source line and an unrelated `405 == 303`
+  failure (a destructive-edit consequence, not a redirect-following
+  bug). Matching the actual failure signature (`assert 200 == 303`)
+  gives **9 of 15** — consistent with
+  [the phase-4-guardrail result](te4-phase4-guardrail-reverification-result.md)'s
+  own earlier "6 of 9" plus the three later occurrences. Diagnosing and
+  fixing it (adding `follow_redirects=False`, or asserting on the
+  followed redirect's own 200) is rare but not unique to one
+  attempt — the guardrail re-verification's Engine-01 and, missed in
+  the first draft, `p4guardrail-round2-engine-01` (edited its test to
+  assert the redirected page directly and passed) both resolve it: **2
+  of 9**. Elsewhere it recurs unresolved through a timeout, or — in the
   screen — the phase ends with the bug still present and, in one
   attempt, a fabricated claim that it was fixed. Repeated self-test
   calls that return the identical failure without a corresponding edit
   that changes the relevant code are the unchanged-failed-cycle case
-  TE6 asks to distinguish, and that is what most of these 11
+  TE6 asks to distinguish, and that is what most of these 9
   occurrences show.
 - **The phase-2-board import-bug runaway remains the clearest
   unproductive-repetition case on record**: 65–70 near-identical
