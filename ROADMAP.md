@@ -268,12 +268,9 @@ self-correcting) at the same rate as phase 2's. The `303` redirect-trap
 pattern recurs in 6 of 9, resolved correctly in only 1.
 
 **[Round 2, corrected after review](docs/current/te4-phase4-guardrail-reverification-round2-result.md):
-the first two full completions ever on this task family, 18/18 hidden
-checks each.** Both attempts still made the destructive edit and both
-restored it — 3 of 4 phase-4-guardrail-era attempts show the edit, same
-rate as pre-guardrail. Restoring it is not new (2 earlier attempts did
-the same and still timed out); what distinguishes these two is only
-finishing within budget afterward, unexplained here.
+the first two full completions ever on this task family, 18/18 each.**
+Both still made the destructive edit and both restored it — restoring
+was not new (2 earlier attempts did the same and still timed out).
 
 **[Completion-recurrence check, corrected after review](docs/current/te4-completion-recurrence-check-result.md):
 2 more full completions, 1 phase-2-board runaway recurrence (the
@@ -286,8 +283,14 @@ phase-4-reaching Engine attempts: restoring the route is **necessary**
 restorations passed; the other 3 all timed out, none was
 submitted-and-rejected) — the real bottleneck for a restoring attempt
 is turn/time budget, unexplained by anything on record. Engine has
-completed the full task **4 of 16 times**. Enough to make TE4's own
-screen a live option; not yet proposed.
+completed the full task **4 of 16 times**.
+
+**[TE4 screen](docs/current/te4-screen-pre-run-record.md) proposed and
+frozen**: 2 attempts per configuration, per the plan's own TE4 step —
+Baseline's only data point on this task predates every tightening and
+guardrail, so this is its first fresh attempt under current
+conditions. Declared shared ceiling: 75 turns (≈1.5x Engine's observed
+completion max), stated as thin. A screen, not a confirmation.
 
 HP remains responsible for the composed, retained, regradable route; TE does
 not absorb unfinished HP requirements or reopen the paused single-task tuning

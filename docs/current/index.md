@@ -206,6 +206,13 @@ past artifact. Archived material does not set current policy.
   the other 3 all time out, none is submitted-and-rejected) — turn
   budget, not correctness, is the remaining bottleneck, unexplained
   here. Cumulative: 4 of 16.
+- [Pre-run record: TE4 screen](te4-screen-pre-run-record.md) freezes a
+  2-per-configuration screen (per the TE plan's own TE4 step) now that
+  every named blocking ambiguity is closed and Engine has completed
+  the task 4 times. Baseline gets its first attempt under the current,
+  fully-fixed prompt state. Declares a thin, explicitly-caveated
+  75-turn shared ceiling from Engine's 4 completions alone. A screen,
+  not a confirmation — its outcome is not pooled into any later one.
 - [Pre-run record: run_self_test live verification](self-test-tool-live-verification-pre-run-record.md)
   proposes one bounded `pi` invocation proving the self-test tool is
   reachable and its content legible, outside every TE denominator, and
@@ -271,6 +278,7 @@ te4-phase4-guardrail-reverification-round2-pre-run-record
 te4-phase4-guardrail-reverification-round2-result
 te4-completion-recurrence-check-pre-run-record
 te4-completion-recurrence-check-result
+te4-screen-pre-run-record
 self-test-tool-live-verification-pre-run-record
 first-engine-comparison-plan
 first-smoke-run-record
