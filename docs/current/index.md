@@ -107,9 +107,9 @@ past artifact. Archived material does not set current policy.
   reports 3 of 3 Engine attempts completing cleanly, zero destructive
   edits observed (one attempt reached the exact decision point and
   took the safe, additive branch). Not statistically conclusive at
-  this `n` against the 50% base rate; adopting the guardrail into
-  either accepted task needs its own separate proposal, not decided
-  here.
+  this `n` against the 50% base rate. **Adopted 2026-09-10 into
+  `agentclinic-complaint-lifecycle` only** — see that task's own
+  `QUALIFICATION-NOTE.md`; `agentclinic-session-phased` is untouched.
 - [Pre-run record: run_self_test live verification](self-test-tool-live-verification-pre-run-record.md)
   proposes one bounded `pi` invocation proving the self-test tool is
   reachable and its content legible, outside every TE denominator, and

@@ -196,9 +196,9 @@ HP5 exists because of the second one.
 ## After HP: Phase TE — fewer wasted turns, more work within budget
 
 **Proposed 2026-09-10; TE1 closed for pairing/accounting, ceiling
-qualified; TE2 run 2026-09-10, both frozen questions read against
-Engine; TE3 not pursued, not reopened without new evidence; TE4
-scoping started 2026-09-10.**
+qualified; TE2 run, both frozen questions read against Engine; TE3 not
+pursued, not reopened without new evidence; TE4 scoping under way, its
+phase-2-board guardrail adopted into `agentclinic-complaint-lifecycle`.**
 [The execution plan](docs/current/engine-turn-efficiency-plan.md) follows HP
 with two independent claims: Engine uses fewer total model turns on an easy
 AgentClinic roadmap both configurations reliably complete; and Engine completes
@@ -280,17 +280,17 @@ unimported `Request` neither catches since `run_self_test` is never
 called — correlation across 2 pairs, not proven causation, no per-turn
 model input retained. No ceiling declared.
 
-**Guardrail candidate run and [reported](docs/current/phase2-guardrail-candidate-result.md).**
-A one-sentence prompt addition (insert, don't replace, the route),
-neither accepted task touched. **3 of 3 Engine attempts completed
-phase-2-board cleanly** — 2 skipped `edit`, the one that used it did so
-additively, the safe branch the runaway's destructive counterpart
-never took. Not conclusive at this `n` against the 50% base rate
-(p=0.125 under no-effect), but zero destructive edits in three
-chances, one reaching the decision point, is stronger than the raw
-count. Stays outside TE4's confirmation and every turn-efficiency
-denominator. **Adoption into either accepted task not decided here** —
-needs its own proposal and authorization.
+**Guardrail [candidate](docs/current/phase2-guardrail-candidate-result.md)
+tested then adopted into `agentclinic-complaint-lifecycle` only.** A
+one-sentence phase-2-board prompt addition (insert, don't replace, the
+route). Probe: **3 of 3 Engine attempts completed cleanly** — 2 skipped
+`edit`, the one that used it did so additively, the branch the
+runaway's destructive counterpart never took; not conclusive alone
+against the 50% base rate (p=0.125), but zero destructive edits in
+three chances is stronger than the count. Outside TE4's confirmation
+and every turn-efficiency denominator. `agentclinic-session-phased` is
+untouched, keeping HP7/TE1/TE2/HP8's digests accurate; new digests in
+[`QUALIFICATION-NOTE.md`](src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md), no new inference.
 
 HP remains responsible for the composed, retained, regradable route; TE does
 not absorb unfinished HP requirements or reopen the paused single-task tuning

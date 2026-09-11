@@ -7,6 +7,15 @@ separate budget authorization, apart from
 [the TE4 design](te4-harder-roadmap-design.md) and apart from any future
 authorization for TE4's own two-per-configuration screen.
 
+**Note, added after this record's own run.** The task's phase-2-board
+prompt was amended the same day, after this record's attempts, adopting
+[the guardrail candidate](phase2-guardrail-candidate-result.md) — see
+the task's own
+[`QUALIFICATION-NOTE.md`](../../src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md).
+The task tree sha256 and phase-2-board digest below are frozen values
+for *this* record's own run and are correct for it; recomputing them
+against the current task will not match, by design.
+
 Sibling records this one narrows rather than repeats:
 [HP7's live route proof](hp7-live-route-proof-pre-run-record.md) proved
 the Engine route itself works, on the 3-phase task;

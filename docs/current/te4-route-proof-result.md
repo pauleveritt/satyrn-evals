@@ -193,4 +193,9 @@ a specific, reproducible mechanism (a destructive `edit` that deletes
 the phase-1 home route, converging on a file with an import bug never
 caught because `run_self_test` is never called), found by comparing
 this attempt against the three other real Engine phase-2-board
-transcripts on record.
+transcripts on record. The candidate remedy it named was
+[probed](phase2-guardrail-candidate-result.md) and then
+**adopted into `agentclinic-complaint-lifecycle`'s own phase-2-board
+prompt** — see that task's `QUALIFICATION-NOTE.md`. This Engine-01's
+voided attempt above ran under the pre-amendment prompt; its digests
+are frozen and correct for the run they document.

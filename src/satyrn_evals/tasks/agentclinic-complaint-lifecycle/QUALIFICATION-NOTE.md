@@ -1,9 +1,36 @@
 # Qualifying agentclinic-complaint-lifecycle
 
 Four ordered development requests over one growing checkout, starting from
-the same bare base as `agentclinic-session-phased`. Phases 1-3 are that
-task's own phases, reused verbatim; phase 4 is new, scoped by
+the same bare base as `agentclinic-session-phased`. Phases 1-3 started as
+that task's own phases, reused verbatim; phase 2's prompt has since been
+amended (below). Phase 4 is new, scoped by
 [the TE4 design](../../../../docs/current/te4-harder-roadmap-design.md).
+
+**Amended 2026-09-10 — the phase-2-board guardrail adopted.** Following
+[the runaway investigation](../../../../docs/current/phase-2-board-runaway-investigation.md)
+and its [candidate probe](../../../../docs/current/phase2-guardrail-candidate-result.md)
+(3 of 3 Engine attempts on a bounded standalone task completed cleanly,
+zero destructive edits, one attempt reaching the exact decision point
+and taking the safe branch), phase-2-board's prompt gains one bullet,
+inserted before "Add `GET /complaints` route":
+
+> - When adding the new route to `app.py`, insert it alongside the
+>   existing `/` route — do not remove, replace, or rewrite the route
+>   that already works
+
+This is a scoped adoption: **only this task's prompt changed.**
+`agentclinic-session-phased` — used by HP7, TE1's ceiling evidence, and
+the TE2/HP8 screen, each an already-accepted historical record citing
+its own frozen phase-2-board digest — is untouched, deliberately, so
+none of those records' digests go stale. `phase-2-board`'s new prompt
+digest is `362480e8681f118a` (1774 bytes, was `8bc6457681df6448`,
+1622); the task tree sha256 is `da141eb3c87f86a571eb95f8ea4ac3a8341aea4516b02781deac8e9c8285c58f`.
+The [route proof](../../../../docs/current/te4-route-proof-result.md)
+and its own pre-run record predate this change and correctly cite the
+pre-amendment digests for the run they document — they are not
+retroactively edited. All eight qualification-suite checks re-pass
+unchanged: the required app behavior never changed, only the
+instruction on how to add the route.
 
 `BRIEF.md`'s two selection rules apply: this note qualifies the task as a
 **grader fixture** -- its witnesses are graded and its prompts are shown
