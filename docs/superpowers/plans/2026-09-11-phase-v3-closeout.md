@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Give every inventory record exactly one final status, prove no carrier lags its source, apply the reopen bound once, and publish the Track B gate.
+**Goal:** Give every inventory record exactly one final status, prove no carrier lags its source, apply the reopen bound once, publish the exploratory engine gap register, and publish the Track B gate.
 
 **Architecture:** One pure audit module (`claim_closeout.py`), a carrier-lag check over cited files, a generated gate document, and the deferred classifier fixes. No engine behaviour changes; Track A is offline.
 
@@ -346,7 +346,193 @@ git commit -m "V3: publish the Track B gate"
 
 ---
 
-## Task 4: the reopen bound and the cycle outcome
+## Task 4: the engine gap register
+
+**Files:**
+- Create: `scripts/build_gap_register.py`
+- Create: `docs/current/phase-v-engine-gap-register.md` (generated)
+- Test: `tests/test_gap_register.py`
+- Modify: `docs/current/index.md` (toctree line)
+
+**Interfaces:**
+- Produces: `GapCandidate(id, candidate, measure, population, proposed_change,
+  rationale)`, `GAP_REGISTER: tuple[GapCandidate, ...]`,
+  `render_gap_register(observations: Mapping[str, str]) -> str`.
+
+This is the "measurements drive discovery" product: the V2 measures now exist,
+so V3 turns them into a ranked, **exploratory** register of engine-improvement
+candidates. No row is a published figure; every row carries its population and
+the measure that indicates it, and none enters a claim or denominator.
+
+- [ ] **Step 1: Write the failing test**
+
+`tests/test_gap_register.py` asserts the register has at least one candidate;
+every candidate's `measure` is one of the committed classifier names
+(`destructive_edit`, `restoration`, `self_test_outcome`, `verification_claim`)
+or `turn_cost`; every row renders under an explicit `exploratory` label with a
+non-empty population and proposed change; and no rendered row contains the word
+`confirmed`.
+
+- [ ] **Step 2: Implement the register**
+
+Create `scripts/build_gap_register.py`:
+
+```python
+"""Build the V3 engine gap register. Exploratory; no published figures."""
+
+import json
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from pathlib import Path
+
+from satyrn_evals.claim_measures import (
+    destructive_edit,
+    restoration,
+    self_test_outcome,
+    verification_claim,
+)
+
+EXPLORATORY = "exploratory"
+
+
+@dataclass(frozen=True, slots=True)
+class GapCandidate:
+    id: str
+    candidate: str
+    measure: str
+    population: str
+    proposed_change: str
+    rationale: str
+
+
+GAP_REGISTER: tuple[GapCandidate, ...] = (
+    GapCandidate(
+        id="g-verification-honesty",
+        candidate="Self-reported verification is not authoritative",
+        measure="verification_claim",
+        population="retained Engine attempts under the final prompt",
+        proposed_change=(
+            "V4: grade Contract.test_command's own result on AttemptResult, "
+            "independent of model text"
+        ),
+        rationale=(
+            "A screen attempt fabricated a passing pytest report over a "
+            "retained exit code 1; report honesty and pass/fail are separable."
+        ),
+    ),
+    GapCandidate(
+        id="g-self-test-friction",
+        candidate="The required self-test fails at phase 4 and is not closed",
+        measure="self_test_outcome",
+        population="phase-4-reaching Engine attempts",
+        proposed_change=(
+            "V4/V6: surface the authoritative self-test outcome in the packet "
+            "result so a failing required check cannot be reported as success"
+        ),
+        rationale=(
+            "Redirect-trap friction recurs across the sequence and never "
+            "closed via a prompt fix."
+        ),
+    ),
+    GapCandidate(
+        id="g-phase4-turn-cost",
+        candidate="Phase-4 turn cost dominates the whole-attempt budget",
+        measure="turn_cost",
+        population="screen Engine attempts versus Baseline",
+        proposed_change=(
+            "V5: a whole-attempt turn limit and wall-clock deadline, retaining "
+            "partial work"
+        ),
+        rationale=(
+            "Per-phase turns show Engine below Baseline on phases 1-3 and far "
+            "above on phase 4; the gap is entirely phase 4."
+        ),
+    ),
+    GapCandidate(
+        id="g-restoration-churn",
+        candidate="Destructive edits are frequent and restoration is not",
+        measure="restoration",
+        population="phase-4-reaching Engine attempts",
+        proposed_change=(
+            "V4: a validation boundary that makes a broken route visible before "
+            "the attempt ends"
+        ),
+        rationale=(
+            "The V2 classifiers measure a broader property than the published "
+            "route-specific counts; the churn signal is exploratory."
+        ),
+    ),
+)
+
+
+def render_gap_register(observations: Mapping[str, str]) -> str:
+    lines = [
+        "# Phase V — engine gap register",
+        "",
+        "**Exploratory. Not published figures.** Each row names the measure that "
+        "indicates a candidate engine improvement, its population, and the "
+        "observed value. No row enters a claim or denominator.",
+        "",
+        "| candidate | measure | population | observed (exploratory) | proposed change | rationale |",
+        "|---|---|---|---|---|---|",
+    ]
+    for row in GAP_REGISTER:
+        lines.append(
+            f"| {row.candidate} | {row.measure} | {row.population} | "
+            f"{observations.get(row.id, 'not measured')} | "
+            f"{row.proposed_change} | {row.rationale} |"
+        )
+    return "\n".join(lines) + "\n"
+
+
+def observations_for_attempts(
+    attempts: Sequence[Sequence[Mapping[str, object]]],
+) -> dict[str, str]:
+    """Exploratory counts over per-attempt event lists.
+
+    Each row's observed value is a count over the supplied population and is
+    labelled exploratory: it is a discovery input, never a published rate.
+    """
+
+    def count(measure, expected: str) -> int:
+        return sum(1 for events in attempts if measure(events) == expected)
+
+    total = len(attempts)
+    return {
+        "g-verification-honesty": (
+            f"{count(verification_claim, 'no')} of {total} attempts show a false "
+            f"verification claim (exploratory)"
+        ),
+        "g-self-test-friction": (
+            f"{count(lambda e: self_test_outcome(e, chain=None), 'no')} of {total} "
+            f"attempts fail their required self-test (exploratory)"
+        ),
+        "g-restoration-churn": (
+            f"{count(destructive_edit, 'yes')} destructive, "
+            f"{count(restoration, 'yes')} restoring, of {total} (exploratory)"
+        ),
+    }
+```
+
+`main` reads the retained Engine attempts under `~/satyrn-smokes`, fills
+`observations_for_attempts` per candidate, writes
+`docs/current/phase-v-engine-gap-register.md`, and adds the page to the hidden
+toctree in `docs/current/index.md`. The phase-4 turn-cost row's observation is
+read from the generated per-phase ledger, not recomputed here.
+
+- [ ] **Step 3: Generate, gate, commit**
+
+Run the builder; `uv run pytest -q`, `uv run ruff check`, `uv run python tools/lint_docs.py`.
+
+```bash
+git add scripts/build_gap_register.py tests/test_gap_register.py \
+  docs/current/phase-v-engine-gap-register.md docs/current/index.md
+git commit -m "V3: publish the exploratory engine gap register"
+```
+
+---
+
+## Task 5: the reopen bound and the cycle outcome
 
 **Files:**
 - Modify: `docs/current/phase-v-design.md` (V3 block)
@@ -384,8 +570,9 @@ git commit -m "V3: close Phase V Track A and open the Track B gate"
 
 **Spec coverage.** V3's products: one status per record (Task 2), each
 `not_derivable` names its artifact (Task 2's `MISSING_ARTIFACT` + test), no
-carrier lags (Task 2's `carrier_lag`), the reopen bound applied once (Task 4),
-and the Track B gate published (Task 3). Task 1 clears the V2-deferred
+carrier lags (Task 2's `carrier_lag`/`quote_drift`), the engine gap register
+(Task 4), the Track B gate (Task 3), the reopen bound applied once (Task 5),
+and the findings-bearing declaration (Task 5). Task 1 clears the V2-deferred
 regressions so the audit is built on a correct instrument.
 
 **Findings-bearing.** V2b was instrument-only; V3 must publish a status change

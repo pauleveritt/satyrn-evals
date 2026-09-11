@@ -97,10 +97,15 @@ instrument cannot read the Engine arm.
   another attempt.
 - **Not a general "improve the instrument" program.** Track A is capped at
   three cycles, and each must end in published findings. The V1 deliverable —
-  name the next-highest-value engine gap — is delivered by Track A's findings;
-  each is a confirmation or correction of a published figure, never a new one.
-- **Not a new comparison.** Track A may not originate a new figure or a new
-  Engine-vs-Baseline contrast. It confirms or corrects *published* figures only.
+  name the next-highest-value engine gap — is delivered by Track A's findings
+  **and the V3 engine gap register**; each inventory finding is a confirmation
+  or correction of a published figure, while the register's candidates are
+  exploratory hypotheses.
+- **Not a new published comparison.** Track A confirms or corrects *published*
+  figures; it may not originate a new published figure or Engine-vs-Baseline
+  contrast. The V3 engine gap register is the one exception: its measurements
+  are exploratory, carry their population, and never enter a published claim or
+  denominator.
 - **Not a remedy.** Nothing here changes the engine. At the phase level Track A
   may end as `AGENTS.md`'s "instrument only" — no remedy tested, none refused —
   while each of its cycles is findings-bearing. Track B is where a remedy is
@@ -112,7 +117,7 @@ instrument cannot read the Engine arm.
 |---|---|---|---|---|
 | V1 | Inventory and the per-phase ledger | A (here) | Claim inventory; shared per-phase ledger for both layouts; unit-level reconciliation | ≥1 inventory claim changes status |
 | V2 | Claim-level measures and the denominator binding | A (here) | Claim→measure→population binding; four pure classifiers; vocabulary/structure repair; claim-level reconciliation | ≥1 inventory claim changes status |
-| V3 | Close-out | A (here) | Every inventory claim carries a status; reopen bound applied; Track B gate published | The inventory is exhausted |
+| V3 | Close-out and the engine gap register | A (here) | Every inventory claim carries a status; reopen bound applied; **exploratory engine gap register**; Track B gate published | The inventory is exhausted, and the register names ≥1 engine candidate with its measure and population |
 | V4 | Authoritative validation status | B (engine) | `Contract.test_command`'s result on `AttemptResult`, independent of model text | n/a |
 | V5 | Real turn/deadline budget | B (engine) | Whole-attempt turn limit and wall-clock deadline, retaining partial work | n/a |
 | V6 | Live route proof | B (engine) | One bounded orchestrated delivery, `n` frozen at 1 | n/a |
@@ -226,20 +231,11 @@ chosen at write time.
      verification, against what the retained tool results show.
 3. **Vocabulary, structure and discovery repair** in `census.py` and
    `pathology.py`: the tool vocabulary above; a specified behaviour for
-   multi-session concatenated transcripts (today `pathology.py` refuses them);
-   and **discovery of the Engine arm's retained transcript**. `census_root`
-   globs only `transcript.txt`, while the packet route retains
-   `.satyrn-implementer-transcript.jsonl` — 24 such files on disk, zero
-   `transcript.txt` beside them. `census_root` on
-   `2026-09-11-te4-screen-engine-02` therefore returns **0 cells**, and the
-   `8 unknown tools` above is visible only by calling `detect_unknown_tool`
-   directly; the census CLI never opens the file. V2 must make that filename
-   discoverable, so the repaired vocabulary is observable through the committed
-   instrument rather than only through an ad-hoc detector call. This is
-   adjacent to V2's measures, satisfies `BACKLOG.md`'s first entry — "normalize
-   a diagnostic across arms only when a frozen experiment needs it...
-   demonstrate it on examples from every compared arm" — and does not create an
-   arm-neutral rate on its own.
+   multi-session concatenated transcripts; and **discovery of the Engine arm's
+   retained transcript** (`.satyrn-implementer-transcript.jsonl`; 24 on disk,
+   zero `transcript.txt`), where `census_root` currently returns **0 cells** so
+   the `8 unknown tools` is visible only by a direct detector call. This
+   satisfies `BACKLOG.md`'s first entry and creates no arm-neutral rate.
 4. **Claim-level reconciliation** of the inventory's remaining claims.
 
 **Evidence standard.** Each classifier is proven on the retained counterexamples
@@ -265,16 +261,10 @@ zero. Three measures are wired:
 - `c-fabricated-report-n1` (`verification_claim`, screen-engine-01): `no`
   (summary "2 passed" over last `run_self_test` exit 1) — `confirmed`.
 
-**Product 1 descoped to V2b.** V2 product 1 — the `6 of 8` → `6 of 10` denominator binding — is not derived executably in V2a and is descoped to V2b, where the `chain.json` enumeration already exists; it is not silently omitted.
-
 **The mismatch finding.** The classifiers measure a broader property than the
-published route-specific counts, so they neither reproduce nor contradict the
-published 13 of 15 and 9 of 15: `destructive_edit` counts any content-changing
-edit, where the source counts route-specific destruction (2 of 15 never
-touched the route); `restoration` counts any removed content re-added, where
-the source counts route-specific restoration before the phase ended. V3 must
-decide whether the measure or the claim is wrong: narrow the classifiers to
-the route-specific event, or restate the published claims.
+published route-specific counts, so they neither reproduce nor contradict
+13 of 15 and 9 of 15; V3 must decide whether to narrow the classifiers or
+restate the claims.
 
 The 13 claim records now carry **1 `confirmed`**, **2 `claim_measure_mismatch`**,
 **10 `not_derivable`**, **0** `corrected`/`unreconciled`; with the 7 unit records
@@ -283,27 +273,23 @@ the tally is **8 `confirmed`**. No V2a classifier covers the 10 `not_derivable` 
 **V2b reconciled, 2026-09-11.** Two parts landed: the census/pathology repair
 (product 3) and the denominator binding (product 1, deferred from V2a).
 
-**Repair.** `census.py`'s `KNOWN_TOOL_NAMES` gains `run_self_test`;
-`detect_rejected_edit` splits a *rejected* edit (anchor mismatch or schema
-refusal) from a true no-op, so `noop_edit` is unambiguous; `census_root` also
-discovers the packet route's `.satyrn-implementer-transcript.jsonl`.
-`pathology.py` accepts the Engine arm's adapter-marker header and its
-multi-session shape. All 24 packet-route transcripts now read as
-`multi_session` with `unknown_tool` 0.
+**Repair.** `census.py` gains `run_self_test`, splits a rejected edit from a
+true no-op, and discovers the packet route's implementer transcript;
+`pathology.py` accepts the adapter-marker header and names the multi-session
+shape. All 24 packet-route transcripts now read `multi_session`, `unknown_tool` 0.
 
 **Denominator binding — `not_derivable`.** The `6 of 8` → `6 of 10` correction
-needs the "attempts under the current prompt" population. The 8 phase-4-reaching
-Engine attempts under the current prompt are enumerable deterministically: their
-chain records' full four-phase packet fingerprint matches the final screen's.
-The two phase-2-board runaways the correction names (`p4guardrail-engine-02`,
-`recurrence-engine-02`) retained only phase-1/phase-2 packets, whose content is
-byte-identical between the superseded guardrail prompt and the current prompt,
-so their prompt-state membership is not derivable from retained artifacts — only
-from run directory names, which the reconciliation refuses to read as evidence.
-`c-phase4-denominator-6-of-10` therefore stays `not_derivable`, naming the
-missing prompt-state enumeration for those two runaways; the published `6 of 10`
-denominator cannot be re-established, so the figure is neither reproduced nor
-contradicted. V2b is **instrument only**, 2026-09-11: it changed no inventory status, so by the object test above it is the first consecutive instrument-only piece and V3's obligation to publish a status change is binding (a second consecutive instrument-only piece stops the loop).
+needs the current-prompt population. The 8 phase-4-reaching attempts enumerate
+deterministically by full four-phase packet fingerprint; the pre-phase-4 chains
+retained only phase-1/phase-2 packets byte-identical across prompt states, so
+their membership is readable only from run directory names, which the
+reconciliation refuses as evidence. `c-phase4-denominator-6-of-10` therefore
+stays `not_derivable`, naming the missing enumeration; the published `6 of 10` is
+neither reproduced nor contradicted.
+
+V2b is **instrument only**, 2026-09-11: it changed no inventory status, so it is
+the first consecutive instrument-only piece and V3's obligation to publish a
+status change is binding (a second consecutive one stops the loop).
 
 ### V3 — Close-out
 
@@ -316,6 +302,14 @@ names the missing artifact. Each correction already has its dated block and
 carrier update from V1/V2; V3 verifies no carrier lags its source. The reopen
 bound is applied to each affected recorded decision. The Track B gate is
 published: an enumerated inventory with a status for every entry.
+
+V3 also publishes the **engine gap register**
+(`docs/current/phase-v-engine-gap-register.md`): one exploratory row per
+engine-improvement candidate, each carrying the measure that indicates it, its
+population, the observed value, and the proposed engine change. Register rows are
+labelled `exploratory`, are excluded from every published claim and denominator,
+and are the discovery input Track B acts on. This is what "measurements drive
+discovery" means here: the register ranks candidates, it does not publish rates.
 
 **Zero corrections is a pass.** If every claim confirms, the finding is "the
 published numbers hold under committed derivation," and Track B opens on that.
@@ -352,6 +346,10 @@ This is bookkeeping: no `src/` artifact, no test, and not in V1's Files list.
 either arm; it may not originate a figure no document published, and every row
 carries its population statement — including the asymmetry: Engine's 18 attempts
 were run adaptively, Baseline's 2–3 fresh. A rate that hides that is the error.
+The V3 engine gap register is the single scoped exception: its rows are
+exploratory engine candidates, each labelled `exploratory` and carrying its
+measure, population, and observed value; none may enter a published claim or
+denominator.
 
 **Currency.** V1 records the digest of every artifact it reads and the `HEAD`
 commit it read them under, per `AGENTS.md`'s currency rule, before measuring.
