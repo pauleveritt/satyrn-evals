@@ -190,6 +190,10 @@ past artifact. Archived material does not set current policy.
   budget afterward, unexplained by anything in this record. Across all
   4 phase-4-guardrail-era attempts, the edit still occurs 3 of 4 (same
   as pre-guardrail). 2 of 13 cumulative; not a completion rate.
+- [Pre-run record: TE4 completion-recurrence check](te4-completion-recurrence-check-pre-run-record.md)
+  freezes 3 more Engine attempts at the unchanged post-guardrail
+  prompt, asking only whether round 2's two completions recur at all —
+  no further prompt change. Authorizes nothing yet.
 - [Pre-run record: run_self_test live verification](self-test-tool-live-verification-pre-run-record.md)
   proposes one bounded `pi` invocation proving the self-test tool is
   reachable and its content legible, outside every TE denominator, and
@@ -253,6 +257,7 @@ te4-phase4-guardrail-reverification-pre-run-record
 te4-phase4-guardrail-reverification-result
 te4-phase4-guardrail-reverification-round2-pre-run-record
 te4-phase4-guardrail-reverification-round2-result
+te4-completion-recurrence-check-pre-run-record
 self-test-tool-live-verification-pre-run-record
 first-engine-comparison-plan
 first-smoke-run-record
