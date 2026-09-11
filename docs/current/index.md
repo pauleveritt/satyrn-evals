@@ -172,6 +172,14 @@ past artifact. Archived material does not set current policy.
   but this one. Phase 4's edit now recurs in 7 of 9 phase-4-reaching
   attempts, 4 of 9 never self-correcting. Not enough evidence to call
   the phase-4 guardrail settled either way.
+- [Pre-run record: TE4 phase-4-guardrail re-verification, round 2](te4-phase4-guardrail-reverification-round2-pre-run-record.md)
+  freezes 2 more Engine attempts, bringing the phase-4-guardrail-era
+  total to 4 phase-4-reaching attempts — enough to move past round 1's
+  single data point on whether the guardrail changed the
+  destructive-edit rate. Explicitly does not propose a fifth tightening
+  for the redirect-trap pattern, classifying it as testing friction
+  outside what a design-ambiguity closure should touch. Authorizes
+  nothing yet.
 - [Pre-run record: run_self_test live verification](self-test-tool-live-verification-pre-run-record.md)
   proposes one bounded `pi` invocation proving the self-test tool is
   reachable and its content legible, outside every TE denominator, and
@@ -233,6 +241,7 @@ te4-tightening4-reverification-result
 te4-completion-rate-check-pre-run-record
 te4-phase4-guardrail-reverification-pre-run-record
 te4-phase4-guardrail-reverification-result
+te4-phase4-guardrail-reverification-round2-pre-run-record
 self-test-tool-live-verification-pre-run-record
 first-engine-comparison-plan
 first-smoke-run-record
