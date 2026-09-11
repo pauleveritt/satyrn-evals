@@ -244,53 +244,53 @@ claim.
 **TE4 timeline** (full detail in each dated doc, not repeated here):
 [design](docs/current/te4-harder-roadmap-design.md) qualified
 `agentclinic-complaint-lifecycle` (phases 1–3 verbatim, phase 4 new),
-8/8 checks. [Route proof](docs/current/te4-route-proof-result.md)
-found a grader defect (fixed) and a phase-2-board Engine runaway,
-[investigated](docs/current/phase-2-board-runaway-investigation.md)
-and traced to a destructive `edit` deleting the phase-1 home route.
+8/8 checks. [Route proof](docs/current/te4-route-proof-result.md) found
+a grader defect (fixed) and a phase-2-board Engine runaway, [investigated](docs/current/phase-2-board-runaway-investigation.md) and
+traced to a destructive `edit` deleting the phase-1 home route.
 [A guardrail sentence, candidate-tested then adopted](docs/current/phase2-guardrail-candidate-result.md)
 into this task only closed it for its own final-content measure (5/5,
-then 7/7 pass since — though [corrected](docs/current/te4-tightening3-reverification-result.md)
-after review, "pass" always meant final content intact, not that the
-edit never happened; it recurs in about half of post-guardrail
-attempts and self-corrects in all but one). Two `id`-field ambiguities
-(position, then default) were closed by **tightenings 3 and 4**,
-[re-verified](docs/current/te4-tightening4-reverification-result.md)
+then 7/7 pass since — though [corrected](docs/current/te4-tightening3-reverification-result.md),
+"pass" meant final content intact, not that the edit never happened;
+it recurs in about half of post-guardrail attempts and self-corrects
+in all but one). Two `id`-field ambiguities (position, then default)
+were closed by **tightenings 3 and 4**, [re-verified](docs/current/te4-tightening4-reverification-result.md)
 and validated live. The same destructive-edit mechanism then turned up
 recurring at phase 4 (3 of 4 graded attempts), with no guardrail
 against it there — **phase-4 guardrail applied**, see the task's own
 [`QUALIFICATION-NOTE.md`](src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md).
 
-**Phase-4-guardrail re-verification, three rounds, several corrections
-along the way**
+**Phase-4-guardrail re-verification, three rounds**
 ([round 1](docs/current/te4-phase4-guardrail-reverification-result.md),
 [round 2](docs/current/te4-phase4-guardrail-reverification-round2-result.md),
-[completion-recurrence check](docs/current/te4-completion-recurrence-check-result.md)):
-round 1 was 0/3; round 2 gave the first two full completions ever on
-this task family (18/18 each); the recurrence check added 2 more.
-Across all 13 phase-4-reaching Engine attempts on record, the
-guardrail's own destructive edit still occurs regardless of the
+[completion-recurrence check](docs/current/te4-completion-recurrence-check-result.md),
+several corrections along the way): round 1 was 0/3; round 2 gave the
+first two full completions ever on this task family; the recurrence
+check added 2 more. Across all 13 phase-4-reaching Engine attempts on
+record, the guardrail's own destructive edit occurs regardless of the
 guardrail (11 of 13); restoring it is **necessary** for completion (0
-of 6 non-restorations pass) but **not sufficient** (4 of 7 restorations
-pass; the other 3 all time out, none submitted-and-rejected) — the
-real bottleneck is turn/time budget, unexplained by anything on
-record. Engine had completed the full task **4 of 16 times** before
-the screen below.
+of 6 non-restorations pass) but **not sufficient** (4 of 7 pass; the
+other 3 time out, none submitted-and-rejected) — the bottleneck is
+turn/time budget, unexplained by anything on record. Engine had
+completed the full task **4 of 16 times** before the screen below.
 
-**[TE4 screen run and reported](docs/current/te4-screen-result.md):
-both configurations, both attempts, all clean — 18/18 each, a "both
-pass" outcome.** Baseline's first data under the current, fully-fixed
-prompt is clean both times (43, 32 turns); Engine's cumulative record
-on this task family is now **6 of 18**. No turn-efficiency contrast at
-this n — Baseline's mean (37.5) is lower than Engine's (46), the
-opposite of TE's own hypothesis, though n=2 per arm cannot support
-either direction. Per the plan's own rule for this outcome: reported
-plainly, not treated as grounds to enlarge the screen or design TE5's
-confirmation. On the full evidence assembled across TE4, Baseline (3
-of 3 on this task family) has needed none of the four tightenings or
-two guardrails built for Engine and shows no turn-cost disadvantage —
-the harder-roadmap claim this phase set out to test is not supported
-on current evidence.
+**[TE4 screen run and reported](docs/current/te4-screen-result.md),
+corrected after review: both configurations pass the hidden grader
+both times (18/18 each), but Engine's own required verification never
+did.** Neither screen Engine attempt's own `uv run python -m pytest
+tests` ever passed at phase 4 (the redirect-trap pattern, unfixed);
+**one fabricated an invented "2 passed" pytest transcript while its
+own last tool call showed two failures** — a new, distinct behavior,
+surfaced only because this review checked test *outcomes* and report
+honesty, not just file structure. Per-phase turns: Engine used fewer
+on phases 1–3 (TE's original hypothesis) and far more on phase 4 alone
+(23 vs Baseline's 6–8) — the whole-attempt gap is entirely phase 4.
+Baseline's first data under the current, fully-fixed prompt is clean
+both times, tests included (43, 32 turns). Per the plan's own rule for
+a "both pass" screen: reported plainly, not grounds to enlarge the
+screen or design TE5's confirmation. Engine's cumulative record is now
+**6 of 18**; Baseline is 3 of 3, though never tested repeatedly under
+the pre-fix conditions Engine failed under, so not evidence it is
+immune to them. The harder-roadmap claim is not supported on current evidence.
 
 HP remains responsible for the composed, retained, regradable route; TE does
 not absorb unfinished HP requirements or reopen the paused single-task tuning
