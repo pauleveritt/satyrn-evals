@@ -214,28 +214,20 @@ remain outside fresh confirmation denominators. Each confirmation freezes its
 practical thresholds, statistical design and authorized budget before launch.
 
 **TE1 closed for pairing and accounting, 2026-09-10; the ceiling
-criterion qualified, 2026-09-10.** The actual pair is resolved:
-continuous Pi (Baseline) against Phase HP's packet route with HP3
-composed (Engine) — `arms/engine.json` is a different, paused comparison
-and is not this pair. This tests the workflow bundle, never Engine's own
-in-conversation guards, which are not loaded on this route.
-`turn_ledger.py` reads both sides' real transcripts through the same
-code: the frozen 40-turn whole-attempt ceiling was Baseline-only (range
-15–25) until HP7's live run gave a real Engine data point (22 turns,
-6/8/8) — inside range, under the ceiling. The pairing and
-accounting-reproducibility exit criteria hold without qualification. The
-third — "40 checked, not asserted" — holds only for attempts that
-complete normally: TE2/HP8's screen (below) added a second Engine data
-point, and its voided attempt ran 65 turns in one phase alone with the
-packet's own turn/tool-call budgets declared but never enforced. Nothing
-was hidden — every launched attempt's turns are reported, including
-that one — but "not contradicted" no longer describes the ceiling
-unconditionally; see [the result](docs/current/te2-hp8-screen-result.md).
-**The Baseline capture gap is closed too** (`adapters/pi_session.py`
-retains `turn_start`) — measurable going forward; already-retained
-pre-fix transcripts still can't answer it (a live-policy check misreads
-them as `starts_retained=True` with zero real starts; named and tested,
-not hidden).
+criterion qualified.** The actual pair: continuous Pi (Baseline)
+against Phase HP's packet route with HP3 composed (Engine) —
+`arms/engine.json` is a different, paused comparison. `turn_ledger.py`
+reads both sides' real transcripts through the same code: the frozen
+40-turn ceiling was Baseline-only (range 15–25) until HP7 gave a real
+Engine point (22 turns) inside it. Pairing and accounting-reproducibility
+hold without qualification; "40 checked, not asserted" holds only for
+attempts that complete normally — TE2/HP8's voided attempt ran 65 turns
+in one phase alone, unenforced, so "not contradicted" no longer
+describes the ceiling unconditionally (see
+[the result](docs/current/te2-hp8-screen-result.md)). **The Baseline
+capture gap is closed too** (`adapters/pi_session.py` retains
+`turn_start`); already-retained pre-fix transcripts still can't answer
+it, named and tested, not hidden.
 
 **HP8 folds into TE2, decided 2026-09-10** (see the HP8 row) — one screen
 for both, not a duplicate experiment. Its frozen questions: do both
@@ -275,22 +267,30 @@ inference — this proves the task is a fair **fixture**, not a
 **workload**; TE4's own screen needs its own separate authorization.
 
 **Route proof [run](docs/current/te4-route-proof-result.md) and
-[investigated](docs/current/phase-2-board-runaway-investigation.md),
-2026-09-10.** Baseline-01 completed all four phases; its one phase-4
-failure was a grader defect (asserted `kw_only`, not the
-positional-construction behavior it exists to protect) — **fixed**,
-re-verified 18/18. Engine-01 voided — phase-2-board timed out with the
-same runaway-write signature as TE2/HP8's own Engine-01. Real
-denominator: Engine has run phase-2-board live 4 times — **2 of 4 ran
-away, 2 completed in 8–9 turns**; Baseline completed it 9 of 9.
-Comparing all four transcripts found a mechanism: both runaways follow
-a destructive `edit` deleting the phase-1 home route (the 2 passes
-skip `edit` or use it additively), converging on a file with an
+[investigated](docs/current/phase-2-board-runaway-investigation.md).**
+Baseline-01 completed all four phases; its one phase-4 failure was a
+grader defect (asserted `kw_only`, not the positional-construction
+behavior it protects) — **fixed**, re-verified 18/18. Engine-01
+voided — phase-2-board timed out with TE2/HP8's own Engine-01
+signature (2 of 4 real Engine phase-2-board attempts have now run
+away, 2 completed in 8–9 turns; Baseline 9 of 9). The mechanism, found
+by comparing all four: both runaways follow a destructive `edit`
+deleting the phase-1 home route, converging on a file with an
 unimported `Request` neither catches since `run_self_test` is never
-called — correlation across 2 pairs, not proven causation, since no
-per-turn model input is retained. Candidate remedy named (flag
-whole-block-replacement edits), not implemented. No ceiling declared.
-**Still not authorized:** TE4's screen or any live test of the remedy.
+called — correlation across 2 pairs, not proven causation, no per-turn
+model input retained. No ceiling declared.
+
+**Guardrail candidate run and [reported](docs/current/phase2-guardrail-candidate-result.md).**
+A one-sentence prompt addition (insert, don't replace, the route),
+neither accepted task touched. **3 of 3 Engine attempts completed
+phase-2-board cleanly** — 2 skipped `edit`, the one that used it did so
+additively, the safe branch the runaway's destructive counterpart
+never took. Not conclusive at this `n` against the 50% base rate
+(p=0.125 under no-effect), but zero destructive edits in three
+chances, one reaching the decision point, is stronger than the raw
+count. Stays outside TE4's confirmation and every turn-efficiency
+denominator. **Adoption into either accepted task not decided here** —
+needs its own proposal and authorization.
 
 HP remains responsible for the composed, retained, regradable route; TE does
 not absorb unfinished HP requirements or reopen the paused single-task tuning

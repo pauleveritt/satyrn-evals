@@ -97,6 +97,19 @@ past artifact. Archived material does not set current policy.
   deletes the phase-1 home route, converging on a file with an import
   bug never caught because `run_self_test` is never called. Names a
   candidate remedy; authorizes no test of it.
+- [Pre-run record: phase-2-board guardrail candidate](phase2-guardrail-candidate-pre-run-record.md)
+  freezes a bounded probe of the one testable candidate remedy — a
+  one-sentence prompt guardrail, on a two-phase task built for this
+  test alone, not amending either accepted task. Proposes 3 Engine +
+  1 Baseline attempt; names the 50% base rate this is being read
+  against. Authorizes nothing yet.
+- [Guardrail candidate — result](phase2-guardrail-candidate-result.md)
+  reports 3 of 3 Engine attempts completing cleanly, zero destructive
+  edits observed (one attempt reached the exact decision point and
+  took the safe, additive branch). Not statistically conclusive at
+  this `n` against the 50% base rate; adopting the guardrail into
+  either accepted task needs its own separate proposal, not decided
+  here.
 - [Pre-run record: run_self_test live verification](self-test-tool-live-verification-pre-run-record.md)
   proposes one bounded `pi` invocation proving the self-test tool is
   reachable and its content legible, outside every TE denominator, and
@@ -147,6 +160,8 @@ te4-harder-roadmap-design
 te4-route-proof-pre-run-record
 te4-route-proof-result
 phase-2-board-runaway-investigation
+phase2-guardrail-candidate-pre-run-record
+phase2-guardrail-candidate-result
 self-test-tool-live-verification-pre-run-record
 first-engine-comparison-plan
 first-smoke-run-record

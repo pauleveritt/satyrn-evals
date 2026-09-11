@@ -1,13 +1,15 @@
 """HP4.2 -- the renderer consults the declaration instead of probing.
 
-The golden table below is the whole shipped fleet. Ten of the twelve tasks
-declare nothing and are here to prove HP4 did not move them.
+The golden table below is the whole shipped fleet. Ten of the thirteen
+tasks declare nothing and are here to prove HP4 did not move them.
 ``agentclinic-session-phased`` is the one HP4 exists for: an empty-skeleton
 base where ``templates``/``tests`` do not exist on disk until the model
 creates them, so the probe cannot tell they are meant to be directories.
-``agentclinic-complaint-lifecycle`` (TE4) shares that exact topology --
-same bare base, same two directories built from nothing -- so it declares
-the same way, not as a second instance of the defect HP4 fixes.
+``agentclinic-complaint-lifecycle`` (TE4) and
+``agentclinic-phase2-guardrail-candidate`` (a bounded candidate probe,
+docs/current/phase-2-board-runaway-investigation.md) share that exact
+topology -- same bare base, directories built from nothing -- so they
+declare the same way, not as further instances of the defect HP4 fixes.
 """
 
 import json
@@ -21,6 +23,12 @@ from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, load_manifest
 #: The rendered patterns every shipped task produces, pinned as data.
 FLEET: dict[str, tuple[str, ...]] = {
     "agentclinic-complaint-lifecycle": (
+        "app.py",
+        "models.py",
+        "templates/*",
+        "tests/*",
+    ),
+    "agentclinic-phase2-guardrail-candidate": (
         "app.py",
         "models.py",
         "templates/*",
@@ -76,10 +84,14 @@ def test_each_shipped_task_renders_its_pinned_patterns(name: str) -> None:
 
 def test_only_the_empty_skeleton_tasks_declare() -> None:
     """HP4 is scoped to the tasks the probe gets wrong -- an empty base
-    where the model builds `templates`/`tests` from nothing. Both tasks
-    with that topology declare; no other shipped task does."""
+    where the model builds `templates`/`tests` from nothing. Every task
+    with that topology declares; no other shipped task does."""
     declaring = [n for n in _shipped() if load_manifest(DEFAULT_TASKS_ROOT / n).source_dirs is not None]
-    assert declaring == ["agentclinic-complaint-lifecycle", "agentclinic-session-phased"]
+    assert declaring == [
+        "agentclinic-complaint-lifecycle",
+        "agentclinic-phase2-guardrail-candidate",
+        "agentclinic-session-phased",
+    ]
 
 
 def test_the_probe_would_get_the_phased_task_wrong(tmp_path) -> None:
