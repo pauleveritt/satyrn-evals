@@ -127,22 +127,27 @@ past artifact. Archived material does not set current policy.
   proposes 2 more Engine attempts to see whether the id-ordering fix
   actually lets Engine complete the full task — never yet achieved
   across any attempt on this task family. Authorizes nothing yet.
-- [Tightening-3 re-verification — result](te4-tightening3-reverification-result.md)
-  reports phase-2-board still 7 of 7 clean and the before-`agent_name`
-  mistake gone, but a new, adjacent gap: both attempts gave `id` no
-  default, breaking positional construction a different way (and, in
-  one attempt, phase 3's own add-complaint route). Names a candidate
-  tightening 4, not applied. Engine has completed the full task 0 of
-  5 times to date.
+- [Tightening-3 re-verification — result](te4-tightening3-reverification-result.md),
+  corrected after Fable's review: phase-2-board 7/7 clean, the
+  before-`agent_name` mistake gone. `id`-no-default recurred, but
+  Engine-02's failures mostly trace to a destructive `edit` that
+  deleted its phase-3 route — phase 2's own former mechanism,
+  recurring at an unguarded phase. Named candidate tightening 4.
 - [Pre-run record: tightening-4 re-verification](te4-tightening4-reverification-pre-run-record.md)
   and its
-  [result](te4-tightening4-reverification-result.md): tightening 4
-  applied and validated — one attempt gets the `id` design entirely
-  right for the first time. The two remaining failures (a misplaced
-  `__post_init__`; a dropped phase-3 route) are genuine implementation
-  variance, not prompt gaps — no fifth tightening proposed. Still 0 of
-  6 full completions; Fable review and a further attempt batch are
-  next, per the standing overnight authorization.
+  [result](te4-tightening4-reverification-result.md), corrected then
+  resolved: tightening 4 applied and validated — one attempt gets the
+  `id` design entirely right. But 3 of 4 graded phase-4 attempts on
+  record destroyed the phase-3 route the same way phase 2 needed its
+  own guardrail for — too high a rate to call variance. **Phase-4
+  guardrail applied** (see the task's own `QUALIFICATION-NOTE.md`).
+  Engine has completed the full task 0 of 8 times (0 of 7 that reached
+  phase 4). Re-verifying the guardrail is next.
+- [Pre-run record: TE4 completion-rate check](te4-completion-rate-check-pre-run-record.md)
+  — **superseded** before its second and third attempts ran; its
+  premise (no prompt change needed) was the mischaracterization the
+  phase-4 guardrail corrects. Its one completed attempt is retained as
+  the third confirming occurrence of the route-deletion pattern.
 - [Pre-run record: run_self_test live verification](self-test-tool-live-verification-pre-run-record.md)
   proposes one bounded `pi` invocation proving the self-test tool is
   reachable and its content legible, outside every TE denominator, and
@@ -201,6 +206,7 @@ te4-tightening3-reverification-pre-run-record
 te4-tightening3-reverification-result
 te4-tightening4-reverification-pre-run-record
 te4-tightening4-reverification-result
+te4-completion-rate-check-pre-run-record
 self-test-tool-live-verification-pre-run-record
 first-engine-comparison-plan
 first-smoke-run-record

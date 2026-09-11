@@ -260,28 +260,26 @@ two distinct real reasons, neither the runaway: an `id`-ordering
 ambiguity (Engine-01) and a redirect-trap misdiagnosis (Engine-02).
 **Tightening 3** closed the first (verified offline only, 8/8
 checks); the second is left as genuine friction, not a defect.
-**[Tightening-3 re-verification run and reported](docs/current/te4-tightening3-reverification-result.md).**
-Phase-2-board now 7/7 clean since the guardrail; the before-`agent_name`
-mistake did not recur. A new, adjacent gap did: both attempts gave
-`id` no default, so it satisfies tightening 3's wording (placed after
-`agent_name`/`text`) while still breaking positional construction a
-different way — in one attempt, cascading into phase 3's own
-add-complaint route.
+**[Tightening-3 re-verification run and reported](docs/current/te4-tightening3-reverification-result.md),
+corrected after Fable's review.** Phase-2-board 7/7 clean; the
+before-`agent_name` mistake did not recur. `id`-with-no-default
+recurred, but Engine-02's own failures mostly trace to something else:
+a destructive `edit` **deleted** its phase-3 `POST /complaints` route
+— the identical mechanism phase 2's own guardrail exists for,
+recurring at an unguarded phase.
 
-**Tightening 4 applied and [re-verified](docs/current/te4-tightening4-reverification-result.md)**
-— `id` now requires an automatic default. Validated: one Engine
-attempt got the whole `id` design right for the first time across six
-tries. The `id`-field ambiguity is closed; **no fifth tightening
-proposed**. The two remaining phase-4 failures (a misplaced
-`__post_init__`; a dropped phase-3 route on rewrite) are genuine
-implementation variance and cumulative-preservation difficulty — the
-kind TE4 exists to observe, not a prompt or grader gap. Engine has
-completed the full task **0 of 6 times**, but the failure reasons have
-moved from one systematic, closed gap to ordinary outcome variance.
-Overnight work continues per standing authorization: Fable review,
-then a further attempt batch with no prompt changes, to find whether a
-clean completion is reachable at some real rate. TE4's own screen
-still not proposed or authorized.
+**Tightening 4 applied and [re-verified](docs/current/te4-tightening4-reverification-result.md),
+corrected then resolved.** `id` now requires an automatic default; one
+Engine attempt got the whole design right for the first time — the
+`id`-field ambiguity is closed. The first draft's "no fifth tightening"
+call rested on a mischaracterization, caught by independent review: **3
+of 4 graded phase-4 attempts on record destroyed the phase-3 route**
+via phase 2's own former destructive-edit mechanism, at a rate too high
+to call variance. **Phase-4 guardrail applied** — see the task's own
+[`QUALIFICATION-NOTE.md`](src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md),
+"The phase-4 guardrail." Engine has completed the full task **0 of 8
+times** (0 of 7 that reached phase 4). Re-verifying the guardrail is
+next. TE4's own screen still not proposed or authorized.
 
 HP remains responsible for the composed, retained, regradable route; TE does
 not absorb unfinished HP requirements or reopen the paused single-task tuning

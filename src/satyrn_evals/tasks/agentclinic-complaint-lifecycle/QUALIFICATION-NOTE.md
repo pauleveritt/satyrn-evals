@@ -99,9 +99,12 @@ declared `id: int` with no default, placed after `agent_name`/`text`
 constructor argument -- so `Complaint(agent_name, text)` failed again,
 by a different route. One attempt's `models.py` failed to import at
 all (a non-default field following the defaulted `timestamp`); the
-other imported but broke phase 3's own already-accepted
-`add_complaint` route, which constructs `Complaint(agent_name=...,
-text=...)` with no `id`. The bullet now also requires an automatic
+other imported, but that attempt separately deleted phase 3's own
+already-accepted `POST /complaints` route via a destructive `edit` --
+the same mechanism phase 2's own guardrail exists for, recurring here
+with no guardrail at phase 4 (corrected in the re-verification result
+after an independent review; not itself closed by tightening 4). The
+bullet now also requires an automatic
 default (an auto-incrementing counter, matching `known-good`'s own
 `itertools.count`-based mechanism) so `id` is never a required
 argument. `phase-4-resolve-reopen`'s new prompt digest is
@@ -110,6 +113,37 @@ eight qualification checks re-pass unchanged, and `known-broken`
 (no default, positioned first) still fails the same way it always
 has -- this tightening does not change what `known-broken` violates,
 only how completely the prompt now rules out the reading it exploits.
+
+**The phase-4 guardrail, 2026-09-10.** A first draft of the
+tightening-4 write-up mischaracterized both graded phase-4 rejections
+as an id-field problem or a "rewrite." An independent review, and a
+third live attempt found while deciding this, corrected that: **3 of 4
+graded (non-voided) phase-4 attempts on record destroyed the
+already-accepted phase-3 `POST /complaints` route** via one destructive
+`edit` that replaces the whole `create_complaint` handler and
+`if __name__ == "__main__":` block with the new resolve route in a
+single call -- the identical mechanism named in
+[the phase-2-board runaway investigation](../../../../docs/current/phase-2-board-runaway-investigation.md),
+which phase 2 already carries a guardrail against. Phase 4 carried no
+equivalent. Unlike phase 2's version, this one never produced an
+unmeasurable, voided runaway -- every occurrence graded cleanly (13/18
+each time), which is exactly why it was mischaracterized as ordinary
+implementation variance rather than recognized as the same recurring
+defect. Closed the same way tightenings 1-4 closed their own gaps: one
+bullet, placed before the route-adding bullets, generalized to every
+existing route since phase 4 adds two new ones to three that already
+exist:
+
+> - When adding the new routes to `app.py`, insert them alongside the
+>   existing routes -- do not remove, replace, or rewrite any route
+>   that already works
+
+`phase-4-resolve-reopen`'s new prompt digest is `6c264957e8cdd793`
+(1993 bytes, was `ef0452709399edba`, 1841); all eight qualification
+checks re-pass unchanged. See
+[the tightening-4 result](../../../../docs/current/te4-tightening4-reverification-result.md)
+for the full correction and the reasoning for closing rather than
+leaving this as observed difficulty.
 
 **Corrected 2026-09-10, from a live transcript.** This section
 originally said `kw_only=True` was the fixture author's chosen

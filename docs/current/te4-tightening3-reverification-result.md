@@ -14,9 +14,11 @@ that record authorized.
 
 **Phase-2-board holds: 7 of 7 clean since the guardrail** (5 before
 this run, now 7). Engine-02's phase 2 took 29 turns — well above the
-recent 6–10 range — but completed normally, through repeated
-`run_self_test`-driven repair cycles, not the destructive-edit
-signature; a real cost outlier, not a pathology recurrence.
+recent 6–10 range — via heavy rewriting (5 wholesale `write app.py`
+calls, 10 `edit` calls, and rewrites of the phase-1 templates too)
+across 4 self-test runs, 2 of them failing before it converged. It
+completed normally, not via the destructive-edit signature; a real
+cost outlier, not a pathology recurrence.
 
 **Tightening 3 worked for what it targeted.** Neither attempt placed
 `id` before `agent_name`/`text` this time — that specific mistake did
@@ -43,14 +45,31 @@ way to that partial fix, then ran out of time at 42 phase-4 turns — a
 third distinct behavior pattern, worth naming, not yet seen before.
 
 **Engine-02**: the same `id: int`, no default, positioned before
-`timestamp` — syntactically valid this time, so it collected and ran,
-but `Complaint(agent_name=agent_name, text=text)` (phase 3's own
-add-complaint route, unmodified from an already-accepted checkpoint)
-now fails at runtime for the same reason. That's why this attempt's
-failures aren't confined to phase 4: `test_complaint_model_contract_is_preserved`
-(check 9, phase 2's own) and both of phase 3's `POST /complaints`
-checks fail too, alongside the four phase-4 checks that depend on the
-same construction. 7 of 18 checks fail in total.
+`timestamp` — syntactically valid this time, so it collected and ran.
+But its own phase-3 `POST /complaints` route did not merely fail at
+runtime from the `id` gap — **it no longer exists.** A destructive
+`edit` (phase-4 tool call index 4) replaced the entire
+`create_complaint` handler *and* the `if __name__ == "__main__":`
+block with the new resolve route, in one call:
+
+```
+oldText: '@app.post("/complaints")\nasync def create_complaint(...)...
+          \n\nif __name__ == "__main__":\n    uvicorn.run(...)'
+newText: '@app.post("/complaints/{complaint_id}/resolve")\n...'
+```
+
+This is the identical mechanism named in
+[the phase-2-board runaway investigation](phase-2-board-runaway-investigation.md)
+— a destructive `edit` deleting an already-accepted route — recurring
+at phase 4, which has no guardrail against it. Of the 7 failing
+checks, only 2 (`test_complaint_model_contract_is_preserved`,
+`test_complaint_identity_is_stable_and_keyword_only` — both call
+`Complaint("first", "First complaint")` directly) trace to the
+no-default `id`. The other 5 (both phase-3 `POST /complaints` checks,
+plus 3 of the 4 phase-4 route checks, whose own test setup posts a
+complaint through that now-missing route) trace to the deleted route.
+The three phase-4 checks are overdetermined — they would likely have
+failed from the `id` gap too, had the route survived.
 
 **Reading of tightening 3's own wording**: it said `id` goes "after
 the existing `agent_name`, `text` and `timestamp` fields" but never
@@ -68,9 +87,13 @@ date. **Does establish** that tightening 3's specific fix holds (no
 recurrence of the before-agent_name placement) and that phase-2-board
 remains solid (7/7). Surfaces a second, related prompt gap
 (no-default `id`) and a third distinct behavior pattern (24 identical
-reads in a row) not previously observed. Engine-02's own redirect-trap
-misdiagnosis (named in the prior re-verification) did not recur here —
-this run's failures are entirely attributable to the `id`-default gap.
+reads in a row) not previously observed. **Corrected**: this run's
+failures are not entirely attributable to the `id`-default gap —
+Engine-02 also destroyed its own phase-3 route via the same mechanism
+phase 2 needed a guardrail for (above), which accounts for most of its
+failing checks. Engine-01's own redirect-trap-style misdiagnosis did
+not recur; this specific destructive-edit-on-an-existing-route pattern
+did, on a phase with no guardrail against it.
 
 **No turn ceiling proposed.** Engine has still completed the full task
 zero times.

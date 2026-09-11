@@ -53,66 +53,125 @@ def __post_init__(self):
 `__post_init__` is written at **module level, not indented into the
 class** — it is never called, so `id` stays `None` forever. This is a
 real Python mistake (a deferred-assignment pattern, reasonably
-conceived, incorrectly nested) that self-test correctly caught
-(`AssertionError` comparing complaint counts, later a `422` from a
-mismatched test) — the implementer then spent the rest of the phase
-making increasingly tangled edits, including writing a
-self-acknowledged nonsensical assertion in its own test
-(`assert len(complaints) == len(complaints) + 1  # This is wrong, but
-let's check logic`), without ever finding the actual bug, and ran out
-of time at 25 phase-4 turns.
+conceived, incorrectly nested). **Corrected sequencing**: the
+implementer wrote a self-acknowledged nonsensical assertion in its own
+test (`assert len(complaints) == len(complaints) + 1  # This is
+wrong, but let's check logic`) *before* running self-test, not as a
+reaction to a caught bug. Self-test then surfaced the real bug as a
+`422 Unprocessable Entity` on `/complaints/None/resolve` — the
+implementer never connected that `422` to `id` being `None`, made
+several more edits chasing the wrong problem, and ran out of time at
+25 phase-4 turns.
 
-**Engine-02: a genuine preservation regression**, not a prompt gap.
-Its `id` design is correct, but its rewritten `app.py` **omits the
-`POST /complaints` route** — the add-complaint route from the
-already-accepted phase 3 checkpoint. That single omission cascades:
-`test_post_complaint_redirects_to_complaints_board` and
-`test_posted_complaint_appears_on_complaints_board` (phase 3's own
-checks) fail because the route no longer exists, and this task's own
-phase-4 checks that post a fresh complaint before resolving it
-(`test_resolve_route_marks_complaint_resolved_and_redirects`, etc.)
-fail too, because their own setup depends on that same missing route.
-5 of 18 checks fail, all traceable to one dropped route.
+**Engine-02: a destructive edit deleted an already-accepted route** —
+the same mechanism named in
+[the phase-2-board runaway investigation](phase-2-board-runaway-investigation.md),
+recurring at phase 4, which has no guardrail against it. **Corrected**:
+this was not a side effect of "rewriting" `app.py` — one `edit` call
+explicitly replaced the entire `create_complaint` handler and the
+`if __name__ == "__main__":` block with the new resolve route in a
+single `oldText`/`newText` pair. This is the **second of the last two
+graded phase-4 attempts** to do exactly this (the
+[tightening-3 re-verification](te4-tightening3-reverification-result.md)'s
+Engine-02 did the identical thing, corrected there too). `id`'s own
+design is otherwise correct in this attempt. 5 of 18 checks fail, all
+traced to the deleted route — phase 3's own two `POST /complaints`
+checks directly, and 3 of the 4 phase-4 checks because their own test
+setup posts a complaint through that now-missing route first
+(overdetermined, not independent evidence).
 
-## Why these are not candidates for a fifth tightening
+**Also missed in the first draft of this document**: Engine-02 also
+fell into the **redirect-trap misdiagnosis** named in
+[the guardrail re-verification](te4-guardrail-reverification-result.md)
+— its own test asserts `response.status_code == 303` on a
+`client.post(...)` call with no `follow_redirects=False`, the same
+trap. And its final turn ended with `stopReason: "length"` — an
+8,192-token generation that degenerated into repeating the same
+`RedirectResponse(url="/complaints", status_code=303)` line dozens of
+times as *text*, not a tool call, until the model's own output cap cut
+it off. This is a **fourth, distinct termination mode**, different
+from the wall-clock timeout every prior voided attempt hit: the phase
+was graded ("delivered") only because generation happened to stop
+there, not because the implementer finished. Named here, not
+previously classified; the pre-run record's own voiding rule does not
+cover a length-cut turn that still produces gradable output, and
+whether it should is not decided in this document.
 
-Both failures are exactly the kind of difficulty
-[the TE4 design](te4-harder-roadmap-design.md) says this roadmap
-should have: "difficulty should come from meaningful dependencies and
-preservation, not misleading instructions." A misplaced
-`__post_init__` is an implementation mistake self-test is supposed to
-catch (and did); a dropped route from an earlier phase is exactly the
-cumulative-preservation failure mode this whole task family exists to
-detect (and did, here through the ordinary hidden checks, not a new
-mechanism). Tightening the prompt further to prevent these specific
-mistakes would not close an ambiguity — it would start writing the
-solution for the model. **No fifth tightening is proposed.**
+## The fifth-tightening question, reopened
+
+**The first draft of this document concluded no fifth tightening was
+needed, on a mischaracterized evidence base — corrected here rather
+than left standing.** The actual pattern: 2 of the 3 *graded* phase-4
+attempts on record (both this run's Engine-02 and the prior round's)
+destroyed the phase-3 route via the identical destructive-edit
+mechanism phase 2 needed its own guardrail for. That is not "ordinary
+implementation variance" in the sense a misplaced `__post_init__` is —
+it is the same defect recurring in a location with no protection
+against it, at a rate at least as high as phase 2's own runaway rate
+before its guardrail (2 of 4). Phase 2's own prompt now carries a
+preservation bullet ("insert it alongside the existing route — do not
+remove, replace, or rewrite the route that already works"); phase 4's
+prompt carries no equivalent, and the packet's `preserve` field only
+protects phase 2's own route by name, not phase 3's.
+
+**Two honest readings, not one settled answer:**
+
+1. Add a phase-4 analog of the phase-2 guardrail, on the same
+   reasoning tightenings 3 and 4 used: this is a closable, exploited
+   gap in the prompt, not new task difficulty, and leaving it
+   unprompted risks confusing "Engine can't preserve routes" with "the
+   prompt never told it to."
+2. Leave it unprompted deliberately, because unlike phase 2's version
+   (which produced an unmeasurable, voided runaway), this one produces
+   a clean, gradable rejection — arguably exactly the
+   cumulative-preservation signal TE4 exists to measure, and prompting
+   it away would remove that signal rather than an accidental
+   ambiguity.
+
+This document does not pick between them; the next step does.
 
 ## Where this leaves the id-field question
 
-Tightenings 3 and 4 are done. Engine-02 proves the corrected
-instruction is sufficient to reach a fully-correct `Complaint` design
-in at least one live attempt. The `id`-field ambiguity that caused
-three of the first four phase-4 failures on this task is closed.
+Tightenings 3 and 4 are done, and **validated once, live** — Engine-02
+proves the corrected instruction is sufficient to reach a fully
+correct `Complaint` design in at least one attempt, not that it is
+reliable. The `id`-field ambiguity that caused two of the first four
+phase-4 failures (not three — see the correction below) is closed.
 
 ## What this does and does not establish
 
-**Still 0 of 6** full completions across every Engine attempt on this
-task family. But the *reason* has moved: the first four failures
-traced to one narrow, now-closed prompt gap; these two trace to
-ordinary implementation variance (a bug, a regression) — the kind of
-outcome variance any nontrivial coding task produces, not a
-systematic block. **This is progress, not success** — the id design
-finally validated, and neither remaining failure points to anything
-left to fix in the prompt or grader.
+**Still 0 of 7 Engine attempts on this task family complete the full
+task** (0 of 6 that reached phase 4). The count of "first four
+failures" attributable to the `id` gap is **two**, not three: the
+route proof's Engine-01 never reached phase 4 at all (voided at
+phase-2-board, pre-guardrail); the guardrail re-verification's
+Engine-02 was the redirect-trap misdiagnosis, not the `id` gap. Only
+the tightening-3 round's two attempts trace to `id`. What has
+genuinely moved: no attempt has repeated the `id`-before-`agent_name`
+or `id`-no-default mistakes since tightening 4 landed. What has not
+moved: the destructive-edit-on-an-existing-route mechanism, now
+observed at two different phases.
 
 No turn ceiling proposed yet — still no clean completion to check one
 against.
 
 ## Next, per the standing instruction
 
-Getting Fable's independent review of this result next, then
-proposing a further small batch of Engine attempts (no prompt changes
-— the ambiguity is closed) to see whether a clean completion is
-reachable at some real rate, which is what a turn ceiling and any
-eventual TE4 screen would need. Not run yet.
+Decide the fifth-tightening question explicitly (above), rather than
+carrying "no fifth tightening" forward as settled. If phase 4 gets its
+own guardrail, re-verify it the same way tightenings 3 and 4 were
+re-verified before proposing any completion-rate batch — a batch run
+against the current, uncorrected prompt would very likely just
+reproduce more route deletions, which is not new information.
+
+**Resolved, 2026-09-10.** While deciding this, a third live Engine
+attempt (already in flight, launched under the unguarded prompt before
+this reopening) finished: same destructive `edit`, same deleted
+`POST /complaints` route, same 5 failing checks (13/18) — the third of
+four graded phase-4 attempts to do this. That settles reading 1 over
+reading 2: three-quarters of every gradable phase-4 attempt on record
+hitting the identical mechanism phase 2 already needed a guardrail for
+is a closable defect, not a difficulty worth preserving as signal. The
+phase-4 guardrail is applied — see the task's own
+[`QUALIFICATION-NOTE.md`](../../src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md),
+"The phase-4 guardrail." Re-verification is next.
