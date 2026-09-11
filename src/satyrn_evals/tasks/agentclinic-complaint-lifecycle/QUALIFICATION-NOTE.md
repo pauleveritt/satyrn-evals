@@ -58,7 +58,7 @@ the same preamble.
 
 | # | check | prompt line |
 |---|---|---|
-| 14 | `test_complaint_identity_is_stable_and_keyword_only` | "Add a stable `id: int` field to the `Complaint` dataclass in `models.py`, placed after the existing `agent_name`, `text` and `timestamp` fields so `Complaint(agent_name, text)` still constructs positionally; assigned once when a complaint is created, unique and never reused or recomputed from its position in the list" (**tightening 3**, see below) |
+| 14 | `test_complaint_identity_is_stable_and_keyword_only` | "Add a stable `id: int` field to the `Complaint` dataclass in `models.py`, placed after the existing `agent_name`, `text` and `timestamp` fields so `Complaint(agent_name, text)` still constructs positionally; give it an automatic default (for example, an auto-incrementing counter) so it is never required as a constructor argument, is unique, and is never reused or recomputed from its position in the list" (**tightenings 3 and 4**, see below) |
 | 15 | `test_seed_complaints_have_distinct_ids` | same bullet -- the seed complaints are complaints too |
 | 16 | `test_resolve_route_marks_complaint_resolved_and_redirects` | "Add `POST /complaints/{complaint_id}/resolve`... set that complaint's `status` to `\"resolved\"`, then redirect"; "show each complaint's status as a badge reading exactly \"Open\" or \"Resolved\"" |
 | 17 | `test_reopen_route_marks_complaint_open_and_redirects` | "Add `POST /complaints/{complaint_id}/reopen`... set that complaint's `status` back to `\"open\"`, then redirect the same way" |
@@ -89,6 +89,27 @@ didn't. `phase-4-resolve-reopen`'s new prompt digest is
 eight qualification checks re-pass unchanged, and `known-broken`
 (which places `id` first, with no default at all) still fails the
 same way -- it violated this rule before the rule was written down.
+
+**Tightening 4, 2026-09-10.** Tightening 3 fixed *position* but not
+*defaultedness* -- it never said `id` needs a default at all. The
+[tightening-3 re-verification](../../../../docs/current/te4-tightening3-reverification-result.md)'s
+two Engine attempts both read that silence permissively too: each
+declared `id: int` with no default, placed after `agent_name`/`text`
+(satisfying tightening 3's own wording) but still a required
+constructor argument -- so `Complaint(agent_name, text)` failed again,
+by a different route. One attempt's `models.py` failed to import at
+all (a non-default field following the defaulted `timestamp`); the
+other imported but broke phase 3's own already-accepted
+`add_complaint` route, which constructs `Complaint(agent_name=...,
+text=...)` with no `id`. The bullet now also requires an automatic
+default (an auto-incrementing counter, matching `known-good`'s own
+`itertools.count`-based mechanism) so `id` is never a required
+argument. `phase-4-resolve-reopen`'s new prompt digest is
+`ef0452709399edba` (1841 bytes, was `1fc4d9d0e3ed4586`, 1753); all
+eight qualification checks re-pass unchanged, and `known-broken`
+(no default, positioned first) still fails the same way it always
+has -- this tightening does not change what `known-broken` violates,
+only how completely the prompt now rules out the reading it exploits.
 
 **Corrected 2026-09-10, from a live transcript.** This section
 originally said `kw_only=True` was the fixture author's chosen

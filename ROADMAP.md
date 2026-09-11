@@ -241,55 +241,47 @@ re-run. **TE4 scoping started** under the plan's own rule that a
 negative easy-work result does not by itself rule out the harder
 claim.
 
-**TE4, offline witnesses built and proven, 2026-09-10.**
-[Design](docs/current/te4-harder-roadmap-design.md) qualifies the
-starting candidate — stable complaint identity plus a resolve/reopen
-lifecycle — as one new phase on sibling task
-`agentclinic-complaint-lifecycle` (phases 1–3 reused verbatim). Grader
-tests, six fixtures and
-[`QUALIFICATION-NOTE.md`](src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md)
-are proven via 8 qualification tests; full suite and doc lint pass. No
-live inference — proves the task a fair **fixture**, not a
-**workload**; TE4's own screen needs its own separate authorization.
+**TE4 timeline** (full detail in each dated doc, not repeated here):
+[design](docs/current/te4-harder-roadmap-design.md) qualified
+`agentclinic-complaint-lifecycle` (phases 1–3 reused verbatim, phase 4
+new) as a fair fixture, 8/8 qualification checks, before any
+inference. [Route proof](docs/current/te4-route-proof-result.md) found
+and fixed a grader defect (Baseline 18/18) and a phase-2-board Engine
+runaway — [investigated](docs/current/phase-2-board-runaway-investigation.md),
+traced to a destructive `edit` deleting the phase-1 home route.
+[Candidate-tested then adopted](docs/current/phase2-guardrail-candidate-result.md)
+into this task only (`agentclinic-session-phased` untouched, keeping
+HP7/TE1/TE2/HP8's digests accurate): 3/3 clean, zero destructive
+edits.
+[Re-verified](docs/current/te4-guardrail-reverification-result.md):
+phase-2-board now 5/5 clean since the guardrail (was 2/4), and both
+attempts reached phase 4 for the first time ever — failing there for
+two distinct real reasons, neither the runaway: an `id`-ordering
+ambiguity (Engine-01) and a redirect-trap misdiagnosis (Engine-02).
+**Tightening 3** closed the first (verified offline only, 8/8
+checks); the second is left as genuine friction, not a defect.
+**[Tightening-3 re-verification run and reported](docs/current/te4-tightening3-reverification-result.md).**
+Phase-2-board now 7/7 clean since the guardrail; the before-`agent_name`
+mistake did not recur. A new, adjacent gap did: both attempts gave
+`id` no default, so it satisfies tightening 3's wording (placed after
+`agent_name`/`text`) while still breaking positional construction a
+different way — in one attempt, cascading into phase 3's own
+add-complaint route.
 
-**Route proof [run](docs/current/te4-route-proof-result.md) and
-[investigated](docs/current/phase-2-board-runaway-investigation.md).**
-Baseline-01 completed all four phases; its one phase-4 failure was a
-grader defect — **fixed**, re-verified 18/18. Engine-01 voided —
-phase-2-board timed out with TE2/HP8's own Engine-01 signature (2 of 4
-real attempts now run away, 2 completed in 8–9 turns; Baseline 9 of
-9). Mechanism: both runaways follow a destructive `edit` deleting the
-phase-1 home route, converging on a file with an unimported `Request`
-neither catches since `run_self_test` is never called — correlation,
-not causation, no per-turn model input retained. No ceiling declared.
-
-**Guardrail [candidate](docs/current/phase2-guardrail-candidate-result.md)
-tested then adopted into `agentclinic-complaint-lifecycle` only** — a
-one-sentence phase-2-board prompt addition (insert, don't replace, the
-route). Probe: 3 of 3 Engine attempts clean, 2 skipped `edit`, the one
-that used it did so additively — the branch the runaway never took;
-not conclusive alone against the 50% base rate (p=0.125), but zero
-destructive edits in three chances is stronger than the count.
-`agentclinic-session-phased` untouched, keeping HP7/TE1/TE2/HP8's
-digests accurate; new digests in
-[`QUALIFICATION-NOTE.md`](src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md).
-**[Re-verification](docs/current/te4-guardrail-reverification-result.md):**
-both Engine attempts reached phase 4 for the first time ever, phases
-1–3 clean both times (**phase-2-board 5 of 5 clean since the
-guardrail**, vs. 2 of 4 before). Phase 4 failed twice for two
-different real reasons, neither the phase-2-board pathology:
-Engine-01 rejected (16/18) for placing `id` before `agent_name`/`text`
-— the ambiguity the sibling task had named as unprobed risk, now
-observed live; Engine-02 voided at a 600s timeout after
-`run_self_test` correctly caught a real bug (its own test omitted
-`follow_redirects=False`) but its fix was a no-op tried twice. No
-ceiling — Engine has completed the full task zero times.
-**Tightening 3 applied** — `id` now goes after `agent_name`/`text` by
-prompt (Baseline's own solution already did this unprompted); 8/8
-checks re-pass, `known-broken` still fails the same way. See
-[`QUALIFICATION-NOTE.md`](src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md).
-Engine-02's failure left as-is — genuine friction, not a prompt gap.
-TE4's screen still not proposed or authorized.
+**Tightening 4 applied and [re-verified](docs/current/te4-tightening4-reverification-result.md)**
+— `id` now requires an automatic default. Validated: one Engine
+attempt got the whole `id` design right for the first time across six
+tries. The `id`-field ambiguity is closed; **no fifth tightening
+proposed**. The two remaining phase-4 failures (a misplaced
+`__post_init__`; a dropped phase-3 route on rewrite) are genuine
+implementation variance and cumulative-preservation difficulty — the
+kind TE4 exists to observe, not a prompt or grader gap. Engine has
+completed the full task **0 of 6 times**, but the failure reasons have
+moved from one systematic, closed gap to ordinary outcome variance.
+Overnight work continues per standing authorization: Fable review,
+then a further attempt batch with no prompt changes, to find whether a
+clean completion is reachable at some real rate. TE4's own screen
+still not proposed or authorized.
 
 HP remains responsible for the composed, retained, regradable route; TE does
 not absorb unfinished HP requirements or reopen the paused single-task tuning

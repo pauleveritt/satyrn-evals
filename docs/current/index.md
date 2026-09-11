@@ -121,7 +121,28 @@ past artifact. Archived material does not set current policy.
   ambiguity; a redirect-following trap in the model's own test,
   correctly caught by self-test but misdiagnosed) — neither a repeat
   of the phase-2-board pathology, which held clean 2 of 2. No ceiling
-  proposed; TE4's screen still not authorized.
+  proposed; TE4's screen still not authorized. The ordering ambiguity
+  is since closed by tightening 3.
+- [Pre-run record: tightening-3 re-verification](te4-tightening3-reverification-pre-run-record.md)
+  proposes 2 more Engine attempts to see whether the id-ordering fix
+  actually lets Engine complete the full task — never yet achieved
+  across any attempt on this task family. Authorizes nothing yet.
+- [Tightening-3 re-verification — result](te4-tightening3-reverification-result.md)
+  reports phase-2-board still 7 of 7 clean and the before-`agent_name`
+  mistake gone, but a new, adjacent gap: both attempts gave `id` no
+  default, breaking positional construction a different way (and, in
+  one attempt, phase 3's own add-complaint route). Names a candidate
+  tightening 4, not applied. Engine has completed the full task 0 of
+  5 times to date.
+- [Pre-run record: tightening-4 re-verification](te4-tightening4-reverification-pre-run-record.md)
+  and its
+  [result](te4-tightening4-reverification-result.md): tightening 4
+  applied and validated — one attempt gets the `id` design entirely
+  right for the first time. The two remaining failures (a misplaced
+  `__post_init__`; a dropped phase-3 route) are genuine implementation
+  variance, not prompt gaps — no fifth tightening proposed. Still 0 of
+  6 full completions; Fable review and a further attempt batch are
+  next, per the standing overnight authorization.
 - [Pre-run record: run_self_test live verification](self-test-tool-live-verification-pre-run-record.md)
   proposes one bounded `pi` invocation proving the self-test tool is
   reachable and its content legible, outside every TE denominator, and
@@ -176,6 +197,10 @@ phase2-guardrail-candidate-pre-run-record
 phase2-guardrail-candidate-result
 te4-guardrail-reverification-pre-run-record
 te4-guardrail-reverification-result
+te4-tightening3-reverification-pre-run-record
+te4-tightening3-reverification-result
+te4-tightening4-reverification-pre-run-record
+te4-tightening4-reverification-result
 self-test-tool-live-verification-pre-run-record
 first-engine-comparison-plan
 first-smoke-run-record
