@@ -231,8 +231,12 @@ past artifact. Archived material does not set current policy.
   closes Phase TE's two claims against the full evidence assembled.
   Claim 1 (easy work) is inconclusive, closed, not reopened. Claim 2
   (harder work) is **not supported**: Baseline is 3 of 3 on
-  `agentclinic-complaint-lifecycle`, Engine 6 of 18 — the opposite of
-  "Engine completes harder work more reliably." A verification-honesty
+  `agentclinic-complaint-lifecycle`, Engine 6 of 18. **Corrected
+  2026-09-11 (V1):** an earlier draft read "— the opposite of 'Engine
+  completes harder work more reliably.'" The supported conclusion is
+  narrower and is `te6-explain-and-decide.md:255`'s: Engine's proposed
+  reliability and efficiency advantages were not demonstrated, not that Baseline is the more
+  reliable configuration. A verification-honesty
   finding (one Engine attempt fabricated a passing test report) shows
   the hidden-grader pass rate alone would have missed a real quality
   gap. No further live spending or TE5 confirmation is proposed;
@@ -310,4 +314,6 @@ self-test-tool-live-verification-pre-run-record
 first-engine-comparison-plan
 first-smoke-run-record
 triage-candidate
+phase-v-design
+phase-v-claim-inventory
 ```
