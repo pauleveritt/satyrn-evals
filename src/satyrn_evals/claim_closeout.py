@@ -15,20 +15,54 @@ type FinalStatus = Literal[
     "confirmed", "corrected", "not_derivable", "claim_measure_mismatch"
 ]
 
-#: The artifact each `not_derivable` record names as missing. V3's rule is
-#: that a `not_derivable` status without a named artifact is a close-out
-#: failure, so this map is the record of what each refusal is waiting on.
-MISSING_ARTIFACT: dict[str, str] = {
-    "c-completion-6-of-18": "hidden-grader verdicts across all 18 Engine attempts",
-    "c-completion-4-of-16": "hidden-grader verdicts for the 16 pre-screen attempts",
-    "c-baseline-3-of-3": "matched-repeat Baseline attempts under the final prompt",
-    "c-contemporaneous-screen-tie-2-of-2": "an outcome measure executable from transcripts",
-    "c-nonrestore-0-of-6": "a completion verdict per non-restoring attempt",
-    "c-restore-4-of-7": "a completion verdict per restoring attempt",
-    "c-redirect-fixed-1-of-9": "a redirect-trap resolution classifier",
-    "c-redirect-6-of-9": "a redirect-trap occurrence classifier",
-    "c-phase4-denominator-6-of-10": "prompt-state membership for the pre-phase-4 chains",
-    "c-engine-population": "a measure that binds the population statement to an attempt set",
+type GapKind = Literal["absent_artifact", "unimplemented_measure"]
+
+#: What each `not_derivable` record is waiting on, and of which kind. V3's
+#: rule is that a `not_derivable` status without a named gap is a close-out
+#: failure; the kind matters because "an artifact we never retained" and "a
+#: measure this implementation does not define" are different findings, and
+#: the second must not read as the first.
+MISSING_ARTIFACT: dict[str, tuple[GapKind, str]] = {
+    "c-completion-6-of-18": (
+        "absent_artifact",
+        "hidden-grader verdicts across all 18 Engine attempts",
+    ),
+    "c-completion-4-of-16": (
+        "absent_artifact",
+        "hidden-grader verdicts for the 16 pre-screen attempts",
+    ),
+    "c-baseline-3-of-3": (
+        "absent_artifact",
+        "matched-repeat Baseline attempts under the final prompt",
+    ),
+    "c-contemporaneous-screen-tie-2-of-2": (
+        "unimplemented_measure",
+        "an outcome measure executable from transcripts",
+    ),
+    "c-nonrestore-0-of-6": (
+        "absent_artifact",
+        "a completion verdict per non-restoring attempt",
+    ),
+    "c-restore-4-of-7": (
+        "absent_artifact",
+        "a completion verdict per restoring attempt",
+    ),
+    "c-redirect-fixed-1-of-9": (
+        "unimplemented_measure",
+        "a redirect-trap resolution classifier",
+    ),
+    "c-redirect-6-of-9": (
+        "unimplemented_measure",
+        "a redirect-trap occurrence classifier",
+    ),
+    "c-phase4-denominator-6-of-10": (
+        "absent_artifact",
+        "prompt-state membership for the pre-phase-4 chains",
+    ),
+    "c-engine-population": (
+        "unimplemented_measure",
+        "a measure that binds the population statement to an attempt set",
+    ),
 }
 
 
@@ -39,10 +73,11 @@ class CloseoutRow:
     status: FinalStatus
     source: str
     carriers: tuple[str, ...]
-    missing: str | None
+    missing: str | None = None
+    missing_kind: GapKind | None = None
 
 
-def _record_missing(record: ClaimRecord) -> str | None:
+def _record_missing(record: ClaimRecord) -> tuple[GapKind, str] | None:
     if record.status != "not_derivable":
         return None
     return MISSING_ARTIFACT.get(record.id)
@@ -51,17 +86,21 @@ def _record_missing(record: ClaimRecord) -> str | None:
 def closeout_rows(
     records: Sequence[ClaimRecord] = INVENTORY,
 ) -> tuple[CloseoutRow, ...]:
-    return tuple(
-        CloseoutRow(
-            claim_id=record.id,
-            level=record.level,
-            status=cast(FinalStatus, record.status),
-            source=record.source,
-            carriers=record.carriers,
-            missing=_record_missing(record),
+    rows: list[CloseoutRow] = []
+    for record in records:
+        gap = _record_missing(record)
+        rows.append(
+            CloseoutRow(
+                claim_id=record.id,
+                level=record.level,
+                status=cast(FinalStatus, record.status),
+                source=record.source,
+                carriers=record.carriers,
+                missing=gap[1] if gap else None,
+                missing_kind=gap[0] if gap else None,
+            )
         )
-        for record in records
-    )
+    return tuple(rows)
 
 
 def carrier_lag(

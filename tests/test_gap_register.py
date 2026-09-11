@@ -114,11 +114,13 @@ def test_observations_for_attempts_counts_over_the_supplied_population() -> None
 
     assert (
         observed["g-restoration-churn"]
-        == "1 destructive, 1 restoring, of 1 (exploratory)"
+        == "1 content-changing, 1 re-adding removed content, 0/0 undecidable "
+        "of 1 (exploratory)"
     )
     assert (
         observed["g-self-test-friction"]
-        == "0 of 1 attempts fail their required self-test (exploratory)"
+        == "0 last model-invoked self-test failed, 1 passed, 0 undecidable "
+        "of 1 (exploratory; not the independent final-candidate check)"
     )
     assert "exploratory" in observed["g-verification-honesty"]
 

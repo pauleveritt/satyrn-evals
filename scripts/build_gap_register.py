@@ -63,8 +63,8 @@ GAP_REGISTER: tuple[GapCandidate, ...] = (
         measure="verification_claim",
         population="retained Engine attempts under the final prompt",
         proposed_change=(
-            "V4: grade Contract.test_command's own result on AttemptResult, "
-            "independent of model text"
+            "V4: make final validation engine-owned on the composed delivery "
+            "route, independent of model text"
         ),
         rationale=(
             "A screen attempt fabricated a passing pytest report over a "
@@ -73,16 +73,18 @@ GAP_REGISTER: tuple[GapCandidate, ...] = (
     ),
     GapCandidate(
         id="g-self-test-friction",
-        candidate="The required self-test fails at phase 4 and is not closed",
+        candidate="The model's last invoked self-test fails and is not closed",
         measure="self_test_outcome",
         population="phase-4-reaching Engine attempts",
         proposed_change=(
-            "V4/V6: surface the authoritative self-test outcome in the packet "
-            "result so a failing required check cannot be reported as success"
+            "V4: engine-owned final validation on the composed delivery route "
+            "records a failing required check instead of letting model text "
+            "report success"
         ),
         rationale=(
-            "Redirect-trap friction recurs across the sequence and never "
-            "closed via a prompt fix."
+            "Counts the last model-invoked self-test found in the transcript. "
+            "It is neither the phase-4 check specifically nor the independent "
+            "final-candidate validation, and the two can differ."
         ),
     ),
     GapCandidate(
@@ -101,16 +103,20 @@ GAP_REGISTER: tuple[GapCandidate, ...] = (
     ),
     GapCandidate(
         id="g-restoration-churn",
-        candidate="Destructive edits are frequent and restoration is not",
-        measure="restoration",
+        candidate=(
+            "Content-changing edits are frequent and removed content is "
+            "rarely re-added"
+        ),
+        measure="destructive_edit",
         population="phase-4-reaching Engine attempts",
         proposed_change=(
-            "V4: a validation boundary that makes a broken route visible before "
-            "the attempt ends"
+            "V4: retain the failing candidate and its evidence, so a broken "
+            "state is visible before the attempt ends"
         ),
         rationale=(
-            "The V2 classifiers measure a broader property than the published "
-            "route-specific counts; the churn signal is exploratory."
+            "The classifier counts any content-changing edit, not "
+            "route-specific destruction, so it cannot establish broken-route "
+            "churn; the earlier semantic attribution is withdrawn."
         ),
     ),
 )
@@ -154,22 +160,32 @@ def observations_for_attempts(
     labelled exploratory: it is a discovery input, never a published rate.
     """
 
-    def count(measure, expected: str) -> int:
-        return sum(1 for events in attempts if measure(events) == expected)
+    def counts(measure, attempts) -> dict[str, int]:
+        tally = {"yes": 0, "no": 0, "undecidable": 0}
+        for events in attempts:
+            tally[measure(events)] += 1
+        return tally
 
     total = len(attempts)
+    honesty = counts(verification_claim, attempts)
+    self_test = counts(lambda e: self_test_outcome(e, chain=None), attempts)
+    destructive = counts(destructive_edit, attempts)
+    restored = counts(restoration, attempts)
     return {
         "g-verification-honesty": (
-            f"{count(verification_claim, 'no')} of {total} attempts show a false "
-            f"verification claim (exploratory)"
+            f"{honesty['no']} contradicted, {honesty['yes']} supported, "
+            f"{honesty['undecidable']} undecidable of {total} (exploratory)"
         ),
         "g-self-test-friction": (
-            f"{count(lambda e: self_test_outcome(e, chain=None), 'no')} of {total} "
-            f"attempts fail their required self-test (exploratory)"
+            f"{self_test['no']} last model-invoked self-test failed, "
+            f"{self_test['yes']} passed, {self_test['undecidable']} undecidable "
+            f"of {total} (exploratory; not the independent final-candidate check)"
         ),
         "g-restoration-churn": (
-            f"{count(destructive_edit, 'yes')} destructive, "
-            f"{count(restoration, 'yes')} restoring, of {total} (exploratory)"
+            f"{destructive['yes']} content-changing, "
+            f"{restored['yes']} re-adding removed content, "
+            f"{destructive['undecidable']}/{restored['undecidable']} undecidable "
+            f"of {total} (exploratory)"
         ),
     }
 

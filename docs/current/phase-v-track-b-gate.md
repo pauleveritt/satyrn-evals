@@ -2,28 +2,28 @@
 
 Every inventory claim carries exactly one final status, and no carrier lags its source. The table below is the enumerated inventory — a status for every entry — that Track B opens on.
 
-| claim_id | level | status | missing |
-|---|---|---|---|
-| u-baseline-01-per-phase-turns | unit | confirmed | — |
-| u-baseline-02-per-phase-turns | unit | confirmed | — |
-| u-engine-01-per-phase-turns | unit | confirmed | — |
-| u-engine-02-per-phase-turns | unit | confirmed | — |
-| u-completion-turn-distribution | unit | confirmed | — |
-| u-recurrence-01-per-phase-turns | unit | confirmed | — |
-| u-recurrence-03-per-phase-turns | unit | confirmed | — |
-| c-engine-population | claim | not_derivable | a measure that binds the population statement to an attempt set |
-| c-baseline-3-of-3 | claim | not_derivable | matched-repeat Baseline attempts under the final prompt |
-| c-contemporaneous-screen-tie-2-of-2 | claim | not_derivable | an outcome measure executable from transcripts |
-| c-completion-6-of-18 | claim | not_derivable | hidden-grader verdicts across all 18 Engine attempts |
-| c-completion-4-of-16 | claim | not_derivable | hidden-grader verdicts for the 16 pre-screen attempts |
-| c-destroyed-13-of-15 | claim | claim_measure_mismatch | — |
-| c-restored-9-of-15 | claim | claim_measure_mismatch | — |
-| c-redirect-fixed-1-of-9 | claim | not_derivable | a redirect-trap resolution classifier |
-| c-nonrestore-0-of-6 | claim | not_derivable | a completion verdict per non-restoring attempt |
-| c-restore-4-of-7 | claim | not_derivable | a completion verdict per restoring attempt |
-| c-phase4-denominator-6-of-10 | claim | not_derivable | prompt-state membership for the pre-phase-4 chains |
-| c-redirect-6-of-9 | claim | not_derivable | a redirect-trap occurrence classifier |
-| c-fabricated-report-n1 | claim | confirmed | — |
+| claim_id | level | status | gap_kind | gap |
+|---|---|---|---|---|
+| u-baseline-01-per-phase-turns | unit | confirmed | — | — |
+| u-baseline-02-per-phase-turns | unit | confirmed | — | — |
+| u-engine-01-per-phase-turns | unit | confirmed | — | — |
+| u-engine-02-per-phase-turns | unit | confirmed | — | — |
+| u-completion-turn-distribution | unit | confirmed | — | — |
+| u-recurrence-01-per-phase-turns | unit | confirmed | — | — |
+| u-recurrence-03-per-phase-turns | unit | confirmed | — | — |
+| c-engine-population | claim | not_derivable | unimplemented_measure | a measure that binds the population statement to an attempt set |
+| c-baseline-3-of-3 | claim | not_derivable | absent_artifact | matched-repeat Baseline attempts under the final prompt |
+| c-contemporaneous-screen-tie-2-of-2 | claim | not_derivable | unimplemented_measure | an outcome measure executable from transcripts |
+| c-completion-6-of-18 | claim | not_derivable | absent_artifact | hidden-grader verdicts across all 18 Engine attempts |
+| c-completion-4-of-16 | claim | not_derivable | absent_artifact | hidden-grader verdicts for the 16 pre-screen attempts |
+| c-destroyed-13-of-15 | claim | claim_measure_mismatch | — | — |
+| c-restored-9-of-15 | claim | claim_measure_mismatch | — | — |
+| c-redirect-fixed-1-of-9 | claim | not_derivable | unimplemented_measure | a redirect-trap resolution classifier |
+| c-nonrestore-0-of-6 | claim | not_derivable | absent_artifact | a completion verdict per non-restoring attempt |
+| c-restore-4-of-7 | claim | not_derivable | absent_artifact | a completion verdict per restoring attempt |
+| c-phase4-denominator-6-of-10 | claim | not_derivable | absent_artifact | prompt-state membership for the pre-phase-4 chains |
+| c-redirect-6-of-9 | claim | not_derivable | unimplemented_measure | a redirect-trap occurrence classifier |
+| c-fabricated-report-n1 | claim | confirmed | — | — |
 
 **Status:** 8 confirmed, 0 corrected, 10 not_derivable, 2 claim_measure_mismatch, of 20 records.
 

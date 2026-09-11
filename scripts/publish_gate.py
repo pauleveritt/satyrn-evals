@@ -31,8 +31,9 @@ _HANDWRITTEN_HEADERS = ("## Reopen decisions", "## Carrier review")
 def render_gate(rows: Sequence[CloseoutRow]) -> str:
     """The enumerated inventory as a Markdown table plus a status summary.
 
-    A ``not_derivable`` row renders its named missing artifact; a row with no
-    missing artifact renders ``—``. The summary is computed from the rows,
+    A ``not_derivable`` row renders its named gap with its kind — an
+    `absent_artifact` and an `unimplemented_measure` are different findings;
+    a row with no gap renders ``—``. The summary is computed from the rows,
     never hard-coded, so a status change cannot drift from the table.
     """
     counts = Counter(row.status for row in rows)
@@ -43,13 +44,13 @@ def render_gate(rows: Sequence[CloseoutRow]) -> str:
         "lags its source. The table below is the enumerated inventory — a status "
         "for every entry — that Track B opens on.",
         "",
-        "| claim_id | level | status | missing |",
-        "|---|---|---|---|",
+        "| claim_id | level | status | gap_kind | gap |",
+        "|---|---|---|---|---|",
     ]
     for row in rows:
         lines.append(
             f"| {row.claim_id} | {row.level} | {row.status} | "
-            f"{row.missing or '—'} |"
+            f"{row.missing_kind or '—'} | {row.missing or '—'} |"
         )
     summary = (
         f"**Status:** {counts['confirmed']} confirmed, {counts['corrected']} "
