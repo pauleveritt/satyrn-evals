@@ -146,9 +146,11 @@ sequence's four passes (`p4guardrail-round2-engine-01`,
 **The honest pattern, stated at the right denominator**: restoring the
 deleted route is *necessary* for completion on current evidence — zero
 of the 6 attempts that never restored it (2 that never destroyed it in
-the first place, 4 that destroyed it and left it gone) passed — but it
-is not *sufficient*: 3 of the 7 restorations still failed, every one
-by running out of time before finishing, not by finishing with a wrong
+the first place, 4 that destroyed it and left it gone) passed, though
+not all 6 failed the same way (4 were graded and rejected; 2 —
+`p4guardrail-engine-01`/`-03` — also timed out) — but restoring is not
+*sufficient*: 3 of the 7 restorations still failed, every one by
+running out of time before finishing, not by finishing with a wrong
 answer. That is a real, checkable distinction (a timeout leaves no
 verdict; none of the three timed-out restorations were ever graded and
 rejected), but it means the actual bottleneck for a restoring attempt
