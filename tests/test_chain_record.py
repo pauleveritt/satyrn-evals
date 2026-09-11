@@ -21,6 +21,8 @@ from satyrn_evals.chain_record import (
     AppliedState,
     ChainRecord,
     PhaseRecord,
+    _failed_validation_stop,
+    _validation_from_receipt,
     build_chain_record,
     chain_record_from_dict,
     chain_record_to_dict,
@@ -39,6 +41,8 @@ from satyrn_evals.route import (
     BoundaryEvent,
     ImplementerResult,
     SelfTestOutcome,
+    ValidationOutcome,
+    ValidationRecord,
     is_executable_seam,
     run_phases,
     scripted_implementer,
@@ -304,6 +308,107 @@ def test_a_phase_record_with_a_self_test_outcome_round_trips() -> None:
     data = chain_record_to_dict(record)
     assert data["phases"][0]["self_test_outcome"]["exit_code"] == 1
     assert chain_record_from_dict(data) == record
+
+
+def test_a_built_record_carries_no_validation(tmp_path: Path) -> None:
+    """`build_chain_record` is the in-process route: there is no engine
+    receipt, so the authoritative validation stays ``None`` -- absence, not
+    a ``NOT_APPLICABLE`` stand-in."""
+    record = _delivered_record(tmp_path)
+    for phase in record.phases:
+        assert phase.validation is None
+
+
+def test_a_phase_record_with_a_validation_round_trips() -> None:
+    packet = _packet("phase-1-home")
+    record = ChainRecord(
+        version=CHAIN_RECORD_VERSION,
+        phases=(
+            PhaseRecord(
+                step_id="phase-1-home",
+                packet=packet,
+                result=ImplementerResult(
+                    changed_files=("app.py",),
+                    reported_outcome="delivered",
+                    message=None,
+                ),
+                accepted=True,
+                reason="scripted pass",
+                implementer_mutations=(Mutation("app.py", "created"),),
+                orchestrator_mutations=(),
+                declaration_ledger=declaration_ledger(
+                    executable_seam=True,
+                    packet=packet,
+                    implementer_mutations=(Mutation("app.py", "created"),),
+                ),
+                validation=ValidationRecord(
+                    outcome=ValidationOutcome.FAILED,
+                    exit_code=1,
+                    output="1 failed\n",
+                ),
+            ),
+        ),
+        final_decision=None,
+    )
+    data = chain_record_to_dict(record)
+    assert data["phases"][0]["validation"]["outcome"] == "failed"
+    assert chain_record_from_dict(data) == record
+
+
+def test_validation_from_receipt_reads_the_engine_verdict() -> None:
+    record = _validation_from_receipt(
+        {
+            "validation": "failed",
+            "validation_exit": 1,
+            "validation_output": "1 failed\n",
+        }
+    )
+    assert record is not None
+    assert record.outcome is ValidationOutcome.FAILED
+    assert record.exit_code == 1
+    assert record.output == "1 failed\n"
+
+
+def test_validation_from_receipt_refuses_an_unknown_verdict() -> None:
+    """A present-but-unknown verdict is a cross-repo vocabulary drift and is
+    refused, never silently laundered into ``None``."""
+    with pytest.raises(ChainRecordError, match="unknown validation verdict"):
+        _validation_from_receipt({"validation": "bogus"})
+
+
+def test_validation_from_receipt_returns_none_when_absent() -> None:
+    """Sibling of the refusal above: an older engine with no validation
+    field degrades to ``None``, not a crash."""
+    assert _validation_from_receipt({}) is None
+
+
+def test_a_failed_engine_validation_stops_the_chain_before_the_grader() -> None:
+    """A ``FAILED`` validation is the engine's authoritative stop: the phase
+    rejects even when the grader would have passed."""
+    assert _failed_validation_stop(
+        ValidationRecord(
+            ValidationOutcome.FAILED, exit_code=1, output="1 failed\n",
+        )
+    ) == ("fail", "engine validation: failed")
+
+
+def test_a_passed_engine_validation_leaves_the_grader_to_decide() -> None:
+    """Sibling of the refusal above: a ``PASSED`` validation is not a stop,
+    so the grader's own verdict still decides the phase."""
+    assert _failed_validation_stop(
+        ValidationRecord(ValidationOutcome.PASSED, exit_code=0, output="")
+    ) is None
+
+
+def test_an_undetermined_engine_validation_is_not_a_stop() -> None:
+    """``TIMED_OUT``/``UNAVAILABLE`` are undetermined, not passing -- only
+    ``FAILED`` stops the composed route; the others leave the grader to
+    decide, and a missing receipt (``None``) is not a verdict at all."""
+    for outcome in (ValidationOutcome.TIMED_OUT, ValidationOutcome.UNAVAILABLE):
+        assert _failed_validation_stop(
+            ValidationRecord(outcome, exit_code=None, output=None)
+        ) is None
+    assert _failed_validation_stop(None) is None
 
 
 # --- HP6.4: cost per role, null when unmeasured ------------------------------

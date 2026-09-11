@@ -100,7 +100,8 @@
         "version": 1
       },
       "self_test_outcome": null,
-      "step_id": "phase-1-home"
+      "step_id": "phase-1-home",
+      "validation": null
     },
     {
       "accepted": true,
@@ -191,7 +192,8 @@
         "version": 1
       },
       "self_test_outcome": null,
-      "step_id": "phase-2-board"
+      "step_id": "phase-2-board",
+      "validation": null
     },
     {
       "accepted": true,
@@ -279,7 +281,8 @@
         "version": 1
       },
       "self_test_outcome": null,
-      "step_id": "phase-3-add"
+      "step_id": "phase-3-add",
+      "validation": null
     }
   ],
   "version": 1

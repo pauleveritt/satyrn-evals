@@ -86,7 +86,7 @@ vocabulary gap. **V2b repaired all of it.**
 | V1 | Inventory and the per-phase ledger | A (here) | Claim inventory; shared per-phase ledger for both layouts; unit-level reconciliation | ≥1 inventory claim changes status |
 | V2 | Claim-level measures and the denominator binding | A (here) | Claim→measure→population binding; four pure classifiers; vocabulary/structure repair; claim-level reconciliation | ≥1 inventory claim changes status |
 | V3 | Close-out and the engine gap register | A (here) | Every inventory claim carries a status; reopen bound applied; **exploratory engine gap register**; Track B gate published | The inventory is exhausted, and the register names ≥1 engine candidate with its measure and population |
-| V4 | Authoritative validation status | B (engine) | `Contract.test_command`'s result on `AttemptResult`, independent of model text | n/a |
+| V4 | Authoritative validation status | B (engine) | Engine `validation` verdict on each `deliver` receipt, independent of model text | n/a |
 | V5 | Real turn/deadline budget | B (engine) | Whole-attempt turn limit and wall-clock deadline, retaining partial work | n/a |
 | V6 | Live route proof | B (engine) | One bounded orchestrated delivery, `n` frozen at 1 | n/a |
 
@@ -342,9 +342,19 @@ confirmation:
    the two-way recording the preamble requires.
 
 **Done, 2026-09-11.** `satyrn-engine`'s Phase V row is updated to this design's
-V1–V6 and records `satyrn-evals@2d20aac`; the engine repository's revision
-`satyrn-engine@fd92eca` records the reverse. Both recordings exist, so the two
+V1–V6 and records `satyrn-evals@2d20aac`; V4 then landed in `satyrn-engine`
+(`satyrn-engine@0069ace`, engine-owned final validation on the deliver route) and propagated here as the authoritative packet verdict; the engine roadmap
+records the reverse. Both recordings exist, so the two
 roadmaps cannot disagree silently.
+
+**V4 propagation, 2026-09-11.** Task 4 of `satyrn-engine`'s V4 plan (engine-owned
+final validation) propagates the engine's authoritative `validation` verdict into
+this repository's composed packet route. Validated against engine design revision
+`satyrn-engine@fe63d8b`; the V4 engine implementation is still uncommitted in that
+repository's working tree, so the revision recorded here names the design commit,
+not a shipped engine build. Chain-level reading: the composed route treats only
+`FAILED` as a stop — a `TIMED_OUT`/`UNAVAILABLE` validation is undetermined, not
+passing, and leaves the grader to decide.
 
 **No new contrasts.** Track A confirms or corrects a published figure and never
 originates one; every row carries its population statement, including the

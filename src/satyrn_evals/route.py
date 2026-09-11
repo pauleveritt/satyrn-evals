@@ -24,6 +24,7 @@ import tempfile
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 from typing import Literal
 
@@ -257,6 +258,89 @@ def self_test_outcome_from_dict(data: Mapping[str, object]) -> SelfTestOutcome:
         output=output,
         reason=reason,
         duration_seconds=float(duration),
+    )
+
+
+class ValidationOutcome(StrEnum):
+    """The engine's own run of the contract's test command, one verdict.
+
+    Mirrors ``satyrn-engine``'s ``ValidationOutcome`` vocabulary exactly, so
+    a reader of this repository's retained record never has to translate
+    between the two repositories. ``None`` never stands in for a missing
+    verdict: ``NOT_REQUESTED`` means no ``test_command`` was declared,
+    ``UNAVAILABLE`` means declared but not runnable, and ``NOT_APPLICABLE``
+    means no candidate was created, so there is nothing to validate.
+    """
+
+    PASSED = "passed"
+    FAILED = "failed"
+    TIMED_OUT = "timed_out"
+    UNAVAILABLE = "unavailable"
+    NOT_REQUESTED = "not_requested"
+    NOT_APPLICABLE = "not_applicable"
+
+
+_VALIDATION_KEYS = frozenset({"outcome", "exit_code", "output"})
+
+
+@dataclass(frozen=True, slots=True)
+class ValidationRecord:
+    """The engine's authoritative validation of one delivered candidate.
+
+    Read verbatim from a ``deliver`` receipt's ``validation``,
+    ``validation_exit`` and ``validation_output`` fields. Never a verdict this
+    repository computes: the engine owns it, and nothing here upgrades,
+    downgrades, or re-derives it -- the adapter's own self-test run, when one
+    exists, is retained separately as a cross-check and cannot change this.
+    """
+
+    outcome: ValidationOutcome
+    exit_code: int | None
+    output: str | None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.outcome, ValidationOutcome):
+            raise RouteError("validation outcome must be a ValidationOutcome")
+        if self.exit_code is not None and (
+            isinstance(self.exit_code, bool) or not isinstance(self.exit_code, int)
+        ):
+            raise RouteError("validation exit_code must be an integer or null")
+        if self.output is not None and not isinstance(self.output, str):
+            raise RouteError("validation output must be a string or null")
+
+
+def validation_record_to_dict(record: ValidationRecord) -> dict[str, object]:
+    return {
+        "outcome": record.outcome.value,
+        "exit_code": record.exit_code,
+        "output": record.output,
+    }
+
+
+def validation_record_from_dict(data: Mapping[str, object]) -> ValidationRecord:
+    if missing := sorted(_VALIDATION_KEYS - set(data)):
+        raise RouteError(f"persisted validation is missing {', '.join(missing)}")
+    outcome = data["outcome"]
+    if not isinstance(outcome, str):
+        raise RouteError("persisted validation outcome must be a string")
+    exit_code = data["exit_code"]
+    if exit_code is not None and (
+        isinstance(exit_code, bool) or not isinstance(exit_code, int)
+    ):
+        raise RouteError("persisted validation exit_code must be an integer or null")
+    output = data["output"]
+    if output is not None and not isinstance(output, str):
+        raise RouteError("persisted validation output must be a string or null")
+    try:
+        outcome_value = ValidationOutcome(outcome)
+    except ValueError as exc:
+        raise RouteError(
+            f"persisted validation outcome is not a known verdict: {outcome!r}"
+        ) from exc
+    return ValidationRecord(
+        outcome=outcome_value,
+        exit_code=exit_code,
+        output=output,
     )
 
 

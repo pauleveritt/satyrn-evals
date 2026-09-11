@@ -55,12 +55,16 @@ from satyrn_evals.route import (
     PhaseDecision,
     PhaseGrader,
     SelfTestOutcome,
+    ValidationOutcome,
+    ValidationRecord,
     implementer_result_from_dict,
     implementer_result_to_dict,
     is_executable_seam,
     run_phases,
     self_test_outcome_from_dict,
     self_test_outcome_to_dict,
+    validation_record_from_dict,
+    validation_record_to_dict,
 )
 from satyrn_evals.session_manifest import SessionSpec
 
@@ -207,6 +211,13 @@ class PhaseRecord:
     only -- ``None`` when the seam never ran one (the in-process seam, or a
     packet declaring none), the same absence shape
     ``candidate_snapshot_path`` already uses.
+
+    ``validation`` is the engine's authoritative verdict on the delivered
+    candidate, read from the ``deliver`` receipt on the composed route only.
+    ``None`` on the in-process route (``build_chain_record`` and
+    ``run_and_record_chain`` have no engine receipt to read) and when a
+    phase produced no engine receipt at all; ``NOT_APPLICABLE`` on a refused
+    phase is a real verdict, never a stand-in for ``None``.
     """
 
     step_id: str
@@ -222,6 +233,7 @@ class PhaseRecord:
     implementer_cost: float | None = None
     orchestrator_cost: float | None = None
     self_test_outcome: SelfTestOutcome | None = None
+    validation: ValidationRecord | None = None
 
     def __post_init__(self) -> None:
         if (self.accepted is None) != (self.reason is None):
@@ -565,6 +577,63 @@ def run_and_record_chain(
     return record
 
 
+def _validation_from_receipt(
+    receipt: Mapping[str, object],
+) -> ValidationRecord | None:
+    """Read the engine's authoritative validation off one `deliver` receipt.
+
+    Returns ``None`` when the receipt carries no ``validation`` string -- an
+    older engine, or a phase whose implementer crashed before the engine
+    produced a receipt. A present-but-unknown verdict is refused rather than
+    laundered into ``None``.
+    """
+    raw = receipt.get("validation")
+    if not isinstance(raw, str):
+        return None
+    try:
+        outcome = ValidationOutcome(raw)
+    except ValueError as exc:
+        raise ChainRecordError(
+            f"engine receipt carried an unknown validation verdict: {raw!r}"
+        ) from exc
+    exit_code = receipt.get("validation_exit")
+    if exit_code is not None and (
+        isinstance(exit_code, bool) or not isinstance(exit_code, int)
+    ):
+        raise ChainRecordError(
+            "engine receipt validation_exit must be an integer or null"
+        )
+    output = receipt.get("validation_output")
+    if output is not None and not isinstance(output, str):
+        raise ChainRecordError(
+            "engine receipt validation_output must be a string or null"
+        )
+    return ValidationRecord(outcome=outcome, exit_code=exit_code, output=output)
+
+
+def _failed_validation_stop(
+    validation: ValidationRecord | None,
+) -> tuple[str, str] | None:
+    """The chain-level gate ``deliver_chain`` already applies in the engine.
+
+    ``run_and_record_engine_chain`` drives per-phase ``deliver`` through
+    ``run_phases``, which has no knowledge of the engine's verdict, so
+    nothing on the route layer stops a candidate whose own declared tests
+    failed. A ``FAILED`` validation is the engine's authoritative statement
+    that they did, so it must reject before the grader is consulted (the
+    grader never sees the candidate -- it receives the base ``repo``).
+
+    Returns ``("fail", reason)`` for ``FAILED`` and ``None`` for every other
+    verdict, so the grader decides: ``PASSED`` is a pass, and
+    ``TIMED_OUT``/``UNAVAILABLE`` (and ``NOT_REQUESTED``/``NOT_APPLICABLE``)
+    are undetermined, not passing. A ``None`` validation -- no receipt -- is
+    also not a stop; absence is not a verdict.
+    """
+    if validation is not None and validation.outcome is ValidationOutcome.FAILED:
+        return ("fail", f"engine validation: {validation.outcome.value}")
+    return None
+
+
 def run_and_record_engine_chain(
     task_dir: Path,
     manifest: TaskManifest,
@@ -608,6 +677,7 @@ def run_and_record_engine_chain(
     snapshots_by_step: dict[str, tuple[str, str]] = {}
     mutations_by_step: dict[str, tuple[Mutation, ...] | None] = {}
     self_test_by_step: dict[str, SelfTestOutcome] = {}
+    validation_by_step: dict[str, ValidationRecord] = {}
     order: list[str] = []
     evidence_dir = output_path.with_name(output_path.stem + "-evidence")
     receipts_consumed = 0
@@ -621,6 +691,7 @@ def run_and_record_engine_chain(
             snap_path, snap_digest = snapshots_by_step.get(step_id, (None, None))
             implementer_mutations = mutations_by_step.get(step_id)
             self_test_outcome = self_test_by_step.get(step_id)
+            validation = validation_by_step.get(step_id)
             phases.append(
                 PhaseRecord(
                     step_id=step_id,
@@ -639,6 +710,7 @@ def run_and_record_engine_chain(
                     candidate_snapshot_path=snap_path,
                     candidate_snapshot_digest=snap_digest,
                     self_test_outcome=self_test_outcome,
+                    validation=validation,
                 )
             )
         final_decision = next(
@@ -658,6 +730,9 @@ def run_and_record_engine_chain(
         raw_self_test = receipt.get("self_test_outcome")
         if isinstance(raw_self_test, dict):
             self_test_by_step[step_id] = self_test_outcome_from_dict(raw_self_test)
+        validation = _validation_from_receipt(receipt)
+        if validation is not None:
+            validation_by_step[step_id] = validation
         if not (isinstance(base_commit, str) and isinstance(candidate_commit, str)):
             return
         mutations = git_diff_mutations(repo, base_commit, candidate_commit)
@@ -699,7 +774,11 @@ def run_and_record_engine_chain(
             persist_partial()
 
     def instrumented_grader(step_id: str, ws: Path) -> tuple[str, str]:
-        verdict, reason = grader(step_id, ws)
+        stop = _failed_validation_stop(validation_by_step.get(step_id))
+        if stop is not None:
+            verdict, reason = stop
+        else:
+            verdict, reason = grader(step_id, ws)
         # The one moment this phase's real verdict exists: before
         # `run_phases` decides whether to build the next packet or return.
         graded[step_id] = (verdict == "pass", reason)
@@ -924,6 +1003,7 @@ _PHASE_KEYS: frozenset[str] = frozenset(
         "implementer_cost",
         "orchestrator_cost",
         "self_test_outcome",
+        "validation",
     }
 )
 
@@ -947,6 +1027,10 @@ def _phase_record_to_dict(phase: PhaseRecord) -> dict[str, object]:
         "self_test_outcome": (
             None if phase.self_test_outcome is None
             else self_test_outcome_to_dict(phase.self_test_outcome)
+        ),
+        "validation": (
+            None if phase.validation is None
+            else validation_record_to_dict(phase.validation)
         ),
     }
 
@@ -996,6 +1080,11 @@ def _phase_record_from_dict(data: Mapping[str, object]) -> PhaseRecord:
         raise ChainRecordError(
             "persisted self_test_outcome must be an object or null"
         )
+    raw_validation = data["validation"]
+    if raw_validation is not None and not isinstance(raw_validation, dict):
+        raise ChainRecordError(
+            "persisted validation must be an object or null"
+        )
     return PhaseRecord(
         step_id=step_id,
         packet=packet_from_dict(packet),
@@ -1011,6 +1100,9 @@ def _phase_record_from_dict(data: Mapping[str, object]) -> PhaseRecord:
         orchestrator_cost=data["orchestrator_cost"],
         self_test_outcome=(
             None if raw_outcome is None else self_test_outcome_from_dict(raw_outcome)
+        ),
+        validation=(
+            None if raw_validation is None else validation_record_from_dict(raw_validation)
         ),
     )
 

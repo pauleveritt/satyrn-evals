@@ -11,6 +11,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+from collections.abc import Mapping
 from pathlib import Path
 
 from satyrn_evals.errors import RouteError
@@ -76,6 +77,33 @@ def build_deliver_argv(
     return argv
 
 
+def deliver_result_from_receipt(
+    receipt: Mapping[str, object],
+) -> ImplementerResult:
+    """Map one `deliver` receipt to the implementer's report.
+
+    The engine now runs the contract's own test command and returns
+    ``TESTS_FAILED`` for a retained failing candidate; that is still a
+    delivered candidate, so it reports ``delivered`` exactly as ``OK``
+    does. ``reported_outcome`` stays "were files delivered", never "did
+    tests pass" -- the authoritative validation verdict is carried on the
+    retained phase record from ``receipt["validation"]``, not here.
+    """
+    code = receipt.get("code")
+    changed = receipt.get("changed_paths")
+    if code in ("OK", "TESTS_FAILED") and isinstance(changed, list) and changed:
+        return ImplementerResult(
+            changed_files=tuple(changed),
+            reported_outcome="delivered",
+            message=None,
+        )
+    return ImplementerResult(
+        changed_files=(),
+        reported_outcome="refused",
+        message=str(receipt.get("message") or code),
+    )
+
+
 def _materialize_commit(repo: Path, commit: str, dest: Path) -> None:
     """Extract `commit`'s tree into `dest` without touching `repo`'s own
     checkout -- there isn't one to touch: `deliver` runs each phase in a
@@ -105,12 +133,13 @@ def engine_command_implementer(
     parsed JSON receipt per call, in phase order -- `run_and_record_engine_chain`
     reads it after the chain finishes; nothing about `ImplementerResult`
     itself carries a candidate commit, so this is the side channel that
-    does. A successful receipt also carries `self_test_outcome` (a
-    `self_test_outcome_to_dict` payload) when the packet declares
-    `self_test_command` -- the same evidence `command_implementer` retains
-    on the offline seam, run here against a `git archive` of the real
-    candidate commit rather than a live workspace copy, since none exists
-    on this seam once `deliver` returns.
+    does. A delivered candidate (``OK`` or ``TESTS_FAILED``) also carries the
+    engine's authoritative ``validation``/``validation_exit``/
+    ``validation_output`` fields on the receipt, which the retention layer
+    carries into the phase record; the engine owns the verdict. The
+    harness-run ``self_test_outcome`` below is retained **only as a
+    cross-check** against the same candidate, never as the authority: it
+    cannot upgrade or downgrade ``receipt["validation"]``.
     """
     receipts: list[dict[str, object]] = []
     state: dict[str, str | None] = {"base": initial_base}
@@ -154,9 +183,15 @@ def engine_command_implementer(
         receipt = json.loads(lines[-1])
         receipts.append(receipt)
 
-        if receipt.get("code") == "OK" and receipt.get("changed_paths"):
+        if receipt.get("code") in ("OK", "TESTS_FAILED") and receipt.get(
+            "changed_paths"
+        ):
             state["base"] = receipt.get("candidate_commit")
             if packet.self_test_command:
+                # Cross-check, never the authority: the engine's own
+                # validation run (``receipt["validation"]``) is the recorded
+                # verdict; this second run against a `git archive` of the
+                # same candidate is retained only as corroborating evidence.
                 with tempfile.TemporaryDirectory(
                     prefix="satyrn-engine-self-test-"
                 ) as scratch:
@@ -168,16 +203,8 @@ def engine_command_implementer(
                         packet.self_test_command, candidate_dir, self_test_timeout
                     )
                 receipt["self_test_outcome"] = self_test_outcome_to_dict(outcome)
-            return ImplementerResult(
-                changed_files=tuple(receipt["changed_paths"]),
-                reported_outcome="delivered",
-                message=None,
-            )
-        return ImplementerResult(
-            changed_files=(),
-            reported_outcome="refused",
-            message=str(receipt.get("message") or receipt.get("code")),
-        )
+            return deliver_result_from_receipt(receipt)
+        return deliver_result_from_receipt(receipt)
 
     implement.executable_seam = True  # type: ignore[attr-defined]
     return implement, receipts

@@ -24,6 +24,8 @@ from satyrn_evals.route import (
     ROUTE_SCENARIO,
     ImplementerResult,
     SelfTestOutcome,
+    ValidationOutcome,
+    ValidationRecord,
     command_implementer,
     implementer_result_from_dict,
     implementer_result_to_dict,
@@ -32,6 +34,8 @@ from satyrn_evals.route import (
     scripted_implementer,
     self_test_outcome_from_dict,
     self_test_outcome_to_dict,
+    validation_record_from_dict,
+    validation_record_to_dict,
 )
 from satyrn_evals.session_manifest import load_session_spec
 
@@ -211,6 +215,69 @@ def test_a_persisted_self_test_outcome_missing_a_key_fails_as_itself() -> None:
     del data["exit_code"]
     with pytest.raises(RouteError, match="missing exit_code"):
         self_test_outcome_from_dict(data)
+
+
+# --- Engine-owned validation: the authoritative verdict -------------------
+
+VALIDATION_GOLDEN = Path(__file__).parent / "data" / "validation-record-golden.json"
+
+
+def test_validation_outcome_has_exactly_the_six_engine_verdicts() -> None:
+    assert set(ValidationOutcome) == {
+        ValidationOutcome.PASSED,
+        ValidationOutcome.FAILED,
+        ValidationOutcome.TIMED_OUT,
+        ValidationOutcome.UNAVAILABLE,
+        ValidationOutcome.NOT_REQUESTED,
+        ValidationOutcome.NOT_APPLICABLE,
+    }
+
+
+def test_a_failed_validation_records_its_exit_and_output() -> None:
+    record = ValidationRecord(
+        outcome=ValidationOutcome.FAILED,
+        exit_code=1,
+        output="1 failed\n",
+    )
+    assert record.outcome is ValidationOutcome.FAILED
+    assert record.exit_code == 1
+    assert record.output == "1 failed\n"
+
+
+def test_the_golden_validation_record_round_trips() -> None:
+    data = json.loads(VALIDATION_GOLDEN.read_text())
+    assert validation_record_to_dict(validation_record_from_dict(data)) == data
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("outcome", "bogus"),
+        ("outcome", 3),
+        ("exit_code", "0"),
+        ("exit_code", True),
+        ("output", 3),
+    ],
+)
+def test_a_persisted_validation_of_the_wrong_shape_is_refused(
+    field: str, value: object
+) -> None:
+    data = json.loads(VALIDATION_GOLDEN.read_text())
+    data[field] = value
+    with pytest.raises(RouteError):
+        validation_record_from_dict(data)
+
+
+def test_a_persisted_validation_missing_a_key_fails_as_itself() -> None:
+    data = json.loads(VALIDATION_GOLDEN.read_text())
+    del data["exit_code"]
+    with pytest.raises(RouteError, match="missing exit_code"):
+        validation_record_from_dict(data)
+
+
+def test_a_validation_record_must_not_take_a_non_enum_outcome() -> None:
+    with pytest.raises(RouteError, match="outcome"):
+        ValidationRecord(outcome="passed", exit_code=0, output="")  # type: ignore[arg-type]
 
 
 # --- HP2.2 the fake implementer ---------------------------------------------

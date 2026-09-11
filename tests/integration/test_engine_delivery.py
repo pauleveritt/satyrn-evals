@@ -23,6 +23,7 @@ from satyrn_evals.chain_record import (
 )
 from satyrn_evals.manifest import load_manifest
 from satyrn_evals.packet import build_packet
+from satyrn_evals.route import ValidationOutcome
 from satyrn_evals.session_manifest import load_session_spec
 
 REPO = Path(__file__).resolve().parents[2]
@@ -103,9 +104,13 @@ def test_a_refused_phase_leaves_the_next_bases_on_its_predecessor(
     assert receipts[0]["code"] == "NO_CHANGES"
 
 
-def test_run_and_record_engine_chain_retains_a_real_two_phase_chain(
+def test_a_failed_engine_validation_stops_the_composed_chain(
     tmp_path: Path,
 ) -> None:
+    """The composed route stops on the engine's ``FAILED`` validation, matching
+    ``deliver_chain``'s ``TESTS_FAILED`` stop: the phase rejects (even though
+    the grader would have passed) rather than folding a failing candidate into
+    the next phase."""
     base_dir = TASK / "base"
     repo = tmp_path / "repo"
     init_engine_repo(base_dir, repo)
@@ -121,9 +126,10 @@ def test_run_and_record_engine_chain_retains_a_real_two_phase_chain(
         tmp_path / "chain.json", turn_budget=40, tool_call_budget=60,
     )
 
-    assert len(record.phases) >= 1
+    assert [p.step_id for p in record.phases] == ["phase-1-home"]
     first = record.phases[0]
-    assert first.accepted is True
+    assert first.accepted is False
+    assert first.reason == "engine validation: failed"
     assert first.implementer_mutations is not None
     assert len(first.implementer_mutations) > 0
     assert first.orchestrator_mutations == ()
@@ -137,6 +143,12 @@ def test_run_and_record_engine_chain_retains_a_real_two_phase_chain(
     assert first.self_test_outcome is not None
     assert first.self_test_outcome.ran is True
     assert first.declaration_ledger["self_test_command"] is AppliedState.APPLIED
+    # The engine's own validation is the authoritative verdict, retained
+    # alongside -- never replaced by -- the harness cross-check above, and the
+    # reason a phase that would otherwise fold forward stops here.
+    assert first.validation is not None
+    assert first.validation.outcome is ValidationOutcome.FAILED
+    assert first.validation.exit_code != 0
 
 
 def test_a_passing_self_test_command_runs_against_the_real_candidate_commit(
@@ -183,6 +195,11 @@ def test_a_failing_self_test_command_is_retained_with_its_exit_code(
     outcome = receipts[-1]["self_test_outcome"]
     assert outcome["ran"] is True
     assert outcome["exit_code"] != 0
+    # The engine's own run is the recorded authority; the harness cross-check
+    # above is retained separately and cannot override it.
+    assert receipts[-1]["code"] == "TESTS_FAILED"
+    assert receipts[-1]["validation"] == "failed"
+    assert receipts[-1]["validation_exit"] != 0
 
 
 def test_no_self_test_command_writes_no_outcome_in_the_receipt(
@@ -210,7 +227,9 @@ def test_a_grader_crash_on_phase_two_still_leaves_phase_one_retained(
     phase 2's grader raises. Preserve-before-judging means phase 1's
     already-graded decision, and phase 2's real candidate commit's content,
     both survive on disk -- not nothing, which is what waiting until the
-    whole chain finished (the prior version) would have left."""
+    whole chain finished (the prior version) would have left. A passing
+    self-test command keeps the engine's validation ``PASSED`` so the
+    composed route reaches phase 2 instead of stopping on ``FAILED``."""
     base_dir = TASK / "base"
     repo = tmp_path / "repo"
     init_engine_repo(base_dir, repo)
@@ -220,6 +239,12 @@ def test_a_grader_crash_on_phase_two_still_leaves_phase_one_retained(
         timeout=60.0, harness_root=tmp_path / "harness",
     )
     output = tmp_path / "chain.json"
+    # The route now rejects on a ``FAILED`` engine validation before the
+    # grader runs; a trivially-true self-test keeps validation ``PASSED`` so
+    # this test still exercises the phase-2 grader crash it is here for.
+    spec = dataclasses.replace(
+        load_session_spec(TASK), self_test_command=("true",)
+    )
 
     def crashing_grader(step_id: str, ws: Path) -> tuple[str, str]:
         if step_id == "phase-2-board":
@@ -228,7 +253,7 @@ def test_a_grader_crash_on_phase_two_still_leaves_phase_one_retained(
 
     with pytest.raises(RuntimeError, match="grader exploded"):
         run_and_record_engine_chain(
-            TASK, load_manifest(TASK), load_session_spec(TASK),
+            TASK, load_manifest(TASK), spec,
             implementer, receipts, repo, crashing_grader,
             output, turn_budget=40, tool_call_budget=60,
         )
