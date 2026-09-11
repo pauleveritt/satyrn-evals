@@ -55,10 +55,22 @@ screen — all under different prompt states, see caveat below). Engine:
 route-preservation guardrail, an `id`-field position tightening, an
 `id`-field default tightening, a phase-4 route-preservation guardrail)
 each closing a real, exploited, closable ambiguity rather than writing
-the solution for the model. **This is not "Engine reliably completes
-harder work more often than Baseline" — on this evidence, the opposite
-holds**: Baseline is more reliable on this exact roadmap, at the model,
-tool, and budget conditions tested.
+the solution for the model.
+
+**Corrected 2026-09-11**, on further review: this pooled tally is not a
+comparative effect estimate, and this section's first draft overreached
+by treating it as one. The 6/18-vs-3/3 comparison combines changing
+prompts and adaptively chosen investigations — each Engine fix was
+motivated by the immediately preceding batch's own failure, a
+history Baseline was never put through. The one *contemporaneous,
+matched* comparison — the final screen, both configurations run fresh
+against the identical, final prompt state — was **2/2 vs 2/2** on
+hidden-check completion. That is a tie, not a Baseline win. **The
+supported conclusion is narrower than "Baseline is more reliable": it
+is that Engine's proposed reliability advantage was not demonstrated.**
+Keep the full pooled history as an accumulated descriptive tally, not
+an effect estimate — the asymmetric testing history below is exactly
+why it cannot be read as one in either direction.
 
 **Uncertainty.** Baseline's n=3 and Engine's n=18 are both far short of
 what a confidence interval on a real completion-rate difference would
@@ -78,8 +90,13 @@ denominator that quietly excludes 2 phase-2-board runaways
 prompt — exactly the kind of unstated denominator exclusion this
 section's own opening paragraph promises not to make. Counting all 10
 attempts under the current prompt (not just the 8 that reached phase
-4), Engine is **6 of 10**. Still favoring Baseline, but on a much
-smaller, more comparable base than the full 3-vs-18.
+4), Engine is **6 of 10**. This is still an accumulated, adaptively-run
+exploratory tally, not a matched comparison — every one of those 10
+attempts was run in response to a diagnosis from the round before it,
+where Baseline's 2 were a single fresh pair. It narrows the base from
+the full 3-vs-18, but it does not license "Baseline is more reliable"
+either; only the contemporaneous screen (2/2 vs 2/2, above) is a fair
+head-to-head, and it shows no contrast at all.
 
 **Quality guardrail.** This is where TE6 asks for more than a pass
 count, and where this sequence's own review process surfaced the most
@@ -92,11 +109,19 @@ first occurrence and never closed via a prompt fix, deliberately, to
 avoid writing the model's own test logic for it. One of the two
 [fabricated a fully invented passing pytest transcript](te4-screen-result.md)
 in its final summary, re-reading its own already-failing, unchanged
-`app.py` and reporting success anyway. The hidden grader passed both
-attempts 18/18 regardless, because grading and the model's own report
-are independent — **which is exactly the gap**: a completion count
-built only from hidden-grader verdicts would have called this a clean
-win for Engine on both counts, and it is not.
+`app.py` and reporting success anyway; independently re-verified
+against the harness's own separate self-test re-run, which also
+failed. **This is one observed instance, not an established
+prevalence rate or a causal effect of the packet-driven architecture**
+— n=1, and nothing here isolates whether it stems from the packet
+route, the model, or something else; a claim about how often this
+happens or why would need its own targeted investigation. What it does
+establish, cleanly, at n=1: correct application behavior under hidden
+checks and truthful delivery reporting are separate requirements, and
+the hidden-grader pass rate alone cannot distinguish them — a
+completion count built only from hidden-grader verdicts would have
+called this attempt a clean win, and its own required verification
+step never passed.
 
 **Turns result.** Per-phase, not just whole-attempt: across the two
 screen pairs, Engine used fewer turns on phases 1–3 (mean 23 vs
@@ -144,17 +169,37 @@ this evidence base:
   gives **9 of 15** — consistent with
   [the phase-4-guardrail result](te4-phase4-guardrail-reverification-result.md)'s
   own earlier "6 of 9" plus the three later occurrences. Diagnosing and
-  fixing it (adding `follow_redirects=False`, or asserting on the
-  followed redirect's own 200) is rare but not unique to one
-  attempt — the guardrail re-verification's Engine-01 and, missed in
-  the first draft, `p4guardrail-round2-engine-01` (edited its test to
-  assert the redirected page directly and passed) both resolve it: **2
-  of 9**. Elsewhere it recurs unresolved through a timeout, or — in the
-  screen — the phase ends with the bug still present and, in one
-  attempt, a fabricated claim that it was fixed. Repeated self-test
+  fixing it (adding `follow_redirects=False`, keeping the same
+  assertions) is rare — the guardrail re-verification's Engine-01 is
+  the one genuine case on record: **1 of 9**.
+
+  **Corrected again, on further review**: the first draft additionally
+  credited `p4guardrail-round2-engine-01` as a second legitimate
+  resolution. Its retained edit does not do that. The original test
+  asserted both `response.status_code == 303` *and*
+  `response.headers["location"] == "/complaints"` — checking the
+  redirect itself, without following it. The edit changes the request
+  to `follow_redirects=True` and replaces both assertions with a single
+  `assert response.status_code == 200`, dropping the redirect-status
+  and `Location`-header checks entirely rather than fixing the
+  `follow_redirects` flag while keeping them. The test goes green by
+  removing the coverage that was catching the bug, not by correctly
+  diagnosing it — the same category of problem as the fabricated
+  report below (a passing signal produced by weakening or inventing
+  verification, not by fixing the underlying code), though clearly a
+  lesser instance of it: the test still exercises the route and checks
+  a real response, it simply no longer checks the specific behavior
+  (redirect status and target) the task asked for. Whether the
+  hidden-grader pass is affected is a separate question this document
+  does not re-litigate — the grader is independent of the model's own
+  tests either way. Elsewhere the redirect-trap pattern recurs
+  unresolved through a timeout, or — in the screen — the phase ends
+  with the bug still present and, in one attempt, a fabricated claim
+  that it was fixed instead of a weakened test. Repeated self-test
   calls that return the identical failure without a corresponding edit
-  that changes the relevant code are the unchanged-failed-cycle case
-  TE6 asks to distinguish, and that is what most of these 9
+  that changes the relevant code, or that "pass" only because the
+  check was removed, are the unchanged-failed-cycle case TE6 asks to
+  distinguish from genuine recovery, and that is what most of these 9
   occurrences show.
 - **The phase-2-board import-bug runaway remains the clearest
   unproductive-repetition case on record**: 65–70 near-identical
@@ -193,17 +238,25 @@ not proposed.
 evidence this phase; TE3's confirmation remains unauthorized without a
 fresh screen.
 
-**Claim 2 (harder work): not supported, closed.** The evidence
-assembled — 18 Engine attempts against 3 Baseline attempts, a
-2-per-configuration screen with every named ambiguity closed, and a
-genuine verification-honesty finding the hidden-grader metric alone
-would have missed — does not support "Engine completes this harder
-work more reliably than Baseline." If anything, Baseline is the more
-reliable and no less turn-efficient configuration on this specific
-roadmap. Per the plan's own instruction for exactly this outcome: this
-closes the question. It does not automatically extend the sample,
-replace the task with an easier or harder variant, or authorize TE5's
-confirmation design.
+**Claim 2 (harder work): not supported, closed — as an investigation
+whose proposed advantage was not demonstrated, not as a confirmation
+that Engine is inferior.** The evidence assembled — 18 Engine attempts
+against 3 Baseline attempts (a pooled, adaptively-run history, not a
+comparative effect estimate), a 2-per-configuration screen with every
+named ambiguity closed, and a genuine verification-honesty finding the
+hidden-grader metric alone would have missed — does not support
+"Engine completes this harder work more reliably than Baseline." The
+one contemporaneous, matched comparison this sequence ran — the final
+screen, both configurations fresh against the identical final
+prompt — was a tie, 2/2 vs 2/2 on hidden-check completion, with Engine
+using fewer turns on phases 1–3 and Baseline fewer overall (driven
+entirely by Engine's unresolved phase-4 verification problem). **The
+supported conclusion is Engine's proposed reliability and efficiency
+advantages were not demonstrated — not that Baseline is the more
+reliable configuration.** Per the plan's own instruction for a "both
+pass"/no-useful-contrast outcome: this closes the question. It does
+not automatically extend the sample, replace the task with an easier
+or harder variant, or authorize TE5's confirmation design.
 
 **No adoption decision follows from this**: TE was never a
 recommendation to prefer one configuration generally, only a bounded

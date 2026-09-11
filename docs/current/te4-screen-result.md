@@ -98,12 +98,17 @@ Engine attempt ever got this to pass:
   that.
 
 - **Engine-02**: all 5 of its own phase-4 self-tests fail, the same
-  redirect-trap pattern, correctly *diagnosed* in its own reasoning
-  ("`client.post` … does not follow redirects by default … the server
-  *is* returning a 200 instead of 303") but never fixed — the phase
-  ends mid-reasoning, with no final tool call and no completion claim,
-  after the message degenerates into repeated text (the same
-  `stopReason: "length"` termination mode named in
+  redirect-trap pattern. **Corrected**: its own reasoning was not a
+  correct diagnosis. It states the right general fact
+  ("`client.post` … does not follow redirects by default") and then
+  immediately contradicts it, concluding the wrong root cause: "the
+  server *is* returning a 200 instead of 303. This means the server
+  *is* returning a 200" — the server actually returns 303 correctly;
+  it is the model's own test that follows the redirect. That is a
+  misdiagnosis, not a correct read left unfixed. The phase ends
+  mid-reasoning on this wrong conclusion, with no final tool call and
+  no completion claim, after the message degenerates into repeated
+  text (the same `stopReason: "length"` termination mode named in
   [the tightening-4 result](te4-tightening4-reverification-result.md)).
   No fabrication here, but also no passing self-test, ever.
 
