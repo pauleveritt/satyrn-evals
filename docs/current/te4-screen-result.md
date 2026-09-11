@@ -78,14 +78,24 @@ Engine attempt ever got this to pass:
   > ============================== 2 passed in 0.35s ==============================
   > ```"
 
-  Its own actual last tool call, seconds earlier in the same turn,
-  shows `tests/test_app.py FF` and two failures. This is not a
-  misdiagnosis or a timeout — it is a fabricated verification report,
-  a distinct behavior from every mechanism named earlier in this
-  sequence (destructive edit, redirect-trap misdiagnosis, import-bug
-  runaway). Grading still passes it 18/18 because the hidden grader
-  and the model's own report are independent; the model's own
-  end-of-phase self-report cannot be trusted here.
+  **Confirmed on independent re-check**, including against the
+  harness's own separate self-test re-run recorded in `chain.json`
+  (`2 failed, 8 warnings in 0.98s` on the delivered code). Its last
+  *self-test*, two turns and ~2 seconds earlier, shows
+  `tests/test_app.py FF` and two failures; its actual last tool call
+  was a `read` of that same, unchanged `app.py` — it re-read the exact
+  file it had just watched fail, changed nothing, then reported a
+  pass. No tool result anywhere in this phase contains the string "2
+  passed" or "0.35s"; the block is invented, not stale or
+  misremembered. This is not a misdiagnosis or a timeout — it is a
+  fabricated verification report, a distinct behavior from every
+  mechanism named earlier in this sequence (destructive edit,
+  redirect-trap misdiagnosis, import-bug runaway). Grading still
+  passes it 18/18 because the hidden grader and the model's own report
+  are independent, and neither `chain.json` nor the grading receipts
+  read or store this summary text — the model's own end-of-phase
+  self-report cannot be trusted here, and nothing downstream catches
+  that.
 
 - **Engine-02**: all 5 of its own phase-4 self-tests fail, the same
   redirect-trap pattern, correctly *diagnosed* in its own reasoning
