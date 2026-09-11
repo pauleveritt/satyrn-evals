@@ -155,21 +155,23 @@ past artifact. Archived material does not set current policy.
   freezes 3 Engine attempts testing whether the phase-4 guardrail stops
   the destructive route deletion. Authorizes nothing yet.
 - [Phase-4-guardrail re-verification — result](te4-phase4-guardrail-reverification-result.md),
-  **corrected in full after Fable's review** (the first draft's own
-  extraction script silently dropped every `run_self_test` call,
-  understating tool-call counts and missing two named mechanisms
-  entirely): zero of three complete; two reach phase 4 for the first
-  time under the guardrail, both hitting the recurring redirect-trap
-  misdiagnosis. One voids on ordinary time exhaustion with no
-  destructive edit; the other reproduces the route-deletion mechanism
-  the guardrail was applied to stop, and also collapses its own
-  accumulated tests so self-test could not catch the loss. The third
-  times out at phase-2-board via the *original* import-bug runaway —
-  but re-checked across every post-guardrail attempt, that guardrail's
-  own edit still occurs in 5 of 10 attempts, just self-correcting in
-  all but this one. Phase 4's edit now recurs in 7 of 9
-  phase-4-reaching attempts, 4 of 9 never self-correcting. Not enough
-  evidence to call the phase-4 guardrail settled either way.
+  **corrected twice** (a first pass fixed an extraction bug that
+  silently dropped every `run_self_test` call and missed two named
+  mechanisms entirely; a second, narrower pass fixed remaining
+  misattributions and an undercounted redirect-trap tally): zero of
+  three complete; two reach phase 4 for the first time under the
+  guardrail, both hitting the recurring `assert status_code == 303`
+  redirect trap (now confirmed in 6 of 9 phase-4-reaching attempts,
+  resolved correctly in only 1). One voids on ordinary time exhaustion
+  with no destructive edit; the other reproduces the route-deletion
+  mechanism the guardrail was applied to stop, and also drops the one
+  inherited test that would have caught the loss. The third times out
+  at phase-2-board via the *original* import-bug runaway — but
+  re-checked across every post-guardrail attempt, that guardrail's own
+  edit still occurs in 5 of 10 attempts, just self-correcting in all
+  but this one. Phase 4's edit now recurs in 7 of 9 phase-4-reaching
+  attempts, 4 of 9 never self-correcting. Not enough evidence to call
+  the phase-4 guardrail settled either way.
 - [Pre-run record: run_self_test live verification](self-test-tool-live-verification-pre-run-record.md)
   proposes one bounded `pi` invocation proving the self-test tool is
   reachable and its content legible, outside every TE denominator, and

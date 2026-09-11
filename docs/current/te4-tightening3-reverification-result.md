@@ -14,15 +14,16 @@ that record authorized.
 
 **Phase-2-board holds: 7 of 7 pass since the guardrail** (5 before this
 run, now 7). Engine-02's phase 2 took 29 turns — well above the recent
-6–10 range — via heavy rewriting (5 wholesale `write app.py` calls, 10
-`edit` calls, and rewrites of the phase-1 templates too) across 4
-self-test runs, 2 of them failing before it converged.
+6–10 range — via heavy rewriting (5 wholesale `write app.py` calls, 11
+`edit` calls (4 succeeded, 7 returned errors), and rewrites of the
+phase-1 templates too) across 4 self-test runs, 2 of them failing
+before it converged.
 
 **Corrected 2026-09-10**, after
 [the phase-4-guardrail re-verification result](te4-phase4-guardrail-reverification-result.md)
 found this line wrong on direct re-check: Engine-02's phase 2 **did**
 contain the identical destructive `edit` on the home route (one of its
-10 `edit` calls replaces `home` with `complaints` in a single
+`edit` calls replaces `home` with `complaints` in a single
 `oldText`/`newText` pair, the same pattern named in
 [the runaway investigation](phase-2-board-runaway-investigation.md)),
 and recovered via a subsequent `write` that restored both routes — the
@@ -108,9 +109,22 @@ reads in a row) not previously observed. **Corrected**: this run's
 failures are not entirely attributable to the `id`-default gap —
 Engine-02 also destroyed its own phase-3 route via the same mechanism
 phase 2 needed a guardrail for (above), which accounts for most of its
-failing checks. Engine-01's own redirect-trap-style misdiagnosis did
-not recur; this specific destructive-edit-on-an-existing-route pattern
-did, on a phase with no guardrail against it.
+failing checks; this specific destructive-edit-on-an-existing-route
+pattern recurred on a phase with no guardrail against it.
+
+**Corrected 2026-09-11**: this document previously said "Engine-01's
+own redirect-trap-style misdiagnosis did not recur" — wrong on two
+counts. First, misattribution: the redirect-trap misdiagnosis in
+[the guardrail re-verification result](te4-guardrail-reverification-result.md)
+belongs to that record's Engine-02, not Engine-01. Second, it did
+recur here: Engine-01's own phase-4 self-tests hit the identical
+`assert response.status_code == 303` / `assert 200 == 303` failure
+twice (its final two self-test runs), with only `read app.py` calls in
+between rather than a fix, before the phase timed out — undiagnosed,
+not merely absent. See
+[the phase-4-guardrail re-verification result](te4-phase4-guardrail-reverification-result.md)'s
+own corrected tally, which found this pattern across 6 of 9
+phase-4-reaching attempts on this task family.
 
 **No turn ceiling proposed.** Engine has still completed the full task
 zero times.

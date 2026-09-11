@@ -5,8 +5,8 @@ Run and retained 2026-09-10, under
 3 Engine attempts, under the maintainer's standing overnight
 authorization ("free use of the GPU... keep working through TE").
 
-**Corrected 2026-09-10, in full, after Fable's review found the first
-draft's phase-4 tool-call counts, mechanism classifications, and the
+**Corrected 2026-09-10, in full, after review found the first draft's
+phase-4 tool-call counts, mechanism classifications, and the
 phase-2/phase-4 guardrail "N of N clean" framing all wrong** — the
 first draft's own extraction script silently dropped every
 `run_self_test` call (its args are `{}`, which is falsy in Python, and
@@ -16,6 +16,20 @@ entire categories. Every number below is recomputed directly from the
 retained transcripts with that bug fixed, and cross-checked against
 every other post-guardrail attempt on this task family, not just this
 batch's three.
+
+**Corrected again 2026-09-11**, after a second, narrower review of
+this same correction found smaller remaining errors: one self-test
+error was misattributed to the wrong cause; Engine-01's own test-file
+rewrite was wrongly described as not happening at all; Engine-03's
+test-file rewrite was wrongly described as "much smaller" (it is
+larger in bytes, one test fewer, and the specific test it dropped is
+the one that would have caught the deletion); "times out mid-edit on
+`tests/test_app.py`" was wrong (the last tool call is a self-test; the
+model then reasons in text, never editing again); the write-loop
+content has 3 unique variants, not 4; and the redirect-trap tally was
+undercounted at "4 of 9" when the pattern actually appears in 6 of 9
+phase-4-reaching attempts (resolved correctly in only 1). All fixed
+below.
 
 ## Outcome
 
@@ -44,7 +58,7 @@ tool calls in order (1 `edit`, 1 `read`, 73 `write`, zero
    stop, occurring despite the guardrail's preservation bullet being
    present and unchanged in the prompt (digest `362480e8681f118a`).
 2. The model then recovered via subsequent full `write` calls: of the
-   remaining 69 `write app.py` calls (4 unique variants), most
+   remaining 69 `write app.py` calls (3 unique variants), most
    re-include both routes — though not all 69: one intermediate
    variant (229 bytes, one occurrence) drops the home route again
    before the dominant, 67-times-repeated variant converges with both
@@ -135,20 +149,28 @@ preservation bullet being present and unchanged in this exact prompt.
 The route is never restored across the remaining 22 tool calls.
 
 **A second, compounding problem, missed in the first draft: this
-attempt also destroyed its own accumulated test coverage.** Tool call
-9, `write tests/test_app.py`, replaces the test file inherited from
-phases 1–3 with a much smaller one. The next `run_self_test` (call 10)
-fails to collect at all (a FastAPI route-registration error from the
-new resolve route's parameter style); by the third `run_self_test`
-(call 23), pytest reports **"collected 2 items"** — down from the
-roughly 7 items phase 4 should be running with (Engine-01, which never
-rewrote its test file, still had 7 at the same stage). With only 2 of
-its own tests left, the model's self-test tool could never have told
-it the phase-3 `POST /complaints` route was missing, even if it had
-kept calling it after the deletion. The final `run_self_test` (call
-28) shows the **redirect-trap misdiagnosis** (see below), and the
-attempt times out mid-edit on `tests/test_app.py`, never returning to
-`app.py`.
+attempt also destroyed the one inherited test that would have caught
+the deletion.** Tool call 9, `write tests/test_app.py`, replaces the
+3-test file inherited from phase 3 (872 bytes) with a 2-test, 1,499-byte
+file — larger in bytes, but a net loss of one test, and specifically
+the one lost is `test_post_complaint`, which posted to `/complaints`
+with `follow_redirects=False` and asserted 303 — the one check that
+would have failed the instant the route was deleted. The next
+`run_self_test` (call 10) fails to collect at all — not from the new
+route, but a `SyntaxError` in `models.py` (`_id_counter` used before
+its own `global` declaration); the second (call 21) then hits a real
+FastAPI route-registration error from the new resolve route's
+parameter style; by the third (call 23), pytest reports **"collected 2
+items"**, confirming the test-file shrink. (Engine-01, which *also*
+rewrote its own test file that phase — from an inherited 4-test file to
+7 tests — never lost coverage this way; its self-tests keep running
+7 items throughout.) With only 2 tests left, self-test could not have
+told this attempt the phase-3 route was missing even if it had kept
+calling it after the deletion. The final `run_self_test` (call 28)
+shows the **redirect-trap misdiagnosis** (see below); the model then
+spends its remaining time reasoning in text about `app.py` — still
+apparently unaware the route is gone — without another tool call
+before the timeout.
 
 **This is the seventh occurrence of the destructive-route-deletion
 mechanism across the nine phase-4-reaching attempts on record** (every
@@ -195,9 +217,11 @@ attempt times out at 27 phase-4 turns before resolving it.
 | Engine-02 | phase-2-board | voided timeout; the *original* import-bug/never-self-tests runaway; the destructive edit occurred but was self-corrected in the converged content |
 | Engine-03 | phase-4 | voided timeout; **destructive-edit route deletion recurred despite the phase-4 guardrail**; own test file also rewritten down to 2 items, masking the loss from self-test; final self-test also hit the **redirect-trap misdiagnosis** |
 
-Both phase-4 attempts hit the redirect-trap misdiagnosis this round —
-the first draft's claim that "no attempt hit" it, or any mechanism
-beyond bare timeout, was wrong for both.
+Both phase-4 attempts hit the redirect-trap pattern this round — the
+first draft's claim that "no attempt hit" it, or any mechanism beyond
+bare timeout, was wrong for both. Re-checked across the full
+phase-4-reaching history below, it is a genuinely recurring pattern,
+not specific to this batch.
 
 ## What this does and does not establish
 
@@ -214,11 +238,18 @@ by final-outcome framing:
   least once *after* the guardrail was applied specifically to stop
   it, without self-correcting. One live post-guardrail data point is
   not enough to say the guardrail changed this rate at all.
-- **The redirect-trap misdiagnosis is now confirmed in 4 of 9
-  phase-4-reaching attempts** (guardrail-reverification's Engine-02,
-  tightening-4's Engine-02, and both of this batch's Engine-01 and
-  Engine-03) — a recurring, ordinary implementation-friction mechanism
-  independent of either guardrail.
+- **The `assert response.status_code == 303` redirect trap (no
+  `follow_redirects=False`) is hit by self-test in 6 of 9
+  phase-4-reaching attempts**, corrected here from the first draft's
+  undercounted "4 of 9": guardrail-reverification's Engine-01 and
+  Engine-02, tightening-3's Engine-01, tightening-4's Engine-02, and
+  both of this batch's Engine-01 and Engine-03. Of those 6, only
+  guardrail-reverification's Engine-01 correctly diagnosed it (added
+  `follow_redirects=False`, then passed its own self-test, though it
+  still failed the hidden grader for an unrelated reason) — **5 of 9
+  either misdiagnose it or never resolve it before timing out**, the
+  most frequent recurring, ordinary implementation-friction mechanism
+  on record for this phase, independent of either guardrail.
 
 No turn ceiling proposed — still zero clean completions on this task
 family to check one against.
@@ -242,10 +273,11 @@ trusted only after 3 clean candidate-probe attempts, then checked
 again live). But it is also not evidence the guardrail is working:
 phase 2's own guardrail shows the destructive edit still happens about
 half the time and mostly self-corrects; phase 4 has one post-guardrail
-data point and it did not self-correct. Getting Fable's review of this
-corrected result before deciding whether to run more phase-4-guardrail
-attempts, treat the redirect-trap misdiagnosis as its own closable
-prompt gap (it has now recurred 4 times, arguably at least as
-frequent and as closable as the id-field issues tightenings 3 and 4
-addressed), or conclude TE4's Engine track needs a different
-intervention than incremental prompt guardrails.
+data point and it did not self-correct. Getting a further review of
+this corrected result before deciding whether to run more
+phase-4-guardrail attempts, treat the redirect-trap pattern as its own
+closable prompt gap (it now appears in 6 of 9 phase-4-reaching
+attempts and is resolved in only 1, at least as frequent and as
+closable as the id-field issues tightenings 3 and 4 addressed), or
+conclude TE4's Engine track needs a different intervention than
+incremental prompt guardrails.

@@ -275,22 +275,21 @@ applied** — see the task's own
 "The phase-4 guardrail."
 
 **[Phase-4-guardrail re-verification run and reported](docs/current/te4-phase4-guardrail-reverification-result.md),
-corrected after Fable's review: 0/3 complete; the guardrail's first
-live test did not hold.** One attempt voids on ordinary time
-exhaustion (no destructive edit, but the recurring redirect-trap
-misdiagnosis); one reproduces the route-deletion mechanism the
-guardrail exists to stop and also collapses its own accumulated tests,
-so self-test could not catch the loss; one times out at phase-2-board
-via the *original* import-bug runaway. Re-checked across every
-post-guardrail attempt: phase 2's own guarded-against edit still occurs
-in **5 of 10**, self-correcting in all but this one — "clean" in prior
-rows meant final content intact, never that the edit never happened
-(tightening-3's row is corrected the same way). Phase 4's edit recurs
-in 7 of 9 phase-4-reaching attempts, 4 of 9 not self-correcting. Engine
-has completed the full task **0 of 11 times** (0 of 9 reached phase
-4). Next: more phase-4-guardrail attempts, or treat the redirect-trap
-misdiagnosis (4 of 9) as its own closable gap. TE4's screen still not
-proposed or authorized.
+corrected twice: 0/3 complete; the guardrail's first live test did not
+hold.** One attempt voids on ordinary time exhaustion (no destructive
+edit, but the recurring redirect-trap pattern); one reproduces the
+route-deletion mechanism the guardrail exists to stop and also drops
+the one inherited test that would have caught it; one times out at
+phase-2-board via the *original* import-bug runaway. Re-checked across
+every post-guardrail attempt: phase 2's own guarded-against edit still
+occurs in **5 of 10**, self-correcting in all but this one — "clean" in
+prior rows meant final content intact, never that the edit never
+happened (tightening-3's row is corrected the same way). Phase 4's
+edit recurs in 7 of 9 phase-4-reaching attempts, 4 of 9 not
+self-correcting; the `303` redirect trap recurs in 6 of 9, resolved
+correctly in only 1. Engine has completed the full task **0 of 11
+times** (0 of 9 reached phase 4). Next: more phase-4-guardrail
+attempts, or treat the redirect trap as its own gap. TE4's screen still not proposed or authorized.
 
 HP remains responsible for the composed, retained, regradable route; TE does
 not absorb unfinished HP requirements or reopen the paused single-task tuning
