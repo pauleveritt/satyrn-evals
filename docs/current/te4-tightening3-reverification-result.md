@@ -12,13 +12,28 @@ that record authorized.
 | Engine-01 | pass | pass (10) | pass | **voided** (timeout) | 65 (6/10/7/42) |
 | Engine-02 | pass | pass (29) | pass | **rejected** (11/18) | 56 (6/29/7/14) |
 
-**Phase-2-board holds: 7 of 7 clean since the guardrail** (5 before
-this run, now 7). Engine-02's phase 2 took 29 turns — well above the
-recent 6–10 range — via heavy rewriting (5 wholesale `write app.py`
-calls, 10 `edit` calls, and rewrites of the phase-1 templates too)
-across 4 self-test runs, 2 of them failing before it converged. It
-completed normally, not via the destructive-edit signature; a real
-cost outlier, not a pathology recurrence.
+**Phase-2-board holds: 7 of 7 pass since the guardrail** (5 before this
+run, now 7). Engine-02's phase 2 took 29 turns — well above the recent
+6–10 range — via heavy rewriting (5 wholesale `write app.py` calls, 10
+`edit` calls, and rewrites of the phase-1 templates too) across 4
+self-test runs, 2 of them failing before it converged.
+
+**Corrected 2026-09-10**, after
+[the phase-4-guardrail re-verification result](te4-phase4-guardrail-reverification-result.md)
+found this line wrong on direct re-check: Engine-02's phase 2 **did**
+contain the identical destructive `edit` on the home route (one of its
+10 `edit` calls replaces `home` with `complaints` in a single
+`oldText`/`newText` pair, the same pattern named in
+[the runaway investigation](phase-2-board-runaway-investigation.md)),
+and recovered via a subsequent `write` that restored both routes — the
+same self-correcting pattern seen in most other post-guardrail
+attempts that pass. "Completed normally, not via the destructive-edit
+signature" was wrong; it should have read "the destructive edit
+occurred and was self-corrected before the phase ended," which is a
+different, weaker claim about what the guardrail achieves. See that
+result's own tally: the edit occurs in 5 of 10 post-guardrail
+phase-2-board attempts, including this one, and self-corrects in all
+but one.
 
 **Tightening 3 worked for what it targeted.** Neither attempt placed
 `id` before `agent_name`/`text` this time — that specific mistake did
@@ -84,8 +99,10 @@ evidence the tightening was wrong; it's evidence it was incomplete.
 **Does not establish** that Engine can complete this task — 0 of 2 in
 this run, 0 of 5 across every Engine attempt on this task family to
 date. **Does establish** that tightening 3's specific fix holds (no
-recurrence of the before-agent_name placement) and that phase-2-board
-remains solid (7/7). Surfaces a second, related prompt gap
+recurrence of the before-agent_name placement) and that phase-2-board's
+pass rate remains solid (7/7) — see the correction above on what that
+does and does not say about the guardrail's mechanism. Surfaces a
+second, related prompt gap
 (no-default `id`) and a third distinct behavior pattern (24 identical
 reads in a row) not previously observed. **Corrected**: this run's
 failures are not entirely attributable to the `id`-default gap —

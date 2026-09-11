@@ -243,53 +243,54 @@ claim.
 
 **TE4 timeline** (full detail in each dated doc, not repeated here):
 [design](docs/current/te4-harder-roadmap-design.md) qualified
-`agentclinic-complaint-lifecycle` (phases 1–3 reused verbatim, phase 4
-new), 8/8 checks, before any inference.
-[Route proof](docs/current/te4-route-proof-result.md) found and fixed a
-grader defect (Baseline 18/18) and a phase-2-board Engine runaway —
+`agentclinic-complaint-lifecycle` (phases 1–3 verbatim, phase 4 new),
+8/8 checks, before any inference. [Route proof](docs/current/te4-route-proof-result.md) found and fixed a
+grader defect (Baseline 18/18) and a phase-2-board runaway —
 [investigated](docs/current/phase-2-board-runaway-investigation.md),
 traced to a destructive `edit` deleting the phase-1 home route.
 [Candidate-tested then adopted](docs/current/phase2-guardrail-candidate-result.md)
 into this task only (`agentclinic-session-phased` untouched): 3/3
-clean, zero destructive edits.
-[Re-verified](docs/current/te4-guardrail-reverification-result.md):
-phase-2-board 5/5 clean since the guardrail, both attempts reached
-phase 4 for the first time ever, failing there for two distinct real
-reasons: an `id`-ordering ambiguity (closed by **tightening 3**) and a
-redirect-trap misdiagnosis (left as genuine friction).
+pass, zero destructive edits. [Re-verified](docs/current/te4-guardrail-reverification-result.md): phase-2-board 5/5 pass since the guardrail, both attempts reached
+phase 4 for the first time ever, failing for two reasons: an
+`id`-ordering ambiguity (closed by **tightening 3**) and a redirect-trap
+misdiagnosis (left as genuine friction).
 **[Tightening-3 re-verified](docs/current/te4-tightening3-reverification-result.md),
-corrected after Fable's review.** Phase-2-board 7/7 clean;
-`id`-with-no-default recurred, but Engine-02's own failures mostly
-trace to a destructive `edit` that **deleted** its phase-3
+corrected twice.** Phase-2-board 7/7 pass, but its own Engine-02
+shows the guarded-against edit occurred there too, self-corrected —
+pass means final content intact, not that the edit never happened.
+`id`-with-no-default recurred, and Engine-02's failures mostly trace
+to a separate destructive `edit` that **deleted** its phase-3
 `POST /complaints` route — phase 2's own former mechanism, recurring
 at an unguarded phase.
 
 **Tightening 4 applied and [re-verified](docs/current/te4-tightening4-reverification-result.md),
 corrected then resolved.** `id` now requires an automatic default; one
-Engine attempt got the whole design right for the first time — the
-`id`-field ambiguity is closed. The first draft's "no fifth tightening"
-call rested on a mischaracterization, caught by independent review: 3
-of 4 graded phase-4 attempts on record destroyed the phase-3 route
-via phase 2's own former destructive-edit mechanism, at a rate too high
-to call variance. **Phase-4 guardrail applied** — see the task's own
+attempt got the whole design right for the first time — the `id`-field
+ambiguity is closed. The first draft's "no fifth tightening" call
+rested on a mischaracterization, caught by review: 3 of 4 graded
+phase-4 attempts destroyed the phase-3 route via phase 2's own former
+mechanism, too high a rate to call variance. **Phase-4 guardrail
+applied** — see the task's own
 [`QUALIFICATION-NOTE.md`](src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md),
 "The phase-4 guardrail."
 
-**[Phase-4-guardrail re-verification run and reported](docs/current/te4-phase4-guardrail-reverification-result.md):
-0/3 complete, and the guardrail's first live test did not hold.** Two
-attempts reach phase 4 for the first time under the guardrail; one is
-voided by ordinary time exhaustion with no destructive edit, but the
-other reproduces the exact route-deletion mechanism the guardrail
-exists to stop, despite its preservation bullet being present and
-unchanged in the prompt. The third times out at phase-2-board via the
-*original* pre-guardrail import-bug runaway (a `Request` import never
-made, `run_self_test` never called) — not the destructive-edit
-mechanism phase 2's own guardrail targets, which held (the model
-self-corrected a transient violation before converging). Engine has
-completed the full task **0 of 11 times** (0 of 9 that reached phase
-4). One live failure is not enough to call the phase-4 guardrail
-settled either way — Fable's review is next before deciding whether to
-run more attempts. TE4's own screen still not proposed or authorized.
+**[Phase-4-guardrail re-verification run and reported](docs/current/te4-phase4-guardrail-reverification-result.md),
+corrected after Fable's review: 0/3 complete; the guardrail's first
+live test did not hold.** One attempt voids on ordinary time
+exhaustion (no destructive edit, but the recurring redirect-trap
+misdiagnosis); one reproduces the route-deletion mechanism the
+guardrail exists to stop and also collapses its own accumulated tests,
+so self-test could not catch the loss; one times out at phase-2-board
+via the *original* import-bug runaway. Re-checked across every
+post-guardrail attempt: phase 2's own guarded-against edit still occurs
+in **5 of 10**, self-correcting in all but this one — "clean" in prior
+rows meant final content intact, never that the edit never happened
+(tightening-3's row is corrected the same way). Phase 4's edit recurs
+in 7 of 9 phase-4-reaching attempts, 4 of 9 not self-correcting. Engine
+has completed the full task **0 of 11 times** (0 of 9 reached phase
+4). Next: more phase-4-guardrail attempts, or treat the redirect-trap
+misdiagnosis (4 of 9) as its own closable gap. TE4's screen still not
+proposed or authorized.
 
 HP remains responsible for the composed, retained, regradable route; TE does
 not absorb unfinished HP requirements or reopen the paused single-task tuning

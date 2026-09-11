@@ -128,11 +128,14 @@ past artifact. Archived material does not set current policy.
   actually lets Engine complete the full task — never yet achieved
   across any attempt on this task family. Authorizes nothing yet.
 - [Tightening-3 re-verification — result](te4-tightening3-reverification-result.md),
-  corrected after Fable's review: phase-2-board 7/7 clean, the
-  before-`agent_name` mistake gone. `id`-no-default recurred, but
-  Engine-02's failures mostly trace to a destructive `edit` that
-  deleted its phase-3 route — phase 2's own former mechanism,
-  recurring at an unguarded phase. Named candidate tightening 4.
+  corrected twice after Fable's review: phase-2-board 7/7 pass, the
+  before-`agent_name` mistake gone — but (second correction) its own
+  Engine-02 shows the guarded-against edit occurred there too and
+  self-corrected; "pass" never meant "the edit never happened."
+  `id`-no-default recurred, and Engine-02's failures also trace to a
+  separate destructive `edit` that deleted its phase-3 route — phase
+  2's own former mechanism, recurring at an unguarded phase. Named
+  candidate tightening 4.
 - [Pre-run record: tightening-4 re-verification](te4-tightening4-reverification-pre-run-record.md)
   and its
   [result](te4-tightening4-reverification-result.md), corrected then
@@ -151,17 +154,22 @@ past artifact. Archived material does not set current policy.
 - [Pre-run record: TE4 phase-4-guardrail re-verification](te4-phase4-guardrail-reverification-pre-run-record.md)
   freezes 3 Engine attempts testing whether the phase-4 guardrail stops
   the destructive route deletion. Authorizes nothing yet.
-- [Phase-4-guardrail re-verification — result](te4-phase4-guardrail-reverification-result.md)
-  reports zero of three complete; two reach phase 4 for the first time
-  under the guardrail. One is voided by ordinary time exhaustion with
-  no destructive edit; the other reproduces the exact route-deletion
-  mechanism the guardrail was applied to stop, despite the guardrail
-  text being present and unchanged — the guardrail's first live
-  failure on its own target. The third times out at phase-2-board via
-  the *original*, pre-guardrail import-bug runaway (not the
-  destructive-edit mechanism phase 2's own guardrail targets, which
-  held). Not enough evidence to call the phase-4 guardrail settled
-  either way; Fable's review is next.
+- [Phase-4-guardrail re-verification — result](te4-phase4-guardrail-reverification-result.md),
+  **corrected in full after Fable's review** (the first draft's own
+  extraction script silently dropped every `run_self_test` call,
+  understating tool-call counts and missing two named mechanisms
+  entirely): zero of three complete; two reach phase 4 for the first
+  time under the guardrail, both hitting the recurring redirect-trap
+  misdiagnosis. One voids on ordinary time exhaustion with no
+  destructive edit; the other reproduces the route-deletion mechanism
+  the guardrail was applied to stop, and also collapses its own
+  accumulated tests so self-test could not catch the loss. The third
+  times out at phase-2-board via the *original* import-bug runaway —
+  but re-checked across every post-guardrail attempt, that guardrail's
+  own edit still occurs in 5 of 10 attempts, just self-correcting in
+  all but this one. Phase 4's edit now recurs in 7 of 9
+  phase-4-reaching attempts, 4 of 9 never self-correcting. Not enough
+  evidence to call the phase-4 guardrail settled either way.
 - [Pre-run record: run_self_test live verification](self-test-tool-live-verification-pre-run-record.md)
   proposes one bounded `pi` invocation proving the self-test tool is
   reachable and its content legible, outside every TE denominator, and

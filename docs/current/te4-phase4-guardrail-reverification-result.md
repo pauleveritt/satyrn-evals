@@ -5,6 +5,18 @@ Run and retained 2026-09-10, under
 3 Engine attempts, under the maintainer's standing overnight
 authorization ("free use of the GPU... keep working through TE").
 
+**Corrected 2026-09-10, in full, after Fable's review found the first
+draft's phase-4 tool-call counts, mechanism classifications, and the
+phase-2/phase-4 guardrail "N of N clean" framing all wrong** — the
+first draft's own extraction script silently dropped every
+`run_self_test` call (its args are `{}`, which is falsy in Python, and
+the filter used `if e.get('args')`), understating each phase-4
+attempt's tool-call count by 4 and its own listed mechanisms by two
+entire categories. Every number below is recomputed directly from the
+retained transcripts with that bug fixed, and cross-checked against
+every other post-guardrail attempt on this task family, not just this
+batch's three.
+
 ## Outcome
 
 | Attempt | Phase 1 | Phase 2 | Phase 3 | Phase 4 | Turns |
@@ -15,36 +27,30 @@ authorization ("free use of the GPU... keep working through TE").
 
 Zero of three complete. Two reach phase 4 for the first time under the
 new guardrail and both are voided there by the 600s wall clock, not
-graded. The per-attempt classification below is what the pre-run
-record's own "What happens after" section requires before deciding
-what comes next — and it says plainly what it found, including where
-that is a worse signal than hoped.
+graded.
 
-## Engine-02: the phase-2-board guardrail's first recurrence — but not the mechanism it guards against
+## Engine-02: phase-2-board's first *failed* attempt since the guardrail — but the guardrail's specific edit still occurred, same as in most attempts that passed
 
-**This is the first phase-2-board failure since the guardrail's
-adoption** (had been 10 of 10 clean, including this batch's own
-attempt 1, before this). Read closely, though, it is not a violation
-of the guardrail's own instruction in the way that matters: reading
-every tool call in phase-2-board's segment (75 real calls: 1 `edit`, 1
-`read`, 73 `write`, zero `run_self_test`) shows
+**This is the first phase-2-board *failure* since the guardrail's
+adoption.** But "failure" and "the destructive edit occurred" are not
+the same measure, and conflating them is exactly the error the first
+draft of this document made. Reading every one of phase-2-board's 75
+tool calls in order (1 `edit`, 1 `read`, 73 `write`, zero
+`run_self_test`):
 
-1. **One destructive `edit`** early in the phase (call index 8) that
-   replaced the entire `home` route with the new `complaints` route in
-   a single `oldText`/`newText` pair — textbook instance of the
-   mechanism the guardrail exists to stop, occurring even with the
-   guardrail's preservation bullet present and unchanged in the
-   prompt (digest `362480e8681f118a`, unaltered).
-2. **But the model then recovered from its own destructive edit** —
-   every one of the 70 subsequent `write app.py` calls (4 unique
-   variants, one occurring 67 times) re-includes both the `/` home
-   route and the `/complaints` route. The guardrail's specific
-   preservation goal (don't lose an existing route) held in the
-   content that actually converged.
-3. **What actually times the attempt out is the *original*,
-   pre-guardrail runaway mechanism** named in
-   [the phase-2-board runaway investigation](phase-2-board-runaway-investigation.md):
-   the dominant, 67-times-repeated content is
+1. **One destructive `edit`**, the phase's 5th tool call, replaced the
+   entire `home` route with the new `complaints` route in a single
+   `oldText`/`newText` pair — the mechanism the guardrail exists to
+   stop, occurring despite the guardrail's preservation bullet being
+   present and unchanged in the prompt (digest `362480e8681f118a`).
+2. The model then recovered via subsequent full `write` calls: of the
+   remaining 69 `write app.py` calls (4 unique variants), most
+   re-include both routes — though not all 69: one intermediate
+   variant (229 bytes, one occurrence) drops the home route again
+   before the dominant, 67-times-repeated variant converges with both
+   routes present.
+3. **What actually times the attempt out is a different, older
+   mechanism**: the dominant, 67-times-repeated content is
 
    ```python
    from fastapi import FastAPI
@@ -70,35 +76,44 @@ every tool call in phase-2-board's segment (75 real calls: 1 `edit`, 1
    ```
 
    `Request` is used in the `home` handler's signature but never
-   imported (only `FastAPI` is imported from `fastapi`) — a
-   `NameError` at import time that would crash the app before serving
-   any route. `run_self_test` is never called even once across all 76
-   turns, so nothing ever surfaces this to the model; it just
-   regenerates the same broken file dozens of times until the 600s
-   wall clock ends the attempt. This is the identical import-bug/
-   never-self-tests pattern the original investigation named, not a
-   new mechanism, and not the destructive-edit pattern the guardrail
-   targets — the guardrail's own instruction was followed in the
-   content that converged, even after being transiently violated.
+   imported (only `FastAPI` is imported from `fastapi`) — confirmed by
+   executing this exact file under the retained lock: `import app`
+   raises `NameError: name 'Request' is not defined`. `run_self_test`
+   is never called even once across all 76 turns, so nothing surfaces
+   this, and the model regenerates the same broken file dozens of
+   times until the wall clock ends the attempt. This is the same
+   import-bug/never-self-tests pattern the
+   [original phase-2-board runaway investigation](phase-2-board-runaway-investigation.md)
+   named, not a new mechanism.
 
-**Honest framing**: the phase-2 guardrail continues to hold against
-the specific mechanism it was written for (destructive route deletion
-persisting to the final state) — 11 of 11 on that specific measure,
-counting this attempt's self-corrected transient violation as not a
-failure of the guarded-against outcome. But phase-2-board's older,
-broader runaway pathology (never calling self-test, converging on
-uncaught import bugs) is not what the guardrail addresses, and it has
-now recurred once in 11 attempts. The guardrail was never proposed as
-a fix for that broader pathology, and this result does not show it
-failing at the job it was given — but it is a reminder that
-phase-2-board's runaway risk is not fully retired.
+**The destructive edit is not rare, guardrail or not — this batch's
+own attempt 1 has it too.** Scanning all 10 post-guardrail
+phase-2-board attempts on this task family (this batch's 3 plus the 7
+from every prior re-verification round), the identical destructive
+`edit` on the home route occurs in **5 of 10**: tightening-3's
+Engine-01 and Engine-02, the retained completion-rate-check's
+Engine-01, and both of this batch's Engine-01 and Engine-02. **4 of
+those 5 recovered and passed**; only this batch's Engine-02 did not.
+The guardrail's real record, stated precisely rather than by final
+outcome: it does not stop the model from making the destructive edit
+in the first place at anything close to a 0% rate — but in every
+occurrence except this one, subsequent writes restored the missing
+route before the phase ended. **Prior documents in this sequence
+(this one's own first draft, and
+[the tightening-3 re-verification result](te4-tightening3-reverification-result.md),
+corrected separately below) described phase-2-board's pass record as
+"N of N clean," which is true only if "clean" means "final content has
+both routes" — it is not true if it means "the guarded-against edit
+never happened."**
 
-## Engine-03: the phase-4 guardrail's first live test of the specific mechanism — and it did not hold
+## Engine-03: the phase-4 guardrail's mechanism recurred, and the attempt also destroyed its own accumulated tests
 
-**Phase-2-board and phase-3-add are both clean** (8 and 8 turns,
-matching the task family's typical range). Phase 4 has 29 tool calls
-(14 `edit`, 8 `read`, 3 `write`, zero `run_self_test`) before the 600s
-timeout. The fourth `edit` call on `app.py` is:
+Phase-2-board and phase-3-add are both clean (8 and 8 turns). Phase 4
+has 29 tool calls: 14 `edit`, 8 `read`, 3 `write`, and **4
+`run_self_test` calls** (the first draft's "zero `run_self_test`"
+claim for this attempt is wrong — it came from the args-filtering bug
+described above). The phase's 7th tool call, and the *first* of only
+two edits ever made to `app.py` in this phase, is:
 
 ```python
 # oldText
@@ -115,108 +130,122 @@ async def resolve_complaint(request: Request, complaint_id: int = Form(...)):
 ```
 
 This is the exact mechanism the phase-4 guardrail (digest
-`6c264957e8cdd793`, current) was applied to stop: a single
-`oldText`/`newText` pair that deletes the already-accepted phase-3
-`POST /complaints` route while adding the new resolve route, rather
-than inserting it alongside. **The guardrail's preservation bullet was
-present, unchanged, in this exact prompt, and the destructive edit
-happened anyway.** Unlike the two prior graded occurrences (tightening-3
-and tightening-4 re-verification, both of which produced a gradable,
-rejected result), this attempt never reaches self-test or grading at
-all — it times out mid-edit, still iterating on `app.py`/`models.py`
-turns after the deletion, so there is no confirmation either that the
-model would have recovered the route the way Engine-02 recovered
-phase-2's home route, or that it would not have.
+`6c264957e8cdd793`) was applied to stop, occurring despite its
+preservation bullet being present and unchanged in this exact prompt.
+The route is never restored across the remaining 22 tool calls.
 
-**This is the fourth occurrence of the destructive-route-deletion
-mechanism at phase 4 across five graded-or-substantially-progressed
-attempts on record** (tightening-3's Engine-02; tightening-4's
-Engine-02; the completion-rate-check's retained Engine-01; now this
-attempt) — the first occurring *after* the guardrail meant to stop it
-was applied. Per the pre-run record's own instruction: **the pattern
-recurred once at this `n`, stated plainly** — this is a materially
-worse signal than phase 2's own guardrail record, which has never
-shown the guarded-against outcome recur in 11 attempts. The phase-4
-guardrail, as worded, did not stop this occurrence.
+**A second, compounding problem, missed in the first draft: this
+attempt also destroyed its own accumulated test coverage.** Tool call
+9, `write tests/test_app.py`, replaces the test file inherited from
+phases 1–3 with a much smaller one. The next `run_self_test` (call 10)
+fails to collect at all (a FastAPI route-registration error from the
+new resolve route's parameter style); by the third `run_self_test`
+(call 23), pytest reports **"collected 2 items"** — down from the
+roughly 7 items phase 4 should be running with (Engine-01, which never
+rewrote its test file, still had 7 at the same stage). With only 2 of
+its own tests left, the model's self-test tool could never have told
+it the phase-3 `POST /complaints` route was missing, even if it had
+kept calling it after the deletion. The final `run_self_test` (call
+28) shows the **redirect-trap misdiagnosis** (see below), and the
+attempt times out mid-edit on `tests/test_app.py`, never returning to
+`app.py`.
 
-## Engine-01: no destructive edit, ordinary time exhaustion
+**This is the seventh occurrence of the destructive-route-deletion
+mechanism across the nine phase-4-reaching attempts on record** (every
+attempt except the guardrail-reverification's Engine-01 and this
+batch's own Engine-01) — **four of those nine never restore the route
+before the phase ends** (tightening-3's Engine-02, tightening-4's
+Engine-02, the completion-rate-check's Engine-01, and now this
+attempt). This attempt is the first occurrence *after* the guardrail
+meant to stop it was applied, and it did not stop it.
 
-Phase 4's 26 tool calls (13 `edit`, 8 `read`, 1 `write`, zero
-`run_self_test`) show additive, iterative work: `models.py`'s `id`/
-`status` fields are edited in place (not replaced), `app.py` gains the
-resolve and reopen routes without ever removing `create_complaint`
-(checked directly — every edit's `oldText` and `newText` either both
-contain `create_complaint` or neither does), and the final edit
-produces both:
+## Engine-01: no destructive edit, but not "before any test was written or run" either
+
+**Correcting the first draft here too**: phase 4's 26 tool calls are
+13 `edit`, 8 `read`, 1 `write`, and **4 `run_self_test` calls** — not
+zero, and not "still mid-implementation... before any test was
+written or run." A test file is written at call 13, and self-test runs
+four times (calls 14, 18, 22, 24). No edit's `oldText`/`newText` on
+`app.py` ever removes `@app.post("/complaints")` — the guardrail's
+specific job held cleanly here, and `models.py`'s `id`/`status` fields
+and `app.py`'s resolve/reopen routes are added additively.
+
+**What the four self-tests actually show: the redirect-trap
+misdiagnosis**, the same mechanism named in
+[the guardrail re-verification result](te4-guardrail-reverification-result.md)
+and confirmed again in Engine-03 above. Three of the four runs fail on
 
 ```python
-@app.post("/complaints/{complaint_id}/resolve")
-async def resolve_complaint(request: Request, complaint_id: int):
-    for complaint in complaints:
-        if complaint.id == complaint_id:
-            complaint.status = "resolved"
-            break
-    return RedirectResponse(url="/complaints", status_code=303)
-
-@app.post("/complaints/{complaint_id}/reopen")
-async def reopen_complaint(request: Request, complaint_id: int):
-    for complaint in complaints:
-        if complaint.id == complaint_id:
-            complaint.status = "open"
-            break
-    return RedirectResponse(url="/complaints", status_code=303)
+response = client.post("/complaints/1/resolve", data={"complaint_id": 1})
+assert response.status_code == 303
+E   assert 200 == 303
 ```
 
-No `run_self_test` call happens before the timeout, so this is
-unverified by the model's own tooling, but the guardrail's specific
-job — don't destroy the existing route — held cleanly here. This
-attempt's voiding is ordinary time exhaustion (26 phase-4 turns against
-the same shape of work tightening-4's Engine-01 needed 25 for, before
-this attempt's own turn budget of 20/30 declared-not-enforced values),
-not a route-deletion recurrence.
+— `client.post` with no `follow_redirects=False` follows the redirect
+and lands on 200, and the model never adds the missing flag, instead
+editing the route's parameter style (`complaint_id: int` vs.
+`Form(...)`) across the remaining edits, chasing the wrong cause. The
+attempt times out at 27 phase-4 turns before resolving it.
 
 ## Classification against the named-mechanism taxonomy
 
 | Attempt | Phase | Mechanism |
 |---|---|---|
-| Engine-01 | phase-4 | voided timeout; additive edits, no destructive deletion, no self-test called |
-| Engine-02 | phase-2-board | voided timeout; the *original* import-bug/never-self-tests runaway (guardrail's own preservation goal held in the converged content despite one transient violation) |
-| Engine-03 | phase-4 | voided timeout; **destructive-edit route deletion recurred despite the phase-4 guardrail** |
+| Engine-01 | phase-4 | voided timeout; additive, no destructive deletion; **redirect-trap misdiagnosis** across 3 of 4 self-tests |
+| Engine-02 | phase-2-board | voided timeout; the *original* import-bug/never-self-tests runaway; the destructive edit occurred but was self-corrected in the converged content |
+| Engine-03 | phase-4 | voided timeout; **destructive-edit route deletion recurred despite the phase-4 guardrail**; own test file also rewritten down to 2 items, masking the loss from self-test; final self-test also hit the **redirect-trap misdiagnosis** |
 
-No attempt hit the `id`-before-`agent_name`, `id`-no-default,
-misplaced-`__post_init__`, redirect-trap-misdiagnosis, or
-`stopReason: "length"` mechanisms this round — all three attempts that
-reached phase 4 (two of three) were still mid-implementation at
-timeout, before any test was written or run.
+Both phase-4 attempts hit the redirect-trap misdiagnosis this round —
+the first draft's claim that "no attempt hit" it, or any mechanism
+beyond bare timeout, was wrong for both.
 
 ## What this does and does not establish
 
 **Still 0 of 11 Engine attempts on this task family complete the full
-task** (0 of 9 that reached phase 4, counting this batch's two).
-Phase-2-board's guardrail-specific record is unchanged at "no
-recurrence of the guarded-against outcome" (11 of 11), but its broader
-runaway risk is not retired — one recurrence in 11. **Phase-4's
-guardrail-specific record is now one failure in its one live test**:
-the mechanism it was written to stop happened anyway, in the same
-prompt state the guardrail was meant to fix. That is a genuinely
-different, worse outcome than what tightenings 3 and 4 showed on their
-own first live tests (both held cleanly on their first re-verification
-round). No turn ceiling proposed — still zero clean completions on
-this task family to check one against, and this batch adds no
-completions.
+task** (0 of 9 that reached phase 4). Restated precisely rather than
+by final-outcome framing:
+
+- **Phase-2-board's destructive edit occurs in about half of
+  post-guardrail attempts (5 of 10)**, and self-corrects in all but
+  this batch's one. The guardrail measurably changes *what usually
+  happens next*, not whether the edit is attempted.
+- **Phase-4's destructive edit occurs in most phase-4-reaching
+  attempts regardless of the guardrail (7 of 9)**, and now occurs at
+  least once *after* the guardrail was applied specifically to stop
+  it, without self-correcting. One live post-guardrail data point is
+  not enough to say the guardrail changed this rate at all.
+- **The redirect-trap misdiagnosis is now confirmed in 4 of 9
+  phase-4-reaching attempts** (guardrail-reverification's Engine-02,
+  tightening-4's Engine-02, and both of this batch's Engine-01 and
+  Engine-03) — a recurring, ordinary implementation-friction mechanism
+  independent of either guardrail.
+
+No turn ceiling proposed — still zero clean completions on this task
+family to check one against.
+
+## Corrections to prior documents in this sequence
+
+[The tightening-3 re-verification result](te4-tightening3-reverification-result.md)
+stated its own Engine-02 "completed normally, not via the
+destructive-edit signature." Re-checked directly: that attempt's
+phase-2-board *did* contain the identical destructive edit on the home
+route (its 10 `edit` calls and 5 `write app.py` calls include it), and
+recovered the same way this batch's Engine-01 did. That document is
+corrected separately, in place, with its own dated note.
 
 ## Next, per the standing instruction
 
-The phase-4 guardrail's single live failure is not enough evidence to
-conclude the guardrail sentence itself is wrong — Engine-03's
-destructive edit happened at only its fourth phase-4 tool call, well
-before self-test or any correction opportunity, so this could be
-ordinary attempt-to-attempt variance in whether the model attends to
-the preservation bullet, the same way phase 2's own guardrail was
-validated on 3 clean attempts before being trusted. But calling it
-settled either way on one data point would repeat the exact evidence
-error already corrected once in this sequence (the "no fifth
-tightening" conclusion, reopened after Fable's review). Getting
-Fable's review of this result, per the standing instruction, before
-deciding whether to run more phase-4-guardrail attempts or treat this
-as inconclusive.
+One live post-guardrail failure of the phase-4 guardrail's specific
+mechanism is not enough to call the guardrail ineffective — the same
+standard applied throughout this sequence (phase 2's own guardrail was
+trusted only after 3 clean candidate-probe attempts, then checked
+again live). But it is also not evidence the guardrail is working:
+phase 2's own guardrail shows the destructive edit still happens about
+half the time and mostly self-corrects; phase 4 has one post-guardrail
+data point and it did not self-correct. Getting Fable's review of this
+corrected result before deciding whether to run more phase-4-guardrail
+attempts, treat the redirect-trap misdiagnosis as its own closable
+prompt gap (it has now recurred 4 times, arguably at least as
+frequent and as closable as the id-field issues tightenings 3 and 4
+addressed), or conclude TE4's Engine track needs a different
+intervention than incremental prompt guardrails.
