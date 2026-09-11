@@ -58,15 +58,37 @@ the same preamble.
 
 | # | check | prompt line |
 |---|---|---|
-| 14 | `test_complaint_identity_is_stable_and_keyword_only` | "Add a stable `id: int` field to the `Complaint` dataclass in `models.py`, assigned once when a complaint is created, unique and never reused or recomputed from its position in the list" |
+| 14 | `test_complaint_identity_is_stable_and_keyword_only` | "Add a stable `id: int` field to the `Complaint` dataclass in `models.py`, placed after the existing `agent_name`, `text` and `timestamp` fields so `Complaint(agent_name, text)` still constructs positionally; assigned once when a complaint is created, unique and never reused or recomputed from its position in the list" (**tightening 3**, see below) |
 | 15 | `test_seed_complaints_have_distinct_ids` | same bullet -- the seed complaints are complaints too |
 | 16 | `test_resolve_route_marks_complaint_resolved_and_redirects` | "Add `POST /complaints/{complaint_id}/resolve`... set that complaint's `status` to `\"resolved\"`, then redirect"; "show each complaint's status as a badge reading exactly \"Open\" or \"Resolved\"" |
 | 17 | `test_reopen_route_marks_complaint_open_and_redirects` | "Add `POST /complaints/{complaint_id}/reopen`... set that complaint's `status` back to `\"open\"`, then redirect the same way" |
 | 18 | `test_resolve_reopen_does_not_reorder_the_board` | "Complaints stay in the same order they appear today -- resolving or reopening a complaint must not move it" |
 
 Checks 1-13 (phases 1-3) are unchanged from `agentclinic-session-phased`;
-see that task's own note for their map. No tightening was needed for
-phase 4 -- every check traces to an explicit bullet, not an inference.
+see that task's own note for their map. Check 14 needed a tightening,
+below -- every other check traces to an explicit bullet, not an
+inference.
+
+**Tightening 3, 2026-09-10.** The original bullet said `id` must be
+"assigned once... unique... never recomputed from its position" but
+never said where in the field list it goes.
+[The guardrail re-verification](../../../../docs/current/te4-guardrail-reverification-result.md)'s
+Engine-01 attempt read that silence permissively: it declared `id`
+before `agent_name`/`text`, breaking `Complaint(agent_name, text)`'s
+positional contract and correctly failing checks 9 (phase 2's own) and
+14. This is the same ambiguity `agentclinic-session-phased`'s own
+`QUALIFICATION-NOTE.md` named as unprobed risk for its task, now
+observed live and closed here the same way that task's own two
+tightenings were: naming the exact field placement so a solver reading
+this prompt has no permissive gap left to fall into. Baseline's own
+independent phase-4 solution (the route proof's Baseline-01) already
+placed `id` after the existing fields unprompted -- this tightening
+codifies what one solver already did correctly, for the one that
+didn't. `phase-4-resolve-reopen`'s new prompt digest is
+`1fc4d9d0e3ed4586` (1753 bytes, was `9ae6b35208360017`, 1619); all
+eight qualification checks re-pass unchanged, and `known-broken`
+(which places `id` first, with no default at all) still fails the
+same way -- it violated this rule before the rule was written down.
 
 **Corrected 2026-09-10, from a live transcript.** This section
 originally said `kw_only=True` was the fixture author's chosen

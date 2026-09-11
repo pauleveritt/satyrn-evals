@@ -255,16 +255,13 @@ live inference — proves the task a fair **fixture**, not a
 **Route proof [run](docs/current/te4-route-proof-result.md) and
 [investigated](docs/current/phase-2-board-runaway-investigation.md).**
 Baseline-01 completed all four phases; its one phase-4 failure was a
-grader defect (asserted `kw_only`, not the positional-construction
-behavior it protects) — **fixed**, re-verified 18/18. Engine-01
-voided — phase-2-board timed out with TE2/HP8's own Engine-01
-signature (2 of 4 real attempts now run away, 2 completed in 8–9
-turns; Baseline 9 of 9). Mechanism, found by comparing all four: both
-runaways follow a destructive `edit` deleting the phase-1 home route,
-converging on a file with an unimported `Request` neither catches
-since `run_self_test` is never called — correlation across 2 pairs,
-not proven causation, no per-turn
-model input retained. No ceiling declared.
+grader defect — **fixed**, re-verified 18/18. Engine-01 voided —
+phase-2-board timed out with TE2/HP8's own Engine-01 signature (2 of 4
+real attempts now run away, 2 completed in 8–9 turns; Baseline 9 of
+9). Mechanism: both runaways follow a destructive `edit` deleting the
+phase-1 home route, converging on a file with an unimported `Request`
+neither catches since `run_self_test` is never called — correlation,
+not causation, no per-turn model input retained. No ceiling declared.
 
 **Guardrail [candidate](docs/current/phase2-guardrail-candidate-result.md)
 tested then adopted into `agentclinic-complaint-lifecycle` only** — a
@@ -276,21 +273,23 @@ destructive edits in three chances is stronger than the count.
 `agentclinic-session-phased` untouched, keeping HP7/TE1/TE2/HP8's
 digests accurate; new digests in
 [`QUALIFICATION-NOTE.md`](src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md).
-**[Re-verification run and reported](docs/current/te4-guardrail-reverification-result.md),
-2026-09-10.** Both Engine attempts reached phase 4 — first time ever,
-either route — with phases 1–3 clean both times (**phase-2-board now
-5 of 5 clean since the guardrail**, vs. 2 of 4 before). Phase 4 failed
-twice, for two different real reasons, neither the phase-2-board
-pathology: Engine-01 rejected by the hidden grader (16/18) for placing
-`id` positionally before `agent_name`/`text` — the exact ambiguity
-`agentclinic-session-phased`'s own `QUALIFICATION-NOTE.md` had named
-as unprobed risk, now observed live; Engine-02 voided at a 600s
-timeout after `run_self_test` correctly caught a real bug (the
-model's own test omitted `follow_redirects=False`, the family's
-known trap) but its fix attempt was a no-op tried twice. No ceiling
-proposed — Engine has completed the full task zero times. Neither a
-prompt tightening for the `id` ambiguity nor TE4's own screen is
-proposed or authorized here.
+**[Re-verification](docs/current/te4-guardrail-reverification-result.md):**
+both Engine attempts reached phase 4 for the first time ever, phases
+1–3 clean both times (**phase-2-board 5 of 5 clean since the
+guardrail**, vs. 2 of 4 before). Phase 4 failed twice for two
+different real reasons, neither the phase-2-board pathology:
+Engine-01 rejected (16/18) for placing `id` before `agent_name`/`text`
+— the ambiguity the sibling task had named as unprobed risk, now
+observed live; Engine-02 voided at a 600s timeout after
+`run_self_test` correctly caught a real bug (its own test omitted
+`follow_redirects=False`) but its fix was a no-op tried twice. No
+ceiling — Engine has completed the full task zero times.
+**Tightening 3 applied** — `id` now goes after `agent_name`/`text` by
+prompt (Baseline's own solution already did this unprompted); 8/8
+checks re-pass, `known-broken` still fails the same way. See
+[`QUALIFICATION-NOTE.md`](src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md).
+Engine-02's failure left as-is — genuine friction, not a prompt gap.
+TE4's screen still not proposed or authorized.
 
 HP remains responsible for the composed, retained, regradable route; TE does
 not absorb unfinished HP requirements or reopen the paused single-task tuning

@@ -120,3 +120,10 @@ Two candidate follow-ups, named, neither implemented or authorized:
 
 TE4's own two-per-configuration screen is still not proposed or
 authorized by this result.
+
+**Follow-up, 2026-09-10.** Item 1 is done — see the task's own
+[`QUALIFICATION-NOTE.md`](../../src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md),
+"Tightening 3." Item 2 stands as written; nothing was changed for it.
+This section's own numbers (Engine-01's transcript, its digests) are
+frozen for the pre-tightening prompt this run actually used — not
+retroactively edited.
