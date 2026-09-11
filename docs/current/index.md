@@ -148,6 +148,20 @@ past artifact. Archived material does not set current policy.
   premise (no prompt change needed) was the mischaracterization the
   phase-4 guardrail corrects. Its one completed attempt is retained as
   the third confirming occurrence of the route-deletion pattern.
+- [Pre-run record: TE4 phase-4-guardrail re-verification](te4-phase4-guardrail-reverification-pre-run-record.md)
+  freezes 3 Engine attempts testing whether the phase-4 guardrail stops
+  the destructive route deletion. Authorizes nothing yet.
+- [Phase-4-guardrail re-verification — result](te4-phase4-guardrail-reverification-result.md)
+  reports zero of three complete; two reach phase 4 for the first time
+  under the guardrail. One is voided by ordinary time exhaustion with
+  no destructive edit; the other reproduces the exact route-deletion
+  mechanism the guardrail was applied to stop, despite the guardrail
+  text being present and unchanged — the guardrail's first live
+  failure on its own target. The third times out at phase-2-board via
+  the *original*, pre-guardrail import-bug runaway (not the
+  destructive-edit mechanism phase 2's own guardrail targets, which
+  held). Not enough evidence to call the phase-4 guardrail settled
+  either way; Fable's review is next.
 - [Pre-run record: run_self_test live verification](self-test-tool-live-verification-pre-run-record.md)
   proposes one bounded `pi` invocation proving the self-test tool is
   reachable and its content legible, outside every TE denominator, and
@@ -207,6 +221,8 @@ te4-tightening3-reverification-result
 te4-tightening4-reverification-pre-run-record
 te4-tightening4-reverification-result
 te4-completion-rate-check-pre-run-record
+te4-phase4-guardrail-reverification-pre-run-record
+te4-phase4-guardrail-reverification-result
 self-test-tool-live-verification-pre-run-record
 first-engine-comparison-plan
 first-smoke-run-record
