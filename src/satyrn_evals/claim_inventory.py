@@ -16,6 +16,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+#: A claim's settled status. `claim_measure_mismatch` means the classifier's
+#: operationalization does not match the claim (it neither reproduces nor
+#: contradicts it), not that the published figure was shown wrong.
 type ClaimStatus = Literal[
     "unreconciled",
     "confirmed",
@@ -126,6 +129,7 @@ INVENTORY: tuple[ClaimRecord, ...] = (
         level="claim",
         measure="population statement",
         population="agentclinic-complaint-lifecycle, Phase TE sequence",
+        status="not_derivable",
     ),
     ClaimRecord(
         id="c-baseline-3-of-3",
@@ -135,6 +139,7 @@ INVENTORY: tuple[ClaimRecord, ...] = (
         level="claim",
         measure="completion_rate",
         population="3 Baseline attempts on agentclinic-complaint-lifecycle",
+        status="not_derivable",
     ),
     ClaimRecord(
         id="c-contemporaneous-screen-tie-2-of-2",
@@ -144,6 +149,7 @@ INVENTORY: tuple[ClaimRecord, ...] = (
         level="claim",
         measure="completion_rate",
         population="the final screen, both configurations fresh on the identical prompt",
+        status="not_derivable",
     ),
     ClaimRecord(
         id="c-completion-6-of-18",
@@ -157,6 +163,7 @@ INVENTORY: tuple[ClaimRecord, ...] = (
         level="claim",
         measure="completion_rate",
         population="18 Engine attempts on agentclinic-complaint-lifecycle",
+        status="not_derivable",
     ),
     ClaimRecord(
         id="c-completion-4-of-16",
@@ -166,6 +173,7 @@ INVENTORY: tuple[ClaimRecord, ...] = (
         level="claim",
         measure="completion_rate",
         population="16 Engine attempts before the 2026-09-11 screen",
+        status="not_derivable",
     ),
     ClaimRecord(
         id="c-destroyed-13-of-15",
@@ -175,6 +183,7 @@ INVENTORY: tuple[ClaimRecord, ...] = (
         level="claim",
         measure="destructive_edit",
         population="15 phase-4-reaching Engine attempts",
+        status="claim_measure_mismatch",
     ),
     ClaimRecord(
         id="c-restored-9-of-15",
@@ -184,6 +193,7 @@ INVENTORY: tuple[ClaimRecord, ...] = (
         level="claim",
         measure="restoration",
         population="15 phase-4-reaching Engine attempts",
+        status="claim_measure_mismatch",
     ),
     ClaimRecord(
         id="c-redirect-fixed-1-of-9",
@@ -193,6 +203,7 @@ INVENTORY: tuple[ClaimRecord, ...] = (
         level="claim",
         measure="redirect_trap_resolution",
         population="9 attempts showing the redirect-trap signature",
+        status="not_derivable",
     ),
     ClaimRecord(
         id="c-nonrestore-0-of-6",
@@ -202,6 +213,7 @@ INVENTORY: tuple[ClaimRecord, ...] = (
         level="claim",
         measure="completion_rate",
         population="6 non-restoring phase-4-reaching Engine attempts",
+        status="not_derivable",
     ),
     ClaimRecord(
         id="c-restore-4-of-7",
@@ -211,6 +223,7 @@ INVENTORY: tuple[ClaimRecord, ...] = (
         level="claim",
         measure="completion_rate",
         population="7 restoring phase-4-reaching Engine attempts",
+        status="not_derivable",
     ),
     ClaimRecord(
         id="c-phase4-denominator-6-of-10",
@@ -220,6 +233,7 @@ INVENTORY: tuple[ClaimRecord, ...] = (
         level="claim",
         measure="denominator_binding",
         population="10 attempts under the current prompt, not 8",
+        status="not_derivable",
     ),
     ClaimRecord(
         id="c-redirect-6-of-9",
@@ -229,6 +243,7 @@ INVENTORY: tuple[ClaimRecord, ...] = (
         level="claim",
         measure="redirect_trap_occurrence",
         population="9 phase-4-reaching Engine attempts at that round",
+        status="not_derivable",
     ),
     ClaimRecord(
         id="c-fabricated-report-n1",
@@ -238,6 +253,7 @@ INVENTORY: tuple[ClaimRecord, ...] = (
         level="claim",
         measure="verification_claim",
         population="1 Engine screen attempt (screen-engine-01)",
+        status="confirmed",
     ),
 )
 

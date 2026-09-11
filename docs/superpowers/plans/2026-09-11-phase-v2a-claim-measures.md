@@ -46,7 +46,7 @@
 **Interfaces:**
 - Produces: `MeasureResult = Literal["yes", "no", "undecidable"]`,
   `EditClass = Literal["replacement", "rejected", "no_op", "undecidable"]`,
-  `EditCall(turn, tool_name, path, classification, removed, added)` (each of
+  `EditCall(tool_name, path, classification, removed, added)` (each of
   `removed`/`added` a `tuple[str, ...]` of text blocks, `()` when unreadable),
   `edit_calls(events) -> tuple[EditCall, ...]`,
   `destructive_edit(events) -> MeasureResult`.
@@ -131,6 +131,8 @@ def test_a_rejected_edit_is_not_a_destructive_edit() -> None:
 
 
 def test_a_true_no_op_is_not_a_destructive_edit() -> None:
+    """Real pi flags the identical-content no-op with `isError=True`; the
+    text must decide before the error fallback or `no_op` is unreachable."""
     start, _ = _edit("c1", "same\n", "same\n")
     events = [
         start,
@@ -138,10 +140,25 @@ def test_a_true_no_op_is_not_a_destructive_edit() -> None:
             "c1",
             "edit",
             "No changes made to app.py. The replacement produced identical content.",
+            is_error=True,
         ),
     ]
 
     assert edit_calls(events)[0].classification == "no_op"
+    assert destructive_edit(events) == "no"
+
+
+def test_a_schema_refused_edit_is_not_a_destructive_edit() -> None:
+    """A server-side tool-schema failure never applied, so it is not a
+    replacement even though its text names neither a missing anchor nor a
+    no-op."""
+    start, _ = _edit("c1", "old line\n", "new line\n")
+    events = [
+        start,
+        _end("c1", "edit", 'Validation failed for tool "edit": args must match'),
+    ]
+
+    assert edit_calls(events)[0].classification == "rejected"
     assert destructive_edit(events) == "no"
 
 
@@ -167,6 +184,22 @@ def test_an_unpaired_edit_call_is_undecidable() -> None:
     call = edit_calls([start])[0]
     assert call.classification == "undecidable"
     assert destructive_edit([start]) == "undecidable"
+
+
+def test_an_empty_edit_result_is_undecidable() -> None:
+    start, _ = _edit("c1", "old\n", "new\n")
+
+    assert edit_calls([start, _end("c1", "edit", "")])[0].classification == "undecidable"
+
+
+def test_an_error_edit_result_is_not_a_destructive_edit() -> None:
+    """A non-schema tool error (timeout, permission) is a refusal, not a
+    content change."""
+    start, _ = _edit("c1", "old\n", "new\n")
+    events = [start, _end("c1", "edit", "command timed out", is_error=True)]
+
+    assert edit_calls(events)[0].classification == "rejected"
+    assert destructive_edit(events) == "no"
 ```
 
 - [ ] **Step 2: Run the tests to verify they fail**
@@ -199,7 +232,9 @@ from typing import Literal
 type MeasureResult = Literal["yes", "no", "undecidable"]
 type EditClass = Literal["replacement", "rejected", "no_op", "undecidable"]
 
-_REJECTED_EDIT_RE = re.compile(r"could not find the exact text", re.IGNORECASE)
+_REJECTED_EDIT_RE = re.compile(
+    r"could not find the exact text|validation failed for tool", re.IGNORECASE
+)
 _NOOP_EDIT_RE = re.compile(
     r"no changes? made|replacement produced identical content", re.IGNORECASE
 )
@@ -231,8 +266,9 @@ def _iter_events(
     """
     flattened: list[Mapping[str, object]] = []
     for event in events:
-        if event.get("type") == "event" and isinstance(event.get("payload"), Mapping):
-            flattened.append(event["payload"])
+        payload = event.get("payload")
+        if event.get("type") == "event" and isinstance(payload, Mapping):
+            flattened.append(payload)
         else:
             flattened.append(event)
     return flattened
@@ -277,6 +313,27 @@ def _classify_edit(text: str) -> EditClass:
     return "replacement"
 
 
+def _classify_call(result: tuple[str, bool] | None) -> EditClass:
+    """An edit's (result text, isError) pair to a class.
+
+    A missing or empty result is `undecidable` — the call was made, but
+    whether it changed content is not readable from the retained stream.
+    A tool error is a refusal whatever its wording; otherwise the text
+    decides.
+    """
+    if result is None:
+        return "undecidable"
+    text, is_error = result
+    if not text:
+        return "undecidable"
+    classified = _classify_edit(text)
+    if classified != "replacement":
+        return classified
+    if is_error:
+        return "rejected"
+    return "replacement"
+
+
 def edit_calls(
     events: Sequence[Mapping[str, object]],
 ) -> tuple[EditCall, ...]:
@@ -287,7 +344,7 @@ def edit_calls(
     """
     flat = _iter_events(events)
     starts: dict[str, Mapping[str, object]] = {}
-    results: dict[str, str] = {}
+    results: dict[str, tuple[str, bool]] = {}
     order: list[str] = []
     for event in flat:
         if event.get("type") == "tool_execution_start":
@@ -300,7 +357,10 @@ def edit_calls(
         if event.get("type") == "tool_execution_end":
             call_id = event.get("toolCallId")
             if isinstance(call_id, str):
-                results[call_id] = _result_text(event)
+                results[call_id] = (
+                    _result_text(event),
+                    bool(event.get("isError")),
+                )
     calls: list[EditCall] = []
     for call_id in order:
         start = starts[call_id]
@@ -310,10 +370,7 @@ def edit_calls(
         args = args if isinstance(args, Mapping) else {}
         removed = _blocks(args, "oldText")
         added = _blocks(args, "newText")
-        text = results.get(call_id)
-        classification: EditClass = (
-            "undecidable" if text is None else _classify_edit(text)
-        )
+        classification = _classify_call(results.get(call_id))
         path = args.get("path")
         calls.append(
             EditCall(
@@ -347,7 +404,7 @@ def destructive_edit(
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `uv run pytest -q tests/test_claim_measures.py`
-Expected: PASS, all 6 tests.
+Expected: PASS, all 9 tests.
 
 - [ ] **Step 5: Lint**
 
@@ -413,6 +470,17 @@ def test_a_rejected_restore_edit_does_not_count() -> None:
 
 def test_restoration_is_undecidable_without_any_edit() -> None:
     assert restoration([]) == "undecidable"
+
+
+def test_restoration_is_undecidable_when_an_edit_is_unreadable() -> None:
+    """An unreadable edit could be the restoration; the measure is
+    conservative rather than reporting `no`. Same rule as
+    `destructive_edit`."""
+    remove, _ = _edit("c1", "route\n", "")
+    unreadable, _ = _edit("c2", "x\n", "y\n")
+    events = [remove, _end("c1", "edit", "applied"), unreadable]
+
+    assert restoration(events) == "undecidable"
 ```
 
 - [ ] **Step 2: Run the tests to verify they fail**
@@ -433,9 +501,11 @@ def restoration(events: Sequence[Mapping[str, object]]) -> MeasureResult:
     semantic repair: it does not claim the restored content fixed anything.
     """
     calls = edit_calls(events)
-    applied = [call for call in calls if call.classification == "replacement"]
     if not calls:
         return "undecidable"
+    if any(call.classification == "undecidable" for call in calls):
+        return "undecidable"
+    applied = [call for call in calls if call.classification == "replacement"]
     removed_since_start: set[str] = set()
     for call in applied:
         if any(block in removed_since_start for block in call.added):
@@ -447,7 +517,7 @@ def restoration(events: Sequence[Mapping[str, object]]) -> MeasureResult:
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `uv run pytest -q tests/test_claim_measures.py`
-Expected: PASS, all 10 tests.
+Expected: PASS, all 14 tests.
 
 - [ ] **Step 5: Lint and commit**
 
@@ -507,6 +577,18 @@ def test_engine_self_test_refuses_when_the_chain_disagrees() -> None:
     assert self_test_outcome(events, chain=chain) == "undecidable"
 
 
+def test_self_test_is_undecidable_when_the_last_run_is_unreadable() -> None:
+    """A later, unreadable `run_self_test` must not fall back to an earlier
+    run's exit code."""
+    events = [
+        *_self_test("c1", 0),
+        _start("c2", "run_self_test", {}),
+        _end("c2", "run_self_test", "no output captured"),
+    ]
+
+    assert self_test_outcome(events, chain=None) == "undecidable"
+
+
 def test_baseline_self_test_is_refused_without_a_chain() -> None:
     """A Baseline transcript runs its tests through `bash`, not
     `run_self_test`; with no chain record the measure is undecidable rather
@@ -541,8 +623,7 @@ def _last_self_test(events: Sequence[Mapping[str, object]]) -> int | None:
         if event.get("toolName") != "run_self_test":
             continue
         match = _EXIT_CODE_RE.search(_result_text(event))
-        if match is not None:
-            last = int(match.group(1))
+        last = int(match.group(1)) if match is not None else None
     return last
 
 
@@ -580,7 +661,7 @@ def self_test_outcome(
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `uv run pytest -q tests/test_claim_measures.py`
-Expected: PASS, all 14 tests.
+Expected: PASS, all 19 tests.
 
 - [ ] **Step 5: Lint and commit**
 
@@ -710,7 +791,7 @@ def verification_claim(events: Sequence[Mapping[str, object]]) -> MeasureResult:
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `uv run pytest -q tests/test_claim_measures.py`
-Expected: PASS, all 18 tests.
+Expected: PASS, all 23 tests.
 
 - [ ] **Step 5: Lint and commit**
 

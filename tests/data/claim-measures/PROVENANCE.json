@@ -1,0 +1,12 @@
+{
+  "engine-02-edits": {
+    "source": "/Users/pauleveritt/satyrn-smokes/2026-09-11-te4-screen-engine-02/harness/.satyrn-implementer-transcript.jsonl",
+    "sha256": "23fc91b209d78fa17d085fce0c83a0752b9b40aa7069ec508439970a35d10eeb",
+    "excerpt_sha256": "2fdcdc5dbcbdc1882bd8345a3019d34863cbb4d8a0e17954ed538004f5652f83"
+  },
+  "engine-01-verification": {
+    "source": "/Users/pauleveritt/satyrn-smokes/2026-09-11-te4-screen-engine-01/harness/.satyrn-implementer-transcript.jsonl",
+    "sha256": "aca6a3683304e98ca1d853e31e25d9200fb21509de8392a64d8cc90ff128b801",
+    "excerpt_sha256": "629062fabb7ca583d7a71b46c46d385a23a1c2a873b115a6e4927ccbbb638432"
+  }
+}

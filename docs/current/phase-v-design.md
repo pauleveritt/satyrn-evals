@@ -263,6 +263,35 @@ artifacts when they are present, and says so loudly when they are not.
 **Files:** `src/satyrn_evals/claim_measures.py`, `census.py`, `pathology.py`,
 `tests/data/`, `scripts/reconcile_claims.py`.
 
+**V2a reconciled, 2026-09-11.** `ClaimMeasure` and `measure_inventory(records)`
+bind every claim-level record, defaulting to `undecidable` — a finding, not a
+zero. Three measures are wired:
+
+- `c-destroyed-13-of-15` (`destructive_edit`, 15 phase-4-reaching Engine attempts):
+  derived **15 of 15**, not the published 13 of 15 — **`claim_measure_mismatch`**.
+- `c-restored-9-of-15` (`restoration`, same 15): derived **3 of 15**, not the
+  published 9 of 15 — **`claim_measure_mismatch`**.
+- `c-fabricated-report-n1` (`verification_claim`, screen-engine-01): `no`
+  (summary "2 passed" over last `run_self_test` exit 1) — `confirmed`.
+  Superseding the V2 bullet above, V2a binds the published n=1 finding to that
+  attempt and declines an 18-attempt prevalence count: no document publishes
+  it, breaking "No new contrasts"; V3 decides whether one is warranted.
+
+**Product 1 descoped to V2b.** V2 product 1 — the `6 of 8` → `6 of 10` denominator binding — is not derived executably in V2a and is descoped to V2b, where the `chain.json` enumeration already exists; it is not silently omitted.
+
+**The mismatch finding.** The classifiers measure a broader property than the
+published route-specific counts, so they neither reproduce nor contradict the
+published 13 of 15 and 9 of 15: `destructive_edit` counts any content-changing
+edit, where the source counts route-specific destruction (2 of 15 never
+touched the route); `restoration` counts any removed content re-added, where
+the source counts route-specific restoration before the phase ended. V3 must
+decide whether the measure or the claim is wrong: narrow the classifiers to
+the route-specific event, or restate the published claims.
+
+The 13 claim records now carry **1 `confirmed`**, **2 `claim_measure_mismatch`**,
+**10 `not_derivable`**, **0** `corrected`/`unreconciled`; with the 7 unit records
+the tally is **8 `confirmed`**. No V2a classifier covers the 10 `not_derivable` measures: `completion_rate`, `population statement`, `redirect_trap_resolution`, `redirect_trap_occurrence`, `denominator_binding` — V3 findings, not zeros.
+
 ### V3 — Close-out
 
 **Narrow issue:** nothing is left unaccounted for, and the reopen decisions are

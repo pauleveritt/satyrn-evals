@@ -3,6 +3,7 @@
 Default tier: pure, no filesystem read beyond the repository's own paths.
 """
 
+from collections import Counter
 from pathlib import Path
 
 from satyrn_evals.claim_inventory import (
@@ -48,6 +49,31 @@ def test_the_inventory_holds_twenty_records_seven_unit_thirteen_claim() -> None:
     assert len(INVENTORY) == 20
     assert sum(1 for record in INVENTORY if record.level == "unit") == 7
     assert sum(1 for record in INVENTORY if record.level == "claim") == 13
+
+
+def test_the_two_mismatched_claims_carry_claim_measure_mismatch() -> None:
+    """The classifiers derive 15 of 15 and 3 of 15 against the published 13 of
+    15 and 9 of 15, so those two records are measure/claim mismatches rather
+    than confirmations; the fabrication claim is reproduced and stays
+    confirmed."""
+    statuses = {record.id: record.status for record in INVENTORY}
+
+    assert statuses["c-destroyed-13-of-15"] == "claim_measure_mismatch"
+    assert statuses["c-restored-9-of-15"] == "claim_measure_mismatch"
+    assert statuses["c-fabricated-report-n1"] == "confirmed"
+
+
+def test_the_settled_inventory_counts_each_status() -> None:
+    """V2a settles all 20 records: 8 confirmed (7 unit + the fabrication
+    claim), 2 claim_measure_mismatch, and 10 not_derivable, with nothing left
+    unreconciled or corrected."""
+    counts = Counter(record.status for record in INVENTORY)
+
+    assert counts["confirmed"] == 8
+    assert counts["claim_measure_mismatch"] == 2
+    assert counts["not_derivable"] == 10
+    assert counts["unreconciled"] == 0
+    assert counts["corrected"] == 0
 
 
 def test_the_table_names_every_record_and_its_population() -> None:
