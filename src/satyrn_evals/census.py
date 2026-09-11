@@ -1,7 +1,7 @@
 """The V16 pathology census: offline, arm-neutral, and never voids a cell.
 
-`docs/superpowers/specs/2026-09-07-v16-pathology-census-design.md` is the
-confirmed design; this module implements its sections 2-4. Where V10
+`archive/2026-09-07-pre-reset/docs/superpowers/specs/2026-09-07-v16-pathology-census-design.md`
+is the confirmed design; this module implements its sections 2-4. Where V10
 (`pathology.py`) marks a whole transcript ``measured: false`` on one
 unrecognised event -- blinding it on exactly the cells worth reading -- the
 census scans what it can and reports that refusal (``v10_unmeasured``) as

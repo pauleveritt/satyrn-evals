@@ -316,4 +316,6 @@ first-smoke-run-record
 triage-candidate
 phase-v-design
 phase-v-claim-inventory
+phase-v-engine-gap-register
+phase-v-track-b-gate
 ```

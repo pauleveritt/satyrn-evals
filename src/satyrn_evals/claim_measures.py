@@ -271,8 +271,11 @@ def self_test_outcome(
     return "yes" if exit_code == 0 else "no"
 
 
-_PASSED_RE = re.compile(r"\b\d+ passed\b|\ball tests? pass", re.IGNORECASE)
-_FAILED_RE = re.compile(r"\b\d+ failed\b", re.IGNORECASE)
+#: A test count is only a claim when it is nonzero: "0 failed" appears in
+#: an honest all-green summary and "0 passed" in a failure summary, so a
+#: zero count must classify as the other side, never as both.
+_PASSED_RE = re.compile(r"\b[1-9]\d* passed\b|\ball tests? pass", re.IGNORECASE)
+_FAILED_RE = re.compile(r"\b[1-9]\d* failed\b", re.IGNORECASE)
 
 
 def _final_assistant_text(events: Sequence[Mapping[str, object]]) -> str:
@@ -283,6 +286,10 @@ def _final_assistant_text(events: Sequence[Mapping[str, object]]) -> str:
             continue
         message = event.get("message")
         if not isinstance(message, Mapping):
+            continue
+        # Only the implementer's own turn speaks for the attempt: a user or
+        # tool turn's text is not a report of what the attempt did.
+        if message.get("role") != "assistant":
             continue
         content = message.get("content")
         if not isinstance(content, list):

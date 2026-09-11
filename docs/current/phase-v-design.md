@@ -4,16 +4,13 @@
 inference.** Track A is offline and spends nothing; Track B's live cycle needs
 its own budget authorization. This design supersedes the Phase V sketch in
 `satyrn-engine`'s `ROADMAP.md` (V1 analysis, V2 authoritative status, V3 budget,
-V4 live proof). That sketch must be updated in the same session that confirms
-this one — it is a separate repository, so it cannot be the same commit; each
-side then records the other's revision, so the two roadmaps cannot disagree
-silently.
+V4 live proof); that sketch must be updated in the same session — a separate
+repository, so not the same commit — with each side recording the other's
+revision, so the two roadmaps cannot disagree silently.
 
-Phase V is defined in the engine's roadmap because packet execution, chained
-isolation and candidate production are owned there. **This design's Track A is
-owned here**, because it is entirely a matter of reading retained artifacts this
-repository already keeps. Track B's `AttemptResult` and budget work is
-engine-owned and needs mirrored entries in that repository.
+**Track A is owned here** — it reads retained artifacts this repository keeps;
+Track B's `AttemptResult` and budget work is engine-owned and needs mirrored
+entries there.
 
 ## Why this shape
 
@@ -22,8 +19,6 @@ engine gap, then make validation authoritative and budgets real." A maintainer
 redirected its first step on 2026-09-11: *before* extracting new work from the
 evidence, establish whether the evidence can be trusted, for both arms,
 "spread across multiple cycles... to allow deep focus on narrow issues."
-
-The redirect is supported by a specific finding, not a general unease.
 
 **The evidence supports the numbers; nothing committed derives them.** Both
 arms' per-phase figures recompute exactly from retained artifacts — Engine by
@@ -38,57 +33,42 @@ at authoring time and survive only as prose.
 `9d77f40`, `b05dc49`, `82da340` — twelve correction or verification commits
 across Phase TE):
 
-1. **No committed derivation for any forensic number.** Reviewers re-derive by
-   hand each pass, and each pass produces a different value. Hand derivation
-   errs in both directions, including inside corrections: the redirect-trap
-   count went `1 of 9` → `2 of 9` → `1 of 9` across two review rounds.
-2. **The two arms' retained evidence has different layouts and different
-   phase-attribution mechanisms.** Baseline carries `step_id` on every event;
-   Engine is four positional `session` blocks with no phase label. A hand-count
-   must use two methods, which is how an arm-asymmetric denominator appeared
+1. **No committed derivation for any forensic number.** Reviewers re-derive by hand each pass, each
+   pass differs, and the error runs both ways — the redirect-trap count went `1 of 9` → `2 of 9` →
+   `1 of 9` across two review rounds.
+2. **The two arms' retained evidence has different layouts and different phase-attribution
+   mechanisms.** Baseline carries `step_id`; Engine is four positional `session` blocks with no phase
+   label. A hand-count must use two methods, which is how an arm-asymmetric denominator appeared
    (`6 of 8` Engine against all-attempts Baseline, corrected to `6 of 10`).
-3. **Measures are re-operationalized per claim, and sometimes the
-   operationalization does not match the claim.** A `"== 303"` substring match
-   caught a printed source line and an unrelated `405 == 303`; "no
-   public-test-quality concern" measured test-file *additivity* when the claim
-   was about tests *passing* and reports being *honest*, which is why a
-   fabricated pytest transcript went unnoticed; a rejected `edit` was written up
-   twice as an "inert no-op."
-4. **Prose is the transport layer.** Numbers and framings move doc-to-doc, so
-   an error migrates and a reader cannot tell derived values from copied ones.
-   This is live in the tree: `docs/current/index.md:234` still reads "the
-   opposite of 'Engine completes harder work more reliably'" while
-   `te6-explain-and-decide.md:255` reads "not that Baseline is the more reliable
-   configuration." The correction never reached the carrier.
-5. **There is no committed QA for forensic or interpretive numbers.** The
-   scoping matters: committed QA *does* exist for run-time bookkeeping
-   (`turn_ledger`, `check_chain`, `chain.json`'s per-phase `self_test_outcome`,
-   `session-record.json`'s `turn_count`). What is missing is derivation for the
+3. **Measures are re-operationalized per claim, and sometimes the operationalization does not match
+   the claim.** A `"== 303"` substring match caught a printed source line and an unrelated
+   `405 == 303`; "no public-test-quality concern" measured test-file *additivity* when the claim was
+   about tests *passing* and reports being *honest*, which is why a fabricated pytest transcript went
+   unnoticed; a rejected `edit` was written up twice as an "inert no-op."
+4. **Prose is the transport layer.** Numbers and framings move doc-to-doc, so an error migrates and a
+   reader cannot tell derived values from copied ones. Live in the tree: `docs/current/index.md:234`
+   still reads "the opposite of 'Engine completes harder work more reliably'" while
+   `te6-explain-and-decide.md:255` reads "not that Baseline is the more reliable configuration." The
+   correction never reached the carrier.
+5. **There is no committed QA for forensic or interpretive numbers.** The scoping matters: committed
+   QA *does* exist for run-time bookkeeping (`turn_ledger`, `check_chain`, `chain.json`'s per-phase
+   `self_test_outcome`, `session-record.json`'s `turn_count`). What is missing is derivation for the
    numbers written *about* a run.
-6. **The claims themselves have no home but prose.** There is no registry of
-   what was claimed, against which measure and population. Fixing derivations
-   without one is temporary.
+6. **The claims themselves have no home but prose.** There is no registry of what was claimed,
+   against which measure and population. Fixing derivations without one is temporary.
 
-**A committed instrument is already wrong about the Engine arm.**
-`src/satyrn_evals/census.py:50`'s `KNOWN_TOOL_NAMES` is
-`{read, bash, edit, write, run_tests}`, but the packet route's tool is
-`run_self_test`; `detect_unknown_tool` returns **8** on the screen Engine-02
-transcript, counting that attempt's own self-test calls as unknown tools. And
-`detect_noop_edit` (`census.py:58`) puts a *rejected* edit
-("Could not find the exact text") and a *true* no-op ("No changes made…
-identical content") in one bucket — it returns `2` on the same transcript, one
-of each. `pathology.py:42`'s `TOOL_NAMES` has the same staleness, and
-`count_transcript` refuses that transcript (`measured: False, reason:
-malformed`). The returned reason is **not** the multi-session shape: it comes
-from `_header_ok`, which requires the first parsed event to be a `session`
-event and instead meets the retained file's leading
-`{"adapter_marker": "turn_start", "index": 0}` line. That is one of two
-independent blockers. Drop the adapter header and the parser still refuses, now
-as `unknown_event`, because `run_self_test` is absent from `TOOL_NAMES` — the
-same vocabulary gap as `census.py`. The multi-session shape is real (four
-`adapter_marker` lines, four `session` events) but is neither reported nor the
-first cause: the parser never reaches `_structure_ok`. The arm-neutral
-instrument cannot read the Engine arm.
+**A committed instrument was wrong about the Engine arm.** `census.py`'s
+`KNOWN_TOOL_NAMES` lacked the packet route's `run_self_test`, so
+`detect_unknown_tool` returned **8** on the screen Engine-02 transcript;
+`detect_noop_edit` put a *rejected* edit ("Could not find the exact text") and a
+*true* no-op ("No changes made… identical content") in one bucket, returning
+`2`, one of each; `pathology.py`'s `TOOL_NAMES` had the same staleness.
+`count_transcript` refused that transcript (`malformed`) — **not** for the
+multi-session shape, which is real (four `adapter_marker` lines, four `session`
+events), but because `_header_ok` met the leading
+`{"adapter_marker": "turn_start", "index": 0}` line; dropping that header left
+`unknown_event`, the same vocabulary gap. The arm-neutral instrument could not
+read the Engine arm. **V2b repaired all of it** (product 3 below).
 
 ## What this is not
 
@@ -102,10 +82,9 @@ instrument cannot read the Engine arm.
   or correction of a published figure, while the register's candidates are
   exploratory hypotheses.
 - **Not a new published comparison.** Track A confirms or corrects *published*
-  figures; it may not originate a new published figure or Engine-vs-Baseline
-  contrast. The V3 engine gap register is the one exception: its measurements
-  are exploratory, carry their population, and never enter a published claim or
-  denominator.
+  figures; it may not originate a new figure or Engine-vs-Baseline contrast. The
+  V3 engine gap register is the one exception: its measurements are exploratory,
+  carry their population, and never enter a published claim or denominator.
 - **Not a remedy.** Nothing here changes the engine. At the phase level Track A
   may end as `AGENTS.md`'s "instrument only" — no remedy tested, none refused —
   while each of its cycles is findings-bearing. Track B is where a remedy is
@@ -139,9 +118,14 @@ is offline by construction, so the rule binds it. The resolution is an
 > share this repository's commit. A cycle that produces only code does not
 > count, and the two-consecutive rule then applies to it.
 
+**V3 reconciliation, 2026-09-11.** The final review adjudicated V3
+findings-bearing: the Cycles-table row is V3's pre-committed test, the
+zero-corrections clause covers `corrected == 0`, and the reopen of
+`c-restored-9-of-15` withdraws a cited TE6 reading. The object test above
+binds V1 and V2; V3 is measured against its pre-committed test.
+
 V1 and V2 each settle a share of the inventory; V3 exhausts it. No cycle is
-instrument-only, and none is claimed to be findings-bearing on the strength of
-its own code.
+instrument-only, and none is findings-bearing on the strength of its own code.
 
 ### V1 — Inventory and the per-phase ledger
 
@@ -153,38 +137,35 @@ on both arms; and what has actually been claimed.
 1. **The claim inventory, committed before any tooling.** One record per
    published figure or framing that a recorded phase decision rests on, across
    the TE result documents *and their carriers* (`index.md`, `ROADMAP.md`,
-   `te6-explain-and-decide.md`). Declared in code as a frozen tuple of records,
-   the way `scripts/rescore_seams.py`'s `SEAM_MAP` declares its map in advance —
-   with a test asserting every cited source path exists. Statuses begin
-   `unreconciled`; a human-readable table is generated from the inventory rather
-   than written twice.
-2. **The shared per-phase ledger**, a new pure module. It owns phase
-   attribution (Baseline: `step_id`; Engine: positional `session` boundaries,
-   cross-checked against the chain's declared phase list) and per-phase
-   aggregation of turns, tool calls, self-test calls and self-test outcomes. It
-   **refuses** rather than guesses: a session count that disagrees with the
-   chain's declared phases is `undecidable`, not a per-phase number.
-   `turn_ledger.py` is imported for stream parsing and is not changed; its
-   docstring already fixes its contract as whole-stream.
-3. **Unit-level reconciliation.** Re-derive every unit-level inventory claim
-   from the ledger, correct in place with dated blocks, update every carrier in
-   the same commit. `docs/current/index.md:234` — the stale "opposite of
-   'Engine completes harder work more reliably'" framing this design names in
-   cause 4 — is the first such carrier and belongs to this cycle, not to a later
-   pass.
+   `te6-explain-and-decide.md`), declared in code as a frozen tuple the way
+   `scripts/rescore_seams.py`'s `SEAM_MAP` declares its map in advance, with a
+   test asserting every cited source path exists. Statuses begin `unreconciled`;
+   a human-readable table is generated from the inventory rather than written
+   twice.
+2. **The shared per-phase ledger**, a new pure module owning phase attribution
+   (Baseline: `step_id`; Engine: positional `session` boundaries, cross-checked
+   against the chain's declared phase list) and per-phase aggregation of turns,
+   tool calls and self-test outcomes. It **refuses** rather than guesses: a
+   session count disagreeing with the chain's declared phases is `undecidable`,
+   not a per-phase number. `turn_ledger.py` is imported for stream parsing and
+   is not changed; its docstring already fixes its contract as whole-stream.
+3. **Unit-level reconciliation.** Re-derive every unit-level claim from the
+   ledger, correct in place with dated blocks, update every carrier in the same
+   commit — `docs/current/index.md:234`, the stale carrier named in cause 4, is
+   the first.
 
 **Refusal conditions:** phase attribution undecidable; artifact absent; a
-transcript whose session count disagrees with its chain record. Each refusal is
-a named status in the table, never a zero.
+transcript whose session count disagrees with its chain record. Each refusal is a
+named status in the table, never a zero.
 
 **Files:** `src/satyrn_evals/phase_ledger.py`,
 `src/satyrn_evals/claim_inventory.py`, `scripts/reconcile_claims.py`,
 `tests/data/` fixtures, `docs/current/phase-v-claim-inventory.md`.
 
 **Tests:** refusal and success for each layout (a multi-session transcript whose
-count disagrees with its chain's phases; a Baseline transcript missing
-`step_id`; the four screen attempts and the recurrence batch recomputed to their
-published per-phase values).
+count disagrees with its chain's phases; a Baseline transcript missing `step_id`;
+the four screen attempts and the recurrence batch recomputed to their published
+values).
 
 **Deliberately not in V1:** the claim-level measures, the census/pathology
 repair, and any figure the ledger cannot settle. Those are V2's.
@@ -198,10 +179,8 @@ six: `u-completion-turn-distribution`'s population is the 4 recorded Engine
 completions, two of which are the round-2 attempts. V1 is findings-bearing by
 the object test: it publishes seven status changes and corrects `index.md:234`,
 the stale carrier named in cause 4, in the same tree as the regenerated
-`docs/current/phase-v-claim-inventory.md`. Per the Currency rule, that ledger
-records the `HEAD` revision it was read under and the sha256 of every artifact
-it read, in the generated report's `**HEAD:**` and `## Artifact digests`
-sections.
+`docs/current/phase-v-claim-inventory.md`, which also records the ledger's
+`HEAD` revision and the sha256 of every artifact it read.
 
 ### V2 — Claim-level measures and the denominator binding
 
@@ -217,25 +196,24 @@ chosen at write time.
 2. **Four pure classifiers**, each returning `undecidable` — never `False` —
    where evidence is absent:
    - `destructive_edit` — separates a replacement from a rejected edit
-     (`oldText` did not match) and from a true no-op. This split does not exist
-     in committed code today.
+     (`oldText` did not match) and from a true no-op.
    - `restoration` — the destroyed content returned before the phase ended.
    - `self_test_outcome` — Engine: the `run_self_test` call and `chain.json`'s
      independently recorded per-phase outcome. Baseline: **specified or
-     refused.** Baseline has no `chain.json`; its self-test runs are `bash`
-     calls and its reports are message text. If a Baseline-side measure cannot
-     be proven in both directions from retained artifacts, it returns
-     `undecidable`, and V3's table records that as an arm-asymmetric-evidence
-     finding rather than improvising a detector.
+     refused** — no `chain.json`, self-test runs are `bash` calls, reports are
+     message text; a Baseline-side measure that cannot be proven in both
+     directions from retained artifacts returns `undecidable`, and V3's table
+     records that as an arm-asymmetric-evidence finding rather than improvising
+     a detector.
    - `verification_claim` — what the implementer said about its own
      verification, against what the retained tool results show.
 3. **Vocabulary, structure and discovery repair** in `census.py` and
    `pathology.py`: the tool vocabulary above; a specified behaviour for
    multi-session concatenated transcripts; and **discovery of the Engine arm's
    retained transcript** (`.satyrn-implementer-transcript.jsonl`; 24 on disk,
-   zero `transcript.txt`), where `census_root` currently returns **0 cells** so
-   the `8 unknown tools` is visible only by a direct detector call. This
-   satisfies `BACKLOG.md`'s first entry and creates no arm-neutral rate.
+   zero `transcript.txt`), where `census_root` returned **0 cells** so the
+   `8 unknown tools` was visible only by a direct detector call. This satisfies
+   `BACKLOG.md`'s first entry and creates no arm-neutral rate.
 4. **Claim-level reconciliation** of the inventory's remaining claims.
 
 **Evidence standard.** Each classifier is proven on the retained counterexamples
@@ -244,8 +222,8 @@ the correction record already found: the `405 == 303` string, the rejected
 window never observed". Fixtures are trimmed real transcript excerpts committed
 under `tests/data/` with their source attempt path and digest recorded — the
 precedent set by `tests/data/real-hp7-live-route-transcript.jsonl` — plus a
-marked integration check that runs the same measures against the full retained
-artifacts when they are present, and says so loudly when they are not.
+marked integration check running the same measures against the full retained
+artifacts present on disk, and saying so loudly when they are not.
 
 **Files:** `src/satyrn_evals/claim_measures.py`, `census.py`, `pathology.py`,
 `tests/data/`, `scripts/reconcile_claims.py`.
@@ -288,31 +266,66 @@ stays `not_derivable`, naming the missing enumeration; the published `6 of 10` i
 neither reproduced nor contradicted.
 
 V2b is **instrument only**, 2026-09-11: it changed no inventory status, so it is
-the first consecutive instrument-only piece and V3's obligation to publish a
-status change is binding (a second consecutive one stops the loop).
+the first consecutive instrument-only piece — V3 must be findings-bearing on the
+test it pre-committed, or a second consecutive one stops the loop.
 
 ### V3 — Close-out
 
 **Narrow issue:** nothing is left unaccounted for, and the reopen decisions are
 made once, on the record.
 
-**Products.** Every inventory claim carries exactly one status — `confirmed`,
-`corrected`, `not_derivable`, or `claim_measure_mismatch`. Each `not_derivable`
-names the missing artifact. Each correction already has its dated block and
-carrier update from V1/V2; V3 verifies no carrier lags its source. The reopen
-bound is applied to each affected recorded decision. The Track B gate is
-published: an enumerated inventory with a status for every entry.
-
-V3 also publishes the **engine gap register**
-(`docs/current/phase-v-engine-gap-register.md`): one exploratory row per
-engine-improvement candidate, each carrying the measure that indicates it, its
-population, the observed value, and the proposed engine change. Register rows are
-labelled `exploratory`, are excluded from every published claim and denominator,
-and are the discovery input Track B acts on. This is what "measurements drive
-discovery" means here: the register ranks candidates, it does not publish rates.
+**Products** (`docs/superpowers/plans/2026-09-11-phase-v3-closeout.md`): one
+final status per record, each `not_derivable` naming its missing artifact; no
+carrier lagging its source; the reopen bound applied to each affected recorded
+decision; the **engine gap register**
+(`docs/current/phase-v-engine-gap-register.md`), whose rows are labelled
+`exploratory`, are excluded from every published claim and denominator, and are
+the discovery input Track B acts on; and the Track B gate — an enumerated
+inventory with a status for every entry.
 
 **Zero corrections is a pass.** If every claim confirms, the finding is "the
 published numbers hold under committed derivation," and Track B opens on that.
+
+**V3 closed, 2026-09-11 — findings-bearing.** The inventory is exhausted: all 20 records carry exactly one
+final status — **8 `confirmed`, 0 `corrected`, 10 `not_derivable`, 2 `claim_measure_mismatch`** — and the
+Track B gate is published as `docs/current/phase-v-track-b-gate.md`, whose `missing` column names what each
+refusal waits on: `c-completion-6-of-18` (hidden-grader verdicts across all 18 Engine attempts),
+`c-completion-4-of-16` (hidden-grader verdicts for the 16 pre-screen attempts), `c-baseline-3-of-3`
+(matched-repeat Baseline attempts under the final prompt), `c-contemporaneous-screen-tie-2-of-2` (an outcome
+measure executable from transcripts), `c-nonrestore-0-of-6` (a completion verdict per non-restoring
+attempt), `c-restore-4-of-7` (a completion verdict per restoring attempt), `c-redirect-fixed-1-of-9` (a
+redirect-trap resolution classifier), `c-redirect-6-of-9` (a redirect-trap occurrence classifier),
+`c-phase4-denominator-6-of-10` (prompt-state membership for the pre-phase-4 chains), `c-engine-population`
+(a measure binding the population statement to an attempt set).
+
+No carrier lags its source — path existence, a hard failure — and the six `quote_drift` entries are
+published for review on the gate page rather than silently passed: five paraphrase the figure without its
+literal string, one is a hard line wrap.
+
+**Reopen decisions** (bound: at most one reopen per claim per reconciliation). `confirmed` and
+`not_derivable` records reopen nothing; 18 records leave every recorded phase decision standing.
+
+- **`c-destroyed-13-of-15` — not reopened.** It supported TE6's attribution of destructive-edit-then-restore
+  as a characterized Engine failure mechanism (`## Attribution`). The committed classifier is
+  transcript-level and finds 15 of 15 — broader, and in the same direction — so no support is withdrawn,
+  the classifier is not narrowed, and the published count is not restated.
+- **`c-restored-9-of-15` — reopened, once.** It supported TE6's trace-backed reading that the pattern is
+  "mostly, but not purely, productive recovery," which cites exactly "9 were restored before the phase
+  ended and 6 of those 9 completed." That derivation is ad hoc (cause 1) and the committed classifier
+  returns 3 of 15 under a different operation, so the reading may not be cited again until a narrowed
+  classifier or a restated claim exists. The reopen publishes this corrected record, spends the bound's
+  single reopen here, and authorizes no live spending.
+
+The **engine gap register** is published as `docs/current/phase-v-engine-gap-register.md`: four exploratory
+candidates, each with its measure, population, observed value and proposed change, and none entering a
+published claim or denominator.
+
+**Findings-bearing, on the test this design pre-committed for V3** — the Cycles table's "the inventory is
+exhausted, and the register names ≥1 engine candidate with its measure and population". What changed: the
+inventory is settled at 20 of 20 records, every refusal now names its missing artifact, the reopen decisions
+are made once on the record, the carrier audit runs, and the gate and register are published. V3 publishes no
+new status change — the two `claim_measure_mismatch` statuses were settled in V2a and are final here — so it
+rests on exhaustion rather than the object test above. **Track B's gate is published: V4–V6 may start.**
 
 ## Governance
 
@@ -324,8 +337,8 @@ claim it supported. Bounded so it cannot cascade:
 2. Corrections are recorded in place with dated blocks; the original text is not
    rewritten.
 3. Every carrier of a corrected claim **in this repository** is updated in the
-   **same commit** — the `index.md:234` staleness is the failure this prevents.
-   A cross-repo carrier follows the revision-recording rule below.
+   **same commit** — the `index.md:234` staleness is the failure this prevents —
+   and a cross-repo carrier follows the revision-recording rule below.
 4. `archive/` stays closed. It is evidence, never a live surface.
 5. One reopen per claim per reconciliation. A reopen publishes a corrected
    record and authorizes **no live spending**.
@@ -337,19 +350,13 @@ confirmation:
 1. Update that sketch to this design's V1–V6.
 2. Record this repository's design revision in the engine roadmap entry.
 3. Record the engine repository's resulting revision here in a dated block —
-   the two-way recording the preamble requires. Until both recordings exist,
-   the two roadmaps cannot be shown to agree.
+   the two-way recording the preamble requires.
 
-This is bookkeeping: no `src/` artifact, no test, and not in V1's Files list.
-
-**No new contrasts.** Track A may confirm or correct a published figure on
-either arm; it may not originate a figure no document published, and every row
-carries its population statement — including the asymmetry: Engine's 18 attempts
-were run adaptively, Baseline's 2–3 fresh. A rate that hides that is the error.
-The V3 engine gap register is the single scoped exception: its rows are
-exploratory engine candidates, each labelled `exploratory` and carrying its
-measure, population, and observed value; none may enter a published claim or
-denominator.
+**No new contrasts.** Track A confirms or corrects a published figure and never
+originates one; every row carries its population statement, including the
+asymmetry — Engine's 18 attempts were run adaptively, Baseline's 2–3 fresh — so
+a rate that hides that is the error. The register's `exploratory` rows stay the
+exception named above.
 
 **Currency.** V1 records the digest of every artifact it reads and the `HEAD`
 commit it read them under, per `AGENTS.md`'s currency rule, before measuring.
@@ -363,36 +370,30 @@ commit it read them under, per `AGENTS.md`'s currency rule, before measuring.
   a failure, when the artifact was never retained.
 - **Track A changes no engine behaviour.** It can end with no remedy tested and
   none proposed; that is the phase's declared first step, not a shortfall. The
-  cap and the findings test are what keep it from becoming the overnight-run
-  failure mode (`AGENTS.md`: four consecutive instrument cycles, no remedy
-  enabled, none tested).
+  cap and the findings test keep it out of the overnight-run failure mode
+  (`AGENTS.md`: four consecutive instrument cycles, no remedy enabled or tested).
 - **The census repair is instrument work.** It is recorded as debt, scoped to
-  what V2's measures need, and it is the second category `AGENTS.md` describes:
-  permitted when it blocks the measurement in hand.
+  what V2's measures need, and it is `AGENTS.md`'s second category: permitted
+  when it blocks the measurement in hand.
 
 ## Review round
 
-Reviewed 2026-09-11 by GLM 5.3 (`zai`) at `xhigh` thinking, against a frozen
-prompt at `/tmp/review-prompt.md`, on a working tree at `82da340`. Twelve
-findings; disposition recorded here rather than silently applied:
+Reviewed 2026-09-11 by GLM 5.3 (`zai`) at `xhigh` thinking on a working tree at `82da340`. Twelve
+findings, disposition recorded rather than silently applied:
 
-- **Accepted:** the claim inventory must precede tooling and include carriers;
-  `census.py` "already distinguishes" a rejected edit was **wrong** (corrected
-  above); the denominator binding is the real fix; Track A confirms or corrects
-  but does not originate; all four reopen bounds and the exit condition; the
-  citation, commit-count, doc-cap and cross-repo-bookkeeping corrections.
-- **Accepted with a scoping correction:** "review is the only QA" was
-  overstated; cause 5 now says forensic/interpretive numbers, cause 6 added.
-- **Resolved differently than proposed:** instead of merging V1+V2 or a
-  maintainer amendment, every Track A cycle publishes reconciliation findings
-  (the object test above); the maintainer accepted this on 2026-09-11, and V3
-  stays a separate close-out cycle.
+- **Accepted:** the claim inventory must precede tooling and include carriers; `census.py` "already
+  distinguishes" a rejected edit was **wrong** (corrected above); the denominator binding is the real
+  fix; Track A confirms or corrects but does not originate; all four reopen bounds and the exit
+  condition; the citation, commit-count, doc-cap and cross-repo-bookkeeping corrections.
+- **Accepted with a scoping correction:** "review is the only QA" was overstated; cause 5 now says
+  forensic/interpretive numbers, cause 6 added.
+- **Resolved differently than proposed:** instead of merging V1+V2 or a maintainer amendment, every
+  Track A cycle publishes reconciliation findings (the object test above); the maintainer accepted
+  this on 2026-09-11, and V3 stays a separate close-out cycle.
 
-**Maintainer verification, 2026-09-11.** A separate pass checked the design's
-load-bearing claims against the tree and retained artifacts. Two wrong
-attributions are corrected above: (F1) the `malformed` refusal was the
-adapter-marker header plus the vocabulary gap, not the multi-session shape;
-(F2) `census_root` could not discover the packet-route transcript, so discovery
-was folded into V2 product 3. Three nits were applied: the carrier-commit test
-scoped here, `verification_claim` reworded as a binding, and the cross-repo
-roadmap update made an explicit checklist item.
+**Maintainer verification, 2026-09-11.** A separate pass checked the design's load-bearing claims
+against the tree and retained artifacts. Two wrong attributions are corrected above: (F1) the
+`malformed` refusal was the adapter-marker header plus the vocabulary gap, not the multi-session
+shape; (F2) `census_root` could not discover the packet-route transcript, so discovery was folded
+into V2 product 3. Three nits were applied: the carrier-commit test scoped here, `verification_claim`
+reworded as a binding, and the cross-repo roadmap update made an explicit checklist item.

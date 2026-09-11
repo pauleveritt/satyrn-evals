@@ -285,3 +285,35 @@ def test_an_uncovered_measure_is_undecidable_not_no() -> None:
     measures = {measure.claim_id: measure for measure in measure_inventory(INVENTORY)}
 
     assert measures["c-completion-6-of-18"].result == "undecidable"
+
+
+def _summary_of(text: str) -> dict:
+    return {
+        "type": "turn_end",
+        "message": {"role": "assistant", "content": [{"type": "text", "text": text}]},
+    }
+
+
+def test_a_zero_failed_summary_is_a_pass_claim_not_a_failure_claim() -> None:
+    events = [*_self_test("c1", 0), _summary_of("All green: 4 passed, 0 failed")]
+    assert verification_claim(events) == "yes"
+
+
+def test_a_zero_passed_summary_is_a_failure_claim_not_a_pass_claim() -> None:
+    # The self-test passed, so a summary reporting 3 failed is a false claim.
+    events = [*_self_test("c1", 0), _summary_of("Result: 0 passed, 3 failed")]
+    assert verification_claim(events) == "no"
+
+
+def test_a_non_assistant_turn_end_is_not_read_as_the_summary() -> None:
+    events = [
+        *_self_test("c1", 1),
+        {
+            "type": "turn_end",
+            "message": {
+                "role": "user",
+                "content": [{"type": "text", "text": "===== 9 passed ====="}],
+            },
+        },
+    ]
+    assert verification_claim(events) == "undecidable"

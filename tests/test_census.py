@@ -1,7 +1,7 @@
 """The V16 pathology census: detectors, aggregation, and the no-void rule.
 
-`docs/superpowers/specs/2026-09-07-v16-pathology-census-design.md` is the
-confirmed design. Default tier: no model, no network, no subprocess --
+`archive/2026-09-07-pre-reset/docs/superpowers/specs/2026-09-07-v16-pathology-census-design.md`
+is the confirmed design. Default tier: no model, no network, no subprocess --
 every fixture here is a synthetic transcript built in-process.
 """
 
@@ -534,3 +534,15 @@ def test_census_root_discovers_the_packet_route_transcript(tmp_path: Path) -> No
 
     assert len(cells) == 1
     assert cells[0].unknown_tool == 0
+
+
+def test_a_rejected_edit_does_not_reset_the_stall_run() -> None:
+    events = [
+        _edit_start("c1"),
+        _edit_end("c1", "Could not find the exact text in app.py.", is_error=True),
+        *_events(
+            _start("c2", "read", {"path": "app.py"}),
+            _end("c2", "read", result=_ok_result("contents")),
+        ),
+    ]
+    assert detect_stall(events) >= 2
