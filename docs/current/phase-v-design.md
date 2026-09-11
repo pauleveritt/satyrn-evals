@@ -341,6 +341,11 @@ confirmation:
 3. Record the engine repository's resulting revision here in a dated block —
    the two-way recording the preamble requires.
 
+**Done, 2026-09-11.** `satyrn-engine`'s Phase V row is updated to this design's
+V1–V6 and records `satyrn-evals@2d20aac`; the engine repository's revision
+`satyrn-engine@fd92eca` records the reverse. Both recordings exist, so the two
+roadmaps cannot disagree silently.
+
 **No new contrasts.** Track A confirms or corrects a published figure and never
 originates one; every row carries its population statement, including the
 asymmetry — Engine's 18 attempts were run adaptively, Baseline's 2–3 fresh — so
