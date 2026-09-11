@@ -110,6 +110,18 @@ past artifact. Archived material does not set current policy.
   this `n` against the 50% base rate. **Adopted 2026-09-10 into
   `agentclinic-complaint-lifecycle` only** — see that task's own
   `QUALIFICATION-NOTE.md`; `agentclinic-session-phased` is untouched.
+- [Pre-run record: TE4 guardrail re-verification](te4-guardrail-reverification-pre-run-record.md)
+  freezes 2 Engine attempts on the full, guardrail-amended task —
+  phase 4 has never been reached live before, on either route, and no
+  turn ceiling exists yet since Engine has completed this task zero
+  times. Authorizes nothing yet.
+- [Guardrail re-verification — result](te4-guardrail-reverification-result.md)
+  reports both attempts reaching phase 4 for the first time ever, both
+  failing there for two different real reasons (an `id`-field-ordering
+  ambiguity; a redirect-following trap in the model's own test,
+  correctly caught by self-test but misdiagnosed) — neither a repeat
+  of the phase-2-board pathology, which held clean 2 of 2. No ceiling
+  proposed; TE4's screen still not authorized.
 - [Pre-run record: run_self_test live verification](self-test-tool-live-verification-pre-run-record.md)
   proposes one bounded `pi` invocation proving the self-test tool is
   reachable and its content legible, outside every TE denominator, and
@@ -162,6 +174,8 @@ te4-route-proof-result
 phase-2-board-runaway-investigation
 phase2-guardrail-candidate-pre-run-record
 phase2-guardrail-candidate-result
+te4-guardrail-reverification-pre-run-record
+te4-guardrail-reverification-result
 self-test-tool-live-verification-pre-run-record
 first-engine-comparison-plan
 first-smoke-run-record

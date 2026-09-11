@@ -229,41 +229,27 @@ capture gap is closed too** (`adapters/pi_session.py` retains
 `turn_start`); already-retained pre-fix transcripts still can't answer
 it, named and tested, not hidden.
 
-**HP8 folds into TE2, decided 2026-09-10** (see the HP8 row) — one screen
-for both, not a duplicate experiment. Its frozen questions: do both
-configurations complete the roadmap at two attempts each, and does Engine
-use fewer total started turns without sacrificing required behavior —
-judged by hidden checks *and* a public-test-quality review, per HP7's
-own Finding 1 (an accepted chain quietly dropped public regression
-tests). Decides whether an easy-work confirmation (TE3) is worth running;
-does not itself establish superiority.
-
-**Run and corrected 2026-09-10** — numbers and findings in the HP8 row
-above and the [result doc](docs/current/te2-hp8-screen-result.md); not
-repeated here. **TE3 is not pursued from this screen, and not reopened
-without new evidence** — not formally closed, since the runaway loop's
-cause is undiagnosed; a narrow, separately authorized amended-treatment
-screen could put the easy claim back on the table on its own new
-grounds later, a distinct future decision, not a reason to hold this
-one open as active work. An unfavorable screen is a legitimate
-completion, not an invitation to re-run. **TE4 scoping started
-2026-09-10** under the plan's own rule that a negative easy-work result
-does not by itself rule out the harder claim.
+**HP8 folds into TE2, decided 2026-09-10** (see the HP8 row) — one
+screen for both, not a duplicate experiment, deciding whether an
+easy-work confirmation (TE3) is worth running, not superiority. Run
+and corrected — numbers in the HP8 row and its
+[result doc](docs/current/te2-hp8-screen-result.md), not repeated
+here. **TE3 not pursued, not reopened without new evidence** — not
+formally closed, since the runaway's cause was then undiagnosed; an
+unfavorable screen is a legitimate completion, not an invitation to
+re-run. **TE4 scoping started** under the plan's own rule that a
+negative easy-work result does not by itself rule out the harder
+claim.
 
 **TE4, offline witnesses built and proven, 2026-09-10.**
 [Design](docs/current/te4-harder-roadmap-design.md) qualifies the
 starting candidate — stable complaint identity plus a resolve/reopen
 lifecycle — as one new phase on sibling task
-`agentclinic-complaint-lifecycle` (phases 1–3 reused verbatim). The one
-real preservation conflict — the existing hidden check constructs
-`Complaint` positionally — is resolved by requiring `id`/`status` after
-the two required fields (originally `kw_only`, corrected below to the
-weaker, correct behavioral requirement). Grader tests, six fixtures and
+`agentclinic-complaint-lifecycle` (phases 1–3 reused verbatim). Grader
+tests, six fixtures and
 [`QUALIFICATION-NOTE.md`](src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md)
-are built and proven via
-`tests/integration/test_complaint_lifecycle_qualification.py` (8
-tests). Full suite (1838 tests) and doc lint pass. No live
-inference — this proves the task is a fair **fixture**, not a
+are proven via 8 qualification tests; full suite and doc lint pass. No
+live inference — proves the task a fair **fixture**, not a
 **workload**; TE4's own screen needs its own separate authorization.
 
 **Route proof [run](docs/current/te4-route-proof-result.md) and
@@ -272,25 +258,39 @@ Baseline-01 completed all four phases; its one phase-4 failure was a
 grader defect (asserted `kw_only`, not the positional-construction
 behavior it protects) — **fixed**, re-verified 18/18. Engine-01
 voided — phase-2-board timed out with TE2/HP8's own Engine-01
-signature (2 of 4 real Engine phase-2-board attempts have now run
-away, 2 completed in 8–9 turns; Baseline 9 of 9). The mechanism, found
-by comparing all four: both runaways follow a destructive `edit`
-deleting the phase-1 home route, converging on a file with an
-unimported `Request` neither catches since `run_self_test` is never
-called — correlation across 2 pairs, not proven causation, no per-turn
+signature (2 of 4 real attempts now run away, 2 completed in 8–9
+turns; Baseline 9 of 9). Mechanism, found by comparing all four: both
+runaways follow a destructive `edit` deleting the phase-1 home route,
+converging on a file with an unimported `Request` neither catches
+since `run_self_test` is never called — correlation across 2 pairs,
+not proven causation, no per-turn
 model input retained. No ceiling declared.
 
 **Guardrail [candidate](docs/current/phase2-guardrail-candidate-result.md)
-tested then adopted into `agentclinic-complaint-lifecycle` only.** A
+tested then adopted into `agentclinic-complaint-lifecycle` only** — a
 one-sentence phase-2-board prompt addition (insert, don't replace, the
-route). Probe: **3 of 3 Engine attempts completed cleanly** — 2 skipped
-`edit`, the one that used it did so additively, the branch the
-runaway's destructive counterpart never took; not conclusive alone
-against the 50% base rate (p=0.125), but zero destructive edits in
-three chances is stronger than the count. Outside TE4's confirmation
-and every turn-efficiency denominator. `agentclinic-session-phased` is
-untouched, keeping HP7/TE1/TE2/HP8's digests accurate; new digests in
-[`QUALIFICATION-NOTE.md`](src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md), no new inference.
+route). Probe: 3 of 3 Engine attempts clean, 2 skipped `edit`, the one
+that used it did so additively — the branch the runaway never took;
+not conclusive alone against the 50% base rate (p=0.125), but zero
+destructive edits in three chances is stronger than the count.
+`agentclinic-session-phased` untouched, keeping HP7/TE1/TE2/HP8's
+digests accurate; new digests in
+[`QUALIFICATION-NOTE.md`](src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md).
+**[Re-verification run and reported](docs/current/te4-guardrail-reverification-result.md),
+2026-09-10.** Both Engine attempts reached phase 4 — first time ever,
+either route — with phases 1–3 clean both times (**phase-2-board now
+5 of 5 clean since the guardrail**, vs. 2 of 4 before). Phase 4 failed
+twice, for two different real reasons, neither the phase-2-board
+pathology: Engine-01 rejected by the hidden grader (16/18) for placing
+`id` positionally before `agent_name`/`text` — the exact ambiguity
+`agentclinic-session-phased`'s own `QUALIFICATION-NOTE.md` had named
+as unprobed risk, now observed live; Engine-02 voided at a 600s
+timeout after `run_self_test` correctly caught a real bug (the
+model's own test omitted `follow_redirects=False`, the family's
+known trap) but its fix attempt was a no-op tried twice. No ceiling
+proposed — Engine has completed the full task zero times. Neither a
+prompt tightening for the `id` ambiguity nor TE4's own screen is
+proposed or authorized here.
 
 HP remains responsible for the composed, retained, regradable route; TE does
 not absorb unfinished HP requirements or reopen the paused single-task tuning

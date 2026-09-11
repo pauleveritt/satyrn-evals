@@ -24,8 +24,14 @@ the TE2/HP8 screen, each an already-accepted historical record citing
 its own frozen phase-2-board digest — is untouched, deliberately, so
 none of those records' digests go stale. `phase-2-board`'s new prompt
 digest is `362480e8681f118a` (1774 bytes, was `8bc6457681df6448`,
-1622); the task tree sha256 is `da141eb3c87f86a571eb95f8ea4ac3a8341aea4516b02781deac8e9c8285c58f`.
-The [route proof](../../../../docs/current/te4-route-proof-result.md)
+1622) — this is the number to check against prior records, since it
+lives in `session.json`, not here. **The task tree sha256 is
+deliberately not quoted in this file**: that digest sweeps this whole
+directory, including this note, so any number written here about its
+own directory's digest is wrong the moment this sentence is added —
+recompute it fresh, or read whichever pre-run record cites it for a
+specific run. The
+[route proof](../../../../docs/current/te4-route-proof-result.md)
 and its own pre-run record predate this change and correctly cite the
 pre-amendment digests for the run they document — they are not
 retroactively edited. All eight qualification-suite checks re-pass
