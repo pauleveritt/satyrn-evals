@@ -131,6 +131,36 @@ def _engine_events(
     )
 
 
+def _prompt_fingerprint(chain: Mapping[str, object]) -> str | None:
+    """The full packet of every phase, hashed deterministically.
+
+    Two attempts under the same prompt state share the fingerprint. ``None``
+    when a phase lacks a readable packet, so the fingerprint is only asserted
+    for chains that record the full prompt content. A phase-2-board runaway
+    that retained only phase-1/phase-2 packets hashes only those phases, which
+    are shared with the superseded guardrail prompt, so its prompt state is
+    not distinguishable by this fingerprint.
+
+    Field scope (a limit, not a semantic summary): the fingerprint is the
+    entire retained packet (``json.dumps(packet, sort_keys=True)``), so any
+    packet-field change -- not only an objective/facts change -- separates two
+    prompt states, and a chain that retained fewer phases cannot match a
+    longer one.
+    """
+    phases = chain.get("phases")
+    if not isinstance(phases, list) or not phases:
+        return None
+    digest = hashlib.sha256()
+    for phase in phases:
+        if not isinstance(phase, Mapping):
+            return None
+        packet = phase.get("packet")
+        if not isinstance(packet, Mapping):
+            return None
+        digest.update(json.dumps(packet, sort_keys=True).encode("utf-8"))
+    return digest.hexdigest()
+
+
 def _phase4_reaching_engine_attempts(runs_root: Path) -> tuple[AttemptSpec, ...]:
     """Every Engine attempt whose chain record declares the full 4 phases.
 
@@ -152,6 +182,40 @@ def _phase4_reaching_engine_attempts(runs_root: Path) -> tuple[AttemptSpec, ...]
             and phase.get("step_id") == "phase-4-resolve-reopen"
             for phase in phases
         ):
+            continue
+        run_dir = chain_path.parent.name
+        specs.append(AttemptSpec(run_dir, run_dir, "engine"))
+    return tuple(specs)
+
+
+def _current_prompt_attempts(runs_root: Path) -> tuple[AttemptSpec, ...]:
+    """The Engine attempts under the current (final) prompt, deterministically.
+
+    The current prompt is the prompt state the final screen's two Engine
+    attempts ran under (te6's "identical, final prompt state"); an attempt
+    belongs to it iff its chain record's full packet fingerprint matches
+    theirs. An attempt that stopped before phase 4 retained only
+    phase-1/phase-2 packets, whose content is shared with the superseded
+    guardrail prompt, so its membership is not derivable and is *not* guessed
+    here -- the caller names that gap instead.
+    """
+    screen_fingerprints: set[str] = set()
+    for spec in ATTEMPTS:
+        if spec.arm != "engine" or "te4-screen" not in spec.run_dir:
+            continue
+        chain = _load_json(runs_root / spec.run_dir / "chain.json")
+        if chain is None:
+            continue
+        fingerprint = _prompt_fingerprint(chain)
+        if fingerprint is not None:
+            screen_fingerprints.add(fingerprint)
+    if len(screen_fingerprints) != 1:
+        return ()
+    current = next(iter(screen_fingerprints))
+    specs: list[AttemptSpec] = []
+    for chain_path in sorted(runs_root.glob("*/chain.json")):
+        chain = _load_json(chain_path)
+        if chain is None or _prompt_fingerprint(chain) != current:
             continue
         run_dir = chain_path.parent.name
         specs.append(AttemptSpec(run_dir, run_dir, "engine"))
@@ -193,6 +257,47 @@ def _count_measure(
             f"derived {yes} yes, {undecided} undecidable, of {len(results)} "
             f"{action} (published {published})",
             f"operationalization gap: {gap}",
+        ),
+    )
+
+
+def denominator_binding(
+    attempts: tuple[str, ...], phase4: tuple[str, ...]
+) -> ClaimMeasure:
+    """The `6 of 8` -> `6 of 10` correction as an executable binding.
+
+    Names the full attempt population and the phase-4-reaching subset it was
+    narrowed to. Confirms only the published denominator's shape -- a
+    population of 10 with a phase-4-reaching subset of 8 -- so any other
+    non-empty set is `undecidable`, never a guessed `yes`. The completion
+    count is *read*, never re-derived: a hidden-grader verdict is not a
+    transcript-local fact.
+    """
+    if not attempts:
+        return ClaimMeasure(
+            claim_id="c-phase4-denominator-6-of-10",
+            measure="denominator_binding",
+            population="0 attempts",
+            result="undecidable",
+            evidence=("no attempts supplied",),
+        )
+    if len(attempts) == 10 and len(phase4) == 8:
+        return ClaimMeasure(
+            claim_id="c-phase4-denominator-6-of-10",
+            measure="denominator_binding",
+            population=f"{len(attempts)} attempts under the current prompt",
+            result="yes",
+            evidence=(f"phase-4-reaching subset: {len(phase4)} of {len(attempts)}",),
+        )
+    return ClaimMeasure(
+        claim_id="c-phase4-denominator-6-of-10",
+        measure="denominator_binding",
+        population=f"{len(attempts)} attempts under the current prompt",
+        result="undecidable",
+        evidence=(
+            f"derived {len(phase4)} phase-4-reaching of {len(attempts)} "
+            "attempts, not the published 8-of-10 phase-4-reaching shape the "
+            "6 of 10 denominator binds",
         ),
     )
 
@@ -283,6 +388,58 @@ def measure_inventory_for_run(
         result=fabricated,
         evidence=fabricated_evidence,
     )
+
+    # The `6 of 8` -> `6 of 10` denominator binding. The correction's
+    # population is all 10 attempts under the current prompt: the enumerated
+    # phase-4-reaching attempts plus 2 phase-2-board runaways
+    # (p4guardrail-engine-02, recurrence-engine-02). The runaways retained
+    # only phase-1/phase-2 packets, byte-identical between the superseded
+    # guardrail prompt and the current prompt, so their membership is not
+    # derivable from retained artifacts -- the confirmed binding below needs
+    # all 10 enumerable with the published 8 phase-4-reaching subset, which is
+    # unreachable here, so the record names the gap over the honest enumerable
+    # set, never a guessed 10.
+    current_prompt = _current_prompt_attempts(runs_root)
+    current_phase4 = tuple(
+        spec for spec in current_prompt
+        if spec.run_dir in {p.run_dir for p in phase4}
+    )
+    if current_prompt and len(current_prompt) == 10:
+        measures["c-phase4-denominator-6-of-10"] = denominator_binding(
+            tuple(spec.run_dir for spec in current_prompt),
+            tuple(spec.run_dir for spec in current_phase4),
+        )
+    elif current_prompt:
+        measures["c-phase4-denominator-6-of-10"] = ClaimMeasure(
+            claim_id="c-phase4-denominator-6-of-10",
+            measure="denominator_binding",
+            population=(
+                f"{len(current_prompt)} of 10 attempts under the current "
+                "prompt (phase-4-reaching subset enumerable; pre-phase-4 "
+                "chains not enumerable)"
+            ),
+            result="undecidable",
+            evidence=(
+                "all pre-phase-4 chains are non-enumerable from retained "
+                "artifacts (the published correction counts two of them); a "
+                "chain that stopped before phase 4 retained only "
+                "phase-1/phase-2 packets, whose content is byte-identical "
+                "between the superseded guardrail prompt and the current "
+                "prompt, so its current-prompt membership is not derivable "
+                "from retained artifacts",
+            ),
+        )
+    else:
+        measures["c-phase4-denominator-6-of-10"] = ClaimMeasure(
+            claim_id="c-phase4-denominator-6-of-10",
+            measure="denominator_binding",
+            population="10 attempts under the current prompt, not 8",
+            result="undecidable",
+            evidence=(
+                "the current-prompt population could not be enumerated from "
+                "the retained artifacts",
+            ),
+        )
 
     return tuple(
         measures[record.id] for record in records if record.level == "claim"

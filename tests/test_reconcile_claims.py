@@ -18,7 +18,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 from reconcile_claims import (  # noqa: E402  # scripts/ added via sys.path above
     AttemptSpec,
     _count_measure,
+    _current_prompt_attempts,
     _phase4_reaching_engine_attempts,
+    _prompt_fingerprint,
+    denominator_binding,
     measure_inventory_for_run,
     render_report,
     validate_root,
@@ -27,6 +30,28 @@ from reconcile_claims import (  # noqa: E402  # scripts/ added via sys.path abov
 
 def _spec(label: str, arm: str) -> AttemptSpec:
     return AttemptSpec(label=label, run_dir=label, arm=arm)
+
+
+def _packet(
+    objective: str = "ship it", facts: Sequence[str] = ("f1", "f2")
+) -> dict:
+    return {"objective": objective, "facts": list(facts)}
+
+
+def _chain(*packets: dict | None) -> dict:
+    phases = []
+    for index, packet in enumerate(packets, start=1):
+        phase: dict[str, object] = {"step_id": f"phase-{index}"}
+        if packet is not None:
+            phase["packet"] = packet
+        phases.append(phase)
+    return {"phases": phases}
+
+
+def _write_chain(runs_root: Path, run_dir: str, chain: dict) -> None:
+    run = runs_root / run_dir
+    run.mkdir(parents=True)
+    (run / "chain.json").write_text(json.dumps(chain), encoding="utf-8")
 
 
 def test_render_report_names_every_attempt_and_its_state() -> None:
@@ -96,6 +121,151 @@ def _count(results: Sequence[str]) -> ClaimMeasure:
         published="13 of 15",
         action="action description",
         gap="gap description",
+    )
+
+
+def test_denominator_binding_names_the_population_and_the_phase4_subset() -> None:
+    """`6 of 8` -> `6 of 10`: the population names the attempt count, the
+    evidence names the phase-4-reaching subset."""
+    measure = denominator_binding(
+        tuple(f"a{i}" for i in range(10)),
+        tuple(f"a{i}" for i in range(8)),
+    )
+
+    assert measure.population == "10 attempts under the current prompt"
+    assert measure.result == "yes"
+    assert measure.evidence == ("phase-4-reaching subset: 8 of 10",)
+
+
+def test_denominator_binding_an_empty_set_is_undecidable_never_no() -> None:
+    """Absent evidence is a named state, never a silent `no`."""
+    measure = denominator_binding((), ())
+
+    assert measure.result == "undecidable"
+    assert measure.evidence == ("no attempts supplied",)
+
+
+def test_denominator_binding_a_mismatched_subset_is_undecidable() -> None:
+    """A population that is not exactly 10-with-8-phase-4 is never a
+    confirmed `yes`."""
+    measure = denominator_binding(
+        tuple(f"a{i}" for i in range(10)),
+        tuple(f"a{i}" for i in range(7)),
+    )
+
+    assert measure.result == "undecidable"
+    assert "7" in measure.evidence[0]
+    assert "10" in measure.evidence[0]
+
+
+# --- _prompt_fingerprint / _current_prompt_attempts (V2b derivation) ---------
+
+
+def test_prompt_fingerprint_matches_identical_packets() -> None:
+    assert _prompt_fingerprint(_chain(_packet())) == _prompt_fingerprint(
+        _chain(_packet())
+    )
+
+
+def test_prompt_fingerprint_separates_a_diverging_objective() -> None:
+    assert _prompt_fingerprint(
+        _chain(_packet("ship it"))
+    ) != _prompt_fingerprint(_chain(_packet("ship it differently")))
+
+
+def test_prompt_fingerprint_separates_a_diverging_fact() -> None:
+    assert _prompt_fingerprint(
+        _chain(_packet("ship it", ("f1",)))
+    ) != _prompt_fingerprint(_chain(_packet("ship it", ("f2",))))
+
+
+def test_prompt_fingerprint_a_two_phase_chain_never_matches_a_four_phase_anchor() -> None:
+    two = _chain(_packet("ship it"), _packet("board it"))
+    four = _chain(
+        _packet("ship it"),
+        _packet("board it"),
+        _packet("add it"),
+        _packet("resolve it"),
+    )
+
+    assert _prompt_fingerprint(two) != _prompt_fingerprint(four)
+
+
+def test_prompt_fingerprint_a_missing_packet_is_none_not_guessed() -> None:
+    assert _prompt_fingerprint(_chain(None)) is None
+
+
+def test_current_prompt_attempts_aggregates_matching_fingerprints(
+    tmp_path: Path,
+) -> None:
+    shared = _chain(
+        _packet("ship it"),
+        _packet("board it"),
+        _packet("add it"),
+        _packet("resolve it"),
+    )
+    _write_chain(tmp_path, "2026-09-11-te4-screen-engine-01", shared)
+    _write_chain(tmp_path, "2026-09-11-te4-screen-engine-02", shared)
+    _write_chain(tmp_path, "2026-09-11-round2-engine-01", shared)
+
+    specs = _current_prompt_attempts(tmp_path)
+
+    assert tuple(spec.run_dir for spec in specs) == (
+        "2026-09-11-round2-engine-01",
+        "2026-09-11-te4-screen-engine-01",
+        "2026-09-11-te4-screen-engine-02",
+    )
+
+
+def test_current_prompt_attempts_diverging_screen_prompts_yield_nothing(
+    tmp_path: Path,
+) -> None:
+    _write_chain(
+        tmp_path,
+        "2026-09-11-te4-screen-engine-01",
+        _chain(
+            _packet("ship it"),
+            _packet("board it"),
+            _packet("add it"),
+            _packet("resolve it"),
+        ),
+    )
+    _write_chain(
+        tmp_path,
+        "2026-09-11-te4-screen-engine-02",
+        _chain(
+            _packet("ship it differently"),
+            _packet("board it"),
+            _packet("add it"),
+            _packet("resolve it"),
+        ),
+    )
+
+    assert _current_prompt_attempts(tmp_path) == ()
+
+
+def test_current_prompt_attempts_excludes_a_chain_with_a_missing_packet(
+    tmp_path: Path,
+) -> None:
+    shared = _chain(
+        _packet("ship it"),
+        _packet("board it"),
+        _packet("add it"),
+        _packet("resolve it"),
+    )
+    _write_chain(tmp_path, "2026-09-11-te4-screen-engine-01", shared)
+    _write_chain(tmp_path, "2026-09-11-te4-screen-engine-02", shared)
+    _write_chain(
+        tmp_path,
+        "2026-09-11-round2-engine-01",
+        _chain(_packet("ship it"), _packet("board it"), None),
+    )
+
+    specs = _current_prompt_attempts(tmp_path)
+
+    assert tuple(spec.run_dir for spec in specs) == (
+        "2026-09-11-te4-screen-engine-01",
+        "2026-09-11-te4-screen-engine-02",
     )
 
 

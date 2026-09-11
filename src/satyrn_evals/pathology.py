@@ -39,7 +39,15 @@ EVENT_TYPES = frozenset(
 # precondition 2 failed. An update is a STREAMING PARTIAL of an execution
 # already bracketed by its start/end pair, so it is recognised and counted as
 # NOTHING -- counting it would inflate tool_calls by roughly 2x per call.
-TOOL_NAMES = frozenset({"read", "bash", "edit", "write"})
+
+# `run_self_test` added 2026-09-11 (V2b cause 1). The packet route's
+# implementer adapter registers that tool (``pi_implementer.py``'s
+# ``RUN_SELF_TEST_TOOL_NAME``), and the HP7 live proof shows Pi calling it
+# in every phase, so every packet-route transcript read `unmeasured:
+# unknown_event` at the first call -- the vocabulary was blind to the tool
+# the route exists to exercise. Like `tool_execution_update` it is
+# recognised and counted as an ordinary execution.
+TOOL_NAMES = frozenset({"read", "bash", "edit", "write", "run_self_test"})
 FILE_TOOLS = frozenset({"read", "edit", "write"})
 WRITE_TOOLS = frozenset({"edit", "write"})
 SHELL_TOOLS = frozenset({"bash"})
@@ -47,7 +55,7 @@ RUNNER_NAMES = frozenset({"pytest"})
 
 type PathologyReason = Literal[
     "absent", "empty", "unparseable", "unsupported_version",
-    "unknown_event", "malformed", "partial",
+    "unknown_event", "malformed", "multi_session", "partial",
 ]
 
 
@@ -108,8 +116,23 @@ def count_transcript(text: str, *, had_patch: bool) -> CellPathology:
         return _unmeasured("unparseable")
     if not all(isinstance(event, dict) for event in events):
         return _unmeasured("unparseable")
+    # The packet route's adapter interleaves its own bookkeeping lines with
+    # the stream -- `{"adapter_marker": "turn_start", "index": 0}`, carrying
+    # no `type` key at all. They are not events and are dropped here, before
+    # the header rule can read one as a missing session header.
+    events = [event for event in events if "type" in event]
+    if not events:
+        return _unmeasured("empty")
     if (reason := _header_ok(events)) is not None:
         return _unmeasured(reason)
+    # The packet route appends a fresh session to the same retained file for
+    # each phase, so one file holds several concatenated sessions. That is
+    # the harness's own append, not corruption: it is named before the
+    # vocabulary and structure rules run, because a second header otherwise
+    # surfaces as their symptom (`malformed`, from the duplicate agent_end)
+    # rather than as its cause.
+    if sum(1 for event in events if event.get("type") == "session") > 1:
+        return _unmeasured("multi_session")
     if (reason := _vocabulary_ok(events)) is not None:
         return _unmeasured(reason)
     if (reason := _structure_ok(events)) is not None:

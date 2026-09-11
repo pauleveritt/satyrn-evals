@@ -96,14 +96,9 @@ instrument cannot read the Engine arm.
   no inference and no live spending, and it cannot be satisfied by running
   another attempt.
 - **Not a general "improve the instrument" program.** Track A is capped at
-  three cycles, and each cycle must end in published findings (below). The
-  original V1 deliverable — name the next-highest-value engine gap — is
-  *delivered by* Track A: the leading candidate is the fabricated-verification
-  finding, and V2's `verification_claim` measure binds that published finding to
-  the population it belongs to — the 18 retained attempts — rather than leaving
-  `n=1` as an unscoped anecdote. This is confirmation of a published claim, not
-  a new figure: the measure reports how the claim stands across its population,
-  and each row carries that population statement.
+  three cycles, and each must end in published findings. The V1 deliverable —
+  name the next-highest-value engine gap — is delivered by Track A's findings;
+  each is a confirmation or correction of a published figure, never a new one.
 - **Not a new comparison.** Track A may not originate a new figure or a new
   Engine-vs-Baseline contrast. It confirms or corrects *published* figures only.
 - **Not a remedy.** Nothing here changes the engine. At the phase level Track A
@@ -189,23 +184,19 @@ published per-phase values).
 **Deliberately not in V1:** the claim-level measures, the census/pathology
 repair, and any figure the ledger cannot settle. Those are V2's.
 
-**V1 reconciled, 2026-09-11.** Seven of the inventory's 20 records now carry
-a status; the other 13 are `claim`-level and stay `unreconciled` for V2. All
-seven `unit` records are `confirmed`: the per-phase ledger recomputes each to
-its published value, `corrected` is 0 and `not_derivable` is 0, so the
-zero-corrections reading applies — the published unit-level numbers hold
+**V1 reconciled, 2026-09-11.** Seven of the inventory's 20 records now carry a
+status; the other 13 are `claim`-level for V2. All seven `unit` records are
+`confirmed`: the per-phase ledger recomputes each to its published value
+(`corrected` 0, `not_derivable` 0) — the published unit-level numbers hold
 under committed derivation. The ledger covers eight retained attempts, not
 six: `u-completion-turn-distribution`'s population is the 4 recorded Engine
-completions, two of which are the round-2 attempts, and a confirmation the
-committed command could not reproduce would be the pathology this cycle
-exists to fix. V1 is findings-bearing by the object test above: it publishes
-seven status changes and corrects `index.md:234`, the stale carrier named in
-cause 4, in the same tree as the regenerated
-`docs/current/phase-v-claim-inventory.md`. Per the Currency rule above, that
-ledger records the `HEAD` revision it was read under and the sha256 of every
-artifact it read: the generated report carries a `**HEAD:**` line and an
-`## Artifact digests (sha256)` section naming each existing attempt transcript
-and its chain or session-record sister.
+completions, two of which are the round-2 attempts. V1 is findings-bearing by
+the object test: it publishes seven status changes and corrects `index.md:234`,
+the stale carrier named in cause 4, in the same tree as the regenerated
+`docs/current/phase-v-claim-inventory.md`. Per the Currency rule, that ledger
+records the `HEAD` revision it was read under and the sha256 of every artifact
+it read, in the generated report's `**HEAD:**` and `## Artifact digests`
+sections.
 
 ### V2 — Claim-level measures and the denominator binding
 
@@ -273,9 +264,6 @@ zero. Three measures are wired:
   published 9 of 15 — **`claim_measure_mismatch`**.
 - `c-fabricated-report-n1` (`verification_claim`, screen-engine-01): `no`
   (summary "2 passed" over last `run_self_test` exit 1) — `confirmed`.
-  Superseding the V2 bullet above, V2a binds the published n=1 finding to that
-  attempt and declines an 18-attempt prevalence count: no document publishes
-  it, breaking "No new contrasts"; V3 decides whether one is warranted.
 
 **Product 1 descoped to V2b.** V2 product 1 — the `6 of 8` → `6 of 10` denominator binding — is not derived executably in V2a and is descoped to V2b, where the `chain.json` enumeration already exists; it is not silently omitted.
 
@@ -291,6 +279,31 @@ the route-specific event, or restate the published claims.
 The 13 claim records now carry **1 `confirmed`**, **2 `claim_measure_mismatch`**,
 **10 `not_derivable`**, **0** `corrected`/`unreconciled`; with the 7 unit records
 the tally is **8 `confirmed`**. No V2a classifier covers the 10 `not_derivable` measures: `completion_rate`, `population statement`, `redirect_trap_resolution`, `redirect_trap_occurrence`, `denominator_binding` — V3 findings, not zeros.
+
+**V2b reconciled, 2026-09-11.** Two parts landed: the census/pathology repair
+(product 3) and the denominator binding (product 1, deferred from V2a).
+
+**Repair.** `census.py`'s `KNOWN_TOOL_NAMES` gains `run_self_test`;
+`detect_rejected_edit` splits a *rejected* edit (anchor mismatch or schema
+refusal) from a true no-op, so `noop_edit` is unambiguous; `census_root` also
+discovers the packet route's `.satyrn-implementer-transcript.jsonl`.
+`pathology.py` accepts the Engine arm's adapter-marker header and its
+multi-session shape. All 24 packet-route transcripts now read as
+`multi_session` with `unknown_tool` 0.
+
+**Denominator binding — `not_derivable`.** The `6 of 8` → `6 of 10` correction
+needs the "attempts under the current prompt" population. The 8 phase-4-reaching
+Engine attempts under the current prompt are enumerable deterministically: their
+chain records' full four-phase packet fingerprint matches the final screen's.
+The two phase-2-board runaways the correction names (`p4guardrail-engine-02`,
+`recurrence-engine-02`) retained only phase-1/phase-2 packets, whose content is
+byte-identical between the superseded guardrail prompt and the current prompt,
+so their prompt-state membership is not derivable from retained artifacts — only
+from run directory names, which the reconciliation refuses to read as evidence.
+`c-phase4-denominator-6-of-10` therefore stays `not_derivable`, naming the
+missing prompt-state enumeration for those two runaways; the published `6 of 10`
+denominator cannot be re-established, so the figure is neither reproduced nor
+contradicted. V2b is **instrument only**, 2026-09-11: it changed no inventory status, so by the object test above it is the first consecutive instrument-only piece and V3's obligation to publish a status change is binding (a second consecutive instrument-only piece stops the loop).
 
 ### V3 — Close-out
 
@@ -333,15 +346,12 @@ confirmation:
    the two-way recording the preamble requires. Until both recordings exist,
    the two roadmaps cannot be shown to agree.
 
-This is bookkeeping: it has no `src/` artifact and no test, and it must not
-appear in V1's Files list.
+This is bookkeeping: no `src/` artifact, no test, and not in V1's Files list.
 
 **No new contrasts.** Track A may confirm or correct a published figure on
-either arm. It may not originate a figure no document published, and every
-row it produces carries its population statement — including the asymmetry:
-Engine's 18 attempts were run adaptively, each fix motivated by the previous
-batch's failure, against Baseline's 2–3 fresh attempts. A rate that hides that
-is the error the rule exists to prevent.
+either arm; it may not originate a figure no document published, and every row
+carries its population statement — including the asymmetry: Engine's 18 attempts
+were run adaptively, Baseline's 2–3 fresh. A rate that hides that is the error.
 
 **Currency.** V1 records the digest of every artifact it reads and the `HEAD`
 commit it read them under, per `AGENTS.md`'s currency rule, before measuring.
@@ -369,32 +379,22 @@ prompt at `/tmp/review-prompt.md`, on a working tree at `82da340`. Twelve
 findings; disposition recorded here rather than silently applied:
 
 - **Accepted:** the claim inventory must precede tooling and include carriers;
-  my claim that `census.py` "already distinguishes" a rejected edit was **wrong**
-  and is corrected above; the denominator binding, not the classifiers, is the
-  real fix for the most expensive error; `census.py` is the wrong home for the
-  measures; Track A may confirm or correct but not originate; the fixture
-  provenance gap; all four reopen bounds; the exit condition, including the
-  zero-corrections case; and the citation, commit-count, doc-cap and
-  cross-repo-bookkeeping corrections.
+  `census.py` "already distinguishes" a rejected edit was **wrong** (corrected
+  above); the denominator binding is the real fix; Track A confirms or corrects
+  but does not originate; all four reopen bounds and the exit condition; the
+  citation, commit-count, doc-cap and cross-repo-bookkeeping corrections.
 - **Accepted with a scoping correction:** "review is the only QA" was
-  overstated — committed QA exists for run-time bookkeeping. Cause 5 now says
-  forensic and interpretive numbers specifically, and the sixth cause (claims
-  have no home but prose) was added.
-- **Resolved differently than proposed:** for the two-consecutive-instrument
-  conflict, the review offered merging V1+V2 or a maintainer amendment. A third
-  option is adopted — every Track A cycle publishes reconciliation findings,
-  with the object test above — and the maintainer accepted it on 2026-09-11.
-  V3 is kept as a separate close-out cycle by the same decision.
+  overstated; cause 5 now says forensic/interpretive numbers, cause 6 added.
+- **Resolved differently than proposed:** instead of merging V1+V2 or a
+  maintainer amendment, every Track A cycle publishes reconciliation findings
+  (the object test above); the maintainer accepted this on 2026-09-11, and V3
+  stays a separate close-out cycle.
 
 **Maintainer verification, 2026-09-11.** A separate pass checked the design's
-load-bearing claims against the tree and retained artifacts. Two attributions
-were wrong and are corrected above, not silently: (F1) the `malformed` refusal
-was misattributed to the multi-session shape when the returned reason is the
-leading adapter-marker header failure and the vocabulary gap is the second
-blocker; (F2) `census_root` cannot discover the packet-route transcript at all,
-so "vocabulary repair" alone would leave the committed CLI blind and discovery
+load-bearing claims against the tree and retained artifacts. Two wrong
+attributions are corrected above: (F1) the `malformed` refusal was the
+adapter-marker header plus the vocabulary gap, not the multi-session shape;
+(F2) `census_root` could not discover the packet-route transcript, so discovery
 was folded into V2 product 3. Three nits were applied: the carrier-commit test
-scoped to this repository, the `verification_claim` sentence reworded as a
-binding rather than a new rate, and the cross-repo roadmap update made an
-explicit checklist item. A prior oral line count of 299 was stale: the file was
-301 before this round's edits and 353 after, still under the 400 cap.
+scoped here, `verification_claim` reworded as a binding, and the cross-repo
+roadmap update made an explicit checklist item.

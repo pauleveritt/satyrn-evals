@@ -38,7 +38,10 @@ GOOD = "\n".join([  # faithful-good document in the §1 vocabulary (event shape
 
 def test_documented_constants() -> None:
     assert SESSION_VERSION == 3
-    assert {"read", "bash", "edit", "write"} == TOOL_NAMES
+    # `run_self_test` added 2026-09-11 (V2b cause 1): the packet route's
+    # adapter registers it, so a packet-route transcript is ``unknown_event``
+    # without it.
+    assert {"read", "bash", "edit", "write", "run_self_test"} == TOOL_NAMES
     assert {
         "session", "agent_start", "turn_start", "turn_end", "message_start",
         "message_update", "message_end", "tool_execution_start",
@@ -664,7 +667,7 @@ def test_validation_row_reproduces_the_spec_table() -> None:
 def test_measured_false_never_carries_counts() -> None:
     reasons: list[PathologyReason] = [
         "absent", "empty", "unparseable", "unsupported_version",
-        "unknown_event", "malformed", "partial",
+        "unknown_event", "malformed", "multi_session", "partial",
     ]
     for reason in reasons:
         wire = CellPathology(measured=False, reason=reason).to_block()
@@ -1009,3 +1012,55 @@ def test_todays_pathless_batch_edit_is_still_malformed() -> None:
         '"text": "Validation failed for tool \\"edit\\""}]}}',
     )
     assert _unmeasured(document).reason == "malformed"
+
+
+# --- 2026-09-11 V2b: the adapter marker and the multi-session concatenation ---
+#
+# The packet route's retained transcript
+# (`harness/.satyrn-implementer-transcript.jsonl`) is not the Baseline
+# attempt's `transcript.txt` shape. Its adapter writes a marker line per
+# streamed turn -- `{"adapter_marker": "turn_start", "index": 0}`, no
+# `type` key at all -- and appends a fresh session header to the same file
+# for each phase, so one retained file holds several concatenated
+# sessions. Neither is corruption: the markers are the adapter's own
+# bookkeeping and the concatenation is the harness's own append. Naming
+# them keeps the refusal honest about what the file is.
+
+
+def test_count_transcript_skips_adapter_marker_lines() -> None:
+    text = (
+        json.dumps({"adapter_marker": "turn_start", "index": 0}) + "\n"
+        + json.dumps({"type": "session", "version": 3, "cwd": "/x"}) + "\n"
+        + json.dumps({"type": "turn_start"}) + "\n"
+        + json.dumps({"type": "turn_end", "message": {"stopReason": "stop"}}) + "\n"
+        + json.dumps({"type": "agent_end"}) + "\n"
+    )
+
+    block = count_transcript(text, had_patch=False)
+
+    assert block.measured is True
+
+
+def test_a_document_of_marker_lines_only_is_empty_not_malformed() -> None:
+    # Sibling of the marker test above: dropping the markers can leave
+    # nothing behind, and a file of the adapter's own bookkeeping carries no
+    # event to judge -- `empty`, the same reason a blank transcript gets.
+    text = json.dumps({"adapter_marker": "turn_start", "index": 0}) + "\n"
+
+    assert _unmeasured(text).reason == "empty"
+
+
+def test_a_multi_session_concatenation_is_named_not_malformed() -> None:
+    session = json.dumps({"type": "session", "version": 3, "cwd": "/x"})
+    turn = json.dumps({"type": "turn_start"}) + "\n" + json.dumps(
+        {"type": "turn_end", "message": {"stopReason": "stop"}}
+    )
+
+    block = count_transcript(
+        f"{session}\n{turn}\n{json.dumps({'type': 'agent_end'})}\n{session}\n{turn}\n"
+        f"{json.dumps({'type': 'agent_end'})}\n",
+        had_patch=False,
+    )
+
+    assert block.measured is False
+    assert block.reason == "multi_session"

@@ -17,6 +17,7 @@ from satyrn_evals.census import (
     detect_anchor_refusal,
     detect_noop_edit,
     detect_read_lock,
+    detect_rejected_edit,
     detect_schema_refusal,
     detect_stall,
     detect_tool_not_found,
@@ -320,6 +321,7 @@ def _cell(
         unknown_tool=0,
         read_lock=read_lock,
         anchor_refusal=0,
+        rejected_edit=0,
         noop_edit=0,
         stall=stall,
         v10_unmeasured=v10_unmeasured,
@@ -463,3 +465,72 @@ def test_census_root_handles_nested_per_task_batches(tmp_path: Path) -> None:
     cells = census_root(root)
     assert {c.task for c in cells} == {"task-a", "task-b"}
     assert {c.batch for c in cells} == {"runs/task-a", "runs/task-b"}
+
+
+# --- rejected_edit vs noop_edit (V2b cause 3) ---------------------------------
+
+
+def _edit_start(call_id: str) -> dict:
+    return {
+        "type": "tool_execution_start",
+        "toolCallId": call_id,
+        "toolName": "edit",
+        "args": {"path": "app.py", "edits": [{"oldText": "a", "newText": "b"}]},
+    }
+
+
+def _edit_end(call_id: str, text: str, *, is_error: bool = False) -> dict:
+    event = {
+        "type": "tool_execution_end",
+        "toolCallId": call_id,
+        "toolName": "edit",
+        "result": {"content": [{"type": "text", "text": text}]},
+    }
+    if is_error:
+        event["isError"] = True
+    return event
+
+
+def test_a_rejected_edit_is_counted_separately_from_a_true_no_op() -> None:
+    events = [
+        _edit_start("c1"),
+        _edit_end("c1", "Could not find the exact text in app.py.", is_error=True),
+        _edit_start("c2"),
+        _edit_end("c2", "No changes made to app.py; identical content.", is_error=True),
+    ]
+
+    assert detect_rejected_edit(events) == 1
+    assert detect_noop_edit(events) == 1
+
+
+def test_a_run_self_test_call_is_not_an_unknown_tool() -> None:
+    events = [
+        {"type": "tool_execution_start", "toolCallId": "c1", "toolName": "run_self_test", "args": {}},
+    ]
+
+    assert detect_unknown_tool(events) == 0
+
+
+# --- packet-route discovery (V2b cause 2) -------------------------------------
+
+
+def test_census_root_discovers_the_packet_route_transcript(tmp_path: Path) -> None:
+    harness = tmp_path / "run" / "harness"
+    harness.mkdir(parents=True)
+    (harness / ".satyrn-implementer-transcript.jsonl").write_text(
+        json.dumps({"type": "session", "version": 3, "cwd": "/x"}) + "\n"
+        + json.dumps(
+            {
+                "type": "tool_execution_start",
+                "toolCallId": "c1",
+                "toolName": "run_self_test",
+                "args": {},
+            }
+        )
+        + "\n"
+    )
+
+    cells = census_root(tmp_path)
+
+    assert len(cells) == 1
+    assert cells[0].unknown_tool == 0

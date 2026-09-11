@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
+from satyrn_evals.adapters.pi_implementer import TRANSCRIPT_NAME
 from satyrn_evals.pathology import count_transcript
 
 type PathologyName = Literal[
@@ -27,6 +28,7 @@ type PathologyName = Literal[
     "unknown_tool",
     "read_lock",
     "anchor_refusal",
+    "rejected_edit",
     "noop_edit",
     "stall",
     "v10_unmeasured",
@@ -39,6 +41,7 @@ PATHOLOGY_NAMES: tuple[PathologyName, ...] = (
     "unknown_tool",
     "read_lock",
     "anchor_refusal",
+    "rejected_edit",
     "noop_edit",
     "stall",
     "v10_unmeasured",
@@ -47,7 +50,9 @@ PATHOLOGY_NAMES: tuple[PathologyName, ...] = (
 #: The known tool vocabulary for `unknown_tool` (spec §2). This grows as the
 #: product does -- adding a real tool means adding its name here, not
 #: reworking the detector.
-KNOWN_TOOL_NAMES = frozenset({"read", "bash", "edit", "write", "run_tests"})
+KNOWN_TOOL_NAMES = frozenset(
+    {"read", "bash", "edit", "write", "run_tests", "run_self_test"}
+)
 
 _SCHEMA_REFUSAL_MARKER = "Validation failed for tool"
 _TOOL_NOT_FOUND_RE = re.compile(r"^Tool\s+\S+\s+not found\b")
@@ -55,8 +60,14 @@ _TOOL_NOT_FOUND_RE = re.compile(r"^Tool\s+\S+\s+not found\b")
 # text", which caught 851 of pi's "No changes made" results and **none** of
 # its 1,813 "Could not find the exact text" ones -- so `noop_edit`
 # undercounted by roughly two thirds wherever pi's own edit tool refused.
+# Corrected 2026-09-11 (V2b cause 3): that fix bucketed a *rejected* edit
+# with a *true* no-op, leaving `noop_edit` ambiguous. The refusal shapes now
+# land in `rejected_edit`; `noop_edit` counts only "nothing to do" results.
+_REJECTED_EDIT_RE = re.compile(
+    r"could not find the exact text|validation failed for tool", re.IGNORECASE
+)
 _NOOP_EDIT_RE = re.compile(
-    r"no change|no matching text|could not find the exact text",
+    r"no changes? made|no matching text|replacement produced identical content",
     re.IGNORECASE,
 )
 
@@ -87,6 +98,7 @@ class CellCensus:
     unknown_tool: int
     read_lock: int
     anchor_refusal: int
+    rejected_edit: int
     noop_edit: int
     stall: int
     v10_unmeasured: bool
@@ -123,6 +135,7 @@ class CellCensus:
             "unknown_tool": self.unknown_tool,
             "read_lock": self.read_lock,
             "anchor_refusal": self.anchor_refusal,
+            "rejected_edit": self.rejected_edit,
             "noop_edit": self.noop_edit,
             "stall": self.stall,
             "v10_unmeasured": self.v10_unmeasured,
@@ -221,8 +234,22 @@ def detect_anchor_refusal(events: list[dict]) -> int:
     )
 
 
+# `rejected_edit` is not disjoint with `schema_refusal`: a schema refusal's
+# "Validation failed for tool" text also matches `_REJECTED_EDIT_RE`, so the
+# two counts overlap and must not be summed.
+def detect_rejected_edit(events: list[dict]) -> int:
+    """Count of edit results refusing to apply (anchor mismatch or schema)."""
+    return sum(
+        1
+        for event in events
+        if event.get("type") == "tool_execution_end"
+        and event.get("toolName") == "edit"
+        and _REJECTED_EDIT_RE.search(_result_text(event.get("result")))
+    )
+
+
 def detect_noop_edit(events: list[dict]) -> int:
-    """Count of edit results reporting no change made or no matching text."""
+    """Count of edit results doing nothing: the content already matched."""
     return sum(
         1
         for event in events
@@ -267,7 +294,7 @@ def _edit_applied(end_event: dict) -> bool:
     text = _result_text(end_event.get("result"))
     if _SCHEMA_REFUSAL_MARKER in text:
         return False
-    return not _NOOP_EDIT_RE.search(text)
+    return not (_REJECTED_EDIT_RE.search(text) or _NOOP_EDIT_RE.search(text))
 
 
 def detect_stall(events: list[dict]) -> int:
@@ -414,6 +441,7 @@ def _census_one_transcript(
         unknown_tool=detect_unknown_tool(events),
         read_lock=detect_read_lock(events),
         anchor_refusal=detect_anchor_refusal(events),
+        rejected_edit=detect_rejected_edit(events),
         noop_edit=detect_noop_edit(events),
         stall=detect_stall(events),
         v10_unmeasured=v10_refused,
@@ -422,8 +450,12 @@ def _census_one_transcript(
 
 
 def census_root(root: Path) -> list[CellCensus]:
-    """Walk one RUNS_ROOT: every `schedule.json` builds batch context, every
-    `transcript.txt` becomes one `CellCensus`. Never raises on a missing or
+    """Walk one RUNS_ROOT: every `schedule.json` builds batch context, then
+    every retained transcript becomes one `CellCensus`. Both names the two
+    routes write are discovered -- the Baseline attempt's `transcript.txt`
+    and the packet route's `harness/.satyrn-implementer-transcript.jsonl`
+    (the adapter's `TRANSCRIPT_NAME`); a census blind to the second returns
+    zero cells on a packet-route root. Never raises on a missing or
     malformed schedule/preflight -- those degrade to `None` fields, not a
     refusal (spec §3)."""
     contexts: dict[Path, _BatchContext] = {}
@@ -434,6 +466,10 @@ def census_root(root: Path) -> list[CellCensus]:
         )
     cells: list[CellCensus] = []
     for transcript_path in sorted(root.rglob("transcript.txt")):
+        cells.append(
+            _census_one_transcript(transcript_path, root=root, contexts=contexts)
+        )
+    for transcript_path in sorted(root.rglob(TRANSCRIPT_NAME)):
         cells.append(
             _census_one_transcript(transcript_path, root=root, contexts=contexts)
         )
