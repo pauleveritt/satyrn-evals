@@ -73,7 +73,21 @@ already-collected refusal cell offline, from the retained transcript,
 without re-running the model.
 (`src/satyrn_evals/rescore.py:363-372`)
 
-## 7. No-op edit loop, reported as success
+## 7. A self-reported no-op edit repeated five times without adapting
+
+**Partially covered by existing mechanisms, not a targeted fix.** The
+`noop_edits` counter (entry 8's remediation) already measures exactly the
+no-op `edit` calls this cell issued, so the pattern is visible in a summary
+rather than hidden. `--max-repeated-calls` (entry 1) would have stopped
+both the five identical edits and the seven identical route-check probes
+had it been turned on for this run; it was off by default, so nothing
+intervened and the cell simply ran long enough to recover on its own. No
+detector yet distinguishes "the adapter told the model the edit was a
+no-op and it repeated the identical call anyway" from an ordinary no-op —
+that distinction, and whether it predicts which no-op loops recover versus
+lock, is unaddressed.
+
+## 8. No-op edit loop, reported as success
 
 **Partially shipped — measured, not gated.** This repository's own
 pathology counter includes `noop_edits`: any `edit` tool call whose
@@ -83,17 +97,17 @@ pattern `local-ai-pi` recorded as a silent harness bug — accepting a
 no-op edit and reporting it as changed — visible in every summary rather
 than invisible. It is not (yet) a spending rule the way entry 1's repeat
 limit is: a cell issuing no-op edits is measured, not stopped, so the
-underlying loop-until-timeout shape entry 7 describes is not itself
+underlying loop-until-timeout shape entry 8 describes is not itself
 foreclosed here.
 (`src/satyrn_evals/pathology.py:301-312`)
 
-## 8. Near-miss file targeting
+## 9. Near-miss file targeting
 
 **Not addressed.** No detector or adapter behavior in this repository
 targets a model writing to a plausible sibling path instead of the one
 it was asked to edit. Carried as an open risk, not a closed one.
 
-## 9. Schema-mismatched call repetition
+## 10. Schema-mismatched call repetition
 
 **Partially addressed, structurally rather than by design intent.**
 Entry 1's `--max-repeated-calls` spending rule tears down a cell after
@@ -105,14 +119,14 @@ covers it: a batch that turns the limit on stops this loop too, once
 `N` identical malformed calls accumulate.
 (`src/satyrn_evals/repeat_limit.py:7-23`)
 
-## 10. Destructive failure tied to task shape
+## 11. Destructive failure tied to task shape
 
 **Not addressed.** Nothing in this repository detects a repair attempt
 that deletes existing tests rather than fixing them; the failure would
 currently surface only as a failed grade, with no distinguishing signal
 from an ordinary wrong-answer failure.
 
-## 11. Empty-workspace probing spiral
+## 12. Empty-workspace probing spiral
 
 **Not addressed directly, but partially covered by a general mechanism.**
 No task-authoring convention in this repository states workspace
@@ -121,7 +135,7 @@ contents as an explicit fact the way the original remediation did. Entry
 repeats identically enough times to cross `N`, but that is incidental
 coverage, not a targeted fix.
 
-## 12. Headless conversational stall
+## 13. Headless conversational stall
 
 **Not addressed.** A cell that takes one turn, makes no tool calls, and
 stops asking a question that will never be answered is currently
@@ -129,7 +143,7 @@ indistinguishable from any other zero-tool-call `NO_PATCH` cell — nothing
 flags the "asked for input in a non-interactive context" shape
 specifically.
 
-## 13. Operationally vague self-authored specs
+## 14. Operationally vague self-authored specs
 
 **Out of scope for this repository as currently used.** Every task this
 repository runs against is a fixed, hand-authored contract; nothing here
@@ -137,7 +151,7 @@ uses a model to author the contract a later attempt executes. The finding
 stands as a caution against ever doing so without an operational-vagueness
 check, not as something remediated.
 
-## 14. Scope overreach via its own contract's prose
+## 15. Scope overreach via its own contract's prose
 
 **Partially addressed by a different mechanism, not the one that would
 catch this exactly.** `workspace_escapes` (entry 2's module) measures a
@@ -150,7 +164,7 @@ allowlist compared against the touched paths, which this counter does
 not do.
 (`src/satyrn_evals/pathology.py:326-331`)
 
-## 15. Oracle-hunting by filesystem search
+## 16. Oracle-hunting by filesystem search
 
 **Partially shipped, and one hole named rather than hidden.** A
 whole-process `sandbox-exec` (Seatbelt) profile closes most of it:
@@ -173,13 +187,13 @@ run for you" measurably suppressed grader-hunting in the transcripts (`ls
 -R`/`find` spirals dropped). But the same wording also suppresses the
 model's own test-running, and in that spike the two effects were never
 disentangled — the pass-rate ranking built on that wording was later
-retracted as confounded by unequal exposure to entry 16's defect below,
+retracted as confounded by unequal exposure to entry 17's defect below,
 not by the wording itself. Treat the search-suppression as real and the
 ranking as not established.
 (archived: `2026-09-02-overnight-packet-and-isolation-run.md` §2, §1 and
 its correction)
 
-## 16. Sandbox removed the model's own test runner
+## 17. Sandbox removed the model's own test runner
 
 **Not fixed within that record — named as a required follow-up.** The
 same document that found it (adversarial review, not the original author)
@@ -188,7 +202,7 @@ working interpreter and test runner. No re-run confirming that fix exists
 in this repository yet.
 (archived: same document, §2)
 
-## 17. A detector that always fires
+## 18. A detector that always fires
 
 **Shipped, in a different module than the one that failed.** The spike's
 own proposed standing test — every detector must fire on a known-bad from
@@ -203,9 +217,9 @@ constraint stated directly in its module docstring: "the single idiomatic
 line of an honest test must never fire."
 (`src/satyrn_evals/contamination.py:1-25`)
 
-## 18. Contamination overstated sixfold on first read
+## 19. Contamination overstated sixfold on first read
 
-**Addressed by the same rewrite as entry 17, not by a separate fix.** The
+**Addressed by the same rewrite as entry 18, not by a separate fix.** The
 original failure was a filename/path match standing in for evidence of
 actually having seen hidden content. The current design's rule — trust the
 content-based `COPIED` signal, treat a bare filename/path match as "a
@@ -217,10 +231,10 @@ every check; that is a stated, accepted limit, not an oversight.
 
 ## What is still open
 
-Entries 4, 8, 10, 12, and 16 have no landed fix. 4 is deliberately scoped
-around (deferred to V12); 16 was named by review but not yet re-verified;
-8, 10, and 12 have no detector or mechanism addressing them at all. Entries
-7, 9, 11, and 14 have partial coverage from a mechanism built for a
+Entries 4, 9, 11, 13, and 17 have no landed fix. 4 is deliberately scoped
+around (deferred to V12); 17 was named by review but not yet re-verified;
+9, 11, and 13 have no detector or mechanism addressing them at all. Entries
+7, 8, 10, 12, and 15 have partial coverage from a mechanism built for a
 different failure shape, not a targeted fix — read those sections for the
 gap, not just the heading. Don't read any entry as closed because it has
 a number here.

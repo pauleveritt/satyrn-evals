@@ -27,18 +27,19 @@ people happened to write down, not a frequency. When a rate is wanted,
 measure it with `census` or `summarize` over a named run and report it with
 its `n` (`docs/usage.md`).
 
-Entries 1–6 come from this repository's live source and are reproducible now
-by reading the cited file. Entries 7–14 come from `local-ai-pi`, the
-repository this one was directly seeded from (`archive/2026-09-07-pre-reset/CLAUDE.md`'s
-Provenance section: "Seeded from `github.com/pauleveritt/local-ai-pi` at
-commit `c74c31f`") — carried in via SwiftStar's own catalog, which recorded
-them first, but kept here as this project's own inherited history rather
-than a borrowed cross-reference. Entries 15–18 come from an archived,
-**unadmitted** spike (`2026-09-02-overnight-packet-and-isolation-run.md`) run
-through a scratchpad harness, not this repository's own `attempt` path —
-several of the archive's own headline numbers were later corrected by
-adversarial review, and that correction is carried into each entry below
-rather than smoothed away.
+Entries 1–7 come from this repository's live source and are reproducible now
+by reading the cited file or retained run. Entries 8–15 come from
+`local-ai-pi`, the repository this one was directly seeded from
+(`archive/2026-09-07-pre-reset/CLAUDE.md`'s Provenance section: "Seeded from
+`github.com/pauleveritt/local-ai-pi` at commit `c74c31f`") — carried in via
+SwiftStar's own catalog, which recorded them first, but kept here as this
+project's own inherited history rather than a borrowed cross-reference.
+Entries 16–19 come from an archived, **unadmitted** spike
+(`2026-09-02-overnight-packet-and-isolation-run.md`) run through a
+scratchpad harness, not this repository's own `attempt` path — several of
+the archive's own headline numbers were later corrected by adversarial
+review, and that correction is carried into each entry below rather than
+smoothed away.
 
 ## Entries
 
@@ -93,6 +94,27 @@ rather than smoothed away.
    better.
    (`src/satyrn_evals/rescore.py:363-368`)
 
+7. **A self-reported no-op edit repeated five times without adapting.** In
+   the overnight phase-4 context screen's Baseline arm (twelve
+   `agentclinic-complaint-lifecycle` cells, 2026-09-11/12), one cell's
+   phase-4 turns issued the identical `edit` call against `app.py`'s
+   resolve/reopen routes — `oldText` byte-for-byte equal to `newText` —
+   **five times in a row**, each time getting the adapter's own explicit
+   rejection back as the tool result ("No changes made to app.py. The
+   replacement produced identical content."). Interleaved with those were
+   **seven** repeats of an identical verification probe (`uv run python3
+   -c "from app import app; print(app.routes)"`), returning the same
+   unchanged route list every time. Unlike entry 8's silently-accepted
+   no-op, this adapter told the model the truth on every attempt — it still
+   took five identical failing calls before the model changed what it
+   sent. The cell eventually recovered and passed (23 turns, 317.6s),
+   against 6–14 turns and 134.5–265.6s for the other eleven Baseline cells
+   in the same run, none of which repeated any call.
+   (`/Users/pauleveritt/satyrn-smokes/2026-09-12-overnight-phase4/cell-003-baseline/agentclinic-complaint-lifecycle-session-20260912-025445-234487/transcript.jsonl`,
+   phase-4 slice, bytes 302614–698799; corroborated by that cell's
+   `session-record.json` `phase-4-resolve-reopen` step and
+   `receipts/04-phase-4-resolve-reopen.json`)
+
 ### Seen in local-ai-pi (this project's own predecessor)
 
 *`local-ai-pi`, running `gemma-4-12B` and `qwen3.6-27B` against its own
@@ -100,10 +122,10 @@ repair/authoring tasks. This is the repository `satyrn-evals` was seeded
 from — not a sibling's history, this project's own, one commit further
 back than this repository's own git log currently reaches. Numbered 21–28
 in SwiftStar's and ds4-engine's own catalogs; renumbered here to run on
-from entry 6, with the original numbers kept in the provenance note below
+from entry 7, with the original numbers kept in the provenance note below
 for cross-repository lookup.*
 
-7. **No-op edit loop, reported as success.** NOT A MODEL PATHOLOGY — harness
+8. **No-op edit loop, reported as success.** NOT A MODEL PATHOLOGY — harness
    bug. The mutation engine accepted an edit whose `oldText` equaled
    `newText`, silently writing the same bytes back and reporting "changed
    lines=0" as success. One run looped rereading a 29KB file and proposing
@@ -111,23 +133,23 @@ for cross-repository lookup.*
    files written — logged at the time as a model failure. This
    repository's own `noop_edits` counter (entry 2's module) exists to make
    exactly this pattern visible rather than invisible in a summary; see
-   entry 7 in [remediations.md](remediations.md).
+   entry 8 in [remediations.md](remediations.md).
 
-8. **Near-miss file targeting.** Asked to edit `src/svcs/_autowire.py`,
+9. **Near-miss file targeting.** Asked to edit `src/svcs/_autowire.py`,
    wrote a clean, complete file to `src/svcs/autowire.py` instead — a
    plausible sibling name, not the real target — then ran out of its turn
    budget still trying to wire `__init__.py` to the wrong file it had
    created.
 
-9. **Schema-mismatched call repetition.** Repeated a structurally invalid
-   edit call — one that contained the correct fix, but with `path` nested
-   inside the edit entry instead of at the top level — 49 times
-   byte-identically, always failing schema validation, without ever
-   adapting the call shape. A separate task showed the same shape: 46
-   guard-blocked repeats of an anchor-mismatched retry starting at call 14
-   of 60.
+10. **Schema-mismatched call repetition.** Repeated a structurally invalid
+    edit call — one that contained the correct fix, but with `path` nested
+    inside the edit entry instead of at the top level — 49 times
+    byte-identically, always failing schema validation, without ever
+    adapting the call shape. A separate task showed the same shape: 46
+    guard-blocked repeats of an anchor-mismatched retry starting at call 14
+    of 60.
 
-10. **Destructive failure tied to task shape.** On one specific task,
+11. **Destructive failure tied to task shape.** On one specific task,
     failing runs didn't just fail to add code — they reliably deleted
     existing tests. A 24-replicate noise-floor run showed 5/6
     "tests-vanished" plus 1 "damaged" (0/6 accepted); a separate
@@ -136,20 +158,20 @@ for cross-repository lookup.*
     suggesting a failure signature tied to this task/edit shape rather
     than a one-off.
 
-11. **Empty-workspace probing spiral.** Given an empty workspace with no
+12. **Empty-workspace probing spiral.** Given an empty workspace with no
     explicit statement that it was empty, repeatedly re-checked with
     `ls -R` — 245 repetitions in one run, contributing to a 261-turn run
     with a 71.88 MB transcript. Stating the empty workspace as a fact in
     the prompt collapsed this to 1 repetition.
 
-12. **Headless conversational stall.** In a single-shot, non-interactive
+13. **Headless conversational stall.** In a single-shot, non-interactive
     agentic run, 16/16 replicates took exactly one turn, made zero tool
     calls, correctly and accurately restated the task requirements, and
     then stopped with "Please let me know which file I should start
     with..." — treating a one-shot execution context as an interactive
     chat awaiting a reply that will never come.
 
-13. **Operationally vague self-authored specs.** When used to author a
+14. **Operationally vague self-authored specs.** When used to author a
     task contract rather than execute one, drafts passed every
     structural/coverage check (8/8) but were behaviorally complete and
     operationally vague — e.g. "register the resulting context for
@@ -159,7 +181,7 @@ for cross-repository lookup.*
     correctness drop (4/4 hand-authored vs. 1/4 model-authored on oracle
     checks).
 
-14. **Scope overreach via its own contract's prose.** Given a handoff
+15. **Scope overreach via its own contract's prose.** Given a handoff
     contract restricted to `src/svcs/**`, produced a functionally perfect
     patch (3/3 identical, oracle 19/19 every time) but also edited
     `docs/integrations/flask.md` because the contract's own "Documentation
@@ -173,7 +195,7 @@ and research notes (`d758a03`, `604884b`,
 `2026-08-04-phase5-cycle10-publishable-arm.md`,
 `2026-08-04-phase5-cycle4-user-story-arms.md`, `docs/engine/shootout.md`,
 `8da2576`, `db33752`), as carried by SwiftStar's `docs/pathologies.md`.
-Entry 7 is kept despite being a harness bug for the same reason as entry 2:
+Entry 8 is kept despite being a harness bug for the same reason as entry 2:
 misfiling a tooling defect as model behavior is itself worth remembering.*
 
 ### Seen in an unadmitted overnight spike (2026-09-02)
@@ -183,7 +205,7 @@ against `pi 0.84.4`, roughly 160 cells. Spike evidence only: "every number
 here must be re-derived before it is cited in a plan." Archived at
 [`2026-09-02-overnight-packet-and-isolation-run.md`](https://github.com/pauleveritt/satyrn-evals/blob/main/archive/2026-09-07-pre-reset/docs/superpowers/research/2026-09-02-overnight-packet-and-isolation-run.md).*
 
-15. **Oracle-hunting by filesystem search.** Unsandboxed runs spent their
+16. **Oracle-hunting by filesystem search.** Unsandboxed runs spent their
     budget on `ls -R`, repeated 139–271 times, interleaved with
     `find . -name test_acceptance.py`, hunting for the hidden grader
     instead of working the task. Two cells found the real acceptance
@@ -193,8 +215,8 @@ here must be re-derived before it is cited in a plan." Archived at
     breaker keyed on tool-call failures would never fire on it. (§1–§2 of
     the archived record.)
 
-16. **A sandbox that removed the model's own test runner.** The Seatbelt
-    profile built to close entry 15's oracle leak also cut off the
+17. **A sandbox that removed the model's own test runner.** The Seatbelt
+    profile built to close entry 16's oracle leak also cut off the
     model's `python`, which resolved to a build environment without
     pytest while PyPI was blocked. Across 36 sandboxed cells there were
     266 `pytest` invocations, **zero** returned a result, and 179 came
@@ -203,12 +225,12 @@ here must be re-derived before it is cited in a plan." Archived at
     the models. (§2, "A confound this profile introduced, and did not
     disclose until review.")
 
-17. **A detector that always fires.** A grader-content tripwire fired on
+18. **A detector that always fires.** A grader-content tripwire fired on
     **104 of 128 cells**, because every transcript contains its own
     filesystem path — exactly as useless as a detector that never fires.
     (§3, defect 4.)
 
-18. **Contamination overstated sixfold on first read.** An early pass
+19. **Contamination overstated sixfold on first read.** An early pass
     flagged 12 files as copied grader content; adversarial review found
     10 of those 12 were legitimate model-authored tests written from an
     assertion the prompt had already displayed. The overstatement was
