@@ -100,6 +100,20 @@ def test_a_positive_budget_is_accepted() -> None:
     assert _packet(turn_budget=1).turn_budget == 1
 
 
+def test_an_absent_deadline_is_accepted_as_none() -> None:
+    assert _packet().deadline_seconds is None
+
+
+def test_a_positive_deadline_is_accepted() -> None:
+    assert _packet(deadline_seconds=30.0).deadline_seconds == 30.0
+
+
+@pytest.mark.parametrize("bad", [0, -1, True, "30", float("nan"), float("inf")])
+def test_a_nonsensical_deadline_is_refused(bad: object) -> None:
+    with pytest.raises(PacketError, match="deadline_seconds"):
+        _packet(deadline_seconds=bad)
+
+
 def test_an_unknown_role_is_refused() -> None:
     with pytest.raises(PacketError, match="role"):
         _packet(role="orchestrate")
@@ -151,6 +165,7 @@ def test_the_packet_carries_no_parent_validation_command() -> None:
         "redacts",
         "turn_budget",
         "tool_call_budget",
+        "deadline_seconds",
         "role",
         "version",
     }
@@ -185,6 +200,7 @@ def test_contract_yaml_never_carries_redacts_or_role_or_budgets() -> None:
     assert "role" not in data
     assert "turn_budget" not in data
     assert "tool_call_budget" not in data
+    assert "deadline_seconds" not in data
     assert "redacts" not in data
 
 

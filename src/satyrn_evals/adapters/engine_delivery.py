@@ -7,6 +7,7 @@ variant of it.
 """
 
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -56,13 +57,31 @@ def build_deliver_argv(
     *,
     base: str | None,
     implementer_argv: list[str],
+    turn_budget: int,
+    deadline_seconds: float | None = None,
 ) -> list[str]:
-    """The `satyrn-engine deliver` CLI invocation for one phase. `base`
-    omitted (not passed as an empty string) for phase 1 -- `deliver`'s own
-    default is the repo's HEAD, and an empty `--base` would be refused by
-    `_nonblank_base` on the engine side rather than silently doing the
-    same thing.
+    """The `satyrn-engine deliver` CLI invocation for one phase.
+
+    ``turn_budget`` always crosses as ``--turn-limit`` (every packet carries
+    one); ``deadline_seconds`` crosses as ``--deadline-seconds`` only when
+    the frozen packet declares one. ``base`` is omitted (not passed as an
+    empty string) for phase 1 -- `deliver`'s own default is the repo's HEAD,
+    and an empty `--base` would be refused by `_nonblank_base` on the engine
+    side rather than silently doing the same thing. A nonsensical budget is
+    refused here, before the subprocess is ever spawned.
     """
+    if isinstance(turn_budget, bool) or not isinstance(turn_budget, int) or turn_budget <= 0:
+        raise RouteError(f"turn_budget must be a positive integer: {turn_budget!r}")
+    if deadline_seconds is not None and (
+        isinstance(deadline_seconds, bool)
+        or not isinstance(deadline_seconds, (int, float))
+        or not math.isfinite(deadline_seconds)
+        or deadline_seconds <= 0
+    ):
+        raise RouteError(
+            f"deadline_seconds must be a positive finite number or null: "
+            f"{deadline_seconds!r}"
+        )
     argv = [
         satyrn_engine_bin,
         "deliver",
@@ -70,11 +89,23 @@ def build_deliver_argv(
         str(repo),
         "--timeout",
         str(timeout),
+        "--turn-limit",
+        str(turn_budget),
     ]
+    if deadline_seconds is not None:
+        argv += ["--deadline-seconds", str(deadline_seconds)]
     if base is not None:
         argv += ["--base", base]
     argv += [str(contract_path), "--", *implementer_argv]
     return argv
+
+
+_DELIVERED_CODES = ("OK", "TESTS_FAILED", "BUDGET_EXHAUSTED")
+"""Codes for a retained candidate: delivered-but-complete, delivered-but-
+failing, and delivered-but-partial (budget exhaustion). A partial candidate is
+still a candidate -- `reported_outcome` stays "were files delivered", never
+"did the attempt finish".
+"""
 
 
 def deliver_result_from_receipt(
@@ -83,15 +114,18 @@ def deliver_result_from_receipt(
     """Map one `deliver` receipt to the implementer's report.
 
     The engine now runs the contract's own test command and returns
-    ``TESTS_FAILED`` for a retained failing candidate; that is still a
-    delivered candidate, so it reports ``delivered`` exactly as ``OK``
+    ``TESTS_FAILED`` for a retained failing candidate, and
+    ``BUDGET_EXHAUSTED`` for a retained partial candidate; both are still a
+    delivered candidate, so they report ``delivered`` exactly as ``OK``
     does. ``reported_outcome`` stays "were files delivered", never "did
     tests pass" -- the authoritative validation verdict is carried on the
-    retained phase record from ``receipt["validation"]``, not here.
+    retained phase record from ``receipt["validation"]``, not here, and
+    exhaustion is carried on ``receipt["budget"]`` and read back by
+    ``run_and_record_engine_chain``.
     """
     code = receipt.get("code")
     changed = receipt.get("changed_paths")
-    if code in ("OK", "TESTS_FAILED") and isinstance(changed, list) and changed:
+    if code in _DELIVERED_CODES and isinstance(changed, list) and changed:
         return ImplementerResult(
             changed_files=tuple(changed),
             reported_outcome="delivered",
@@ -133,13 +167,13 @@ def engine_command_implementer(
     parsed JSON receipt per call, in phase order -- `run_and_record_engine_chain`
     reads it after the chain finishes; nothing about `ImplementerResult`
     itself carries a candidate commit, so this is the side channel that
-    does. A delivered candidate (``OK`` or ``TESTS_FAILED``) also carries the
-    engine's authoritative ``validation``/``validation_exit``/
-    ``validation_output`` fields on the receipt, which the retention layer
-    carries into the phase record; the engine owns the verdict. The
-    harness-run ``self_test_outcome`` below is retained **only as a
-    cross-check** against the same candidate, never as the authority: it
-    cannot upgrade or downgrade ``receipt["validation"]``.
+    does. A delivered candidate (``OK``, ``TESTS_FAILED`` or
+    ``BUDGET_EXHAUSTED``) also carries the engine's authoritative
+    ``validation``/``validation_exit``/``validation_output`` fields on the
+    receipt, which the retention layer carries into the phase record; the
+    engine owns the verdict. The harness-run ``self_test_outcome`` below is
+    retained **only as a cross-check** against the same candidate, never as
+    the authority: it cannot upgrade or downgrade ``receipt["validation"]``.
     """
     receipts: list[dict[str, object]] = []
     state: dict[str, str | None] = {"base": initial_base}
@@ -167,6 +201,8 @@ def engine_command_implementer(
         argv = build_deliver_argv(
             satyrn_engine_bin, repo, contract_path, timeout,
             base=state["base"], implementer_argv=implementer_argv,
+            turn_budget=packet.turn_budget,
+            deadline_seconds=packet.deadline_seconds,
         )
         env = {
             **os.environ,
@@ -183,7 +219,7 @@ def engine_command_implementer(
         receipt = json.loads(lines[-1])
         receipts.append(receipt)
 
-        if receipt.get("code") in ("OK", "TESTS_FAILED") and receipt.get(
+        if receipt.get("code") in _DELIVERED_CODES and receipt.get(
             "changed_paths"
         ):
             state["base"] = receipt.get("candidate_commit")

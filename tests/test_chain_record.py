@@ -21,6 +21,8 @@ from satyrn_evals.chain_record import (
     AppliedState,
     ChainRecord,
     PhaseRecord,
+    _budget_exhausted_stop,
+    _budget_from_receipt,
     _failed_validation_stop,
     _validation_from_receipt,
     build_chain_record,
@@ -39,6 +41,8 @@ from satyrn_evals.packet import HandoffPacket, build_packet
 from satyrn_evals.route import (
     ROUTE_SCENARIO,
     BoundaryEvent,
+    BudgetRecord,
+    BudgetState,
     ImplementerResult,
     SelfTestOutcome,
     ValidationOutcome,
@@ -143,13 +147,70 @@ def _packet(step_id: str) -> HandoffPacket:
     )
 
 
-def test_offline_declares_three_fields_regardless_of_observation() -> None:
+def test_offline_declares_budgets_and_base_revision_regardless_of_observation() -> None:
     packet = _packet("phase-1-home")
     ledger = declaration_ledger(
         executable_seam=False, packet=packet, implementer_mutations=()
     )
-    for name in ("turn_budget", "tool_call_budget", "base_revision"):
+    for name in (
+        "turn_budget",
+        "deadline_seconds",
+        "tool_call_budget",
+        "base_revision",
+    ):
         assert ledger[name] is AppliedState.DECLARED_NOT_APPLIED
+
+
+def test_the_engine_route_records_an_applied_turn_budget() -> None:
+    """The engine-composed route passes ``--turn-limit`` and the engine's
+    ``budget.evaluate``/``TurnCounter`` enforce it -- a code path this build
+    can name -- so ``APPLIED`` is honest, never ``OBSERVED_COMPLIANT``
+    (compliance is not enforcement)."""
+    packet = _packet("phase-1-home")
+    ledger = declaration_ledger(
+        executable_seam=True,
+        packet=packet,
+        implementer_mutations=(Mutation("app.py", "created"),),
+        turn_budget_applied=True,
+    )
+    assert ledger["turn_budget"] is AppliedState.APPLIED
+    # The same observed window is only `OBSERVED_COMPLIANT` for scope, never
+    # for the budget: compliance and enforcement are not the same value.
+    assert ledger["writable_paths"] is AppliedState.OBSERVED_COMPLIANT
+
+
+def test_passing_no_turn_limit_flag_is_declared_not_applied() -> None:
+    """Sibling of the applied case: without the flag the ledger never
+    launders "we passed the flag" into "the engine enforced it"."""
+    packet = _packet("phase-1-home")
+    ledger = declaration_ledger(
+        executable_seam=True,
+        packet=packet,
+        implementer_mutations=(Mutation("app.py", "created"),),
+        turn_budget_applied=False,
+    )
+    assert ledger["turn_budget"] is AppliedState.DECLARED_NOT_APPLIED
+
+
+def test_the_engine_route_records_an_applied_deadline_only_when_declared() -> None:
+    """The deadline ledger entry mirrors the turn budget, but only reaches
+    ``APPLIED`` when the packet actually declares one -- a ``None`` deadline
+    is not passed and stays declared-not-applied."""
+    packet = _packet("phase-1-home")
+    applied = declaration_ledger(
+        executable_seam=True,
+        packet=packet,
+        implementer_mutations=(Mutation("app.py", "created"),),
+        deadline_seconds_applied=True,
+    )
+    assert applied["deadline_seconds"] is AppliedState.APPLIED
+    absent = declaration_ledger(
+        executable_seam=True,
+        packet=packet,
+        implementer_mutations=(Mutation("app.py", "created"),),
+        deadline_seconds_applied=False,
+    )
+    assert absent["deadline_seconds"] is AppliedState.DECLARED_NOT_APPLIED
 
 
 def test_self_test_command_is_declared_not_applied_unless_the_harness_ran_it() -> None:
@@ -409,6 +470,111 @@ def test_an_undetermined_engine_validation_is_not_a_stop() -> None:
             ValidationRecord(outcome, exit_code=None, output=None)
         ) is None
     assert _failed_validation_stop(None) is None
+
+
+def test_a_phase_record_with_a_budget_round_trips() -> None:
+    packet = _packet("phase-1-home")
+    record = ChainRecord(
+        version=CHAIN_RECORD_VERSION,
+        phases=(
+            PhaseRecord(
+                step_id="phase-1-home",
+                packet=packet,
+                result=ImplementerResult(
+                    changed_files=("app.py",),
+                    reported_outcome="delivered",
+                    message=None,
+                ),
+                accepted=True,
+                reason="scripted pass",
+                implementer_mutations=(Mutation("app.py", "created"),),
+                orchestrator_mutations=(),
+                declaration_ledger=declaration_ledger(
+                    executable_seam=True,
+                    packet=packet,
+                    implementer_mutations=(Mutation("app.py", "created"),),
+                ),
+                budget=BudgetRecord(
+                    state=BudgetState.TURN_EXHAUSTED,
+                    turns_used=4,
+                    seconds_used=1.5,
+                    turn_limit=3,
+                    deadline_seconds=None,
+                ),
+            ),
+        ),
+        final_decision=None,
+    )
+    data = chain_record_to_dict(record)
+    assert data["phases"][0]["budget"]["state"] == "turn_exhausted"
+    assert data["phases"][0]["budget"]["turns_used"] == 4
+    assert chain_record_from_dict(data) == record
+
+
+def test_budget_from_receipt_reads_the_engine_accounting() -> None:
+    record = _budget_from_receipt(
+        {
+            "budget": {
+                "state": "deadline_exhausted",
+                "turns_used": 2,
+                "seconds_used": 5.5,
+                "turn_limit": None,
+                "deadline_seconds": 5.0,
+            }
+        }
+    )
+    assert record is not None
+    assert record.state is BudgetState.DEADLINE_EXHAUSTED
+    assert record.turns_used == 2
+    assert record.deadline_seconds == 5.0
+
+
+def test_budget_from_receipt_refuses_an_unknown_state() -> None:
+    with pytest.raises(ChainRecordError, match="budget"):
+        _budget_from_receipt(
+            {
+                "budget": {
+                    "state": "bogus",
+                    "turns_used": 0,
+                    "seconds_used": 0.0,
+                    "turn_limit": None,
+                    "deadline_seconds": None,
+                }
+            }
+        )
+
+
+def test_budget_from_receipt_returns_none_when_absent() -> None:
+    """Sibling of the refusal above: an older engine with no ``budget``
+    block degrades to ``None``, not a crash."""
+    assert _budget_from_receipt({}) is None
+
+
+@pytest.mark.parametrize(
+    "state",
+    [BudgetState.TURN_EXHAUSTED, BudgetState.DEADLINE_EXHAUSTED],
+)
+def test_a_budget_exhausted_attempt_stops_before_the_grader(
+    state: BudgetState,
+) -> None:
+    """An exhausted attempt is delivered-but-partial, never a completion:
+    the chain stops with its own reason before the grader decides, distinct
+    from an implementer refusal and from a ``FAILED`` validation."""
+    assert _budget_exhausted_stop(
+        BudgetRecord(state, 4, 1.0, 3, None)
+    ) == ("fail", f"engine budget exhausted: {state.value}")
+
+
+def test_a_within_budget_attempt_leaves_the_grader_to_decide() -> None:
+    """Sibling of the stop above: ``WITHIN`` is not a stop, and neither is
+    an undetermined/absent state -- only exhaustion stops here."""
+    assert _budget_exhausted_stop(
+        BudgetRecord(BudgetState.WITHIN, 3, 1.0, 3, None)
+    ) is None
+    assert _budget_exhausted_stop(
+        BudgetRecord(BudgetState.NOT_DECLARED, 0, 0.0, None, None)
+    ) is None
+    assert _budget_exhausted_stop(None) is None
 
 
 # --- HP6.4: cost per role, null when unmeasured ------------------------------

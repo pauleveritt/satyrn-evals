@@ -23,6 +23,7 @@ on the builder (slice 3), so the two cannot drift apart.
 """
 
 import json
+import math
 import shlex
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -101,6 +102,22 @@ def _check_budget(name: str, value: object) -> None:
         raise PacketError(f"{name} must be a positive integer: {value!r}")
 
 
+def _check_deadline(value: object) -> None:
+    """A deadline is optional; when present it is a positive finite number."""
+    if value is None:
+        return
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(value)
+        or value <= 0
+    ):
+        raise PacketError(
+            f"deadline_seconds must be a positive finite number or null: "
+            f"{value!r}"
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class HandoffPacket:
     """One inspected request: what to do, what is pinned, what may be touched."""
@@ -114,6 +131,7 @@ class HandoffPacket:
     redacts: tuple[str, ...]
     turn_budget: int
     tool_call_budget: int
+    deadline_seconds: float | None = None
     role: PacketRole = "implement"
     version: int = PACKET_VERSION
 
@@ -132,6 +150,7 @@ class HandoffPacket:
         _check_command("self_test_command", self.self_test_command)
         _check_budget("turn_budget", self.turn_budget)
         _check_budget("tool_call_budget", self.tool_call_budget)
+        _check_deadline(self.deadline_seconds)
 
 
 def build_packet(
@@ -143,6 +162,7 @@ def build_packet(
     base_revision: str,
     turn_budget: int,
     tool_call_budget: int,
+    deadline_seconds: float | None = None,
     role: PacketRole = "implement",
 ) -> HandoffPacket:
     """One inspected packet for one session step.
@@ -216,6 +236,7 @@ def build_packet(
         redacts=redacts,
         turn_budget=turn_budget,
         tool_call_budget=tool_call_budget,
+        deadline_seconds=deadline_seconds,
         role=role,
     )
 
@@ -441,6 +462,7 @@ _PERSISTED_KEYS: frozenset[str] = frozenset(
         "redacts",
         "turn_budget",
         "tool_call_budget",
+        "deadline_seconds",
         "role",
         "version",
     }
@@ -462,6 +484,7 @@ def packet_to_dict(packet: HandoffPacket) -> dict[str, object]:
         "redacts": list(packet.redacts),
         "turn_budget": packet.turn_budget,
         "tool_call_budget": packet.tool_call_budget,
+        "deadline_seconds": packet.deadline_seconds,
         "role": packet.role,
         "version": packet.version,
     }
@@ -507,6 +530,11 @@ def packet_from_dict(data: dict[str, object]) -> HandoffPacket:
     for name in ("turn_budget", "tool_call_budget"):
         if not isinstance(data[name], int) or isinstance(data[name], bool):
             raise PacketError(f"persisted {name} must be an integer")
+    deadline = data["deadline_seconds"]
+    if deadline is not None and (
+        isinstance(deadline, bool) or not isinstance(deadline, (int, float))
+    ):
+        raise PacketError("persisted deadline_seconds must be a number or null")
     command = data["self_test_command"]
     return HandoffPacket(
         objective=data["objective"],  # type: ignore[arg-type]
@@ -524,5 +552,6 @@ def packet_from_dict(data: dict[str, object]) -> HandoffPacket:
         redacts=_persisted_sequence("redacts", data["redacts"]),
         turn_budget=data["turn_budget"],  # type: ignore[arg-type]
         tool_call_budget=data["tool_call_budget"],  # type: ignore[arg-type]
+        deadline_seconds=deadline,  # type: ignore[arg-type]
         role=data["role"],  # type: ignore[arg-type]
     )

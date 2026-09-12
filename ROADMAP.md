@@ -184,13 +184,9 @@ three phases) — HP5 exists because of the second.
 
 ## Phase V — verified, bounded delivery
 
-**Track A closed 2026-09-11; Track B (engine) proposed.** Design:
-[phase-v-design.md](docs/current/phase-v-design.md). Track A made the evidence
-trustworthy and published the [Track B gate](docs/current/phase-v-track-b-gate.md)
-and the exploratory [engine gap register](docs/current/phase-v-engine-gap-register.md).
-Track B is engine-owned and mirrored in `satyrn-engine`'s roadmap: V4
-`@0069ace`, V5 turn/deadline budget `@1ea478c`, V6 the remaining live proof.
-Two Backlog entries carry Track A's follow-ups.
+**Track A closed 2026-09-11; Track B (engine) proposed.** Design: [phase-v-design.md](docs/current/phase-v-design.md). Track A made the evidence trustworthy and published the [Track B gate](docs/current/phase-v-track-b-gate.md) and the exploratory [engine gap register](docs/current/phase-v-engine-gap-register.md). Track B is engine-owned and mirrored in `satyrn-engine`'s roadmap: V4 `@0069ace`, V5 turn/deadline budget `@1ea478c`, V6 the remaining live proof. Two Backlog entries carry Track A's follow-ups.
+
+**V5b (this repository) wires that budget into the composed route:** the packet's `turn_budget` (and a frozen route deadline, when one) reaches `deliver`, and `BUDGET_EXHAUSTED` is recorded as delivered-but-partial with the receipt's `budget` block and its own chain stop reason. Two confirmed readings carry forward: a phase-4 exhaustion is an ordinary failed repair (a counted observation, never an infrastructure stop), and a passed validation on an exhausted attempt is **not** a completion. V4 validates the model against the model's own tests, so its "passed" does not establish correctness. **V6 is held until V5b lands.**
 
 ## After HP: Phase TE — fewer wasted turns, more work within budget
 

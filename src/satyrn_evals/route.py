@@ -344,6 +344,128 @@ def validation_record_from_dict(data: Mapping[str, object]) -> ValidationRecord:
     )
 
 
+class BudgetState(StrEnum):
+    """The engine's own accounting of one attempt against its budget.
+
+    Mirrors ``satyrn_engine.budget.BudgetState`` exactly, so a reader of this
+    repository's retained record never has to translate between the two
+    repositories. ``None`` never stands in for a missing declaration:
+    ``NOT_DECLARED`` means no limit was declared, ``NOT_ENFORCED`` means a
+    declared limit whose attempt never ran.
+    """
+
+    WITHIN = "within"
+    TURN_EXHAUSTED = "turn_exhausted"
+    DEADLINE_EXHAUSTED = "deadline_exhausted"
+    NOT_DECLARED = "not_declared"
+    NOT_ENFORCED = "not_enforced"
+
+
+_BUDGET_KEYS = frozenset(
+    {"state", "turns_used", "seconds_used", "turn_limit", "deadline_seconds"}
+)
+
+
+@dataclass(frozen=True, slots=True)
+class BudgetRecord:
+    """The engine's budget accounting for one delivered candidate.
+
+    Read verbatim from a ``deliver`` receipt's ``budget`` block. Never a
+    verdict this repository computes: the engine owns it, and nothing here
+    upgrades, downgrades, or re-derives it.
+    """
+
+    state: BudgetState
+    turns_used: int
+    seconds_used: float
+    turn_limit: int | None
+    deadline_seconds: float | None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.state, BudgetState):
+            raise RouteError("budget state must be a BudgetState")
+        if (
+            isinstance(self.turns_used, bool)
+            or not isinstance(self.turns_used, int)
+            or self.turns_used < 0
+        ):
+            raise RouteError("budget turns_used must be a non-negative integer")
+        if (
+            isinstance(self.seconds_used, bool)
+            or not isinstance(self.seconds_used, (int, float))
+            or not math.isfinite(self.seconds_used)
+            or self.seconds_used < 0
+        ):
+            raise RouteError(
+                "budget seconds_used must be a non-negative finite number"
+            )
+        if self.turn_limit is not None and (
+            isinstance(self.turn_limit, bool)
+            or not isinstance(self.turn_limit, int)
+            or self.turn_limit <= 0
+        ):
+            raise RouteError("budget turn_limit must be a positive integer or null")
+        if self.deadline_seconds is not None and (
+            isinstance(self.deadline_seconds, bool)
+            or not isinstance(self.deadline_seconds, (int, float))
+            or not math.isfinite(self.deadline_seconds)
+            or self.deadline_seconds <= 0
+        ):
+            raise RouteError(
+                "budget deadline_seconds must be a positive finite number or null"
+            )
+
+
+def budget_record_to_dict(record: BudgetRecord) -> dict[str, object]:
+    return {
+        "state": record.state.value,
+        "turns_used": record.turns_used,
+        "seconds_used": record.seconds_used,
+        "turn_limit": record.turn_limit,
+        "deadline_seconds": record.deadline_seconds,
+    }
+
+
+def budget_record_from_dict(data: Mapping[str, object]) -> BudgetRecord:
+    if missing := sorted(_BUDGET_KEYS - set(data)):
+        raise RouteError(f"persisted budget is missing {', '.join(missing)}")
+    state = data["state"]
+    if not isinstance(state, str):
+        raise RouteError("persisted budget state must be a string")
+    turns_used = data["turns_used"]
+    if isinstance(turns_used, bool) or not isinstance(turns_used, int):
+        raise RouteError("persisted budget turns_used must be an integer")
+    seconds_used = data["seconds_used"]
+    if isinstance(seconds_used, bool) or not isinstance(seconds_used, (int, float)):
+        raise RouteError("persisted budget seconds_used must be a number")
+    turn_limit = data["turn_limit"]
+    if turn_limit is not None and (
+        isinstance(turn_limit, bool) or not isinstance(turn_limit, int)
+    ):
+        raise RouteError("persisted budget turn_limit must be an integer or null")
+    deadline_seconds = data["deadline_seconds"]
+    if deadline_seconds is not None and (
+        isinstance(deadline_seconds, bool)
+        or not isinstance(deadline_seconds, (int, float))
+    ):
+        raise RouteError(
+            "persisted budget deadline_seconds must be a number or null"
+        )
+    try:
+        state_value = BudgetState(state)
+    except ValueError as exc:
+        raise RouteError(
+            f"persisted budget state is not a known verdict: {state!r}"
+        ) from exc
+    return BudgetRecord(
+        state=state_value,
+        turns_used=turns_used,
+        seconds_used=float(seconds_used),
+        turn_limit=turn_limit,
+        deadline_seconds=deadline_seconds,
+    )
+
+
 type PhaseFiles = Mapping[str, Mapping[str, str]]
 
 ROUTE_SCENARIO: PhaseFiles = {
@@ -457,6 +579,7 @@ def run_phases(
     base_revision: str,
     turn_budget: int,
     tool_call_budget: int,
+    deadline_seconds: float | None = None,
     observer: BoundaryObserver | None = None,
 ) -> list[PhaseDecision]:
     """Run the spec's steps in order, stopping at the first rejection.
@@ -502,6 +625,7 @@ def run_phases(
             base_revision=base_revision,
             turn_budget=turn_budget,
             tool_call_budget=tool_call_budget,
+            deadline_seconds=deadline_seconds,
         )
         observe(step.id, "before_handoff", packet=packet)
         try:

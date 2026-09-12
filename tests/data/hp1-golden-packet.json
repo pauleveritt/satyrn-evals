@@ -1,5 +1,6 @@
 {
   "base_revision": "3e6607e533792ab0",
+  "deadline_seconds": null,
   "facts": [
     "The web framework is FastAPI; the application instance lives in app.py.",
     "Templates are Jinja2 under templates/, and every page extends base.html.",

@@ -40,7 +40,7 @@ from satyrn_evals.attribution import (
 )
 from satyrn_evals.engine_contract import admits
 from satyrn_evals.engine_evidence import git_diff_mutations, git_show_content
-from satyrn_evals.errors import ChainRecordError
+from satyrn_evals.errors import ChainRecordError, RouteError
 from satyrn_evals.manifest import TaskManifest
 from satyrn_evals.packet import (
     HandoffPacket,
@@ -50,6 +50,8 @@ from satyrn_evals.packet import (
 from satyrn_evals.route import (
     SELF_TEST_RESULT_NAME,
     BoundaryEvent,
+    BudgetRecord,
+    BudgetState,
     Implementer,
     ImplementerResult,
     PhaseDecision,
@@ -57,6 +59,8 @@ from satyrn_evals.route import (
     SelfTestOutcome,
     ValidationOutcome,
     ValidationRecord,
+    budget_record_from_dict,
+    budget_record_to_dict,
     implementer_result_from_dict,
     implementer_result_to_dict,
     is_executable_seam,
@@ -81,6 +85,7 @@ _MUTATION_KINDS: frozenset[str] = frozenset(get_args(MutationKind.__value__))
 #: route to apply or not.
 DECLARATION_FIELDS: tuple[str, ...] = (
     "turn_budget",
+    "deadline_seconds",
     "tool_call_budget",
     "self_test_command",
     "base_revision",
@@ -121,20 +126,27 @@ def declaration_ledger(
     packet: HandoffPacket,
     implementer_mutations: tuple[Mutation, ...] | None,
     self_test_ran: bool = False,
+    turn_budget_applied: bool = False,
+    deadline_seconds_applied: bool = False,
 ) -> dict[str, AppliedState]:
     """What this run's own evidence says about each tracked declaration.
 
     ``turn_budget``, ``tool_call_budget`` and ``base_revision`` are built
     into every packet and read nowhere outside ``packet.py`` and the
-    ``build_packet`` call (``route.py``) -- no code counts a turn or checks
-    out the named revision, so both are always declared and unapplied on
-    this route. ``redacts`` is the one field that takes both values from the
-    same task: ``assert_projection_is_clean`` runs only inside
-    ``command_implementer``, so it is applied on the executable seam and
-    declared-and-unapplied on the in-process one. ``self_test_command``
-    reaches ``applied`` only when the caller reports the harness actually
-    ran it this phase (``route.command_implementer``, after the
-    implementer's own turn) -- ``self_test_ran``, supplied by
+    ``build_packet`` call (``route.py``) on the offline route, so all three
+    are declared and unapplied there. On the engine-composed route the
+    adapter passes ``--turn-limit`` and, when the packet declares one,
+    ``--deadline-seconds`` to ``satyrn-engine deliver``, and the engine's
+    ``budget.evaluate``/``TurnCounter`` enforces them -- the named code path
+    that lets ``turn_budget_applied``/``deadline_seconds_applied`` reach
+    ``APPLIED`` rather than ``OBSERVED_COMPLIANT`` (compliance is not
+    enforcement; see ``writable_paths`` below). ``redacts`` is the one field
+    that takes both values from the same task: ``assert_projection_is_clean``
+    runs only inside ``command_implementer``, so it is applied on the
+    executable seam and declared-and-unapplied on the in-process one.
+    ``self_test_command`` reaches ``applied`` only when the caller reports
+    the harness actually ran it this phase (``route.command_implementer``,
+    after the implementer's own turn) -- ``self_test_ran``, supplied by
     ``run_and_record_chain`` from the retained
     ``.satyrn-self-test-result.json``, never asserted by a caller that has
     not observed one. ``build_chain_record``, which has no workspace to
@@ -166,7 +178,16 @@ def declaration_ledger(
     else:
         writable_state = AppliedState.OBSERVED_COMPLIANT
     return {
-        "turn_budget": AppliedState.DECLARED_NOT_APPLIED,
+        "turn_budget": (
+            AppliedState.APPLIED
+            if turn_budget_applied
+            else AppliedState.DECLARED_NOT_APPLIED
+        ),
+        "deadline_seconds": (
+            AppliedState.APPLIED
+            if deadline_seconds_applied
+            else AppliedState.DECLARED_NOT_APPLIED
+        ),
         "tool_call_budget": AppliedState.DECLARED_NOT_APPLIED,
         "self_test_command": (
             AppliedState.APPLIED
@@ -218,6 +239,13 @@ class PhaseRecord:
     ``run_and_record_chain`` have no engine receipt to read) and when a
     phase produced no engine receipt at all; ``NOT_APPLICABLE`` on a refused
     phase is a real verdict, never a stand-in for ``None``.
+
+    ``budget`` is the engine's budget accounting for the same delivered
+    candidate, read from the ``deliver`` receipt's ``budget`` block on the
+    composed route only. ``None`` means no receipt carried one (an older
+    engine, or no engine receipt at all) -- never a stand-in for
+    ``NOT_DECLARED``, which the engine itself assigns when no limit was
+    declared.
     """
 
     step_id: str
@@ -234,6 +262,7 @@ class PhaseRecord:
     orchestrator_cost: float | None = None
     self_test_outcome: SelfTestOutcome | None = None
     validation: ValidationRecord | None = None
+    budget: BudgetRecord | None = None
 
     def __post_init__(self) -> None:
         if (self.accepted is None) != (self.reason is None):
@@ -634,6 +663,48 @@ def _failed_validation_stop(
     return None
 
 
+def _budget_from_receipt(receipt: Mapping[str, object]) -> BudgetRecord | None:
+    """Read the engine's budget accounting off one `deliver` receipt.
+
+    Returns ``None`` when the receipt carries no ``budget`` object -- an
+    older engine, or a phase whose implementer crashed before the engine
+    produced a receipt. A present-but-unknown ``state`` is refused rather
+    than laundered into ``None``.
+    """
+    raw = receipt.get("budget")
+    if not isinstance(raw, Mapping):
+        return None
+    try:
+        return budget_record_from_dict(raw)
+    except RouteError as exc:
+        raise ChainRecordError(f"engine receipt carried a malformed budget: {exc}") from exc
+
+
+def _budget_exhausted_stop(
+    budget: BudgetRecord | None,
+) -> tuple[str, str] | None:
+    """The chain-level stop for a delivered-but-partial exhausted attempt.
+
+    An exhausted receipt still reports ``delivered`` (a partial candidate was
+    retained and validated), so the route's own ``reported_outcome`` cannot
+    express "this phase did not complete". ``run_and_record_engine_chain``
+    reads the engine's ``budget.state`` and stops here with a reason distinct
+    from an implementer refusal and from ``_failed_validation_stop``'s
+    ``FAILED`` reason.
+
+    Returns ``("fail", reason)`` for ``TURN_EXHAUSTED``/``DEADLINE_EXHAUSTED``
+    and ``None`` for every other state, so the validation gate and then the
+    grader decide: ``WITHIN`` (and ``NOT_DECLARED``/``NOT_ENFORCED``) is not
+    a stop, and a ``None`` budget -- no receipt -- is also not a stop.
+    """
+    if budget is not None and budget.state in (
+        BudgetState.TURN_EXHAUSTED,
+        BudgetState.DEADLINE_EXHAUSTED,
+    ):
+        return ("fail", f"engine budget exhausted: {budget.state.value}")
+    return None
+
+
 def run_and_record_engine_chain(
     task_dir: Path,
     manifest: TaskManifest,
@@ -646,6 +717,7 @@ def run_and_record_engine_chain(
     *,
     turn_budget: int,
     tool_call_budget: int,
+    deadline_seconds: float | None = None,
 ) -> ChainRecord:
     """Retention for the engine-composed route: git-backed evidence, not a
     directory snapshot -- the isolated worktree each phase ran in is
@@ -678,6 +750,7 @@ def run_and_record_engine_chain(
     mutations_by_step: dict[str, tuple[Mutation, ...] | None] = {}
     self_test_by_step: dict[str, SelfTestOutcome] = {}
     validation_by_step: dict[str, ValidationRecord] = {}
+    budget_by_step: dict[str, BudgetRecord] = {}
     order: list[str] = []
     evidence_dir = output_path.with_name(output_path.stem + "-evidence")
     receipts_consumed = 0
@@ -692,10 +765,12 @@ def run_and_record_engine_chain(
             implementer_mutations = mutations_by_step.get(step_id)
             self_test_outcome = self_test_by_step.get(step_id)
             validation = validation_by_step.get(step_id)
+            budget = budget_by_step.get(step_id)
+            packet = packets_by_step[step_id]
             phases.append(
                 PhaseRecord(
                     step_id=step_id,
-                    packet=packets_by_step[step_id],
+                    packet=packet,
                     result=results_by_step[step_id],
                     accepted=accepted,
                     reason=reason,
@@ -703,14 +778,17 @@ def run_and_record_engine_chain(
                     orchestrator_mutations=(),
                     declaration_ledger=declaration_ledger(
                         executable_seam=True,
-                        packet=packets_by_step[step_id],
+                        packet=packet,
                         implementer_mutations=implementer_mutations,
                         self_test_ran=self_test_outcome is not None,
+                        turn_budget_applied=True,
+                        deadline_seconds_applied=packet.deadline_seconds is not None,
                     ),
                     candidate_snapshot_path=snap_path,
                     candidate_snapshot_digest=snap_digest,
                     self_test_outcome=self_test_outcome,
                     validation=validation,
+                    budget=budget,
                 )
             )
         final_decision = next(
@@ -733,6 +811,9 @@ def run_and_record_engine_chain(
         validation = _validation_from_receipt(receipt)
         if validation is not None:
             validation_by_step[step_id] = validation
+        budget = _budget_from_receipt(receipt)
+        if budget is not None:
+            budget_by_step[step_id] = budget
         if not (isinstance(base_commit, str) and isinstance(candidate_commit, str)):
             return
         mutations = git_diff_mutations(repo, base_commit, candidate_commit)
@@ -774,7 +855,9 @@ def run_and_record_engine_chain(
             persist_partial()
 
     def instrumented_grader(step_id: str, ws: Path) -> tuple[str, str]:
-        stop = _failed_validation_stop(validation_by_step.get(step_id))
+        stop = _budget_exhausted_stop(budget_by_step.get(step_id))
+        if stop is None:
+            stop = _failed_validation_stop(validation_by_step.get(step_id))
         if stop is not None:
             verdict, reason = stop
         else:
@@ -790,6 +873,7 @@ def run_and_record_engine_chain(
             task_dir, manifest, spec, implementer, repo, instrumented_grader,
             base_revision="engine-composed",  # declared_not_applied regardless
             turn_budget=turn_budget, tool_call_budget=tool_call_budget,
+            deadline_seconds=deadline_seconds,
             observer=observe,
         )
     finally:
@@ -1004,6 +1088,7 @@ _PHASE_KEYS: frozenset[str] = frozenset(
         "orchestrator_cost",
         "self_test_outcome",
         "validation",
+        "budget",
     }
 )
 
@@ -1031,6 +1116,10 @@ def _phase_record_to_dict(phase: PhaseRecord) -> dict[str, object]:
         "validation": (
             None if phase.validation is None
             else validation_record_to_dict(phase.validation)
+        ),
+        "budget": (
+            None if phase.budget is None
+            else budget_record_to_dict(phase.budget)
         ),
     }
 
@@ -1085,6 +1174,11 @@ def _phase_record_from_dict(data: Mapping[str, object]) -> PhaseRecord:
         raise ChainRecordError(
             "persisted validation must be an object or null"
         )
+    raw_budget = data["budget"]
+    if raw_budget is not None and not isinstance(raw_budget, dict):
+        raise ChainRecordError(
+            "persisted budget must be an object or null"
+        )
     return PhaseRecord(
         step_id=step_id,
         packet=packet_from_dict(packet),
@@ -1103,6 +1197,9 @@ def _phase_record_from_dict(data: Mapping[str, object]) -> PhaseRecord:
         ),
         validation=(
             None if raw_validation is None else validation_record_from_dict(raw_validation)
+        ),
+        budget=(
+            None if raw_budget is None else budget_record_from_dict(raw_budget)
         ),
     )
 

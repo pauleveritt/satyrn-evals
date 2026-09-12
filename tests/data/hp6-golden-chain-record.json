@@ -16,10 +16,12 @@
   "phases": [
     {
       "accepted": true,
+      "budget": null,
       "candidate_snapshot_digest": null,
       "candidate_snapshot_path": null,
       "declaration_ledger": {
         "base_revision": "declared_not_applied",
+        "deadline_seconds": "declared_not_applied",
         "redacts": "declared_not_applied",
         "self_test_command": "declared_not_applied",
         "tool_call_budget": "declared_not_applied",
@@ -45,6 +47,7 @@
       "orchestrator_mutations": [],
       "packet": {
         "base_revision": "3e6607e533792ab0",
+        "deadline_seconds": null,
         "facts": [
           "The web framework is FastAPI; the application instance lives in app.py.",
           "Templates are Jinja2 under templates/, and every page extends base.html.",
@@ -105,10 +108,12 @@
     },
     {
       "accepted": true,
+      "budget": null,
       "candidate_snapshot_digest": null,
       "candidate_snapshot_path": null,
       "declaration_ledger": {
         "base_revision": "declared_not_applied",
+        "deadline_seconds": "declared_not_applied",
         "redacts": "declared_not_applied",
         "self_test_command": "declared_not_applied",
         "tool_call_budget": "declared_not_applied",
@@ -134,6 +139,7 @@
       "orchestrator_mutations": [],
       "packet": {
         "base_revision": "3e6607e533792ab0",
+        "deadline_seconds": null,
         "facts": [
           "The web framework is FastAPI; the application instance lives in app.py.",
           "Templates are Jinja2 under templates/, and every page extends base.html.",
@@ -197,10 +203,12 @@
     },
     {
       "accepted": true,
+      "budget": null,
       "candidate_snapshot_digest": null,
       "candidate_snapshot_path": null,
       "declaration_ledger": {
         "base_revision": "declared_not_applied",
+        "deadline_seconds": "declared_not_applied",
         "redacts": "declared_not_applied",
         "self_test_command": "declared_not_applied",
         "tool_call_budget": "declared_not_applied",
@@ -222,6 +230,7 @@
       "orchestrator_mutations": [],
       "packet": {
         "base_revision": "3e6607e533792ab0",
+        "deadline_seconds": null,
         "facts": [
           "The web framework is FastAPI; the application instance lives in app.py.",
           "Templates are Jinja2 under templates/, and every page extends base.html.",

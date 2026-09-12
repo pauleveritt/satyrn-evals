@@ -23,7 +23,7 @@ from satyrn_evals.chain_record import (
 )
 from satyrn_evals.manifest import load_manifest
 from satyrn_evals.packet import build_packet
-from satyrn_evals.route import ValidationOutcome
+from satyrn_evals.route import BudgetState, ValidationOutcome
 from satyrn_evals.session_manifest import load_session_spec
 
 REPO = Path(__file__).resolve().parents[2]
@@ -143,6 +143,13 @@ def test_a_failed_engine_validation_stops_the_composed_chain(
     assert first.self_test_outcome is not None
     assert first.self_test_outcome.ran is True
     assert first.declaration_ledger["self_test_command"] is AppliedState.APPLIED
+    # The adapter now passes the packet's turn budget as --turn-limit, so the
+    # ledger records it as APPLIED on the engine-composed route; the receipt's
+    # budget block is retained alongside validation.
+    assert first.declaration_ledger["turn_budget"] is AppliedState.APPLIED
+    assert first.declaration_ledger["deadline_seconds"] is AppliedState.DECLARED_NOT_APPLIED
+    assert first.budget is not None
+    assert first.budget.state is BudgetState.WITHIN
     # The engine's own validation is the authoritative verdict, retained
     # alongside -- never replaced by -- the harness cross-check above, and the
     # reason a phase that would otherwise fold forward stops here.
@@ -273,3 +280,89 @@ def test_a_grader_crash_on_phase_two_still_leaves_phase_one_retained(
     import json as _json
     saved = _json.loads(Path(second.candidate_snapshot_path).read_text())
     assert saved  # real content, not empty
+
+
+_EXHAUST_FAKE = (
+    "import sys, time\n"
+    "from pathlib import Path\n"
+    "harness = Path(sys.argv[1])\n"
+    "counter = harness / '.phase-counter'\n"
+    "index = int(counter.read_text()) if counter.is_file() else 0\n"
+    "counter.write_text(str(index + 1))\n"
+    "if index == 0:\n"
+    "    Path('app.py').write_text('# partial\\n')\n"
+    "    time.sleep(3)\n"
+    "else:\n"
+    "    Path('models.py').write_text('# phase 2\\n')\n"
+)
+
+
+def test_a_deadline_exhausted_phase_is_delivered_but_partial_and_advances_the_base(
+    tmp_path: Path,
+) -> None:
+    """BUDGET_EXHAUSTED is delivered-but-partial: the retained partial
+    candidate becomes the next phase's base exactly as OK/TESTS_FAILED do,
+    and the receipt's budget block records the exhaustion state."""
+    base_dir = TASK / "base"
+    repo = tmp_path / "repo"
+    init_engine_repo(base_dir, repo)
+    harness_root = tmp_path / "harness"
+    implementer, receipts = engine_command_implementer(
+        repo, str(SIBLING_ENGINE_BIN),
+        [sys.executable, "-c", _EXHAUST_FAKE, str(harness_root)],
+        timeout=60.0, harness_root=harness_root,
+    )
+    first = dataclasses.replace(
+        _packet("phase-1-home"), deadline_seconds=0.5, self_test_command=("true",),
+    )
+    second = dataclasses.replace(_packet("phase-2-board"), self_test_command=("true",))
+
+    result_one = implementer(first)
+    assert result_one.reported_outcome == "delivered", receipts
+    assert result_one.changed_files == ("app.py",)
+    assert receipts[0]["code"] == "BUDGET_EXHAUSTED"
+    assert receipts[0]["budget"]["state"] == "deadline_exhausted"
+
+    result_two = implementer(second)
+    assert result_two.reported_outcome == "delivered", receipts
+    assert receipts[1]["code"] == "OK"
+    assert receipts[1]["base_commit"] == receipts[0]["candidate_commit"]
+
+
+def test_a_passed_validation_on_an_exhausted_attempt_is_not_a_completion(
+    tmp_path: Path,
+) -> None:
+    """The chain stops on exhaustion with its own reason even when the
+    engine's validation of the partial candidate passes -- a passing suite
+    on a partial candidate is not a completion."""
+    base_dir = TASK / "base"
+    repo = tmp_path / "repo"
+    init_engine_repo(base_dir, repo)
+    harness_root = tmp_path / "harness"
+    implementer, receipts = engine_command_implementer(
+        repo, str(SIBLING_ENGINE_BIN),
+        [sys.executable, "-c", _EXHAUST_FAKE, str(harness_root)],
+        timeout=60.0, harness_root=harness_root,
+    )
+    spec = dataclasses.replace(
+        load_session_spec(TASK), self_test_command=("true",)
+    )
+
+    record = run_and_record_engine_chain(
+        TASK, load_manifest(TASK), spec,
+        implementer, receipts, repo, _grade_pass,
+        tmp_path / "chain.json", turn_budget=40, tool_call_budget=60,
+        deadline_seconds=0.5,
+    )
+
+    assert [p.step_id for p in record.phases] == ["phase-1-home"]
+    first = record.phases[0]
+    assert first.accepted is False
+    assert first.reason == "engine budget exhausted: deadline_exhausted"
+    assert first.result.reported_outcome == "delivered"
+    assert first.budget is not None
+    assert first.budget.state is BudgetState.DEADLINE_EXHAUSTED
+    assert first.declaration_ledger["turn_budget"] is AppliedState.APPLIED
+    assert first.declaration_ledger["deadline_seconds"] is AppliedState.APPLIED
+    assert first.validation is not None
+    assert first.validation.outcome is ValidationOutcome.PASSED
