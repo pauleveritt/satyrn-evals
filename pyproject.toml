@@ -51,6 +51,10 @@ integration = [
 # docs/_build is the docs build output, never project tests.
 norecursedirs = [
     "docs/_build",
+    # Worktrees live under .claude/worktrees; their tests import this
+    # checkout's src and fail on features that exist only on their branch.
+    # The old ".worktrees" entry never matched the real path.
+    ".claude",
     "src/satyrn_evals/tasks",
     ".worktrees",
     "tests/data",

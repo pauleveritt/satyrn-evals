@@ -6,7 +6,7 @@ inference and no TE4 screen.** It needs its own separate
 authorization.
 
 Follows
-[the guardrail's adoption](../../src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md)
+[the guardrail's adoption](https://github.com/pauleveritt/satyrn-evals/blob/main/src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md)
 into `agentclinic-complaint-lifecycle`'s own phase-2-board prompt
 (commit `3e6ad02`). Two gaps remain that the candidate probe did not
 close, because it was a bounded two-phase task built only to test the

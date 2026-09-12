@@ -7,7 +7,7 @@ standing overnight authorization, unchanged from every prior record in
 this sequence.
 
 Follows
-[the phase-4 guardrail](../../src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md),
+[the phase-4 guardrail](https://github.com/pauleveritt/satyrn-evals/blob/main/src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md),
 applied after independent review found 3 of 4 graded phase-4 attempts
 on record destroyed the phase-3 `POST /complaints` route via the same
 destructive-edit mechanism phase 2 already carries a guardrail

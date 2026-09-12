@@ -8,7 +8,7 @@ destroy the phase-3 route via phase 2's own former destructive-edit
 mechanism, not "variance." See
 [the tightening-4 result](te4-tightening4-reverification-result.md)'s
 correction and resolution, and the task's own
-[`QUALIFICATION-NOTE.md`](../../src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md),
+[`QUALIFICATION-NOTE.md`](https://github.com/pauleveritt/satyrn-evals/blob/main/src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md),
 "The phase-4 guardrail." Attempt 1 of this record's own 3 (launched
 before the reopening) completed and is retained as the third
 confirming occurrence; attempts 2 and 3 were not run against this

@@ -6,7 +6,7 @@ inference and no TE4 screen.** It needs its own separate
 authorization.
 
 Follows
-[tightening 3](../../src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md)
+[tightening 3](https://github.com/pauleveritt/satyrn-evals/blob/main/src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md)
 (commit `c494297`), which closed the `id`-field-ordering ambiguity
 [the prior re-verification](te4-guardrail-reverification-result.md)'s
 Engine-01 fell into. That tightening has been verified only offline —

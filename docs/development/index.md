@@ -35,6 +35,12 @@ cycles/index
 ../superpowers/plans/2026-09-10-self-test-tool
 ../superpowers/specs/2026-09-10-hp3-composition-design
 ../superpowers/plans/2026-09-10-hp3-composition
+../superpowers/plans/2026-09-11-phase-v1-claim-inventory
+../superpowers/plans/2026-09-11-phase-v2a-claim-measures
+../superpowers/plans/2026-09-11-phase-v2b-census-repair
+../superpowers/plans/2026-09-11-phase-v3-closeout
+../superpowers/plans/2026-09-11-phase-v3b-completion-rate
+../superpowers/plans/2026-09-11-phase-v5b-budget-propagation
 ```
 
 The repository-root

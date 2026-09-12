@@ -41,7 +41,7 @@ field ordering instead of by `kw_only`. **Corrected attribution**: the
 [design doc](te4-harder-roadmap-design.md) itself *prescribed* the
 `kw_only` assertion as "the central preservation proof" (its own
 wording) — it did not name this as one of two valid answers. It was
-[`QUALIFICATION-NOTE.md`](../../src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md)
+[`QUALIFICATION-NOTE.md`](https://github.com/pauleveritt/satyrn-evals/blob/main/src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md)
 that later flagged, correctly, that "`kw_only` is not itself a prompt
 line" and left it an open question — this transcript is what actually
 exercised that open question and found it real.

@@ -183,5 +183,5 @@ reading 2: three-quarters of every gradable phase-4 attempt on record
 hitting the identical mechanism phase 2 already needed a guardrail for
 is a closable defect, not a difficulty worth preserving as signal. The
 phase-4 guardrail is applied — see the task's own
-[`QUALIFICATION-NOTE.md`](../../src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md),
+[`QUALIFICATION-NOTE.md`](https://github.com/pauleveritt/satyrn-evals/blob/main/src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md),
 "The phase-4 guardrail." Re-verification is next.

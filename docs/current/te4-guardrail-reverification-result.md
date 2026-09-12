@@ -47,7 +47,7 @@ class Complaint:
 `id` is declared as a required positional field *before*
 `agent_name`/`text` — precisely the ambiguity named as an open,
 unprobed risk in
-[the sibling task's own `QUALIFICATION-NOTE.md`](../../src/satyrn_evals/tasks/agentclinic-session-phased/QUALIFICATION-NOTE.md)
+[the sibling task's own `QUALIFICATION-NOTE.md`](https://github.com/pauleveritt/satyrn-evals/blob/main/src/satyrn_evals/tasks/agentclinic-session-phased/QUALIFICATION-NOTE.md)
 and carried forward as a named risk in
 [the TE4 design](te4-harder-roadmap-design.md). This is the first live
 observation of a model actually choosing that reading. The phase-4
@@ -137,7 +137,7 @@ TE4's own two-per-configuration screen is still not proposed or
 authorized by this result.
 
 **Follow-up, 2026-09-10.** Item 1 is done — see the task's own
-[`QUALIFICATION-NOTE.md`](../../src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md),
+[`QUALIFICATION-NOTE.md`](https://github.com/pauleveritt/satyrn-evals/blob/main/src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md),
 "Tightening 3." Item 2 stands as written; nothing was changed for it.
 This section's own numbers (Engine-01's transcript, its digests) are
 frozen for the pre-tightening prompt this run actually used — not

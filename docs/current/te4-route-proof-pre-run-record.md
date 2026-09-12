@@ -11,7 +11,7 @@ authorization for TE4's own two-per-configuration screen.
 prompt was amended the same day, after this record's attempts, adopting
 [the guardrail candidate](phase2-guardrail-candidate-result.md) — see
 the task's own
-[`QUALIFICATION-NOTE.md`](../../src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md).
+[`QUALIFICATION-NOTE.md`](https://github.com/pauleveritt/satyrn-evals/blob/main/src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md).
 The task tree sha256 and phase-2-board digest below are frozen values
 for *this* record's own run and are correct for it; recomputing them
 against the current task will not match, by design.
@@ -35,7 +35,7 @@ transcript.
    correctly through the real Baseline and Engine adapters — not just
    through `satyrn_evals.grade` called directly, which is all that has
    verified it so far
-   ([`QUALIFICATION-NOTE.md`](../../src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md))?
+   ([`QUALIFICATION-NOTE.md`](https://github.com/pauleveritt/satyrn-evals/blob/main/src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md))?
 2. What do real per-phase and whole-attempt turn counts look like on
    this 4-phase task, so a practical shared ceiling can be **checked,
    not asserted** — the same standard TE1 held itself to for the

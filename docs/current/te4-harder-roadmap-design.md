@@ -50,7 +50,7 @@ two mutating routes, conditional template logic), not by two thin ones.
 ## The identity/positional-construction conflict, and its resolution
 
 `agentclinic-session-phased`'s own
-[QUALIFICATION-NOTE.md](../../src/satyrn_evals/tasks/agentclinic-session-phased/QUALIFICATION-NOTE.md)
+[QUALIFICATION-NOTE.md](https://github.com/pauleveritt/satyrn-evals/blob/main/src/satyrn_evals/tasks/agentclinic-session-phased/QUALIFICATION-NOTE.md)
 already names this exact risk as an unprobed ambiguity: `Complaint`'s
 hidden contract check calls it positionally —
 `Complaint("first", "First complaint")` — and "a solver that adds an

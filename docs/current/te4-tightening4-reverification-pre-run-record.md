@@ -11,7 +11,7 @@ overnight; each still gets its own frozen pre-run record and result,
 per house convention, but does not wait for a fresh go-ahead.
 
 Follows
-[tightening 4](../../src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md),
+[tightening 4](https://github.com/pauleveritt/satyrn-evals/blob/main/src/satyrn_evals/tasks/agentclinic-complaint-lifecycle/QUALIFICATION-NOTE.md),
 which closed the missing-default gap
 [the tightening-3 re-verification](te4-tightening3-reverification-result.md)'s
 two Engine attempts both fell into. Verified only offline so far.

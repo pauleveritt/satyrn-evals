@@ -102,7 +102,7 @@ class of bug, same missing import, different route names. Both would
 raise `NameError: name 'Request' is not defined` the moment the module
 is imported — a bug `run_self_test` would have caught immediately, the
 same way it caught and the model recovered from a real bug in
-[TE2/HP8's Engine-02, phase 3](te2-hp8-screen-result.md#self-test-recovery-observed-live-for-the-first-time).
+[TE2/HP8's Engine-02, phase 3](te2-hp8-screen-result.md#self-test-recovery-observed-live-for-the-first-time--corrected).
 `run_self_test` is never called in either runaway phase. No assistant
 text is produced on any turn in either runaway phase either — the
 model reasons in tool calls only, here as in every phase-2-board
