@@ -6,6 +6,8 @@ shapes recorded in the retained fixtures.
 
 from satyrn_evals.claim_inventory import INVENTORY
 from satyrn_evals.claim_measures import (
+    baseline_completion_rate,
+    completion_rate,
     destructive_edit,
     edit_calls,
     measure_inventory,
@@ -242,6 +244,67 @@ def _summary(text: str) -> dict:
         "type": "turn_end",
         "message": {"role": "assistant", "content": [{"type": "text", "text": text}]},
     }
+
+
+def _chain_with(accepted: object, phase_count: int) -> dict:
+    return {
+        "phases": [{"step_id": f"phase-{i}"} for i in range(1, phase_count + 1)],
+        "final_decision": {"step_id": "phase-4-resolve-reopen", "accepted": accepted},
+    }
+
+
+def _session_with(code: object, step_count: int) -> dict:
+    return {
+        "code": code,
+        "steps": [{"step_id": f"phase-{i}"} for i in range(1, step_count + 1)],
+    }
+
+
+def test_completion_rate_accepts_a_full_chain_accepted_verdict() -> None:
+    assert completion_rate(_chain_with(True, 4), declared_phases=4) == "yes"
+
+
+def test_completion_rate_rejects_a_full_chain_not_accepted_verdict() -> None:
+    assert completion_rate(_chain_with(False, 4), declared_phases=4) == "no"
+
+
+def test_completion_rate_refuses_a_short_chain() -> None:
+    """A chain shorter than the declared phase count could be a completed
+    shorter task, not a non-completion; it is refused, never graded `no`."""
+    assert completion_rate(_chain_with(False, 2), declared_phases=4) == "undecidable"
+
+
+def test_completion_rate_refuses_a_missing_final_decision() -> None:
+    chain = {"phases": [{"step_id": "phase-1"} for _ in range(4)]}
+    assert completion_rate(chain, declared_phases=4) == "undecidable"
+
+
+def test_completion_rate_refuses_an_unreadable_final_decision() -> None:
+    chain = {
+        "phases": [{"step_id": "phase-1"} for _ in range(4)],
+        "final_decision": {"step_id": "phase-4", "accepted": "yes"},
+    }
+    assert completion_rate(chain, declared_phases=4) == "undecidable"
+
+
+def test_baseline_completion_rate_accepts_a_complete_session() -> None:
+    assert baseline_completion_rate(_session_with("COMPLETE", 4), declared_phases=4) == "yes"
+
+
+def test_baseline_completion_rate_rejects_a_non_complete_session() -> None:
+    assert baseline_completion_rate(_session_with("STEP_TIMEOUT", 4), declared_phases=4) == "no"
+
+
+def test_baseline_completion_rate_refuses_a_short_session() -> None:
+    assert baseline_completion_rate(_session_with("COMPLETE", 2), declared_phases=4) == "undecidable"
+
+
+def test_baseline_completion_rate_refuses_a_missing_code() -> None:
+    assert baseline_completion_rate({"steps": []}, declared_phases=4) == "undecidable"
+
+
+def test_baseline_completion_rate_refuses_an_unreadable_code() -> None:
+    assert baseline_completion_rate(_session_with(None, 4), declared_phases=4) == "undecidable"
 
 
 def test_a_summary_claiming_passed_over_a_failed_self_test_is_a_false_claim() -> None:

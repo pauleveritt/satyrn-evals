@@ -1,6 +1,6 @@
 # Phase V — claim reconciliation
 
-**HEAD:** `dd69dc081ed245582299dded176a24ae6c283b0a`
+**HEAD:** `add85b0c004e0a1da6953ff99ef95ee0d08f6c3d`
 
 | attempt | arm | state | reason | phases | per-phase turns | per-phase tool calls |
 |---|---|---|---|---|---|---|
@@ -53,21 +53,83 @@
 | 2026-09-10-tightening4-engine-01/chain.json | f4298acebad80b0765a0d25d995b3943d5ae6a331536155e53d2b27148d603b0 |
 | 2026-09-10-tightening4-engine-02/harness/.satyrn-implementer-transcript.jsonl | 0031bddc7c3965428d37859400351fedfd3738b94f6f1f09ac4dd1e8e370a64d |
 | 2026-09-10-tightening4-engine-02/chain.json | c170c0c0adb779a73bea2b6a0121bbeee93a63ea8c8ffcd9e9f89820d16736a7 |
+| 2026-09-10-completionrate-engine-01/grading/receipts/01-phase-1-home.json | 83df7f7ae6f5a04c7d6fb6393303bb7d3329390718a725c8b4b4d6b622793be0 |
+| 2026-09-10-completionrate-engine-01/grading/receipts/02-phase-2-board.json | 3932c5730618ba14af2c69bfbf4147ea53756cab3ad59932aafb8249f62ee7a5 |
+| 2026-09-10-completionrate-engine-01/grading/receipts/03-phase-3-add.json | f68df2326f906bdac18c03722c0247c184ffeae0104674b2e3205da07b3777e6 |
+| 2026-09-10-completionrate-engine-01/grading/receipts/04-phase-4-resolve-reopen.json | d9f4683398980fabfde3f62b6b3ffe588577aeccb99d04f4bdb3825ec0c3123f |
+| 2026-09-10-guardrail-reverify-engine-01/grading/receipts/01-phase-1-home.json | 7dc434518855b9626e280a3ae1c2d12c981f2409382349d7196961f296dba4a7 |
+| 2026-09-10-guardrail-reverify-engine-01/grading/receipts/02-phase-2-board.json | ca144f6adac33a213314e7a6b5bf14b9cf6d0b91e9e1fdbc30af614b5a1677dd |
+| 2026-09-10-guardrail-reverify-engine-01/grading/receipts/03-phase-3-add.json | 9b3f1345a42e052d42ce6976a47397bf16d0d765dcedce9c587d0a1f871d96b7 |
+| 2026-09-10-guardrail-reverify-engine-01/grading/receipts/04-phase-4-resolve-reopen.json | 6a45d5299e3ad47703197bc18443ca8d80724579555d2822b073d757381ffcce |
+| 2026-09-10-guardrail-reverify-engine-02/grading/receipts/01-phase-1-home.json | 2133f46b5156567eaa729e84ed22431ce4bdeb8ee6fe956ea2448378adfed14c |
+| 2026-09-10-guardrail-reverify-engine-02/grading/receipts/02-phase-2-board.json | c8b860307372c7d009b186644959adb95ed718b41ba3aa1010424c2304500618 |
+| 2026-09-10-guardrail-reverify-engine-02/grading/receipts/03-phase-3-add.json | 3661da71d1e5a64e197831beafec9ebc992b945a57daa6e7215cc1e00435cfda |
+| 2026-09-10-p4guardrail-engine-01/grading/receipts/01-phase-1-home.json | 7e366ee9dfe26191d19c43c8b2f669056a23d997855e0977504ba67a21f442f8 |
+| 2026-09-10-p4guardrail-engine-01/grading/receipts/02-phase-2-board.json | 7613e06edeecef1d8c166e35838c189b6547a188149441c2651ee7a45f3324c3 |
+| 2026-09-10-p4guardrail-engine-01/grading/receipts/03-phase-3-add.json | 9396b22631ddad86d7a73baecb6657828d43c475122aff9cffe00aa5ed2a24f6 |
+| 2026-09-10-p4guardrail-engine-02/chain.json | d299f2e85fb478ad115389103ee0c87006ba435462fd282191e29908097dcdcc |
+| 2026-09-10-p4guardrail-engine-02/grading/receipts/01-phase-1-home.json | d96ada98cde33cd7c7adfcf211cbf634c6ca866e8508b48e556ed48ec20d53f5 |
+| 2026-09-10-p4guardrail-engine-03/grading/receipts/01-phase-1-home.json | be9a318f0ef7549c05094352e55986a7c8eb9b967666d12a694c400f68ac5555 |
+| 2026-09-10-p4guardrail-engine-03/grading/receipts/02-phase-2-board.json | 54cb767c713f9b9269bedb74a2ffd566a0bbc2af38802ef7f2c687b780bd7d65 |
+| 2026-09-10-p4guardrail-engine-03/grading/receipts/03-phase-3-add.json | 4f3b6a561220fda7979954832863f3af07e2e81e17c45544bef1a107c659435f |
+| 2026-09-10-te4-route-engine-01/chain.json | 91123edaf09ef47a971ae27377e352a4e43628fcecab0cd41c88285b2967c558 |
+| 2026-09-10-te4-route-engine-01/grading/receipts/01-phase-1-home.json | c152ee4b1f7194dc3f4b1698fb56cae8b10df8d6c79df70ec0533fea9b4286c4 |
+| 2026-09-10-tightening3-engine-01/grading/receipts/01-phase-1-home.json | be88f08fae468f49cdd414ca671dff65d05571d364163c9ac2f8c807cdf96b62 |
+| 2026-09-10-tightening3-engine-01/grading/receipts/02-phase-2-board.json | 5d61332bdf9f31fb66069b51641c4e6b662adacc88479e58989df57bd41f7a78 |
+| 2026-09-10-tightening3-engine-01/grading/receipts/03-phase-3-add.json | ab81cac87cc072cb5a24b4c92f23a4663e511040edafdf0b17905d7dec5eca47 |
+| 2026-09-10-tightening3-engine-02/grading/receipts/01-phase-1-home.json | 4ef802659fa8c1e89e1e137a9d7d9c71e4874a4ef415b47c8d9ae1d7ac5be304 |
+| 2026-09-10-tightening3-engine-02/grading/receipts/02-phase-2-board.json | bb33f52362b2f419f2beb71c3f804f2185b6d295b4d9d926861ae3df5cdcbde3 |
+| 2026-09-10-tightening3-engine-02/grading/receipts/03-phase-3-add.json | 3cfedfe9b50a2d0c7cca949d66e871aed37cd878471aaaf1f45a46241ffecf82 |
+| 2026-09-10-tightening3-engine-02/grading/receipts/04-phase-4-resolve-reopen.json | dd57dfb528f82f35cc76dfb9ec9493310a72bfece9e5e0c065f03555f713cadb |
+| 2026-09-10-tightening4-engine-01/grading/receipts/01-phase-1-home.json | 5fb2540e1ec1f734d0d4bbb6813b69f76e4d9d4a44e64a73ce10bb0989777962 |
+| 2026-09-10-tightening4-engine-01/grading/receipts/02-phase-2-board.json | 6f94618f29363449f367ce32350ee6af9e5dcb9e429cbc49a6b5421a3015a82d |
+| 2026-09-10-tightening4-engine-01/grading/receipts/03-phase-3-add.json | 64adff929fbf4741901608a7023b5f7fd215ac173c8abce68b25cb1c0535374b |
+| 2026-09-10-tightening4-engine-02/grading/receipts/01-phase-1-home.json | 5c80078059daef0a5a904a45455760f4b111bdf56ff13fd13bf7ac2389942880 |
+| 2026-09-10-tightening4-engine-02/grading/receipts/02-phase-2-board.json | a8c6a6580346875244eeeab7258e6137262c2d70955be48fabea053bf0ce2729 |
+| 2026-09-10-tightening4-engine-02/grading/receipts/03-phase-3-add.json | 3b05533b3bf6ad488c42b819af5ddccd9cd738b5fd6b6cb241b7ce843c9590b0 |
+| 2026-09-10-tightening4-engine-02/grading/receipts/04-phase-4-resolve-reopen.json | 22c0630be3cee34c51f82ff9d3522d85be7f93cdcf4e4887dc5d4f47fcb055c5 |
+| 2026-09-11-p4guardrail-round2-engine-01/grading/receipts/01-phase-1-home.json | 966965eac0ed003ce48bd995e28e3bee6061a61c2c3212cb883eeda4f3d2cc4f |
+| 2026-09-11-p4guardrail-round2-engine-01/grading/receipts/02-phase-2-board.json | 65b14de91b076622a760428c120a44eac4393a1a336cd814a3e0a25c5e53c6b5 |
+| 2026-09-11-p4guardrail-round2-engine-01/grading/receipts/03-phase-3-add.json | d5a5d692dc7941baaec4df18ee448c5e6fbfe1e1ed0910bdfcf4ce91b683899b |
+| 2026-09-11-p4guardrail-round2-engine-01/grading/receipts/04-phase-4-resolve-reopen.json | 88054bf5d76a82bf8c0717f0520b680e6891b43197853a6efeac6744f6e54106 |
+| 2026-09-11-p4guardrail-round2-engine-02/grading/receipts/01-phase-1-home.json | 04ea50845f97fe48ffd1022c453cc976fdc318467355d1bd11efb38f0805f1d5 |
+| 2026-09-11-p4guardrail-round2-engine-02/grading/receipts/02-phase-2-board.json | 05d6393aac8df54aa3fc78af37eb01009ef9c86e7461b69b615b73547aec7e77 |
+| 2026-09-11-p4guardrail-round2-engine-02/grading/receipts/03-phase-3-add.json | ff749dd184d803743cf7ce78e54b4c1d317d8dedafe8608fc5942ed34d6a24c2 |
+| 2026-09-11-p4guardrail-round2-engine-02/grading/receipts/04-phase-4-resolve-reopen.json | 23e9d6e18a893fe4592253f7cfbee1d853722adc00cf9bef425c384ad8ca80c3 |
+| 2026-09-11-recurrence-engine-01/grading/receipts/01-phase-1-home.json | ec6d5dd56ff771fd6e70369bfaca419de3fb075a2c30e1f8e6362578cc86f84e |
+| 2026-09-11-recurrence-engine-01/grading/receipts/02-phase-2-board.json | 522af2364d4d522266e5d2a8ccf18050ff37db4f5ed2c14168d64a0631c2bacc |
+| 2026-09-11-recurrence-engine-01/grading/receipts/03-phase-3-add.json | a7938b618ec449435b53a2f3ec3b88219e33287d014f816d935e3d52c1cc3e1e |
+| 2026-09-11-recurrence-engine-01/grading/receipts/04-phase-4-resolve-reopen.json | bac260ba9e5fd36707d0693c68d4227ddbe5835895bb5875d542666dc75d55de |
+| 2026-09-11-recurrence-engine-02/chain.json | 6a9eb64f069a8638b4d5cc552370fe2be5257ade6874b6edd2aa364ae85c48ba |
+| 2026-09-11-recurrence-engine-02/grading/receipts/01-phase-1-home.json | 0306de7c7febd59adfaee7a2083c4614e7f8669f42eb14e942fbdd265ba03b64 |
+| 2026-09-11-recurrence-engine-03/grading/receipts/01-phase-1-home.json | 894178844b2f982cea0ca2a05139ad4ce1b2d4222991158b49c78a909274ee50 |
+| 2026-09-11-recurrence-engine-03/grading/receipts/02-phase-2-board.json | 088d3715404f31da19bc5bfbc915d5984f445b1b8e6f553bec64a01abc393f8f |
+| 2026-09-11-recurrence-engine-03/grading/receipts/03-phase-3-add.json | f14064840b8f368fad25695d788b74a8537996467f8678c8c79c0720b72fdf00 |
+| 2026-09-11-recurrence-engine-03/grading/receipts/04-phase-4-resolve-reopen.json | 6da68450d316a2b51a84bbae7615c8ce2b8a13294a51629c8a13d736019ad687 |
+| 2026-09-11-te4-screen-engine-01/grading/receipts/01-phase-1-home.json | 709fd3c1abb2a977050cd40aed4610f3c3d41a2d9c7f837abb9e747f7e817986 |
+| 2026-09-11-te4-screen-engine-01/grading/receipts/02-phase-2-board.json | f83d091261bc8ee4518e91d8e73b6c447dbffe60ac7c315c4a43be2c8c3ee389 |
+| 2026-09-11-te4-screen-engine-01/grading/receipts/03-phase-3-add.json | bccaf411b494b669d525c547bfe191170af70aca286ffbad702296dbd22a2c6b |
+| 2026-09-11-te4-screen-engine-01/grading/receipts/04-phase-4-resolve-reopen.json | 3511701cbba28407ddbef27407d0129af180b1e38aea8c92eef35088425f5ece |
+| 2026-09-11-te4-screen-engine-02/grading/receipts/01-phase-1-home.json | 6f4d7e9fc8da4cdae0795f21cab4bfecb48f46235efc71bbf6e7348c10688c4f |
+| 2026-09-11-te4-screen-engine-02/grading/receipts/02-phase-2-board.json | a452c9d646a2e862acadf69c80d24e9c0df3975963b2523e04f477b89bc23df1 |
+| 2026-09-11-te4-screen-engine-02/grading/receipts/03-phase-3-add.json | 259d608426c4693ec2d6d533219821e27393b82a659820a294ae6d2100ec90ab |
+| 2026-09-11-te4-screen-engine-02/grading/receipts/04-phase-4-resolve-reopen.json | 74e8d9890eb3b1faa2236af9995cbd614113ab8bcc5738cccb41f24423e7179e |
+| 2026-09-10-te4-route-baseline-01/agentclinic-complaint-lifecycle-session-20260910-204226-768961/session-record.json | a94e7471be05213a2022a6645a13fc50f9b09ad0c73b0494fbf43d58abf38e07 |
 
 ## Claim measures
 
 | claim_id | measure | population | result | evidence |
 |---|---|---|---|---|
-| c-engine-population | population statement | agentclinic-complaint-lifecycle, Phase TE sequence | undecidable | no classifier covers this measure in V2a |
-| c-baseline-3-of-3 | completion_rate | 3 Baseline attempts on agentclinic-complaint-lifecycle | undecidable | no classifier covers this measure in V2a |
+| c-engine-population | population statement | agentclinic-complaint-lifecycle attempts named by the grader's retained receipts and session records | yes | derived 18 Engine attempts and 3 Baseline attempts (published 18 Engine attempts and 3 Baseline attempts) |
+| c-baseline-3-of-3 | completion_rate | 3 Baseline attempts on agentclinic-complaint-lifecycle | yes | derived 3 yes, 0 undecidable, of 3 Baseline sessions on agentclinic-complaint-lifecycle completed the task (published 3 of 3); operationalization gap: the session `code` names completion; the final step's hidden- grader `feature_verdict` is a separate signal |
 | c-contemporaneous-screen-tie-2-of-2 | completion_rate | the final screen, both configurations fresh on the identical prompt | undecidable | no classifier covers this measure in V2a |
-| c-completion-6-of-18 | completion_rate | 18 Engine attempts on agentclinic-complaint-lifecycle | undecidable | no classifier covers this measure in V2a |
-| c-completion-4-of-16 | completion_rate | 16 Engine attempts before the 2026-09-11 screen | undecidable | no classifier covers this measure in V2a |
+| c-completion-6-of-18 | completion_rate | 18 Engine attempts on agentclinic-complaint-lifecycle | yes | derived 6 yes, 0 undecidable, of 18 Engine attempts on agentclinic-complaint-lifecycle completed the task (published 6 of 18); operationalization gap: a chain shorter than the declared four phases is a phase-2-board runaway (a non-completion), not an ungradeable record |
+| c-completion-4-of-16 | completion_rate | 16 Engine attempts before the 2026-09-11 screen | yes | derived 4 yes, 0 undecidable, of 16 pre-screen Engine attempts on agentclinic-complaint-lifecycle completed the task (published 4 of 16); operationalization gap: a chain shorter than the declared four phases is a phase-2-board runaway (a non-completion), not an ungradeable record |
 | c-destroyed-13-of-15 | destructive_edit | 15 phase-4-reaching Engine attempts | yes | derived 15 yes, 0 undecidable, of 15 phase-4-reaching Engine attempts applied a destructive edit (published 13 of 15); operationalization gap: the classifier counts any content-changing edit, not the source's route-specific destruction (2 of 15 never touched the route) |
 | c-restored-9-of-15 | restoration | 15 phase-4-reaching Engine attempts | yes | derived 3 yes, 0 undecidable, of 15 phase-4-reaching Engine attempts restored removed content (published 9 of 15); operationalization gap: the classifier counts any removed content re-added, not the source's route-specific restoration before the phase ended |
 | c-redirect-fixed-1-of-9 | redirect_trap_resolution | 9 attempts showing the redirect-trap signature | undecidable | no classifier covers this measure in V2a |
-| c-nonrestore-0-of-6 | completion_rate | 6 non-restoring phase-4-reaching Engine attempts | undecidable | no classifier covers this measure in V2a |
-| c-restore-4-of-7 | completion_rate | 7 restoring phase-4-reaching Engine attempts | undecidable | no classifier covers this measure in V2a |
+| c-nonrestore-0-of-6 | completion_rate | 6 non-restoring phase-4-reaching Engine attempts | undecidable | the completion verdict is readable from chain.json, but the restoring/non-restoring split is the route-specific restoration the transcript-level `restoration` measure cannot reproduce; enumerating the subset would reopen the 9-of-15 decision |
+| c-restore-4-of-7 | completion_rate | 7 restoring phase-4-reaching Engine attempts | undecidable | the completion verdict is readable from chain.json, but the restoring/non-restoring split is the route-specific restoration the transcript-level `restoration` measure cannot reproduce; enumerating the subset would reopen the 9-of-15 decision |
 | c-phase4-denominator-6-of-10 | denominator_binding | 8 of 10 attempts under the current prompt (phase-4-reaching subset enumerable; pre-phase-4 chains not enumerable) | undecidable | all pre-phase-4 chains are non-enumerable from retained artifacts (the published correction counts two of them); a chain that stopped before phase 4 retained only phase-1/phase-2 packets, whose content is byte-identical between the superseded guardrail prompt and the current prompt, so its current-prompt membership is not derivable from retained artifacts |
 | c-redirect-6-of-9 | redirect_trap_occurrence | 9 phase-4-reaching Engine attempts at that round | undecidable | no classifier covers this measure in V2a |
 | c-fabricated-report-n1 | verification_claim | 1 Engine screen attempt (screen-engine-01) | no | screen-engine-01's final summary claimed a passing test run while its last retained run_self_test returned exit code 1 |
@@ -83,11 +145,11 @@
 | u-completion-turn-distribution | unit | confirmed | whole-attempt turns | the 4 recorded Engine completions | 43, 49, 44, 36 | docs/current/te4-completion-recurrence-check-result.md:181 | — |
 | u-recurrence-01-per-phase-turns | unit | confirmed | turns per session | 2026-09-11-recurrence-engine-01 | 44 (6/8/11/19) | docs/current/te4-completion-recurrence-check-result.md:12 | — |
 | u-recurrence-03-per-phase-turns | unit | confirmed | turns per session | 2026-09-11-recurrence-engine-03 | 36 (6/8/8/14) | docs/current/te4-completion-recurrence-check-result.md:14 | — |
-| c-engine-population | claim | not_derivable | population statement | agentclinic-complaint-lifecycle, Phase TE sequence | 18 Engine attempts and 3 Baseline attempts | docs/current/te6-explain-and-decide.md:38 | — |
-| c-baseline-3-of-3 | claim | not_derivable | completion_rate | 3 Baseline attempts on agentclinic-complaint-lifecycle | Baseline: **3 of 3 complete** | docs/current/te6-explain-and-decide.md:51 | ROADMAP.md:292 |
+| c-engine-population | claim | confirmed | population statement | agentclinic-complaint-lifecycle, Phase TE sequence | 18 Engine attempts and 3 Baseline attempts | docs/current/te6-explain-and-decide.md:38 | — |
+| c-baseline-3-of-3 | claim | confirmed | completion_rate | 3 Baseline attempts on agentclinic-complaint-lifecycle | Baseline: **3 of 3 complete** | docs/current/te6-explain-and-decide.md:51 | ROADMAP.md:292 |
 | c-contemporaneous-screen-tie-2-of-2 | claim | not_derivable | completion_rate | the final screen, both configurations fresh on the identical prompt | 2/2 vs 2/2 | docs/current/te6-explain-and-decide.md:67 | docs/current/te6-explain-and-decide.md:251 |
-| c-completion-6-of-18 | claim | not_derivable | completion_rate | 18 Engine attempts on agentclinic-complaint-lifecycle | 6 of 18 | docs/current/te6-explain-and-decide.md:54 | ROADMAP.md:292, docs/current/index.md:234, docs/current/te4-screen-result.md:43 |
-| c-completion-4-of-16 | claim | not_derivable | completion_rate | 16 Engine attempts before the 2026-09-11 screen | 4 of 16 | docs/current/te4-completion-recurrence-check-result.md:22 | ROADMAP.md:275, docs/current/index.md:208 |
+| c-completion-6-of-18 | claim | confirmed | completion_rate | 18 Engine attempts on agentclinic-complaint-lifecycle | 6 of 18 | docs/current/te6-explain-and-decide.md:54 | ROADMAP.md:292, docs/current/index.md:234, docs/current/te4-screen-result.md:43 |
+| c-completion-4-of-16 | claim | confirmed | completion_rate | 16 Engine attempts before the 2026-09-11 screen | 4 of 16 | docs/current/te4-completion-recurrence-check-result.md:22 | ROADMAP.md:275, docs/current/index.md:208 |
 | c-destroyed-13-of-15 | claim | claim_measure_mismatch | destructive_edit | 15 phase-4-reaching Engine attempts | destroyed in 13 of 15 | docs/current/te6-explain-and-decide.md:147 | — |
 | c-restored-9-of-15 | claim | claim_measure_mismatch | restoration | 15 phase-4-reaching Engine attempts | 9 of 15 | docs/current/te6-explain-and-decide.md:169 | — |
 | c-redirect-fixed-1-of-9 | claim | not_derivable | redirect_trap_resolution | 9 attempts showing the redirect-trap signature | 1 of 9 | docs/current/te6-explain-and-decide.md:174 | — |

@@ -22,30 +22,29 @@ type GapKind = Literal["absent_artifact", "unimplemented_measure"]
 #: failure; the kind matters because "an artifact we never retained" and "a
 #: measure this implementation does not define" are different findings, and
 #: the second must not read as the first.
+#:
+#: Corrected 2026-09-11 (V3b): the completion claims were not missing the
+#: verdicts — every retained Engine chain carries `final_decision` and every
+#: Baseline `session-record.json` carries its `code` — so their
+#: `absent_artifact` label was wrong. `c-completion-6-of-18`,
+#: `c-completion-4-of-16`, `c-baseline-3-of-3` and `c-engine-population` are
+#: now derived and confirmed; `c-nonrestore-0-of-6`/`c-restore-4-of-7` stay
+#: `not_derivable`, but for an unimplemented route-specific restoration
+#: classifier (the 9-of-15 mismatch), not a missing verdict.
 MISSING_ARTIFACT: dict[str, tuple[GapKind, str]] = {
-    "c-completion-6-of-18": (
-        "absent_artifact",
-        "hidden-grader verdicts across all 18 Engine attempts",
-    ),
-    "c-completion-4-of-16": (
-        "absent_artifact",
-        "hidden-grader verdicts for the 16 pre-screen attempts",
-    ),
-    "c-baseline-3-of-3": (
-        "absent_artifact",
-        "matched-repeat Baseline attempts under the final prompt",
-    ),
     "c-contemporaneous-screen-tie-2-of-2": (
         "unimplemented_measure",
         "an outcome measure executable from transcripts",
     ),
     "c-nonrestore-0-of-6": (
-        "absent_artifact",
-        "a completion verdict per non-restoring attempt",
+        "unimplemented_measure",
+        "a route-specific restoration classifier to define the non-restoring "
+        "subset",
     ),
     "c-restore-4-of-7": (
-        "absent_artifact",
-        "a completion verdict per restoring attempt",
+        "unimplemented_measure",
+        "a route-specific restoration classifier to define the restoring "
+        "subset",
     ),
     "c-redirect-fixed-1-of-9": (
         "unimplemented_measure",
@@ -58,10 +57,6 @@ MISSING_ARTIFACT: dict[str, tuple[GapKind, str]] = {
     "c-phase4-denominator-6-of-10": (
         "absent_artifact",
         "prompt-state membership for the pre-phase-4 chains",
-    ),
-    "c-engine-population": (
-        "unimplemented_measure",
-        "a measure that binds the population statement to an attempt set",
     ),
 }
 

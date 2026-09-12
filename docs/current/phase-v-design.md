@@ -265,45 +265,46 @@ made once, on the record.
 
 **Products** (`docs/superpowers/plans/2026-09-11-phase-v3-closeout.md`): one
 final status per record, each `not_derivable` naming its missing artifact; no
-carrier lagging its source; the reopen bound applied to each affected recorded
-decision; the **engine gap register**
-(`docs/current/phase-v-engine-gap-register.md`), whose rows are labelled
-`exploratory`, are excluded from every published claim and denominator, and are
-the discovery input Track B acts on; and the Track B gate — an enumerated
-inventory with a status for every entry.
+carrier lag; the reopen bound applied to each affected recorded decision; the
+**engine gap register** (`docs/current/phase-v-engine-gap-register.md`, rows
+labelled `exploratory`, excluded from every claim and denominator); and the
+Track B gate — an enumerated inventory with a status for every entry.
 
 **Zero corrections is a pass.** If every claim confirms, the finding is "the
 published numbers hold under committed derivation," and Track B opens on that.
 
+**V3b reconciled, 2026-09-11.** V3's `absent_artifact` label on the completion
+claims was wrong: every retained Engine `chain.json` carries `final_decision`
+and every Baseline `session-record.json` carries its `code`. The real gap was
+the population membership rule, now committed — the grader's own task name
+(Engine receipts' `task` field; Baseline records' `task` field) plus a
+`completion_rate`/`baseline_completion_rate` measure that refuses a chain
+shorter than the task's four phases. Derived, not copied: **18 Engine + 3
+Baseline** (`c-engine-population`), **6 of 18**, **4 of 16**, **3 of 3** — all
+`confirmed`. `c-nonrestore-0-of-6` and `c-restore-4-of-7` stay `not_derivable`:
+their restoring/non-restoring split needs the route-specific classifier behind
+the un-reopened `9 of 15` decision, so their gap moves `absent_artifact` →
+`unimplemented_measure`. Tally: **12 `confirmed`, 0 `corrected`, 6
+`not_derivable`, 2 `claim_measure_mismatch`**.
+
 **V3 closed, 2026-09-11 — findings-bearing.** The inventory is exhausted: all 20 records carry exactly one
 final status — **8 `confirmed`, 0 `corrected`, 10 `not_derivable`, 2 `claim_measure_mismatch`** — and the
-Track B gate is published as `docs/current/phase-v-track-b-gate.md`, whose `missing` column names what each
-refusal waits on: `c-completion-6-of-18` (hidden-grader verdicts across all 18 Engine attempts),
-`c-completion-4-of-16` (hidden-grader verdicts for the 16 pre-screen attempts), `c-baseline-3-of-3`
-(matched-repeat Baseline attempts under the final prompt), `c-contemporaneous-screen-tie-2-of-2` (an outcome
-measure executable from transcripts), `c-nonrestore-0-of-6` (a completion verdict per non-restoring
-attempt), `c-restore-4-of-7` (a completion verdict per restoring attempt), `c-redirect-fixed-1-of-9` (a
-redirect-trap resolution classifier), `c-redirect-6-of-9` (a redirect-trap occurrence classifier),
-`c-phase4-denominator-6-of-10` (prompt-state membership for the pre-phase-4 chains), `c-engine-population`
-(a measure binding the population statement to an attempt set).
+Track B gate is published as `docs/current/phase-v-track-b-gate.md`. V3's `absent_artifact` labels on the
+completion claims were wrong; the V3b block above corrects them.
 
 No carrier lags its source — path existence, a hard failure — and the six `quote_drift` entries are
 published for review on the gate page rather than silently passed: five paraphrase the figure without its
 literal string, one is a hard line wrap.
 
 **Reopen decisions** (bound: at most one reopen per claim per reconciliation). `confirmed` and
-`not_derivable` records reopen nothing; 18 records leave every recorded phase decision standing.
+`not_derivable` records reopen nothing; the two `claim_measure_mismatch` records are decided once:
 
-- **`c-destroyed-13-of-15` — not reopened.** It supported TE6's attribution of destructive-edit-then-restore
-  as a characterized Engine failure mechanism (`## Attribution`). The committed classifier is
-  transcript-level and finds 15 of 15 — broader, and in the same direction — so no support is withdrawn,
-  the classifier is not narrowed, and the published count is not restated.
-- **`c-restored-9-of-15` — reopened, once.** It supported TE6's trace-backed reading that the pattern is
-  "mostly, but not purely, productive recovery," which cites exactly "9 were restored before the phase
-  ended and 6 of those 9 completed." That derivation is ad hoc (cause 1) and the committed classifier
-  returns 3 of 15 under a different operation, so the reading may not be cited again until a narrowed
-  classifier or a restated claim exists. The reopen publishes this corrected record, spends the bound's
-  single reopen here, and authorizes no live spending.
+- **`c-destroyed-13-of-15` — not reopened.** The committed `destructive_edit` classifier finds 15 of 15 —
+  broader, and in the same direction — so TE6's attribution of the destructive-edit-then-restore mechanism
+  loses no support; the published count is not restated.
+- **`c-restored-9-of-15` — reopened, once.** TE6's "9 were restored ... 6 of those 9 completed" reading
+  cannot be re-cited until a narrowed (route-specific) classifier or a restated claim exists; the reopen
+  spends the bound's single reopen here and authorizes no live spending.
 
 The **engine gap register** is published as `docs/current/phase-v-engine-gap-register.md`: four exploratory
 candidates, each with its measure, population, observed value and proposed change, and none entering a

@@ -11,21 +11,21 @@ Every inventory claim carries exactly one final status, and no carrier lags its 
 | u-completion-turn-distribution | unit | confirmed | — | — |
 | u-recurrence-01-per-phase-turns | unit | confirmed | — | — |
 | u-recurrence-03-per-phase-turns | unit | confirmed | — | — |
-| c-engine-population | claim | not_derivable | unimplemented_measure | a measure that binds the population statement to an attempt set |
-| c-baseline-3-of-3 | claim | not_derivable | absent_artifact | matched-repeat Baseline attempts under the final prompt |
+| c-engine-population | claim | confirmed | — | — |
+| c-baseline-3-of-3 | claim | confirmed | — | — |
 | c-contemporaneous-screen-tie-2-of-2 | claim | not_derivable | unimplemented_measure | an outcome measure executable from transcripts |
-| c-completion-6-of-18 | claim | not_derivable | absent_artifact | hidden-grader verdicts across all 18 Engine attempts |
-| c-completion-4-of-16 | claim | not_derivable | absent_artifact | hidden-grader verdicts for the 16 pre-screen attempts |
+| c-completion-6-of-18 | claim | confirmed | — | — |
+| c-completion-4-of-16 | claim | confirmed | — | — |
 | c-destroyed-13-of-15 | claim | claim_measure_mismatch | — | — |
 | c-restored-9-of-15 | claim | claim_measure_mismatch | — | — |
 | c-redirect-fixed-1-of-9 | claim | not_derivable | unimplemented_measure | a redirect-trap resolution classifier |
-| c-nonrestore-0-of-6 | claim | not_derivable | absent_artifact | a completion verdict per non-restoring attempt |
-| c-restore-4-of-7 | claim | not_derivable | absent_artifact | a completion verdict per restoring attempt |
+| c-nonrestore-0-of-6 | claim | not_derivable | unimplemented_measure | a route-specific restoration classifier to define the non-restoring subset |
+| c-restore-4-of-7 | claim | not_derivable | unimplemented_measure | a route-specific restoration classifier to define the restoring subset |
 | c-phase4-denominator-6-of-10 | claim | not_derivable | absent_artifact | prompt-state membership for the pre-phase-4 chains |
 | c-redirect-6-of-9 | claim | not_derivable | unimplemented_measure | a redirect-trap occurrence classifier |
 | c-fabricated-report-n1 | claim | confirmed | — | — |
 
-**Status:** 8 confirmed, 0 corrected, 10 not_derivable, 2 claim_measure_mismatch, of 20 records.
+**Status:** 12 confirmed, 0 corrected, 6 not_derivable, 2 claim_measure_mismatch, of 20 records.
 
 **Carrier lag:** none.
 

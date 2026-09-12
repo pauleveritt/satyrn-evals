@@ -304,6 +304,60 @@ def _final_assistant_text(events: Sequence[Mapping[str, object]]) -> str:
     return last
 
 
+def completion_rate(
+    chain: Mapping[str, object],
+    *,
+    declared_phases: int,
+) -> MeasureResult:
+    """Did the attempt complete the declared task, per the real grader?
+
+    ``yes`` when the chain declares the full ``declared_phases`` and its
+    ``final_decision`` was accepted, ``no`` when it declares them and was
+    not, and ``undecidable`` when the verdict is missing/unreadable **or**
+    the chain's ``phases`` count is shorter than ``declared_phases`` — a
+    short chain may be a different, shorter task (the phase-2 guardrail
+    candidate) rather than a non-completion, so it is refused, never graded
+    as ``no``.
+    """
+    phases = chain.get("phases")
+    if not isinstance(phases, list):
+        return "undecidable"
+    if len(phases) < declared_phases:
+        return "undecidable"
+    final_decision = chain.get("final_decision")
+    if not isinstance(final_decision, Mapping):
+        return "undecidable"
+    accepted = final_decision.get("accepted")
+    if not isinstance(accepted, bool):
+        return "undecidable"
+    return "yes" if accepted else "no"
+
+
+def baseline_completion_rate(
+    session_record: Mapping[str, object],
+    *,
+    declared_phases: int,
+) -> MeasureResult:
+    """Did the Baseline session complete the declared task?
+
+    The Baseline verdict is the session's own ``code`` field: ``COMPLETE``
+    means every declared phase ran. The final step's ``feature_verdict`` is
+    the hidden grader's per-phase pass, not the completion signal — the
+    route proof's retained final step reads ``fail`` only because the grader
+    defect it exposed was fixed and re-graded after the fact, while the
+    session itself completed. ``undecidable`` when the code is
+    missing/unreadable or the record retains fewer steps than the declared
+    phase count.
+    """
+    steps = session_record.get("steps")
+    code = session_record.get("code")
+    if not isinstance(steps, list) or not isinstance(code, str):
+        return "undecidable"
+    if len(steps) < declared_phases:
+        return "undecidable"
+    return "yes" if code == "COMPLETE" else "no"
+
+
 def verification_claim(events: Sequence[Mapping[str, object]]) -> MeasureResult:
     """Does the implementer's own summary match its retained tool results?
 

@@ -30,6 +30,8 @@ from satyrn_evals.claim_inventory import (
 )
 from satyrn_evals.claim_measures import (
     ClaimMeasure,
+    baseline_completion_rate,
+    completion_rate,
     destructive_edit,
     measure_inventory,
     restoration,
@@ -186,6 +188,89 @@ def _phase4_reaching_engine_attempts(runs_root: Path) -> tuple[AttemptSpec, ...]
         run_dir = chain_path.parent.name
         specs.append(AttemptSpec(run_dir, run_dir, "engine"))
     return tuple(specs)
+
+
+def _engine_task(runs_root: Path, run_dir: str) -> str | None:
+    """The task name the grader recorded for an Engine run.
+
+    Engine ``chain.json`` carries no task field; the grader's retained
+    receipts (``grading/receipts/*.json``) do. A single agreed task name is
+    the membership authority; missing or disagreeing receipts are ``None``.
+    """
+    receipts_dir = runs_root / run_dir / "grading" / "receipts"
+    tasks: set[str] = set()
+    for receipt_path in receipts_dir.glob("*.json"):
+        receipt = _load_json(receipt_path)
+        if receipt is not None and isinstance(receipt.get("task"), str):
+            tasks.add(receipt["task"])
+    if len(tasks) == 1:
+        return next(iter(tasks))
+    return None
+
+
+def _complaint_lifecycle_engine_attempts(
+    runs_root: Path,
+) -> tuple[AttemptSpec, ...]:
+    """Every retained Engine chain the grader names as
+    ``agentclinic-complaint-lifecycle``, deterministically.
+
+    Membership is the grader's own receipt task name, never the run directory
+    name. This is the committed rule that derives the published 18-attempt
+    Engine population rather than copying the figure.
+    """
+    specs: list[AttemptSpec] = []
+    for chain_path in sorted(runs_root.glob("*/chain.json")):
+        run_dir = chain_path.parent.name
+        if _engine_task(runs_root, run_dir) == "agentclinic-complaint-lifecycle":
+            specs.append(AttemptSpec(run_dir, run_dir, "engine"))
+    return tuple(specs)
+
+
+def _complaint_lifecycle_baseline_records(runs_root: Path) -> tuple[Path, ...]:
+    """Every retained Baseline session the record names as
+    ``agentclinic-complaint-lifecycle``, deterministically."""
+    records: list[Path] = []
+    for record_path in sorted(runs_root.rglob("session-record.json")):
+        record = _load_json(record_path)
+        if record is not None and record.get("task") == "agentclinic-complaint-lifecycle":
+            records.append(record_path)
+    return tuple(records)
+
+
+def _completion_results(
+    specs: Sequence[AttemptSpec],
+    runs_root: Path,
+    declared_phases: int,
+) -> list[str]:
+    """``completion_rate`` per Engine member, short task members as ``no``.
+
+    ``completion_rate`` refuses a chain shorter than ``declared_phases``
+    because, without the task name, a short chain could be a completed
+    shorter task (the phase-2 guardrail candidate) instead of a
+    non-completion. The population rule above already restricts ``specs`` to
+    ``agentclinic-complaint-lifecycle`` (a four-phase task), so a short member
+    here is a phase-2-board runaway that never reached phase 4 — a
+    non-completion, not an ungradeable record.
+    """
+    results: list[str] = []
+    for spec in specs:
+        chain = _load_json(runs_root / spec.run_dir / "chain.json")
+        if chain is None:
+            results.append("undecidable")
+            continue
+        verdict = completion_rate(chain, declared_phases=declared_phases)
+        if verdict == "undecidable":
+            phases = chain.get("phases")
+            final_decision = chain.get("final_decision")
+            if (
+                isinstance(phases, list)
+                and isinstance(final_decision, Mapping)
+                and len(phases) < declared_phases
+            ):
+                results.append("no")
+                continue
+        results.append(verdict)
+    return results
 
 
 def _current_prompt_attempts(runs_root: Path) -> tuple[AttemptSpec, ...]:
@@ -441,6 +526,144 @@ def measure_inventory_for_run(
             ),
         )
 
+    # V3b: the completion claims. Every retained Engine chain's `chain.json`
+    # carries `final_decision` and Baseline's `session-record.json` carries
+    # its `code`, so V3's `absent_artifact` label was wrong; the real gap was
+    # the population membership rule. The Engine population is the grader's
+    # own receipt task name (``agentclinic-complaint-lifecycle``), and the
+    # Baseline population is the session record's ``task`` field.
+    engine_specs = _complaint_lifecycle_engine_attempts(runs_root)
+    baseline_records = _complaint_lifecycle_baseline_records(runs_root)
+    screen_run_dirs = {
+        spec.run_dir
+        for spec in ATTEMPTS
+        if spec.arm == "engine" and "te4-screen" in spec.run_dir
+    }
+    pre_screen = tuple(
+        spec for spec in engine_specs if spec.run_dir not in screen_run_dirs
+    )
+
+    if engine_specs and baseline_records:
+        measures["c-engine-population"] = ClaimMeasure(
+            claim_id="c-engine-population",
+            measure="population statement",
+            population=(
+                "agentclinic-complaint-lifecycle attempts named by the "
+                "grader's retained receipts and session records"
+            ),
+            result="yes",
+            evidence=(
+                f"derived {len(engine_specs)} Engine attempts and "
+                f"{len(baseline_records)} Baseline attempts "
+                "(published 18 Engine attempts and 3 Baseline attempts)",
+            ),
+        )
+    else:
+        measures["c-engine-population"] = ClaimMeasure(
+            claim_id="c-engine-population",
+            measure=measures["c-engine-population"].measure,
+            population=measures["c-engine-population"].population,
+            result="undecidable",
+            evidence=(
+                "the complaint-lifecycle population could not be enumerated "
+                "from the retained grader receipts and session records",
+            ),
+        )
+
+    if engine_specs:
+        completion_18 = _completion_results(engine_specs, runs_root, 4)
+        measures["c-completion-6-of-18"] = _count_measure(
+            "c-completion-6-of-18",
+            "completion_rate",
+            "18 Engine attempts on agentclinic-complaint-lifecycle",
+            completion_18,
+            "6 of 18",
+            "Engine attempts on agentclinic-complaint-lifecycle completed "
+            "the task",
+            "a chain shorter than the declared four phases is a "
+            "phase-2-board runaway (a non-completion), not an ungradeable "
+            "record",
+        )
+        completion_16 = _completion_results(pre_screen, runs_root, 4)
+        measures["c-completion-4-of-16"] = _count_measure(
+            "c-completion-4-of-16",
+            "completion_rate",
+            "16 Engine attempts before the 2026-09-11 screen",
+            completion_16,
+            "4 of 16",
+            "pre-screen Engine attempts on agentclinic-complaint-lifecycle "
+            "completed the task",
+            "a chain shorter than the declared four phases is a "
+            "phase-2-board runaway (a non-completion), not an ungradeable "
+            "record",
+        )
+    else:
+        for claim_id in ("c-completion-6-of-18", "c-completion-4-of-16"):
+            base = measures[claim_id]
+            measures[claim_id] = ClaimMeasure(
+                claim_id=claim_id,
+                measure=base.measure,
+                population=base.population,
+                result="undecidable",
+                evidence=(
+                    "the Engine population could not be enumerated from the "
+                    "retained grader receipts",
+                ),
+            )
+
+    if baseline_records:
+        baseline_results = [
+            "undecidable"
+            if (record := _load_json(path)) is None
+            else baseline_completion_rate(record, declared_phases=4)
+            for path in baseline_records
+        ]
+        measures["c-baseline-3-of-3"] = _count_measure(
+            "c-baseline-3-of-3",
+            "completion_rate",
+            "3 Baseline attempts on agentclinic-complaint-lifecycle",
+            baseline_results,
+            "3 of 3",
+            "Baseline sessions on agentclinic-complaint-lifecycle completed "
+            "the task",
+            "the session `code` names completion; the final step's hidden- "
+            "grader `feature_verdict` is a separate signal",
+        )
+    else:
+        measures["c-baseline-3-of-3"] = ClaimMeasure(
+            claim_id="c-baseline-3-of-3",
+            measure=measures["c-baseline-3-of-3"].measure,
+            population=measures["c-baseline-3-of-3"].population,
+            result="undecidable",
+            evidence=(
+                "the Baseline population could not be enumerated from the "
+                "retained session records",
+            ),
+        )
+
+    # c-nonrestore-0-of-6 and c-restore-4-of-7 name the route-specific
+    # restoring/non-restoring split of the 13 pre-screen phase-4-reaching
+    # attempts. The completion verdicts are readable from chain.json, but the
+    # split itself is the route-specific restoration the transcript-level
+    # `restoration` measure cannot reproduce (V2a's c-restored-9-of-15
+    # mismatch); enumerating it would reopen the 9-of-15 decision, which V3b
+    # does not do.
+    for claim_id in ("c-nonrestore-0-of-6", "c-restore-4-of-7"):
+        base = measures[claim_id]
+        measures[claim_id] = ClaimMeasure(
+            claim_id=claim_id,
+            measure="completion_rate",
+            population=base.population,
+            result="undecidable",
+            evidence=(
+                "the completion verdict is readable from chain.json, but the "
+                "restoring/non-restoring split is the route-specific "
+                "restoration the transcript-level `restoration` measure "
+                "cannot reproduce; enumerating the subset would reopen the "
+                "9-of-15 decision",
+            ),
+        )
+
     return tuple(
         measures[record.id] for record in records if record.level == "claim"
     )
@@ -553,6 +776,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         for artifact in artifacts_for(spec, args.runs_root):
             if artifact.exists():
                 digests[str(artifact.relative_to(args.runs_root))] = _sha256(artifact)
+    # V3b: the completion measures read the full complaint-lifecycle
+    # population's chain.json, the grader receipts that name each Engine
+    # attempt's task, and the Baseline session records. Record their digests
+    # under the same currency rule as the per-phase ledger reads.
+    engine_specs = _complaint_lifecycle_engine_attempts(args.runs_root)
+    baseline_records = _complaint_lifecycle_baseline_records(args.runs_root)
+    for spec in engine_specs:
+        chain = args.runs_root / spec.run_dir / "chain.json"
+        if chain.exists():
+            digests[str(chain.relative_to(args.runs_root))] = _sha256(chain)
+        receipts_dir = args.runs_root / spec.run_dir / "grading" / "receipts"
+        for receipt_path in sorted(receipts_dir.glob("*.json")):
+            if receipt_path.exists():
+                digests[str(receipt_path.relative_to(args.runs_root))] = _sha256(receipt_path)
+    for record_path in baseline_records:
+        digests[str(record_path.relative_to(args.runs_root))] = _sha256(record_path)
     ledgers = tuple((spec, ledger_for(spec, args.runs_root)) for spec in ATTEMPTS)
     measures = measure_inventory_for_run(INVENTORY, args.runs_root, phase4)
     report = render_report(

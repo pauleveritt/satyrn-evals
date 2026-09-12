@@ -129,7 +129,7 @@ INVENTORY: tuple[ClaimRecord, ...] = (
         level="claim",
         measure="population statement",
         population="agentclinic-complaint-lifecycle, Phase TE sequence",
-        status="not_derivable",
+        status="confirmed",
     ),
     ClaimRecord(
         id="c-baseline-3-of-3",
@@ -139,7 +139,7 @@ INVENTORY: tuple[ClaimRecord, ...] = (
         level="claim",
         measure="completion_rate",
         population="3 Baseline attempts on agentclinic-complaint-lifecycle",
-        status="not_derivable",
+        status="confirmed",
     ),
     ClaimRecord(
         id="c-contemporaneous-screen-tie-2-of-2",
@@ -163,7 +163,7 @@ INVENTORY: tuple[ClaimRecord, ...] = (
         level="claim",
         measure="completion_rate",
         population="18 Engine attempts on agentclinic-complaint-lifecycle",
-        status="not_derivable",
+        status="confirmed",
     ),
     ClaimRecord(
         id="c-completion-4-of-16",
@@ -173,7 +173,7 @@ INVENTORY: tuple[ClaimRecord, ...] = (
         level="claim",
         measure="completion_rate",
         population="16 Engine attempts before the 2026-09-11 screen",
-        status="not_derivable",
+        status="confirmed",
     ),
     ClaimRecord(
         id="c-destroyed-13-of-15",

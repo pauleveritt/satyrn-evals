@@ -64,14 +64,14 @@ def test_the_two_mismatched_claims_carry_claim_measure_mismatch() -> None:
 
 
 def test_the_settled_inventory_counts_each_status() -> None:
-    """V2a settles all 20 records: 8 confirmed (7 unit + the fabrication
-    claim), 2 claim_measure_mismatch, and 10 not_derivable, with nothing left
-    unreconciled or corrected."""
+    """V3b settles all 20 records: 12 confirmed (7 unit + the fabrication
+    claim + the four completion claims V3b derives), 2 claim_measure_mismatch,
+    and 6 not_derivable, with nothing left unreconciled or corrected."""
     counts = Counter(record.status for record in INVENTORY)
 
-    assert counts["confirmed"] == 8
+    assert counts["confirmed"] == 12
     assert counts["claim_measure_mismatch"] == 2
-    assert counts["not_derivable"] == 10
+    assert counts["not_derivable"] == 6
     assert counts["unreconciled"] == 0
     assert counts["corrected"] == 0
 
