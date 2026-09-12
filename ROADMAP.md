@@ -134,6 +134,8 @@ restart of the paused comparison or a pathology audit. The brief authorizes no
 implementation, merge, commit, or inference; each live stage needs its own
 budget authorization.
 
+**Status 2026-09-12.** The overnight matched screen (Baseline 12 of 12, Engine 6 of 12) is read as evidence about one inlined, over-hinted prompt condition, not a verdict on either architecture; **Phase PD**, recorded below, proposes spec-file delivery and an easy and a hard variant on one grader, authorizing nothing beyond its clean-up.
+
 **Status 2026-09-10.** After HP, Phase TE — fewer wasted turns, more work
 within budget — is now proposed and **recorded below**, with its own
 [execution plan](docs/current/engine-turn-efficiency-plan.md). It confirms two
@@ -292,30 +294,31 @@ HP remains responsible for the composed, retained, regradable route; TE does
 not absorb unfinished HP requirements or reopen the paused single-task
 tuning campaign below. Negative and inconclusive results are legitimate completion, not invitations to extend a batch or search for a favorable task.
 
+## Phase PD — prompt delivery
+
+**Proposed 2026-09-12. PD1 done; PD2–PD5 authorize no implementation, merge, or inference, and no budget.** Design: [prompt-delivery-design.md](docs/current/prompt-delivery-design.md). The 2026-09-12 overnight screen gave the first matched, equal-`n` result on `agentclinic-complaint-lifecycle` — Baseline 12 of 12, Engine 6 of 12, one-sided Fisher **p=0.0069**; a second night's edit-guard screen, plain 4 of 12 against guarded 7 of 12, p=0.207 — retained under `~/satyrn-smokes/2026-09-12-overnight-phase4/` and `-editguard/`. All five plain-Engine phase-4 grader failures share one signature: `read(app.py)`, then one `edit` that replaced the accepted `POST /complaints` route, then a rewritten two-test suite that never exercised it. That result stands **for its condition**, and the condition is narrow: one prompt that inlines every implementation detail as the turn message — a style no developer uses, and one whose four amendments (`3e6ad02`, `c494297`, `001e6d6`, `c12dd05`) were each triggered by an Engine attempt while Baseline had 3 prior attempts to Engine's 18. It is evidence about that prompt, not a verdict on either architecture; so the next work is authorized to propose, not to spend.
+
+The worktree `.claude/worktrees/overnight-phase4-context` (branch `worktree-overnight-phase4-context`, `fbb23f4`) is **closed and retained as evidence** — both nights' records, results, gradings, review, and dataset. Not merged, not deleted, not superseded; cite it by path.
+
+| Step | In scope | Status |
+|---|---|---|
+| **PD1** Clean-up | Pathology entry 7 (`8d331ec`), this entry and design, the worktree's closed status | **done 2026-09-12** |
+| **PD2** Worktree | A fresh worktree and branch for PD3–PD5 | proposal |
+| **PD3** SDD delivery | `base/specs/{mission,tech-stack,roadmap}.md` plus a pointer prompt, carried identically to both arms; **heaviest scrutiny of the phase** — checked against `dlai-local-ai-course/specs/` and SwiftStar's shared-context convention, not accepted because it compiles | proposal |
+| **PD4** Two variants | Easy: the current text delivered as specs. Hard: `local-ai-pi`'s `roadmap-user-story.md` + `domain.md` for phases 1–3, plus a new phase-4 story in that voice. One hidden grader, byte-identical | proposal |
+| **PD5** Screen | `n=2` per arm per variant, route verification outside the denominator; observation, never superiority | proposal, no budget |
+
+A transcript-level quality read beyond pass/fail is named in the design and **out of scope** unless PD5 earns it.
+
 ## Paused: the engine comparison
 
-**The comparison is paused. Do not restart it.** Stages 1 and 2 are complete —
-the live route works and its evidence regrades — and stage 3 was stopped after
-naming a candidate, because the candidate was chosen for being measurable in
-retained traces rather than for addressing a problem that matters in use. That
-is too weak a reason to spend.
+**The comparison is paused. Do not restart it.** Stages 1 and 2 are complete — the live route works and its evidence regrades — and stage 3 was stopped after naming a candidate, because the candidate was chosen for being measurable in retained traces rather than for addressing a problem that matters in use. That is too weak a reason to spend.
 
-No evaluation is queued, and none should be manufactured. The next one is
-pulled by a real development need: a concrete engine problem whose relevance is
-established first, then evaluated with the cheapest existing condition. A
-negative result closes a question rather than prompting a search for another
-lever.
+No evaluation is queued, and none should be manufactured. The next one is pulled by a real development need: a concrete engine problem whose relevance is established first, then evaluated with the cheapest existing condition. A negative result closes a question rather than prompting a search for another lever.
 
-The ordered work, if a need reopens it, is in
-[the first engine comparison plan](docs/current/first-engine-comparison-plan.md),
-and the candidate record in `docs/current/triage-candidate.md` says what was
-closed and why. Each live stage would carry its own frozen, explicitly
-authorized budget. This roadmap authorizes no spending and no model inference.
+The ordered work, if a need reopens it, is in [the first engine comparison plan](docs/current/first-engine-comparison-plan.md), and the candidate record in `docs/current/triage-candidate.md` says what was closed and why. Each live stage would carry its own frozen, explicitly authorized budget. This roadmap authorizes no spending and no model inference.
 
-What the pause produced instead: two engine defects found by inspecting
-model-facing messages and fixed without any model run — a post-edit region that
-could report truncation while showing none of the change, and a loop breaker
-that refused to let a model inspect or test a file it had just edited.
+What the pause produced instead: two engine defects found by inspecting model-facing messages and fixed without any model run — a post-edit region that could report truncation while showing none of the change, and a loop breaker that refused to let a model inspect or test a file it had just edited.
 
 ## Accepted baseline
 

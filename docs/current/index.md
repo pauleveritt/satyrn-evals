@@ -242,6 +242,13 @@ past artifact. Archived material does not set current policy.
   gap. No further live spending or TE5 confirmation is proposed;
   broader generalization is separately authorized work only if a
   development need warrants it.
+- [Phase PD — prompt delivery](prompt-delivery-design.md) reads the
+  2026-09-12 overnight result (Baseline 12 of 12, Engine 6 of 12,
+  p=0.0069) as evidence about one over-hinted, inlined prompt condition
+  rather than a verdict on either architecture, closes the
+  `overnight-phase4-context` worktree as retained evidence, and proposes
+  SDD-style spec-file delivery, an easy and a user-story hard variant on
+  one grader, and an `n=2` screen. PD1 done; PD2–PD5 authorize nothing.
 - [Pre-run record: run_self_test live verification](self-test-tool-live-verification-pre-run-record.md)
   proposes one bounded `pi` invocation proving the self-test tool is
   reachable and its content legible, outside every TE denominator, and
@@ -318,4 +325,5 @@ phase-v-design
 phase-v-claim-inventory
 phase-v-engine-gap-register
 phase-v-track-b-gate
+prompt-delivery-design
 ```
