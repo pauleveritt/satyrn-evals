@@ -131,6 +131,35 @@ verification, not a superiority claim, not a rate, and not a mechanism
 attribution. A negative, mixed, or blocked result is reported the same way
 a favorable one would be.
 
+## PD5 budget — authorized 2026-09-12
+
+**The design's "no budget" status for PD5 is resolved by maintainer grant, at
+`n=2` and no further.** The design doc states that each live step needs its own
+budget authorization under `BRIEF.md`'s comparison policy; this section is that
+authorization for PD5 only, recorded here because an unattended run reads these
+documents and not the conversation that produced them.
+
+Granted by the maintainer, 2026-09-12: "I can authorize the budget of n=2 you
+have exclusive use of the GPU."
+
+What this settles, and only this:
+
+- PD5 may spend live inference for **two interleaved attempts per arm per
+  variant — eight cells** — plus **one route-verification attempt per arm per
+  variant** outside the denominator, exactly the shape the design's PD5 section
+  already scopes. That is the ceiling, not a target.
+- The GPU is **exclusively available** to this run, so a busy model server is a
+  real fault to report, not expected contention to wait out.
+- PD5's pre-run record is still written and frozen before the first cell, by
+  Opus, per the design and `BRIEF.md`'s rule 4. This grant does not replace it.
+
+What this does **not** settle: nothing else. Every other exclusion in this brief
+stands unchanged — no extension past `n=2` for any reason including a favorable
+or ambiguous result, no confirmation campaign, no merge to `main`, no engine
+change, no touching `.claude/worktrees/overnight-phase4-context`, and no claim
+that either arm is the more reliable architecture. A result that makes a larger
+`n` look worthwhile is reported as that recommendation, to a human, and stops.
+
 ## Ending the run
 
 The phase is done when PD5's result doc is written and committed in the new

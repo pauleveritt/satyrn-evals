@@ -306,7 +306,7 @@ The worktree `.claude/worktrees/overnight-phase4-context` (branch `worktree-over
 | **PD2** Worktree | A fresh worktree and branch for PD3–PD5 | proposal |
 | **PD3** SDD delivery | `base/specs/{mission,tech-stack,roadmap}.md` plus a pointer prompt, carried identically to both arms; **heaviest scrutiny of the phase** — checked against `dlai-local-ai-course/specs/` and SwiftStar's shared-context convention, not accepted because it compiles | proposal |
 | **PD4** Two variants | Easy: the current text delivered as specs. Hard: `local-ai-pi`'s `roadmap-user-story.md` + `domain.md` for phases 1–3, plus a new phase-4 story in that voice. One hidden grader, byte-identical | proposal |
-| **PD5** Screen | `n=2` per arm per variant, route verification outside the denominator; observation, never superiority | proposal, no budget |
+| **PD5** Screen | `n=2` per arm per variant, route verification outside the denominator; observation, never superiority | proposal; **budget authorized 2026-09-12** at `n=2` and no further, exclusive GPU ([brief](docs/current/phase-pd-unattended-brief.md)) |
 
 A transcript-level quality read beyond pass/fail is named in the design and **out of scope** unless PD5 earns it.
 
