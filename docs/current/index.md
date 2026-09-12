@@ -249,6 +249,11 @@ past artifact. Archived material does not set current policy.
   `overnight-phase4-context` worktree as retained evidence, and proposes
   SDD-style spec-file delivery, an easy and a user-story hard variant on
   one grader, and an `n=2` screen. PD1 done; PD2–PD5 authorize nothing.
+- [Phase PD, unattended: brief for a new agent](phase-pd-unattended-brief.md)
+  authorizes PD2–PD5 to run once, unattended, as three roles per cycle —
+  Opus steers, Sonnet implements, Fable reviews at each cycle's close — with
+  the design's own exclusions restated as hard stops and no merge to `main`
+  at the end.
 - [Pre-run record: run_self_test live verification](self-test-tool-live-verification-pre-run-record.md)
   proposes one bounded `pi` invocation proving the self-test tool is
   reachable and its content legible, outside every TE denominator, and
@@ -326,4 +331,5 @@ phase-v-claim-inventory
 phase-v-engine-gap-register
 phase-v-track-b-gate
 prompt-delivery-design
+phase-pd-unattended-brief
 ```
