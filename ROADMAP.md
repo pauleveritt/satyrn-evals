@@ -186,13 +186,10 @@ three phases) — HP5 exists because of the second.
 
 **Track A closed 2026-09-11; Track B (engine) proposed.** Design:
 [phase-v-design.md](docs/current/phase-v-design.md). Track A made the evidence
-trustworthy — a committed per-phase ledger, a 20-record claim inventory, the
-claim-level measures and the [Track B gate](docs/current/phase-v-track-b-gate.md)
-— and published the exploratory [engine gap register](docs/current/phase-v-engine-gap-register.md).
-Track B (V4 validation, V5 budget, V6 live proof) is engine-owned and mirrored
-in `satyrn-engine`'s roadmap, with cross-repo revisions recorded in both:
-V4 at `satyrn-engine@0069ace`, V5 (whole-attempt turn and deadline budget)
-at `satyrn-engine@1ea478c`; V6 is the remaining live proof.
+trustworthy and published the [Track B gate](docs/current/phase-v-track-b-gate.md)
+and the exploratory [engine gap register](docs/current/phase-v-engine-gap-register.md).
+Track B is engine-owned and mirrored in `satyrn-engine`'s roadmap: V4
+`@0069ace`, V5 turn/deadline budget `@1ea478c`, V6 the remaining live proof.
 Two Backlog entries carry Track A's follow-ups.
 
 ## After HP: Phase TE — fewer wasted turns, more work within budget
