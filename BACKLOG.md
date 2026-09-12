@@ -5,6 +5,22 @@ holds the resolved and superseded record.
 
 ## Entries
 
+**Give the composed route its own validation stop.** The engine's
+`deliver_chain` stops on a `FAILED` validation, and this repository's composed
+route stops at the grader (`chain_record._failed_validation_stop`), but
+`route.run_phases` has no validation stop of its own. The composed route is
+evals-owned, so the gap is recorded here rather than left in a cross-repo
+proposal. **Reopen** before V6's pre-run record is written, or when a
+validation outcome must gate a phase before the grader runs.
+
+**Derive the `corrected` claim status automatically.** The reconciliation
+prints derived-vs-published but never writes a record's status; the pinned
+tests assert derived equals published, so a divergence fails the gate rather
+than silently flipping a status. Automating the write is instrument work that
+unblocks no measurement. **Reopen** if a derived figure must set `corrected`
+for a record rather than a human edit, or if the pinned assertions are
+removed.
+
 **Normalize a diagnostic across arms only when a frozen experiment needs it.**
 Existing arm-specific pathology detectors are evidence scoped to their own
 transcript vocabulary. Reopen when a proposed comparison needs one shared
