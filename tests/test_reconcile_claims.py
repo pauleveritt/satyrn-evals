@@ -5,9 +5,12 @@ against a temporary root.
 """
 
 import json
+import os
 import sys
 from collections.abc import Sequence
 from pathlib import Path
+
+import pytest
 
 from satyrn_evals.claim_inventory import INVENTORY, ClaimRecord
 from satyrn_evals.claim_measures import ClaimMeasure
@@ -17,6 +20,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 from reconcile_claims import (  # noqa: E402  # scripts/ added via sys.path above
     AttemptSpec,
+    _complaint_lifecycle_baseline_records,
+    _complaint_lifecycle_engine_attempts,
     _count_measure,
     _current_prompt_attempts,
     _phase4_reaching_engine_attempts,
@@ -365,3 +370,154 @@ def test_measure_inventory_marks_an_absent_transcript_undecidable(
         "derived 0 yes, 1 undecidable, of 1 phase-4-reaching Engine attempts "
         "applied a destructive edit (published 13 of 15)"
     )
+
+
+# --- V3b completion membership + derived figures ---------------------------
+
+COMPLAINT_LIFECYCLE = "agentclinic-complaint-lifecycle"
+
+
+def _write_engine_run(
+    runs_root: Path, run_dir: str, tasks: Sequence[str]
+) -> None:
+    """An Engine run: a chain record plus one receipt per supplied task name."""
+    run = runs_root / run_dir
+    run.mkdir(parents=True)
+    (run / "chain.json").write_text(json.dumps({"phases": []}), encoding="utf-8")
+    receipts = run / "grading" / "receipts"
+    receipts.mkdir(parents=True)
+    for index, task in enumerate(tasks, start=1):
+        (receipts / f"{index:02d}-receipt.json").write_text(
+            json.dumps({"task": task}), encoding="utf-8"
+        )
+
+
+def _write_baseline_record(runs_root: Path, run_dir: str, task: str) -> None:
+    session = runs_root / run_dir / f"{run_dir}-session"
+    session.mkdir(parents=True)
+    (session / "session-record.json").write_text(
+        json.dumps({"task": task}), encoding="utf-8"
+    )
+
+
+def test_engine_population_membership_reads_the_receipt_task_not_the_dir_name(
+    tmp_path: Path,
+) -> None:
+    """The Engine membership rule is the grader's recorded task, never a run
+    directory's shape: a matching receipt under a misleadingly-named directory
+    is a member, a receipt naming another task is not, and a run with no
+    receipt or with disagreeing receipts has no derivable task and so is
+    excluded."""
+    _write_engine_run(tmp_path, "misleading-name-engine-01", [COMPLAINT_LIFECYCLE])
+    _write_engine_run(
+        tmp_path,
+        "agentclinic-complaint-lifecycle-engine-01",
+        ["some-other-task"],
+    )
+    _write_engine_run(tmp_path, "no-receipts-engine-01", [])
+    _write_engine_run(
+        tmp_path,
+        "disagreeing-receipts-engine-01",
+        [COMPLAINT_LIFECYCLE, "some-other-task"],
+    )
+
+    assert tuple(
+        spec.run_dir for spec in _complaint_lifecycle_engine_attempts(tmp_path)
+    ) == ("misleading-name-engine-01",)
+
+
+def test_baseline_population_membership_reads_the_record_task(
+    tmp_path: Path,
+) -> None:
+    """The Baseline membership rule is the session record's own task field:
+    only the session that names ``agentclinic-complaint-lifecycle`` is a
+    member."""
+    _write_baseline_record(tmp_path, "matching-baseline-01", COMPLAINT_LIFECYCLE)
+    _write_baseline_record(tmp_path, "other-baseline-01", "some-other-task")
+
+    assert tuple(
+        record.parent.name
+        for record in _complaint_lifecycle_baseline_records(tmp_path)
+    ) == ("matching-baseline-01-session",)
+
+
+#: The published V3b completion figures, restated so a retained artifact that
+#: changes a population or a completion count fails here, naming the derived
+#: figure, instead of the report printing a stale `confirmed` row silently.
+RETAINED_RUNS_ROOT = Path(os.path.expanduser("~/satyrn-smokes"))
+PUBLISHED_ENGINE_POPULATION = 18
+PUBLISHED_ENGINE_COMPLETIONS = 6
+PUBLISHED_PRE_SCREEN_POPULATION = 16
+PUBLISHED_PRE_SCREEN_COMPLETIONS = 4
+PUBLISHED_BASELINE_POPULATION = 3
+PUBLISHED_BASELINE_COMPLETIONS = 3
+
+
+def _require_retained_runs_root() -> None:
+    """The artifacts live outside the repository; absence skips naming it."""
+    if not RETAINED_RUNS_ROOT.is_dir():
+        pytest.skip(f"retained attempts absent: {RETAINED_RUNS_ROOT}")
+
+
+@pytest.mark.integration
+def test_the_retained_completion_figures_match_the_published_population() -> None:
+    """Pin the V3b derived completion figures against the published claims.
+
+    Mirrors `test_the_enumerated_phase4_run_dirs_match_the_published_population`:
+    the Engine population is 18, its completion count is 6, the pre-screen
+    subset is 16 with 4 completions, and the Baseline population is 3 with 3
+    completions. The measure evidence is pinned too, so a change cannot print
+    a different count beside a `confirmed` inventory row without failing.
+    """
+    _require_retained_runs_root()
+
+    engine_specs = _complaint_lifecycle_engine_attempts(RETAINED_RUNS_ROOT)
+    baseline_records = _complaint_lifecycle_baseline_records(RETAINED_RUNS_ROOT)
+
+    assert len(engine_specs) == PUBLISHED_ENGINE_POPULATION, (
+        f"Engine population drifted from the published "
+        f"{PUBLISHED_ENGINE_POPULATION}: "
+        f"enumerated={sorted(spec.run_dir for spec in engine_specs)}"
+    )
+    assert len(baseline_records) == PUBLISHED_BASELINE_POPULATION, (
+        f"Baseline population drifted from the published "
+        f"{PUBLISHED_BASELINE_POPULATION}: "
+        f"enumerated={[str(path) for path in baseline_records]}"
+    )
+
+    measures = {
+        measure.claim_id: measure
+        for measure in measure_inventory_for_run(
+            INVENTORY,
+            RETAINED_RUNS_ROOT,
+            _phase4_reaching_engine_attempts(RETAINED_RUNS_ROOT),
+        )
+    }
+
+    population = measures["c-engine-population"]
+    assert population.result == "yes"
+    assert (
+        f"derived {PUBLISHED_ENGINE_POPULATION} Engine attempts and "
+        f"{PUBLISHED_BASELINE_POPULATION} Baseline attempts"
+    ) in population.evidence[0]
+
+    completion_18 = measures["c-completion-6-of-18"]
+    assert completion_18.result == "yes"
+    assert (
+        f"derived {PUBLISHED_ENGINE_COMPLETIONS} yes, 0 undecidable, "
+        f"of {PUBLISHED_ENGINE_POPULATION}"
+    ) in completion_18.evidence[0]
+
+    completion_16 = measures["c-completion-4-of-16"]
+    assert completion_16.result == "yes"
+    assert (
+        f"derived {PUBLISHED_PRE_SCREEN_COMPLETIONS} yes, 0 undecidable, "
+        f"of {PUBLISHED_PRE_SCREEN_POPULATION}"
+    ) in completion_16.evidence[0]
+
+    baseline = measures["c-baseline-3-of-3"]
+    assert baseline.result == "yes"
+    assert (
+        f"derived {PUBLISHED_BASELINE_COMPLETIONS} yes, 0 undecidable, "
+        f"of {PUBLISHED_BASELINE_POPULATION}"
+    ) in baseline.evidence[0]
