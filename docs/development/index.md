@@ -42,6 +42,7 @@ cycles/index
 ../superpowers/plans/2026-09-11-phase-v3b-completion-rate
 ../superpowers/plans/2026-09-11-phase-v5b-budget-propagation
 ../superpowers/specs/2026-09-13-release-one-design
+../superpowers/plans/2026-09-13-phase-0-restart
 ```
 
 The repository-root
