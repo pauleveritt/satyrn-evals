@@ -160,7 +160,7 @@ B **9, 14, 12, 13** counted by hand because V10 refuses those transcripts.
 The scoped and unscoped counts differ in `cell-05-A3` alone, where the one
 suite invocation is the cell's final tool call.
 
-**The one cell where the frozen rule fires.** `cell-05-A3` made 5 tool calls:
+**The one cell where the frozen rule fires.** `cell-05-A3` made 6 tool calls:
 four reconnaissance `bash` calls, then one `edit` to `app.py` at index 4, then
 one suite invocation at index 5. The window `starts[:last]` is the four
 reconnaissance calls, so the scoped count is **0** and the pathology is

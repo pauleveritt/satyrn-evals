@@ -5,6 +5,20 @@ holds the resolved and superseded record.
 
 ## Entries
 
+**Teach the census and V10 to read a session cell's `transcript.jsonl`.**
+The census discovers only `transcript.txt` and
+`.satyrn-implementer-transcript.jsonl` (`census.py:462-472`), and V10's
+`count_transcript` refuses the session adapter's unwrapped stream as
+`malformed` because no Pi `session` header is retained. In the 2026-09-13
+Ornith 9B pathology probe this left `census`, `repeats`,
+`test_runner_commands` and `read_lock` measured for Block A only; Block B's
+counts were hand walks corroborated by each step's `tool_count` (32/72/56/58
+exact), recorded as missingness in
+[the result](docs/current/ornith-9b-pathology-probe-result.md). Instrument
+work, not a measurement. **Reopen** before the next batch that mixes attempt
+and session cells and wants one census over both, or when a session-cell
+pathology count must come from the tool rather than by hand.
+
 **Give the composed route its own validation stop.** The engine's
 `deliver_chain` stops on a `FAILED` validation, and this repository's composed
 route stops at the grader (`chain_record._failed_validation_stop`), but
