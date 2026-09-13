@@ -8,6 +8,20 @@ fixes that brief's concrete values; it adds no question, no cell and no arm. **N
 the brief's Budget grant section is still `_Not yet granted._`, and cell 1
 must not start until the maintainer records the grant there.**
 
+> **Revision, 2026-09-13 (after the first freeze).** The brief was revised
+> after this record was first committed: **Block A changed from
+> `agentclinic-repair-depth-3` to `agentclinic-repair-misleading-locus`**,
+> both at rung `R1`. `depth-3`'s 0/36 Baseline was diagnosed as an
+> **instrument property** (its public suite is blind to two of the seeded
+> seams), not a read-lock, so it cannot answer the repeat-lock question;
+> `misleading-locus` R1 is the task where gemma Baseline read-locked 8/12
+> (V14b). **No depth-3 cell ran** — no launch was authorized (the budget
+> grant is still absent) and the output root does not exist — so no
+> `discarded-depth3-*` exists and none is slotted. The eight slots are
+> unchanged (A1 B1 A2 B2 A3 B3 A4 B4); only Block A's task is swapped, and no
+> slot is reused. Block B, the order, the measures, the instrument debt and
+> the stop conditions are unchanged.
+
 ## The question, and the one it is not
 
 **Question.** Across eight Baseline cells on Ornith 1.5 9B, in how many does
@@ -46,7 +60,7 @@ never pool with it.
 | Inference | the model's own settings from `arms/baseline-ornith15-9b.json`: context window 262,144; max tokens 32,000; temperature 0.6; top_p 0.95; top_k 20; min_p 0.0; presence_penalty 0.0; repetition_penalty 1.0; compaction enabled, 16,384 reserve; `declares_reasoning: true`. **Recorded, not normalised onto gemma's.** |
 | Arm | Baseline only, `satyrn-evals-attempt-pi` / `satyrn-evals-session-pi`, tools `read,bash,edit,write`, pi `0.85.1` |
 | Repeat limit | **off** — the question is whether locks occur; a limit forecloses observing them (`BRIEF.md`, "Do not use a repeated-call limit when recovery from repetition is the question") |
-| Block A | `agentclinic-repair-depth-3`, rung `R1`, `satyrn-evals run --n 1`, 4 cells, `--timeout 900 --attempt-timeout 1200` |
+| Block A | `agentclinic-repair-misleading-locus`, rung `R1` — the task where gemma Baseline read-locked 8/12 (V14b); `depth-3` was considered and rejected because its 0/36 was diagnosed as an instrument property, not a lock — `satyrn-evals run --n 1`, 4 cells, `--timeout 900 --attempt-timeout 1200` |
 | Block B | `agentclinic-complaint-lifecycle` (the plain inlined task on `main`), `satyrn-evals session --step-timeout 600`, 4 cells |
 | Order | A1 B1 A2 B2 A3 B3 A4 B4, serial, one at a time |
 | Output root | `~/satyrn-smokes/2026-09-13-ornith9b-pathology-probe/` — **confirmed absent** at the time of writing |
@@ -62,7 +76,7 @@ run the digest is a **recorded identity, not a command-enforced gate**.
 
 | Block | Task | Task tree sha256 |
 |---|---|---|
-| A | `agentclinic-repair-depth-3` | `2090e5fe0ce32551f62c1236bb96f0862d45378892fa073a6a1c801ab356b23b` |
+| A | `agentclinic-repair-misleading-locus` | `93dc90eaed73b9999d4ddee14949eea0f2bf0aa8584408c4ed7557ce87b45522` |
 | B | `agentclinic-complaint-lifecycle` | `773d76affd478f677e61479b7027c5c057c05cd5305fcbaaa2bac3ec7b0ca20c` |
 
 Recompute either digest (run once per task name):
@@ -76,7 +90,7 @@ Recompute either digest (run once per task name):
         if p.is_file():
             h.update(p.relative_to(d).as_posix().encode()); h.update(p.read_bytes())
     print(h.hexdigest())
-    " agentclinic-repair-depth-3
+    " agentclinic-repair-misleading-locus
 
 ## Evals revision
 
@@ -103,7 +117,7 @@ corrections were forced by the code and the retained probe:
 
 **Block A — 4 `run` cells (`<cell-dir>` per cell):**
 
-    uv run satyrn-evals run agentclinic-repair-depth-3 --n 1 --rung R1 \
+    uv run satyrn-evals run agentclinic-repair-misleading-locus --n 1 --rung R1 \
       --output <cell-dir> --timeout 900 --attempt-timeout 1200 -- \
       satyrn-evals-attempt-pi --model omlx/Ornith-1.5-9B-MLX-8bit \
       --tools read,bash,edit,write
@@ -124,13 +138,13 @@ condition above.
 
 | Cell | Block | Task | Kind |
 |---|---|---|---|
-| `cell-01-A1` | A | `agentclinic-repair-depth-3` (R1) | screen |
+| `cell-01-A1` | A | `agentclinic-repair-misleading-locus` (R1) | screen |
 | `cell-02-B1` | B | `agentclinic-complaint-lifecycle` | screen |
-| `cell-03-A2` | A | `agentclinic-repair-depth-3` (R1) | screen |
+| `cell-03-A2` | A | `agentclinic-repair-misleading-locus` (R1) | screen |
 | `cell-04-B2` | B | `agentclinic-complaint-lifecycle` | screen |
-| `cell-05-A3` | A | `agentclinic-repair-depth-3` (R1) | screen |
+| `cell-05-A3` | A | `agentclinic-repair-misleading-locus` (R1) | screen |
 | `cell-06-B3` | B | `agentclinic-complaint-lifecycle` | screen |
-| `cell-07-A4` | A | `agentclinic-repair-depth-3` (R1) | screen |
+| `cell-07-A4` | A | `agentclinic-repair-misleading-locus` (R1) | screen |
 | `cell-08-B4` | B | `agentclinic-complaint-lifecycle` | screen |
 
 Sequential, non-overlapping, one at a time, each into its own directory under
