@@ -241,3 +241,13 @@
 | tests/test_preflight_inference.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/test_preflight_models.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/test_preflight_processes.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
+| BRIEF.md | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
+| docs/pathologies.md | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
+| docs/remediations.md | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
+| docs/lessons.md | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
+| docs/superpowers/specs/2026-09-13-release-one-design.md | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
+| docs/superpowers/plans/2026-09-13-phase-0-restart.md | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
+| AGENTS.md | created in release-one |
+| ROADMAP.md | created in release-one |
+| docs/results/.gitkeep | created in release-one |
+| docs/reviews/.gitkeep | created in release-one |
