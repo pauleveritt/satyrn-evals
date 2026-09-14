@@ -265,3 +265,6 @@
 | scripts/preflight_settings.py | created in release-one |
 | tests/test_preflight_settings.py | created in release-one |
 | docs/superpowers/plans/2026-09-14-phase-1-implement.md | created in release-one |
+| scripts/suite_durations.py | created in release-one |
+| scripts/suite_durations.json | created in release-one |
+| tests/test_suite_durations.py | created in release-one |
