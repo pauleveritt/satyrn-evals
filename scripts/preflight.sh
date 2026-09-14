@@ -126,13 +126,20 @@ uv run --project "$EVALS_ROOT" python \
 
 # --- 0a. each arm's declared inference settings are actually enforced ----
 # An arm's `inference` block was a claim nobody checked: the served id can
-# be absent from both the oMLX server's model_settings.json and pi's
-# models.json, in which case every cell ran on unknown defaults while the
-# arm file said otherwise. Checked per arm, not just the baseline: each
-# arm can name a different served model.
+# be absent from the oMLX server's model_settings.json -- the config that
+# actually governs sampling -- while pi's models.json agrees, which is
+# exactly what made the gap invisible. Checked per arm, not just the
+# baseline: each arm can name a different served model. `--record` writes
+# the provenance block (arm/entry digests) next to preflight.json, one file
+# per arm, so the frozen precondition names what was compared and not only
+# that it was; $OUTPUT does not exist yet at this point in the script (only
+# interleave.py, in step 6 below, creates it), so it is made here.
+mkdir -p "$OUTPUT"
 for arm_file in "${ARM_FILES[@]}"; do
+  arm_stem="$(basename "$arm_file" .json)"
   uv run --project "$EVALS_ROOT" python \
     "$EVALS_ROOT/scripts/preflight_settings.py" "$arm_file" \
+    --record "$OUTPUT/settings-$arm_stem.json" \
     || fail "$arm_file's inference settings are not verified against the server and pi config"
 done
 

@@ -1,10 +1,12 @@
 """Preflight refuses an arm whose inference block is not enforced anywhere.
 
-`arms/baseline-ornith15-9b.json` declared a full `inference` block and
-nothing checked it against the oMLX server's `model_settings.json` or pi's
-`models.json` -- the served id was in neither file, so every Ornith cell
-ran on unknown server defaults. This is the check that would have caught
-it. Each refusal below has its sibling success, per `BRIEF.md` rule 6.
+`arms/baseline-ornith15-9b.json` declared a full `inference` block for
+`Ornith-1.5-9B-MLX-8bit`. That id was absent from the oMLX server's
+`model_settings.json` -- the config that actually governs sampling --
+while pi's `models.json` did carry a matching entry. One of two configs
+agreeing is not the setting being enforced, and nothing compared the
+claim to either file. This is the check that would have caught it. Each
+refusal below has its sibling success, per `BRIEF.md` rule 6.
 """
 
 import json
@@ -16,12 +18,16 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 from preflight_settings import (  # noqa: E402, I001
+    _agrees,
     compare,
     main,
     omlx_entry,
     pi_entry,
     provenance,
 )
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_ARMS_ROOT = _REPO_ROOT / "arms"
 
 # --- fixtures --------------------------------------------------------------
 
@@ -231,6 +237,68 @@ def test_compare_one_pi_sampling_field_absent() -> None:
     assert "temperature" in lines[0]
 
 
+def test_compare_pi_missing_sampling_params_block_is_one_line() -> None:
+    """An entry with no `samplingParams` at all names the absent block once,
+    not once per declared field -- the documented shape of the Ornith gap."""
+    pi = _pi_model()
+    del pi["samplingParams"]
+    lines = [
+        line for line in compare(_ARM_INFERENCE, _omlx_model(), pi) if line.startswith("pi:")
+    ]
+    assert len(lines) == 1
+    assert "samplingParams" in lines[0]
+
+
+# --- compare / _agrees: bool is not a number, int/float of equal value is --
+
+
+def test_agrees_bool_vs_int_is_mismatch() -> None:
+    assert _agrees(True, 1) is False
+    assert _agrees(False, 0.0) is False
+
+
+def test_agrees_matching_bools_agree() -> None:
+    assert _agrees(True, True) is True
+    assert _agrees(False, False) is True
+
+
+def test_agrees_int_float_of_equal_value_agrees() -> None:
+    assert _agrees(20, 20.0) is True
+
+
+def test_compare_bool_vs_int_is_a_mismatch_at_omlx() -> None:
+    """`enable_thinking: 1` must not silently satisfy `declares_reasoning: true`."""
+    omlx = _omlx_model()
+    omlx["enable_thinking"] = 1
+    lines = compare(_ARM_INFERENCE, omlx, _pi_model())
+    assert len(lines) == 1
+    assert lines[0].startswith("omlx:")
+    assert "declares_reasoning" in lines[0]
+
+
+def test_compare_bool_vs_int_sibling_success_when_both_bool() -> None:
+    """The sibling of the mismatch above: matching bools still agree."""
+    omlx = _omlx_model()
+    omlx["enable_thinking"] = True
+    assert compare(_ARM_INFERENCE, omlx, _pi_model()) == []
+
+
+def test_compare_bool_vs_int_is_a_mismatch_at_pi() -> None:
+    pi = _pi_model()
+    pi["reasoning"] = 1
+    lines = compare(_ARM_INFERENCE, _omlx_model(), pi)
+    assert len(lines) == 1
+    assert lines[0].startswith("pi:")
+    assert "declares_reasoning" in lines[0]
+
+
+def test_compare_int_vs_float_of_equal_value_is_not_a_mismatch() -> None:
+    """`top_k: 20` and `top_k: 20.0` are the same config value."""
+    omlx = _omlx_model()
+    omlx["top_k"] = 20.0
+    assert compare(_ARM_INFERENCE, omlx, _pi_model()) == []
+
+
 # --- provenance: digests -----------------------------------------------------
 
 
@@ -274,16 +342,24 @@ def _write(path: Path, data: dict) -> Path:
     return path
 
 
-def _arm_file(tmp_path: Path) -> Path:
-    return _write(
-        tmp_path / "arm.json",
-        {
-            "arm": "baseline",
-            "model": "omlx/Ornith-1.5-9B-MLX-8bit",
-            "server_model": "Ornith-1.5-9B-MLX-8bit",
-            "inference": _ARM_INFERENCE,
-        },
-    )
+def _base_arm_data() -> dict:
+    """A minimal, otherwise-valid arm -- loadable by `satyrn_evals.arms.load_arm`,
+    which the CLI now uses. `model`/`server_model`/`inference` are what this
+    script itself reads; `argv`/`tools`/`pins` are here only so `load_arm`
+    accepts the file."""
+    return {
+        "arm": "baseline",
+        "argv": ["satyrn-evals-attempt-pi"],
+        "tools": ["read"],
+        "model": "omlx/Ornith-1.5-9B-MLX-8bit",
+        "server_model": "Ornith-1.5-9B-MLX-8bit",
+        "pins": {"pi": "0.85.1", "engine_commit": None, "digests": {}},
+        "inference": _ARM_INFERENCE,
+    }
+
+
+def _arm_file(tmp_path: Path, data: dict | None = None) -> Path:
+    return _write(tmp_path / "arm.json", data if data is not None else _base_arm_data())
 
 
 def test_cli_exit_0_when_clean(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -402,3 +478,150 @@ def test_cli_writes_record_file(tmp_path: Path) -> None:
     assert code == 0
     record = json.loads(record_path.read_text(encoding="utf-8"))
     assert record["omlx_entry_sha256"] is not None
+
+
+# --- CLI: the arm is loaded through satyrn_evals.arms.load_arm -------------
+# A malformed arm file used to traceback (exit 1 via an uncaught KeyError),
+# which `preflight.sh` then reported as "settings are not verified" -- a
+# false diagnosis of an authoring error. `load_arm` is the house reader
+# (`preflight_models.py` uses it too); its `ArmError` is a `UsageError`,
+# already exit-2-shaped.
+
+
+def test_cli_exit_2_on_arm_missing_model_key(tmp_path: Path) -> None:
+    data = _base_arm_data()
+    del data["model"]
+    arm = _arm_file(tmp_path, data)
+    omlx_path = _write(tmp_path / "model_settings.json", _OMLX_SETTINGS)
+    pi_path = _write(tmp_path / "models.json", _PI_MODELS)
+
+    code = main(
+        [
+            str(arm),
+            "--omlx-settings",
+            str(omlx_path),
+            "--pi-models",
+            str(pi_path),
+        ]
+    )
+    assert code == 2
+
+
+def test_cli_exit_2_on_arm_missing_model_key_sibling_success(tmp_path: Path) -> None:
+    """The sibling of the refusal above: the same arm, with `model` present."""
+    arm = _arm_file(tmp_path)
+    omlx_path = _write(tmp_path / "model_settings.json", _OMLX_SETTINGS)
+    pi_path = _write(tmp_path / "models.json", _PI_MODELS)
+
+    code = main(
+        [
+            str(arm),
+            "--omlx-settings",
+            str(omlx_path),
+            "--pi-models",
+            str(pi_path),
+        ]
+    )
+    assert code == 0
+
+
+def test_cli_exit_2_on_arm_model_not_addressing_server_model(tmp_path: Path) -> None:
+    """`load_arm` refuses a `model` that does not end with `/{server_model}` --
+    checked against a pi id and an oMLX id that would not otherwise
+    correspond."""
+    data = _base_arm_data()
+    data["server_model"] = "some-other-id"
+    arm = _arm_file(tmp_path, data)
+    omlx_path = _write(tmp_path / "model_settings.json", _OMLX_SETTINGS)
+    pi_path = _write(tmp_path / "models.json", _PI_MODELS)
+
+    code = main(
+        [
+            str(arm),
+            "--omlx-settings",
+            str(omlx_path),
+            "--pi-models",
+            str(pi_path),
+        ]
+    )
+    assert code == 2
+
+
+def test_cli_exit_2_on_arm_model_not_addressing_server_model_sibling_success(
+    tmp_path: Path,
+) -> None:
+    """The sibling of the refusal above: `model` addresses `server_model`."""
+    arm = _arm_file(tmp_path)
+    omlx_path = _write(tmp_path / "model_settings.json", _OMLX_SETTINGS)
+    pi_path = _write(tmp_path / "models.json", _PI_MODELS)
+
+    code = main(
+        [
+            str(arm),
+            "--omlx-settings",
+            str(omlx_path),
+            "--pi-models",
+            str(pi_path),
+        ]
+    )
+    assert code == 0
+
+
+# --- CLI: a failing --record write is exit 2, not a traceback --------------
+
+
+def test_cli_exit_2_on_record_write_failure(tmp_path: Path) -> None:
+    arm = _arm_file(tmp_path)
+    omlx_path = _write(tmp_path / "model_settings.json", _OMLX_SETTINGS)
+    pi_path = _write(tmp_path / "models.json", _PI_MODELS)
+    unwritable_record = tmp_path / "no-such-dir" / "record.json"
+
+    code = main(
+        [
+            str(arm),
+            "--omlx-settings",
+            str(omlx_path),
+            "--pi-models",
+            str(pi_path),
+            "--record",
+            str(unwritable_record),
+        ]
+    )
+    assert code == 2
+
+
+def test_cli_exit_2_on_record_write_failure_sibling_success(tmp_path: Path) -> None:
+    """The sibling of the refusal above: the same call with a writable path."""
+    arm = _arm_file(tmp_path)
+    omlx_path = _write(tmp_path / "model_settings.json", _OMLX_SETTINGS)
+    pi_path = _write(tmp_path / "models.json", _PI_MODELS)
+    record_path = tmp_path / "record.json"
+
+    code = main(
+        [
+            str(arm),
+            "--omlx-settings",
+            str(omlx_path),
+            "--pi-models",
+            str(pi_path),
+            "--record",
+            str(record_path),
+        ]
+    )
+    assert code == 0
+    assert record_path.is_file()
+
+
+# --- drift guard: settings_verified_by names a script that still exists ----
+
+
+@pytest.mark.parametrize(
+    "arm_path", sorted(_ARMS_ROOT.glob("*.json")), ids=lambda p: p.name
+)
+def test_every_arm_names_a_settings_checker_that_exists(arm_path: Path) -> None:
+    """A marker nothing reads can name a deleted script and nothing fails --
+    the exact failure mode this branch exists to close, one level up."""
+    arm = json.loads(arm_path.read_text(encoding="utf-8"))
+    named = arm["settings_verified_by"]
+    assert named == "scripts/preflight_settings.py"
+    assert (_REPO_ROOT / named).is_file()

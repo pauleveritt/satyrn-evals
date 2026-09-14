@@ -9,15 +9,26 @@ actual serving path: the oMLX server's per-model settings
 (`~/.pi/agent/models.json`).
 
 `arms/baseline-ornith15-9b.json` carries a full `inference` block --
-context window, sampling params, reasoning -- and nothing enforced it. The
-oMLX server applies per-model settings only to ids listed in
-`model_settings.json`; pi applies `samplingParams` only to ids listed
-under the matching provider in `models.json`. A served id absent from
-either file runs on whatever that program defaults to, silently, and the
-arm file's block becomes a claim nobody checked. `gemma-4-12B-it-MLX-8bit`
-is a live example of the same gap from the other side: it *is* registered
-on the server, but the server does not enforce `temperature` at all, so
-the arm's `temperature: 1.0` is a bet on nothing.
+context window, sampling params, reasoning -- and nothing enforced it.
+`Ornith-1.5-9B-MLX-8bit` was absent from `model_settings.json` -- the
+config the oMLX server actually applies -- while pi's `models.json` did
+carry a matching entry. One of two configs agreeing is not the setting
+being enforced: the server ignored a `model_settings.json` id it does not
+list, silently, and the arm file's block became a claim nobody checked
+against the side that governs sampling. `gemma-4-12B-it-MLX-8bit` is a
+live example of the same gap from the other side: it *is* registered on
+the server, but the server does not enforce `temperature` at all, so the
+arm's `temperature: 1.0` is a bet on nothing.
+
+This checks only the fields in `_OMLX_FIELDS` / `_PI_DIRECT_FIELDS` /
+`_PI_SAMPLING_FIELDS` below. `compaction_enabled` and
+`compaction_reserve_tokens`, also present in an arm's `inference` block,
+are `scripts/preflight_inference.py`'s to check (step 0c of
+`preflight.sh`), which also compares `context_window`, `max_tokens` and
+`temperature` against pi's `models.json` by a different lookup
+(`_find_model`, matching `server_model` anywhere in the document, not
+`providers[provider].models[].id`) -- two checks, two lookups, kept
+deliberately separate rather than merged into one wider one.
 
 **Stated limit.** A clean result means "the arm's numbers match what both
 config files say", never "the server actually samples this way" -- that
@@ -38,6 +49,10 @@ import hashlib
 import json
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+
+from satyrn_evals.arms import ArmError, load_arm  # noqa: E402
 
 DEFAULT_OMLX_SETTINGS = Path.home() / ".omlx" / "model_settings.json"
 DEFAULT_PI_MODELS = Path.home() / ".pi" / "agent" / "models.json"
@@ -87,6 +102,19 @@ def pi_entry(models_json: dict, provider: str, model_id: str) -> dict | None:
     return None
 
 
+def _agrees(arm_val: object, entry_val: object) -> bool:
+    """Equal *and* not a bool standing in for a number, or vice versa.
+
+    `True == 1` in Python, so a plain `==` would accept `enable_thinking: 1`
+    for `declares_reasoning: true` -- and `min_p: false` for `min_p: 0.0`.
+    int/float agreement is deliberate: `top_k: 20` and `top_k: 20.0` are the
+    same config value.
+    """
+    if (type(arm_val) is bool) != (type(entry_val) is bool):
+        return False
+    return arm_val == entry_val
+
+
 def compare(arm_inference: dict, omlx: dict | None, pi: dict | None) -> list[str]:
     """Human-readable mismatch lines; empty when the arm's claims agree.
 
@@ -114,7 +142,7 @@ def compare(arm_inference: dict, omlx: dict | None, pi: dict | None) -> list[str
                 )
                 continue
             omlx_val = omlx[omlx_field]
-            if arm_val != omlx_val:
+            if not _agrees(arm_val, omlx_val):
                 lines.append(
                     f"omlx: {arm_field} arm={arm_val!r} but "
                     f"model_settings.json {omlx_field}={omlx_val!r}"
@@ -137,29 +165,36 @@ def compare(arm_inference: dict, omlx: dict | None, pi: dict | None) -> list[str
                 )
                 continue
             pi_val = pi[pi_field]
-            if arm_val != pi_val:
+            if not _agrees(arm_val, pi_val):
                 lines.append(
                     f"pi: {arm_field} arm={arm_val!r} but "
                     f"models.json {pi_field}={pi_val!r}"
                 )
 
-        sampling = pi.get("samplingParams") or {}
-        for arm_field, pi_field in _PI_SAMPLING_FIELDS.items():
-            if arm_field not in arm_inference:
-                continue
-            arm_val = arm_inference[arm_field]
-            if pi_field not in sampling:
-                lines.append(
-                    f"pi: arm declares {arm_field}={arm_val!r} but "
-                    f"samplingParams has no {pi_field!r}"
-                )
-                continue
-            pi_val = sampling[pi_field]
-            if arm_val != pi_val:
-                lines.append(
-                    f"pi: {arm_field} arm={arm_val!r} but "
-                    f"samplingParams.{pi_field}={pi_val!r}"
-                )
+        sampling_declared = any(field in arm_inference for field in _PI_SAMPLING_FIELDS)
+        if sampling_declared and "samplingParams" not in pi:
+            lines.append(
+                "pi: arm declares sampling settings but the models.json "
+                "entry has no samplingParams block at all"
+            )
+        elif sampling_declared:
+            sampling = pi["samplingParams"]
+            for arm_field, pi_field in _PI_SAMPLING_FIELDS.items():
+                if arm_field not in arm_inference:
+                    continue
+                arm_val = arm_inference[arm_field]
+                if pi_field not in sampling:
+                    lines.append(
+                        f"pi: arm declares {arm_field}={arm_val!r} but "
+                        f"samplingParams has no {pi_field!r}"
+                    )
+                    continue
+                pi_val = sampling[pi_field]
+                if not _agrees(arm_val, pi_val):
+                    lines.append(
+                        f"pi: {arm_field} arm={arm_val!r} but "
+                        f"samplingParams.{pi_field}={pi_val!r}"
+                    )
 
     return lines
 
@@ -205,16 +240,25 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
+        # `load_arm` is the house reader (`preflight_models.py` uses it
+        # too): it refuses a missing/wrong-typed field and, separately, a
+        # `model` that does not address its `server_model` -- both authoring
+        # errors, not a settings mismatch, so both belong at exit 2, not a
+        # traceback that `preflight.sh` would misreport as "not verified".
+        loaded_arm = load_arm(args.arm)
+        # Read again, raw, only for what `load_arm` does not model:
+        # `inference` (not part of `Arm`) and the exact text `provenance`
+        # digests.
         arm_text = args.arm.read_text(encoding="utf-8")
         arm = json.loads(arm_text)
         omlx_settings = _read_json(args.omlx_settings)
         pi_models = _read_json(args.pi_models)
-    except (OSError, json.JSONDecodeError) as exc:
+    except (OSError, json.JSONDecodeError, ArmError) as exc:
         print(f"preflight_settings: unreadable input: {exc}", file=sys.stderr)
         return 2
 
-    provider, _, model_id = str(arm["model"]).partition("/")
-    server_model = str(arm["server_model"])
+    provider, _, model_id = loaded_arm.model.partition("/")
+    server_model = loaded_arm.server_model
 
     omlx = omlx_entry(omlx_settings, server_model)
     pi = pi_entry(pi_models, provider, model_id)
@@ -226,7 +270,11 @@ def main(argv: list[str] | None = None) -> int:
     payload = json.dumps(record, indent=2, sort_keys=True)
     print(payload)
     if args.record is not None:
-        args.record.write_text(payload + "\n", encoding="utf-8")
+        try:
+            args.record.write_text(payload + "\n", encoding="utf-8")
+        except OSError as exc:
+            print(f"preflight_settings: cannot write record: {exc}", file=sys.stderr)
+            return 2
 
     if mismatches:
         for line in mismatches:
@@ -234,7 +282,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     print(
-        f"preflight_settings ok: {arm.get('arm')!r} settings verified "
+        f"preflight_settings ok: {loaded_arm.arm!r} settings verified "
         f"against oMLX and pi config",
         file=sys.stderr,
     )
