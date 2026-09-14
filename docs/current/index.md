@@ -338,5 +338,6 @@ ornith-9b-pathology-probe-result
 ornith-9b-ceiling-probe-brief
 selfhost-headroom-probe-brief
 selfhost-headroom-probe-pre-run-record
+selfhost-headroom-probe-result
 ornith-9b-pathology-probe-result-addendum
 ```
