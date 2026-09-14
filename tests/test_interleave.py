@@ -32,13 +32,73 @@ from interleave import (  # noqa: E402  # type: ignore[missing-import]  # script
 )
 from tally import TallyRefused, tally  # noqa: E402  # type: ignore[missing-import]
 from satyrn_evals.arms import Arm, ArmPins  # noqa: E402
+from satyrn_evals.arms import load_arm as real_load_arm  # noqa: E402
 
 ARMS_ROOT = Path(__file__).resolve().parents[1] / "arms"
 BASELINE = ARMS_ROOT / "baseline.json"
-ENGINE = ARMS_ROOT / "engine.json"
 DIGEST = "c" * 64
 TASK = "agentclinic-repair-plausible-wrong-fix"
 BALANCED = {"baseline": 12, "engine": 12}
+
+
+# --- the dropped Engine arm, held in memory ---------------------------------
+#
+# `arms/engine.json` pins the retired attempt-route Engine and is
+# deliberately not imported into this tree (Phase 2 writes the
+# release-one Engine arm). The tests below still need a second, real
+# arm to exercise two-arm scheduling, `materialize`, `main` and the
+# `tally.py` cross-check, so this is the pinned tag's own
+# `arms/engine.json` content -- `git show
+# pre-release-one-2026-09-13:arms/engine.json` -- carried in memory
+# instead of read from a committed file. `ENGINE` is a bare filename,
+# not a real path: `_use_synthetic_engine_arm` below recognizes it by
+# name and never touches disk for it.
+
+ENGINE = Path("engine.json")
+
+ENGINE_ARM_JSON = {
+    "arm": "engine",
+    "argv": ["satyrn-engine", "attempt"],
+    "tools": ["read", "edit"],
+    "model": "omlx/gemma-4-12B-it-MLX-8bit",
+    "server_model": "gemma-4-12B-it-MLX-8bit",
+    "pins": {
+        "pi": "0.85.1",
+        "engine_commit": "fc22622ac39f71ff9d0ad42718da4e1bd3500ac3",
+        "digests": {
+            "engine.ts": "c3ec10eb8a3efe457f1fff455bf72fa24d0d3168c1c88167eac28507e749fa46",
+            "mutator.ts": "fd64391cfb7d63ba99fe4643d9c7031a286433a5df992a156ba5f7abe388489d",
+            "runner.ts": "07b7cb49e8658cd80df89a209ac6b0c44211d17ce60fd8a951822f4034c6962c",
+            "orchestrator.ts": "e2c8bfc078e6aaa5a63c67b9d37264f6d3d696b7d438f19fbc062d83951075aa",
+        },
+    },
+}
+
+ENGINE_ARM = Arm(
+    arm="engine",
+    argv=tuple(ENGINE_ARM_JSON["argv"]),
+    tools=tuple(ENGINE_ARM_JSON["tools"]),
+    model=ENGINE_ARM_JSON["model"],
+    server_model=ENGINE_ARM_JSON["server_model"],
+    pins=ArmPins(
+        pi=ENGINE_ARM_JSON["pins"]["pi"],
+        engine_commit=ENGINE_ARM_JSON["pins"]["engine_commit"],
+        digests=dict(ENGINE_ARM_JSON["pins"]["digests"]),
+    ),
+)
+
+
+def _use_synthetic_engine_arm(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Route a `load_arm` call named `engine.json` to the in-memory
+    `ENGINE_ARM` above; every other path -- notably `arms/baseline.json`
+    -- still reads its real committed file, unchanged."""
+    monkeypatch.setattr(
+        interleave_module,
+        "load_arm",
+        lambda path: (
+            ENGINE_ARM if Path(path).name == "engine.json" else real_load_arm(path)
+        ),
+    )
 
 
 # --- reproducibility -------------------------------------------------------
@@ -92,7 +152,7 @@ def test_arms_that_do_not_agree_on_the_model_are_refused(tmp_path: Path) -> None
     comparison; the sibling success is every other row in this file, which
     uses the two shipped arm files."""
     other = tmp_path / "engine.json"
-    data = json.loads(ENGINE.read_text(encoding="utf-8"))
+    data = dict(ENGINE_ARM_JSON)
     data["model"] = "omlx/other-model"
     data["server_model"] = "other-model"
     other.write_text(json.dumps(data))
@@ -149,10 +209,11 @@ def test_arms_with_disagreeing_server_models_are_refused(
 
 
 def test_materialize_refuses_a_directory_that_already_holds_a_cell(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """`run` overwrites `summary.json` in place, so reusing a root would
     silently destroy a recorded cell."""
+    _use_synthetic_engine_arm(monkeypatch)
     schedule = build_schedule(
         seed=1,
         arm_paths=[BASELINE, ENGINE],
@@ -171,8 +232,9 @@ def test_materialize_refuses_a_directory_that_already_holds_a_cell(
 
 
 def test_the_schedule_names_one_directory_per_cell_with_that_arms_argv(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    _use_synthetic_engine_arm(monkeypatch)
     schedule = build_schedule(
         seed=20260905,
         arm_paths=[BASELINE, ENGINE],
@@ -202,7 +264,10 @@ def test_the_schedule_names_one_directory_per_cell_with_that_arms_argv(
     )
 
 
-def test_the_realized_order_is_written_before_any_cell_runs(tmp_path: Path) -> None:
+def test_the_realized_order_is_written_before_any_cell_runs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _use_synthetic_engine_arm(monkeypatch)
     runs = tmp_path / "runs"
     assert (
         main(
@@ -236,10 +301,13 @@ def test_the_realized_order_is_written_before_any_cell_runs(tmp_path: Path) -> N
         assert list(directory.iterdir()) == []
 
 
-def test_the_schedule_is_the_one_tally_reads(tmp_path: Path) -> None:
+def test_the_schedule_is_the_one_tally_reads(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """The cross-check: `tally.py` reads this schedule and refuses exactly
     24 missing cells — proving the two scripts agree on the format rather
     than agreeing only in a document."""
+    _use_synthetic_engine_arm(monkeypatch)
     runs = tmp_path / "runs"
     main(
         [
@@ -265,9 +333,12 @@ def test_the_schedule_is_the_one_tally_reads(tmp_path: Path) -> None:
     assert kinds == ["missing"] * 24
 
 
-def test_main_refuses_an_unbalanced_or_seedless_request(tmp_path: Path) -> None:
+def test_main_refuses_an_unbalanced_or_seedless_request(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Sibling success: the two rows above. `--n 0` is the reachable
     CLI-level refusal; argparse itself rejects a missing `--seed`."""
+    _use_synthetic_engine_arm(monkeypatch)
     runs = tmp_path / "runs"
     assert (
         main(
