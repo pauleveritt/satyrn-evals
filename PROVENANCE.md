@@ -255,3 +255,5 @@
 | tests/test_doc_caps.py | created in release-one |
 | src/satyrn_evals/run_record.py | created in release-one |
 | tests/test_run_record.py | created in release-one |
+| tools/review.py | created in release-one |
+| tests/test_review.py | created in release-one |
