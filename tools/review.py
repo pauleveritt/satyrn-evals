@@ -17,9 +17,12 @@ each item naming file:line. No second-order commentary.
 """
 
 
+def _slug(value: str) -> str:
+    return value.replace("/", "-")
+
+
 def review_path(root: Path, commit_range: str, model: str) -> Path:
-    slug = model.replace("/", "-")
-    return root / "docs" / "reviews" / f"{commit_range}-{slug}.md"
+    return root / "docs" / "reviews" / f"{_slug(commit_range)}-{_slug(model)}.md"
 
 
 def refuse_if_exists(path: Path) -> None:
@@ -38,23 +41,44 @@ def build_prompt(diff: str, range_label: str) -> str:
     return PROMPT.format(range_label=range_label, diff=diff)
 
 
+def normalize_document(text: str) -> str:
+    if not text:
+        return text
+    lines = [line.rstrip() for line in text.splitlines()]
+    while lines and lines[-1] == "":
+        lines.pop()
+    if not lines:
+        return ""
+    return "\n".join(lines) + "\n"
+
+
 def main(argv: list[str]) -> int:
     if len(argv) != 2:
         print("usage: review.py COMMIT_RANGE PROVIDER/MODEL", file=sys.stderr)
         return 2
     commit_range, spec = argv
     root = Path.cwd()
-    path = review_path(root, commit_range, spec)
-    refuse_if_exists(path)
-    provider, model = provider_and_model(spec)
-    diff = subprocess.run(["git", "diff", commit_range], check=True, capture_output=True, text=True).stdout
-    prompt = build_prompt(diff, commit_range)
-    result = subprocess.run(
-        ["pi", "-p", "--no-session", "--no-extensions", "--no-skills", "-nc",
-         "--provider", provider, "--model", model, "--exclude-tools", "write,edit", prompt],
-        check=True, capture_output=True, text=True)
+    try:
+        path = review_path(root, commit_range, spec)
+        refuse_if_exists(path)
+        provider, model = provider_and_model(spec)
+        diff = subprocess.run(["git", "diff", commit_range], check=True, capture_output=True, text=True).stdout
+        prompt = build_prompt(diff, commit_range)
+        result = subprocess.run(
+            ["pi", "-p", "--no-session", "--no-extensions", "--no-skills", "-nc",
+             "--provider", provider, "--model", model, "--exclude-tools", "write,edit", prompt],
+            check=True, capture_output=True, text=True)
+    except (FileExistsError, ValueError) as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    except subprocess.CalledProcessError as e:
+        stderr = e.stderr
+        if isinstance(stderr, bytes):
+            stderr = stderr.decode()
+        print(stderr or str(e), file=sys.stderr)
+        return 1
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(f"<!-- {commit_range} reviewed by {spec} -->\n\n{result.stdout}")
+    path.write_text(normalize_document(f"<!-- {commit_range} reviewed by {spec} -->\n\n{result.stdout}"))
     print(path)
     return 0
 
