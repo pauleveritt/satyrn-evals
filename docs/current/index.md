@@ -337,4 +337,5 @@ ornith-9b-pathology-probe-pre-run-record
 ornith-9b-pathology-probe-result
 ornith-9b-ceiling-probe-brief
 ornith-9b-ceiling-probe-pre-run-record
+ornith-9b-ceiling-probe-result
 ```
