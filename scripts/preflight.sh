@@ -124,6 +124,18 @@ uv run --project "$EVALS_ROOT" python \
   "$EVALS_ROOT/scripts/preflight_models.py" "${ARM_FILES[@]}" \
   || fail "the arm files do not all name the same model"
 
+# --- 0a. each arm's declared inference settings are actually enforced ----
+# An arm's `inference` block was a claim nobody checked: the served id can
+# be absent from both the oMLX server's model_settings.json and pi's
+# models.json, in which case every cell ran on unknown defaults while the
+# arm file said otherwise. Checked per arm, not just the baseline: each
+# arm can name a different served model.
+for arm_file in "${ARM_FILES[@]}"; do
+  uv run --project "$EVALS_ROOT" python \
+    "$EVALS_ROOT/scripts/preflight_settings.py" "$arm_file" \
+    || fail "$arm_file's inference settings are not verified against the server and pi config"
+done
+
 SERVER_MODEL="$(pin "$BASELINE_ARM" server_model)"
 PI_MODEL="$(pin "$BASELINE_ARM" model)"
 ok "all arms address $PI_MODEL (server id $SERVER_MODEL)"

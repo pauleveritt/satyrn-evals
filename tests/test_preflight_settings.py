@@ -1,0 +1,404 @@
+"""Preflight refuses an arm whose inference block is not enforced anywhere.
+
+`arms/baseline-ornith15-9b.json` declared a full `inference` block and
+nothing checked it against the oMLX server's `model_settings.json` or pi's
+`models.json` -- the served id was in neither file, so every Ornith cell
+ran on unknown server defaults. This is the check that would have caught
+it. Each refusal below has its sibling success, per `BRIEF.md` rule 6.
+"""
+
+import json
+import sys
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+
+from preflight_settings import (  # noqa: E402, I001
+    compare,
+    main,
+    omlx_entry,
+    pi_entry,
+    provenance,
+)
+
+# --- fixtures --------------------------------------------------------------
+
+_ARM_INFERENCE = {
+    "context_window": 262144,
+    "max_tokens": 32000,
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "top_k": 20,
+    "min_p": 0.0,
+    "presence_penalty": 0.0,
+    "repetition_penalty": 1.0,
+    "declares_reasoning": True,
+}
+
+_OMLX_SETTINGS = {
+    "models": {
+        "Ornith-1.5-9B-MLX-8bit": {
+            "max_context_window": 262144,
+            "max_tokens": 32000,
+            "temperature": 0.6,
+            "top_p": 0.95,
+            "top_k": 20,
+            "min_p": 0.0,
+            "enable_thinking": True,
+        }
+    }
+}
+
+_PI_MODELS = {
+    "providers": {
+        "omlx": {
+            "models": [
+                {
+                    "id": "Ornith-1.5-9B-MLX-8bit",
+                    "contextWindow": 262144,
+                    "maxTokens": 32000,
+                    "reasoning": True,
+                    "samplingParams": {
+                        "temperature": 0.6,
+                        "top_p": 0.95,
+                        "top_k": 20,
+                        "min_p": 0.0,
+                        "presence_penalty": 0.0,
+                        "repetition_penalty": 1.0,
+                    },
+                }
+            ]
+        }
+    }
+}
+
+
+def _omlx_model() -> dict:
+    return dict(_OMLX_SETTINGS["models"]["Ornith-1.5-9B-MLX-8bit"])
+
+
+def _pi_model() -> dict:
+    return json.loads(json.dumps(_PI_MODELS["providers"]["omlx"]["models"][0]))
+
+
+# --- omlx_entry / pi_entry ---------------------------------------------------
+
+
+def test_omlx_entry_found() -> None:
+    assert omlx_entry(_OMLX_SETTINGS, "Ornith-1.5-9B-MLX-8bit") == _omlx_model()
+
+
+def test_omlx_entry_not_found() -> None:
+    assert omlx_entry(_OMLX_SETTINGS, "no-such-model") is None
+
+
+def test_omlx_entry_not_found_empty_settings() -> None:
+    assert omlx_entry({}, "Ornith-1.5-9B-MLX-8bit") is None
+
+
+def test_pi_entry_found() -> None:
+    assert pi_entry(_PI_MODELS, "omlx", "Ornith-1.5-9B-MLX-8bit") == _pi_model()
+
+
+def test_pi_entry_not_found_wrong_id() -> None:
+    assert pi_entry(_PI_MODELS, "omlx", "no-such-model") is None
+
+
+def test_pi_entry_not_found_wrong_provider() -> None:
+    assert pi_entry(_PI_MODELS, "openrouter-curated", "Ornith-1.5-9B-MLX-8bit") is None
+
+
+def test_pi_entry_not_found_empty_models() -> None:
+    assert pi_entry({}, "omlx", "Ornith-1.5-9B-MLX-8bit") is None
+
+
+# --- compare: clean and missing-entry cases ---------------------------------
+
+
+def test_compare_clean_when_all_agree() -> None:
+    assert compare(_ARM_INFERENCE, _omlx_model(), _pi_model()) == []
+
+
+def test_compare_missing_omlx_entry_names_omlx() -> None:
+    lines = compare(_ARM_INFERENCE, None, _pi_model())
+    assert len(lines) == 1
+    assert lines[0].startswith("omlx:")
+    assert "model_settings.json" in lines[0]
+
+
+def test_compare_missing_pi_entry_names_pi() -> None:
+    lines = compare(_ARM_INFERENCE, _omlx_model(), None)
+    assert len(lines) == 1
+    assert lines[0].startswith("pi:")
+    assert "models.json" in lines[0]
+
+
+def test_compare_missing_both_entries_names_both() -> None:
+    lines = compare(_ARM_INFERENCE, None, None)
+    assert len(lines) == 2
+    assert {line.split(":")[0] for line in lines} == {"omlx", "pi"}
+
+
+def test_compare_undeclared_field_is_not_checked() -> None:
+    """An arm that pins nothing makes no claim this check can contradict."""
+    assert compare({}, {}, {}) == []
+
+
+# --- compare: one mismatch per mapped field ---------------------------------
+
+_OMLX_MISMATCH_FIELDS = [
+    ("temperature", "temperature", 0.9),
+    ("top_p", "top_p", 0.5),
+    ("top_k", "top_k", 40),
+    ("min_p", "min_p", 0.1),
+    ("context_window", "max_context_window", 8000),
+    ("max_tokens", "max_tokens", 999),
+    ("declares_reasoning", "enable_thinking", False),
+]
+
+
+@pytest.mark.parametrize("arm_field,omlx_field,bad_value", _OMLX_MISMATCH_FIELDS)
+def test_compare_one_omlx_field_mismatch(
+    arm_field: str, omlx_field: str, bad_value: object
+) -> None:
+    omlx = _omlx_model()
+    omlx[omlx_field] = bad_value
+    lines = compare(_ARM_INFERENCE, omlx, _pi_model())
+    assert len(lines) == 1
+    assert lines[0].startswith("omlx:")
+    assert arm_field in lines[0]
+
+
+@pytest.mark.parametrize("arm_field,omlx_field", [(f, o) for f, o, _ in _OMLX_MISMATCH_FIELDS])
+def test_compare_one_omlx_field_absent_from_entry(arm_field: str, omlx_field: str) -> None:
+    omlx = _omlx_model()
+    del omlx[omlx_field]
+    lines = compare(_ARM_INFERENCE, omlx, _pi_model())
+    assert len(lines) == 1
+    assert lines[0].startswith("omlx:")
+    assert arm_field in lines[0]
+
+
+_PI_DIRECT_MISMATCH_FIELDS = [
+    ("context_window", "contextWindow", 8000),
+    ("max_tokens", "maxTokens", 999),
+    ("declares_reasoning", "reasoning", False),
+]
+
+
+@pytest.mark.parametrize("arm_field,pi_field,bad_value", _PI_DIRECT_MISMATCH_FIELDS)
+def test_compare_one_pi_direct_field_mismatch(
+    arm_field: str, pi_field: str, bad_value: object
+) -> None:
+    pi = _pi_model()
+    pi[pi_field] = bad_value
+    lines = compare(_ARM_INFERENCE, _omlx_model(), pi)
+    assert len(lines) == 1
+    assert lines[0].startswith("pi:")
+    assert arm_field in lines[0]
+
+
+_PI_SAMPLING_MISMATCH_FIELDS = [
+    ("temperature", "temperature", 0.9),
+    ("top_p", "top_p", 0.5),
+    ("top_k", "top_k", 40),
+    ("min_p", "min_p", 0.1),
+    ("presence_penalty", "presence_penalty", 0.2),
+    ("repetition_penalty", "repetition_penalty", 1.2),
+]
+
+
+@pytest.mark.parametrize("arm_field,pi_field,bad_value", _PI_SAMPLING_MISMATCH_FIELDS)
+def test_compare_one_pi_sampling_field_mismatch(
+    arm_field: str, pi_field: str, bad_value: object
+) -> None:
+    pi = _pi_model()
+    pi["samplingParams"][pi_field] = bad_value
+    lines = compare(_ARM_INFERENCE, _omlx_model(), pi)
+    assert len(lines) == 1
+    assert lines[0].startswith("pi:")
+    assert arm_field in lines[0]
+
+
+def test_compare_one_pi_sampling_field_absent() -> None:
+    pi = _pi_model()
+    del pi["samplingParams"]["temperature"]
+    lines = compare(_ARM_INFERENCE, _omlx_model(), pi)
+    assert len(lines) == 1
+    assert lines[0].startswith("pi:")
+    assert "temperature" in lines[0]
+
+
+# --- provenance: digests -----------------------------------------------------
+
+
+def test_provenance_digest_stable_under_key_reorder() -> None:
+    arm_text_a = json.dumps({"a": 1, "b": 2})
+    arm_text_b = json.dumps({"b": 2, "a": 1})
+    assert provenance(arm_text_a, None, None)["arm_sha256"] == (
+        provenance(arm_text_b, None, None)["arm_sha256"]
+    )
+
+
+def test_provenance_entry_digest_stable_under_key_reorder() -> None:
+    omlx_a = {"temperature": 0.6, "max_tokens": 100}
+    omlx_b = {"max_tokens": 100, "temperature": 0.6}
+    record_a = provenance("{}", omlx_a, None)
+    record_b = provenance("{}", omlx_b, None)
+    assert record_a["omlx_entry_sha256"] == record_b["omlx_entry_sha256"]
+
+
+def test_provenance_missing_entries_have_none_digests() -> None:
+    record = provenance("{}", None, None)
+    assert record["omlx_entry_sha256"] is None
+    assert record["pi_entry_sha256"] is None
+    assert record["omlx_entry"] is None
+    assert record["pi_entry"] is None
+
+
+def test_provenance_carries_the_entries_verbatim() -> None:
+    omlx = _omlx_model()
+    pi = _pi_model()
+    record = provenance("{}", omlx, pi)
+    assert record["omlx_entry"] == omlx
+    assert record["pi_entry"] == pi
+
+
+# --- CLI via main(argv) ------------------------------------------------------
+
+
+def _write(path: Path, data: dict) -> Path:
+    path.write_text(json.dumps(data), encoding="utf-8")
+    return path
+
+
+def _arm_file(tmp_path: Path) -> Path:
+    return _write(
+        tmp_path / "arm.json",
+        {
+            "arm": "baseline",
+            "model": "omlx/Ornith-1.5-9B-MLX-8bit",
+            "server_model": "Ornith-1.5-9B-MLX-8bit",
+            "inference": _ARM_INFERENCE,
+        },
+    )
+
+
+def test_cli_exit_0_when_clean(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    arm = _arm_file(tmp_path)
+    omlx_path = _write(tmp_path / "model_settings.json", _OMLX_SETTINGS)
+    pi_path = _write(tmp_path / "models.json", _PI_MODELS)
+
+    code = main(
+        [
+            str(arm),
+            "--omlx-settings",
+            str(omlx_path),
+            "--pi-models",
+            str(pi_path),
+        ]
+    )
+    assert code == 0
+    out = capsys.readouterr().out
+    record = json.loads(out)
+    assert record["omlx_entry_sha256"] is not None
+    assert record["pi_entry_sha256"] is not None
+
+
+def test_cli_exit_1_on_mismatch(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    arm = _arm_file(tmp_path)
+    bad_settings = {"models": {"Ornith-1.5-9B-MLX-8bit": {}}}
+    omlx_path = _write(tmp_path / "model_settings.json", bad_settings)
+    pi_path = _write(tmp_path / "models.json", _PI_MODELS)
+
+    code = main(
+        [
+            str(arm),
+            "--omlx-settings",
+            str(omlx_path),
+            "--pi-models",
+            str(pi_path),
+        ]
+    )
+    assert code == 1
+    err = capsys.readouterr().err
+    assert "preflight_settings FAILED" in err
+
+
+def test_cli_exit_1_on_missing_entry(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    arm = _arm_file(tmp_path)
+    omlx_path = _write(tmp_path / "model_settings.json", {"models": {}})
+    pi_path = _write(tmp_path / "models.json", {"providers": {"omlx": {"models": []}}})
+
+    code = main(
+        [
+            str(arm),
+            "--omlx-settings",
+            str(omlx_path),
+            "--pi-models",
+            str(pi_path),
+        ]
+    )
+    assert code == 1
+    err = capsys.readouterr().err
+    assert "omlx:" in err
+    assert "pi:" in err
+
+
+def test_cli_exit_2_on_unreadable_arm(tmp_path: Path) -> None:
+    missing_arm = tmp_path / "nope.json"
+    omlx_path = _write(tmp_path / "model_settings.json", _OMLX_SETTINGS)
+    pi_path = _write(tmp_path / "models.json", _PI_MODELS)
+
+    code = main(
+        [
+            str(missing_arm),
+            "--omlx-settings",
+            str(omlx_path),
+            "--pi-models",
+            str(pi_path),
+        ]
+    )
+    assert code == 2
+
+
+def test_cli_exit_2_on_unreadable_omlx_settings(tmp_path: Path) -> None:
+    arm = _arm_file(tmp_path)
+    bad_omlx = tmp_path / "model_settings.json"
+    bad_omlx.write_text("not json", encoding="utf-8")
+    pi_path = _write(tmp_path / "models.json", _PI_MODELS)
+
+    code = main(
+        [
+            str(arm),
+            "--omlx-settings",
+            str(bad_omlx),
+            "--pi-models",
+            str(pi_path),
+        ]
+    )
+    assert code == 2
+
+
+def test_cli_writes_record_file(tmp_path: Path) -> None:
+    arm = _arm_file(tmp_path)
+    omlx_path = _write(tmp_path / "model_settings.json", _OMLX_SETTINGS)
+    pi_path = _write(tmp_path / "models.json", _PI_MODELS)
+    record_path = tmp_path / "record.json"
+
+    code = main(
+        [
+            str(arm),
+            "--omlx-settings",
+            str(omlx_path),
+            "--pi-models",
+            str(pi_path),
+            "--record",
+            str(record_path),
+        ]
+    )
+    assert code == 0
+    record = json.loads(record_path.read_text(encoding="utf-8"))
+    assert record["omlx_entry_sha256"] is not None
