@@ -1,0 +1,142 @@
+diff --git a/src/satyrn_evals/cli.py b/src/satyrn_evals/cli.py
+index 1409635..692bd88 100644
+--- a/src/satyrn_evals/cli.py
++++ b/src/satyrn_evals/cli.py
+@@ -2,6 +2,7 @@
+ 
+ import argparse
+ import math
++import subprocess
+ import sys
+ from pathlib import Path
+ 
+@@ -16,6 +17,7 @@ from satyrn_evals.grade import grade
+ from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, resolve_task
+ from satyrn_evals.rescore import regrade_attempt, summarize_output
+ from satyrn_evals.run import run
++from satyrn_evals.run_record import gate, load_run_record
+ from satyrn_evals.session import run_session
+ from satyrn_evals.session_grader import SessionGrader
+ from satyrn_evals.session_manifest import DEFAULT_SESSION_SPEC
+@@ -151,6 +153,23 @@ def main(argv: list[str] | None = None) -> int:
+         args = parser.parse_args(argv)
+         if args.command == "census":
+             return run_census(args.runs_root, args.json_path)
++        if args.command == "launch":
++            if args.check is None:
++                print("launch: cells are Phase 2; use --check", file=sys.stderr)
++                return UsageError.exit_code
++            record = load_run_record(Path(args.check))
++            previous_result_committed = None
++            if record.previous_result is not None:
++                previous_result_committed = (
++                    subprocess.run(
++                        ["git", "ls-files", "--error-unmatch", record.previous_result],
++                        capture_output=True,
++                    ).returncode
++                    == 0
++                )
++            gate(record, previous_result_committed=previous_result_committed)
++            print("launch: record accepted")
++            return 0
+         if args.command == "grade":
+             task_dir = resolve_task(args.task, tasks_root=Path(args.tasks_root))
+             receipt = grade(task_dir, Path(args.patch), Path(args.receipt))
+@@ -349,4 +368,9 @@ session_p.add_argument(
+     ),
+ )
+ 
++launch_p = sub.add_parser(
++    "launch", help="check a run record's cadence before spending anything (cells are Phase 2)"
++)
++launch_p.add_argument("--check", default=None, help="run record JSON path to check")
++
+ build_census_parser(sub)
+diff --git a/src/satyrn_evals/run_record.py b/src/satyrn_evals/run_record.py
+new file mode 100644
+index 0000000..0135c58
+--- /dev/null
++++ b/src/satyrn_evals/run_record.py
+@@ -0,0 +1,82 @@
++"""The frozen record a run must carry before the launcher will spend anything.
++
++A record is a small JSON file written and committed in daylight. `gate`
++refuses anything outside the cadence the design fixed: attended runs are
++n <= 8 and an hour; the weekly batch is n <= 12 and twelve hours. The check
++is pure; the CLI supplies the one fact that needs git.
++"""
++
++import json
++import re
++from dataclasses import dataclass
++from pathlib import Path
++from typing import Literal
++
++from satyrn_evals.errors import UsageError
++
++type Mode = Literal["attended", "batch"]
++type Condition = Literal["cold", "warm"]
++
++CAPS: dict[str, tuple[int, int]] = {"attended": (8, 60), "batch": (12, 720)}
++_HEX64 = re.compile(r"^[0-9a-f]{64}$")
++
++
++class RunRecordError(UsageError):
++    """The record is absent, ill-formed, or outside the cadence."""
++
++
++@dataclass(frozen=True, slots=True)
++class RunRecord:
++    version: int
++    task: str
++    task_tree_sha256: str
++    arm: str
++    model: str
++    condition: Condition
++    n: int
++    mode: Mode
++    max_minutes: int
++    stop_rule: str
++    decision_rule: str
++    previous_result: str | None
++
++
++_REQUIRED: dict[str, type | tuple[type, ...]] = {
++    "version": int, "task": str, "task_tree_sha256": str, "arm": str, "model": str,
++    "condition": str, "n": int, "mode": str, "max_minutes": int,
++    "stop_rule": str, "decision_rule": str, "previous_result": (str, type(None)),
++}
++
++
++def load_run_record(path: Path) -> RunRecord:
++    try:
++        body = json.loads(path.read_text())
++    except (OSError, json.JSONDecodeError) as error:
++        raise RunRecordError(f"run record {path}: {error}") from error
++    if not isinstance(body, dict):
++        raise RunRecordError(f"run record {path}: not a JSON object")
++    for field, kind in _REQUIRED.items():
++        if field not in body:
++            raise RunRecordError(f"run record {path}: missing {field}")
++        if not isinstance(body[field], kind) or isinstance(body[field], bool):
++            raise RunRecordError(f"run record {path}: {field} has the wrong type")
++    if body["condition"] not in ("cold", "warm"):
++        raise RunRecordError(f"run record {path}: condition must be cold or warm")
++    if body["mode"] not in CAPS:
++        raise RunRecordError(f"run record {path}: mode must be attended or batch")
++    if not _HEX64.match(body["task_tree_sha256"]):
++        raise RunRecordError(f"run record {path}: task_tree_sha256 must be 64 lowercase hex")
++    for field in ("stop_rule", "decision_rule"):
++        if not body[field].strip():
++            raise RunRecordError(f"run record {path}: {field} is empty")
++    return RunRecord(**{k: body[k] for k in _REQUIRED})
++
++
++def gate(record: RunRecord, *, previous_result_committed: bool | None) -> None:
++    max_n, max_minutes = CAPS[record.mode]
++    if record.n > max_n or record.max_minutes > max_minutes:
++        raise RunRecordError(
++            f"{record.mode} runs are capped at n<={max_n} and {max_minutes} minutes; "
++            f"record asks n={record.n}, {record.max_minutes} minutes")
++    if record.previous_result is not None and previous_result_committed is not True:
++        raise RunRecordError(f"previous_result {record.previous_result} is not committed")

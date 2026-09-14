@@ -1,0 +1,22 @@
+diff --git a/tools/lint_docs.py b/tools/lint_docs.py
+new file mode 100644
+index 0000000..4c1e97a
+--- /dev/null
++++ b/tools/lint_docs.py
+@@ -0,0 +1,16 @@
++"""known-broken fixture stub: importable, behaviorally incomplete."""
++
++import sys
++from pathlib import Path
++
++
++def check(root: Path) -> list[str]:
++    return None
++
++
++def main() -> int:
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
