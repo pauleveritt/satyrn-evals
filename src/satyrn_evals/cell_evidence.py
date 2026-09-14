@@ -21,6 +21,8 @@ The escape rules are lexical and stated so a reader can recompute them:
   ``mdfind`` search the disk and always count);
 - relative escapes in bash text (``cd .. && find .``) are not counted; a
   file tool's ``..`` path is.
+- an unquoted newline ends a simple command exactly like ``;``; a newline
+  inside a quoted argument stays part of that argument's text.
 """
 
 import json
@@ -116,8 +118,40 @@ def outside(cwd: str | None, path: str) -> bool:
     return not PurePosixPath(_canonical(candidate)).is_relative_to(_canonical(cwd))
 
 
+def _mask_unquoted_newlines(command: str) -> str:
+    """Turn an unquoted newline into ``;`` so ``_segments`` treats it as the
+    separator it is in a shell; a newline inside a quoted argument (or right
+    after a backslash) is left alone -- it is text, not a separator."""
+    pieces: list[str] = []
+    quote: str | None = None
+    escaped = False
+    for char in command:
+        if escaped:
+            pieces.append(char)
+            escaped = False
+        elif quote == "'":
+            pieces.append(char)
+            if char == "'":
+                quote = None
+        elif char == "\\" and quote != "'":
+            pieces.append(char)
+            escaped = True
+        elif quote == '"':
+            pieces.append(char)
+            if char == '"':
+                quote = None
+        elif char in "'\"":
+            pieces.append(char)
+            quote = char
+        elif char == "\n":
+            pieces.append(";")
+        else:
+            pieces.append(char)
+    return "".join(pieces)
+
+
 def _segments(command: str) -> list[list[str]]:
-    lexer = shlex.shlex(command, posix=True, punctuation_chars=True)
+    lexer = shlex.shlex(_mask_unquoted_newlines(command), posix=True, punctuation_chars=True)
     lexer.whitespace_split = True
     try:
         tokens = list(lexer)

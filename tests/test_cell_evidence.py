@@ -47,6 +47,7 @@ def _transcript(*lines: str, header: bool = True) -> str:
         "ls -R /Users/pauleveritt/satyrn-smokes",
         "mdfind test_acceptance.py",
         "sudo find /private/var/folders -name overlay",
+        "cd tests\nfind / -name x",
     ],
 )
 def test_root_anchored_searches_fire(command: str) -> None:
@@ -90,10 +91,18 @@ def test_file_tool_paths_are_outside_only_when_they_leave_the_worktree() -> None
         ("git -C . -c user.name=m commit -m x", True),
         ("git status && git diff HEAD", False),
         ("echo 'git commit'", False),
+        ("git add -A\ngit commit -m x", True),
     ],
 )
 def test_git_commit_inside_the_worktree(command: str, expected: bool) -> None:
     assert git_commit(command) is expected
+
+
+def test_a_newline_inside_a_quoted_argument_does_not_create_a_false_program() -> None:
+    """A literal newline inside quotes stays part of the argument text and
+    does not split the command into a second, spurious simple command."""
+    assert not root_search('echo "line one\nfind / -name x"', CWD)
+    assert not git_commit('echo "line one\ngit commit -m x"')
 
 
 def test_a_timed_out_cell_without_agent_end_still_yields_every_count() -> None:
