@@ -120,8 +120,9 @@ The three `COMMAND_TIMEOUT` cells (`cell-01-A1`, `cell-04-A2`,
 - Block B is not a ceiling (0 of 4).
 - Block C is not a ceiling (0 of 4).
 
-Exactly one block is a ceiling, so the "lowest-complexity ceiling block"
-ordering (B before A before C) has nothing to break a tie among: **Block A,
+Block A is the only ceiling, so the "lowest-complexity ceiling block"
+ordering (B before A before C) has nothing to arbitrate — there is no
+second ceiling block for it to rank against. **Block A,
 `agentclinic-repair-depth-3` at rung R1, is the recommended release-one
 workload** — named only, per the rule; nothing is designed toward it here.
 
@@ -186,7 +187,7 @@ stream; repair cells over the transcript directly):
 | cell-09-C3 | `app.py`: 9, `models.py`: 3, `templates/base.html`: 1, `templates/home.html`: 1, `templates/complaints.html`: 3, `tests/test_app.py`: 5 | 0 |
 | cell-10-A4 | none (`COMMAND_TIMEOUT` before any edit/write) | 0 |
 | cell-11-B4 | `./app.py`: 1, `./templates/base.html`: 1 | 3 |
-| cell-12-C4 | `app.py`: 7, `models.py`: 2, `templates/base.html`: 2, `templates/complaints.html`: 6, `tests/test_app.py`: 5 | 3 |
+| cell-12-C4 | `app.py`: 7, `models.py`: 2, `templates/base.html`: 2, `templates/home.html`: 1, `templates/complaints.html`: 6, `tests/test_app.py`: 5 | 3 |
 
 `cell-11-B4`'s two paths are recorded with a leading `./` exactly as the
 tool call's own `args` carried them — an artifact of how that cell's model
@@ -244,6 +245,11 @@ For A and B this ran as written and produced the eight figures above
 directly, summing `message.usage` over `message_end` events exactly once
 each (`msg_end_count` 6, 11, 25, 12, 23, 13, 5, 13 for A1 B1 A2 B2 A3 B3 A4
 B4 respectively — matches the events where a usage object was present).
+`cell-04-A2` shows 26 turns (`turn_start` events) against 25 usage-bearing
+events: the `COMMAND_TIMEOUT` at 901 s cut the transcript mid-turn, so the
+26th turn opened (`turn_start`) but never reached a settled `message_end`
+with a usage object to count — the difference is the timeout truncating the
+last turn, not an instrument fault.
 
 `usage_totals.py` refuses `transcript.jsonl` outright (wrapped stream, no
 top-level `message_end`). Per the brief, the fix is to unwrap each `event`
