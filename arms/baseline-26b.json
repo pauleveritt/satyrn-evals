@@ -1,5 +1,6 @@
 {
   "arm": "baseline",
+  "settings_verified_by": "scripts/preflight_settings.py",
   "argv": [
     "satyrn-evals-attempt-pi"
   ],

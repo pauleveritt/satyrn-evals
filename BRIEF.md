@@ -35,8 +35,9 @@ component when component attribution is the question.
    arm-specific detector as an arm-neutral rate.
 4. **Freeze execution before spending budget.** Record the task, prompt,
    model, engine revision, tool surface, budget, schedule, and stopping rules
-   before a budgeted run. Keep completed cells on interruption and state the
-   rule for incomplete cells.
+   before a budgeted run, and the served model's settings, verified against
+   the server and client configuration, not declared. Keep completed cells
+   on interruption and state the rule for incomplete cells.
 5. **Prove checks in both directions.** A grader accepts a known-good fixture
    and rejects a known-broken fixture. A refusal test has a sibling success
    test. The default tier runs without model, network, or subprocess; real
