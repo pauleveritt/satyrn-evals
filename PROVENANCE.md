@@ -257,3 +257,6 @@
 | tests/test_run_record.py | created in release-one |
 | tools/review.py | created in release-one |
 | tests/test_review.py | created in release-one |
+| tools/hooks/__init__.py | created in release-one |
+| tools/hooks/guard.py | created in release-one |
+| tests/test_hook_guard.py | created in release-one |
