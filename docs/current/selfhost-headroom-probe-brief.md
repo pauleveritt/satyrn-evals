@@ -214,5 +214,8 @@ compares Ornith with another model or one arm with another.
 
 ## Budget grant
 
-*Not yet granted. The maintainer records the grant here, in session, before
-cell 1.*
+**Granted 2026-09-14 by the maintainer, in session** ("Granted, exclusive
+GPU, dispatch it to an Opus controller"): `n = 12` cells under the frozen
+conditions above, on **exclusive GPU** for the duration of the run, wall-clock
+stop 3 h. Cell 1 may start once the three tasks are qualified in both
+directions and the pre-run record is committed and reviewed.
