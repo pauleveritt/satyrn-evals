@@ -145,8 +145,8 @@ session cell, for the reasons the frozen result already states.
   `transcript.txt` and the adapter's `.satyrn-implementer-transcript.jsonl`
   (`census.py:462-472`), while a session cell writes `transcript.jsonl`
   (`session.py:73`). So `census`, `repeats`, `test_runner_commands` and
-  `read_lock` exist for Block A only, and `cell-04-B2`, `cell-06-B3` and
-  `cell-08-B4` have no census row.
+  `read_lock` exist for Block A only; **all four** Block B cells
+  (`cell-02-B1`, `cell-04-B2`, `cell-06-B3`, `cell-08-B4`) have no census row.
 
 This is the same gap the frozen result's *Missingness* section records; it is
 restated here because this addendum's whole table rests on the same hand walk.
