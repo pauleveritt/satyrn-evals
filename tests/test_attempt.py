@@ -39,12 +39,22 @@ TRANSCRIPT = "read the task; wrote the fix\n"
 
 
 class _FakeLease:
-    """Default-tier stand-in for the neutral prepared-workspace boundary."""
+    """Default-tier stand-in for the neutral prepared-workspace boundary.
+
+    ``_environment`` mirrors the real ``PreparedWorkspace``'s private field
+    (`src/satyrn_evals/workspace.py:1452`): a copy of the environment handed
+    to ``prepare_workspace``, so a caller that mutates
+    ``lease._environment`` after the lease is returned -- exactly what
+    ``attempt.py``'s engine-spawn fix does -- observably changes what the
+    fake "spawn" (``run_prepared_command``) sees, the same as it would for
+    the real lease.
+    """
 
     def __init__(self, prepared: dict[str, Any]) -> None:
         self.prepared = prepared
         self.parent = Path("/tmp/fake-prepared-workspace")
         self.base_sha = "b" * 40
+        self._environment = dict(prepared.get("environment", {}))
 
 
 def _install_workspace_double(
@@ -65,7 +75,7 @@ def _install_workspace_double(
         return run(
             base=lease.prepared["base"],
             protected_paths=lease.prepared["protected_paths"],
-            environment=lease.prepared["environment"],
+            environment=lease._environment,
             overlay=lease.prepared["overlay"],
             **kwargs,
         )
@@ -337,6 +347,69 @@ def test_attempt_uses_a_durable_temporary_uv_environment(
 
     assert observed["PYTHONDONTWRITEBYTECODE"] == "1"
     assert not Path(observed["UV_PROJECT_ENVIRONMENT"]).exists()
+
+
+def test_engine_spawn_drops_uv_project_environment_workspace_prep_keeps_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Task 13b: the E5 wrapper's own env lacks it; workspace prep's has it.
+
+    `uv run --project ENGINE satyrn-engine ...` names its own project; a
+    UV_PROJECT_ENVIRONMENT pointed at the attempt's empty private directory
+    makes uv treat that directory as the engine's virtualenv and, under
+    UV_NO_SYNC=1, fail to spawn `satyrn-engine` at all (Task 13 report).
+    """
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+    prepared_environment: dict[str, str] = {}
+    spawned_environment: dict[str, str] = {}
+
+    def fake_workspace(**kwargs: Any) -> WorkspaceResult:
+        spawned_environment.update(kwargs["environment"])
+        return WorkspaceResult(WorkspaceCode.OK, "ok", 0, "b" * 40)
+
+    _install_workspace_double(monkeypatch, fake_workspace)
+    installed_prepare = attempt_module.prepare_workspace
+
+    def capturing_prepare(**kwargs: Any) -> _FakeLease:
+        lease = installed_prepare(**kwargs)
+        prepared_environment.update(lease.prepared["environment"])
+        return lease
+
+    monkeypatch.setattr(attempt_module, "prepare_workspace", capturing_prepare)
+
+    attempt_module.attempt(
+        task="t",
+        tasks_root=tasks_root,
+        output=tmp_path / "attempts",
+        command=["uv", "run", "--project", "/engine/repo", "satyrn-engine", "attempt"],
+    )
+
+    assert "UV_PROJECT_ENVIRONMENT" in prepared_environment
+    assert "UV_PROJECT_ENVIRONMENT" not in spawned_environment
+
+
+def test_non_engine_spawn_keeps_uv_project_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Sibling of the engine test: a Bare-Pi command's spawn env keeps it."""
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+    spawned_environment: dict[str, str] = {}
+
+    def fake_workspace(**kwargs: Any) -> WorkspaceResult:
+        spawned_environment.update(kwargs["environment"])
+        return WorkspaceResult(WorkspaceCode.OK, "ok", 0, "b" * 40)
+
+    _install_workspace_double(monkeypatch, fake_workspace)
+    attempt_module.attempt(
+        task="t",
+        tasks_root=tasks_root,
+        output=tmp_path / "attempts",
+        command=["fake-agent"],
+    )
+
+    assert "UV_PROJECT_ENVIRONMENT" in spawned_environment
 
 
 def test_attempt_environment_cleanup_failure_is_not_silent(

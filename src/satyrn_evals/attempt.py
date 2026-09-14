@@ -120,6 +120,29 @@ def contract_digest(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def _is_engine_wrapper_command(command: list[str]) -> bool:
+    """Whether COMMAND is evals' own E5 wrapper: ``uv run --project ENGINE
+    satyrn-engine ...`` (`tests/integration/test_attempt.py::_engine_command`
+    builds exactly this shape; nothing else in this codebase does).
+
+    Bare-Pi (Baseline) commands run the model's own binary directly and must
+    keep receiving ``UV_PROJECT_ENVIRONMENT`` — that is the model-visible
+    isolation for its own nested ``uv run`` calls. The engine wrapper is a
+    trusted command evals itself constructs, naming its own ``--project``;
+    redirecting *its* ``UV_PROJECT_ENVIRONMENT`` onto the attempt's private,
+    empty per-attempt directory makes ``uv`` treat that directory as the
+    engine project's own virtualenv and, under ``UV_NO_SYNC=1``, fail to spawn
+    ``satyrn-engine`` at all (Task 13 report, "Root cause").
+    """
+    return (
+        len(command) >= 5
+        and Path(command[0]).name == "uv"
+        and command[1] == "run"
+        and command[2] == "--project"
+        and command[4] == "satyrn-engine"
+    )
+
+
 def _add_exception_note(error: BaseException, note: str) -> None:
     """Attach recovery evidence without replacing the primary exception."""
     with suppress(BaseException):
@@ -317,6 +340,13 @@ def _attempt(
                 exc.retained_path,
             )
         else:
+            if _is_engine_wrapper_command(command):
+                # The wrapper names its own --project; UV_PROJECT_ENVIRONMENT
+                # is for the model's own nested uv run, not for uv finding
+                # the engine itself. Popped here (not left out of `env`
+                # above) so prepare_workspace still receives it for anything
+                # that materializes the task workspace's environment.
+                workspace_lease._environment.pop("UV_PROJECT_ENVIRONMENT", None)
             try:
                 workspace = run_prepared_command(
                     workspace_lease,
