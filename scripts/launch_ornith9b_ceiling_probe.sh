@@ -87,6 +87,10 @@ with open(os.path.join(root,"schedule.json"),"w") as fh:
 print("schedule.json written:", len(cells), "cells")
 PY
 
+[ -s "$ROOT/schedule.json" ] || { echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) INFRASTRUCTURE STOP: schedule.json not written" | tee -a "$LOG"; exit 3; }
+
+[ -d "$WT" ] || { echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) INFRASTRUCTURE STOP: worktree $WT missing" | tee -a "$LOG"; exit 3; }
+
 # --- 2) model loadability: one live completion, never /v1/models ---
 echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) model loadability check" | tee -a "$LOG"
 LOAD_RESP=$(curl -sS --max-time 180 http://127.0.0.1:8001/v1/chat/completions \

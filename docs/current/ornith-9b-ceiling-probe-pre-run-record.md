@@ -300,13 +300,30 @@ review unless the maintainer asks.**
    record the debt.
 7. The run ends with the result document.
 
+## Launcher
+
+Committed at `scripts/launch_ornith9b_ceiling_probe.sh` on this branch
+(executable, version controlled, adapted from the retained pathology-probe
+`launch.sh` with the three blocks substituted and a third block inserted
+into the cell order). The controller runs it, nohup-safe, from this
+worktree:
+
+    cd /Users/pauleveritt/projects/pauleveritt/satyrn-evals/.claude/worktrees/ornith-ceiling-probe
+    nohup scripts/launch_ornith9b_ceiling_probe.sh \
+      > ~/satyrn-smokes/2026-09-14-ornith9b-ceiling-probe.launcher.log 2>&1 &
+
+It is not run as part of preparing this record.
+
 ## Retention
 
-Every cell keeps its launch log, `schedule.json`, transcript, `attempt.json`
-or `session-record.json`, patch(es) and receipts under its own directory.
-Nothing is discarded, including cells that stop early. The output root keeps
-the launcher log (`run.log`), the per-cell start/end timestamps and elapsed
-seconds, and the batch `schedule.json`.
+Every cell keeps its `attempt.json` or `session-record.json`, patch(es),
+receipts and transcript under its own cell directory (`<output-root>/cell-NN-XY/`).
+Nothing is discarded, including cells that stop early. The output root
+itself keeps the launcher's own copy (`launch.sh`), the batch
+`schedule.json`, the launcher log (`run.log`, with per-cell start/end
+timestamps and elapsed seconds), and — one level up, beside each cell
+directory rather than inside it — that cell's captured stdout,
+`<output-root>/cell-NN-XY.stdout.log`.
 
 ## Budget grant
 
