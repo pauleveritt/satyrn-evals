@@ -8,6 +8,7 @@ from pathlib import Path
 
 from satyrn_evals.attempt import attempt
 from satyrn_evals.attempt_record import AttemptCode, AttemptOutcome
+from satyrn_evals.budget import AttemptBudget
 from satyrn_evals.capture import capture
 from satyrn_evals.capture_record import CaptureOutcome
 from satyrn_evals.census import build_arg_parser as build_census_parser
@@ -17,7 +18,7 @@ from satyrn_evals.grade import grade
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, resolve_task
 from satyrn_evals.rescore import regrade_attempt, summarize_output
 from satyrn_evals.run import run
-from satyrn_evals.run_record import gate, load_run_record
+from satyrn_evals.run_record import attempt_budget, gate, load_run_record
 from satyrn_evals.session import run_session
 from satyrn_evals.session_grader import SessionGrader
 from satyrn_evals.session_manifest import DEFAULT_SESSION_SPEC
@@ -58,6 +59,11 @@ def positive_int(value: str) -> int:
     return number
 
 
+def _budget(run_record: str | None) -> AttemptBudget | None:
+    """The attempt budget a run record froze; none without a record."""
+    return None if run_record is None else attempt_budget(load_run_record(Path(run_record)))
+
+
 def split_attempt_argv(argv: list[str]) -> tuple[list[str], list[str]]:
     """Split the attempt subcommand's argv (after the 'attempt' token).
 
@@ -90,6 +96,7 @@ def main(argv: list[str] | None = None) -> int:
                 attempt_timeout=args.attempt_timeout,
                 max_repeated_calls=args.max_repeated_calls,
                 rung=args.rung,
+                budget=_budget(args.run_record),
             )
             if record.code is AttemptCode.GRADE_FAILED:
                 print(f"satyrn-evals: {record.message}", file=sys.stderr)
@@ -119,6 +126,7 @@ def main(argv: list[str] | None = None) -> int:
                 attempt_timeout=args.attempt_timeout,
                 max_repeated_calls=args.max_repeated_calls,
                 rung=args.rung,
+                budget=_budget(args.run_record),
             )
             return 0
         if argv[:1] == ["session"]:
@@ -268,6 +276,11 @@ attempt_p.add_argument(
     default=DEFAULT_TIMEOUT,
     help=f"command timeout in seconds (default: {DEFAULT_TIMEOUT:g})",
 )
+attempt_p.add_argument(
+    "--run-record",
+    default=None,
+    help="run record JSON whose token_budget and turn_budget stop the cell (default: no budget)",
+)
 
 run_p = sub.add_parser("run", help="run an attempt command n times and write a summary")
 run_p.add_argument("task", help="task name")
@@ -304,6 +317,11 @@ run_p.add_argument(
     type=positive_finite_timeout,
     default=DEFAULT_TIMEOUT,
     help=f"command timeout in seconds (default: {DEFAULT_TIMEOUT:g})",
+)
+run_p.add_argument(
+    "--run-record",
+    default=None,
+    help="run record JSON whose token_budget and turn_budget stop each cell (default: no budget)",
 )
 
 summarize_p = sub.add_parser(

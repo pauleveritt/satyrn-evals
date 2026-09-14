@@ -2057,3 +2057,87 @@ def test_run_workspace_asserts_result_invariant(
         workspace_module.run_workspace(
             base=tmp_path, protected_paths=(), command=("x",), environment={}
         )
+
+
+def _usage_lines(*outputs: int) -> str:
+    import json
+
+    return "".join(
+        json.dumps({"type": "turn_start"}) + "\n"
+        + json.dumps({"type": "message_end", "message": {"role": "assistant", "usage": {"output": n}}}) + "\n"
+        for n in outputs
+    )
+
+
+class _WritesThenExits:
+    """A command that writes its last transcript lines and exits in one wait."""
+
+    pid = 42
+
+    def __init__(self, transcript: Path, text: str) -> None:
+        self.transcript = transcript
+        self.text = text
+
+    def wait(self, timeout: float | None = None) -> int:
+        self.transcript.write_text(self.text)
+        return 0
+
+
+def test_budget_trips_on_a_live_transcript_before_the_command_exits(tmp_path: Path) -> None:
+    from satyrn_evals.budget import AttemptBudget, BudgetTripwire
+
+    transcript = tmp_path / "transcript.txt"
+    transcript.write_text(_usage_lines(20_000, 20_000))
+    process = _FakeProcess([])  # never exits on its own
+    exit_code, tripped = workspace_module._wait_or_trip(
+        _process(process), timeout=5.0, transcript=transcript, limit=None,
+        budget=AttemptBudget(output_tokens=32_000, turns=48),
+    )
+    assert exit_code is None
+    assert isinstance(tripped, BudgetTripwire) and tripped.over == "output_tokens"
+    assert process.wait_timeouts == []
+
+
+def test_budget_reads_the_tail_a_command_wrote_before_exiting(tmp_path: Path) -> None:
+    from satyrn_evals.budget import AttemptBudget, BudgetTripwire
+
+    transcript = tmp_path / "transcript.txt"
+    exit_code, tripped = workspace_module._wait_or_trip(
+        cast("subprocess.Popen[bytes]", _WritesThenExits(transcript, _usage_lines(40_000))),
+        timeout=5.0, transcript=transcript, limit=None,
+        budget=AttemptBudget(output_tokens=32_000, turns=48),
+    )
+    assert exit_code == 0
+    assert isinstance(tripped, BudgetTripwire)
+
+
+def test_a_command_within_budget_exits_untripped(tmp_path: Path) -> None:
+    from satyrn_evals.budget import AttemptBudget
+
+    transcript = tmp_path / "transcript.txt"
+    exit_code, tripped = workspace_module._wait_or_trip(
+        cast("subprocess.Popen[bytes]", _WritesThenExits(transcript, _usage_lines(3_000, 2_000))),
+        timeout=5.0, transcript=transcript, limit=None,
+        budget=AttemptBudget(output_tokens=32_000, turns=48),
+    )
+    assert (exit_code, tripped) == (0, None)
+
+
+def test_a_finished_command_over_budget_is_budget_exceeded_with_its_exit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from satyrn_evals.budget import AttemptBudget
+
+    state = _state(tmp_path)
+    state.base_sha = "a" * 40
+    transcript = tmp_path / "transcript.txt"
+    monkeypatch.setattr(
+        workspace_module.subprocess, "Popen",
+        lambda *_a, **_k: _WritesThenExits(transcript, _usage_lines(40_000)),
+    )
+    result = workspace_module._run_command(
+        ("x",), state, {}, 10.0, 0.1, transcript=transcript,
+        budget=AttemptBudget(output_tokens=32_000, turns=48),
+    )
+    assert (result.code, result.command_exit) == (WorkspaceCode.BUDGET_EXCEEDED, 0)
+    assert result.message == "attempt command spent 40000 output tokens, over the budget of 32000"

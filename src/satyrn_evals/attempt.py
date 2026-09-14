@@ -28,6 +28,7 @@ from satyrn_evals.attempt_record import (
     load_attempt_record,
     write_attempt_record,
 )
+from satyrn_evals.budget import AttemptBudget
 from satyrn_evals.deadline import AttemptDeadline, AttemptDeadlineExceeded
 from satyrn_evals.engine_contract import (
     engine_contract_path,
@@ -66,6 +67,7 @@ _WORKSPACE_ATTEMPT_CODES: dict[WorkspaceCode, AttemptCode] = {
     WorkspaceCode.WORKSPACE_FAILED: AttemptCode.WORKSPACE_FAILED,
     WorkspaceCode.COMMAND_TIMEOUT: AttemptCode.COMMAND_TIMEOUT,
     WorkspaceCode.REPEAT_LIMIT: AttemptCode.REPEAT_LIMIT,
+    WorkspaceCode.BUDGET_EXCEEDED: AttemptCode.BUDGET_EXCEEDED,
     WorkspaceCode.CLEANUP_FAILED: AttemptCode.CLEANUP_FAILED,
 }
 
@@ -187,6 +189,7 @@ def attempt(
     rung: str | None = None,
     max_repeated_calls: int | None = None,
     attempt_timeout: float | None = None,
+    budget: AttemptBudget | None = None,
 ) -> AttemptRecord:
     """Run an unbounded attempt through the stable public API."""
     return _attempt(
@@ -198,6 +201,7 @@ def attempt(
         rung=rung,
         max_repeated_calls=max_repeated_calls,
         attempt_timeout=attempt_timeout,
+        budget=budget,
     )
 
 
@@ -212,6 +216,7 @@ def _attempt(
     max_repeated_calls: int | None = None,
     deadline: AttemptDeadline | None = None,
     attempt_timeout: float | None = None,
+    budget: AttemptBudget | None = None,
 ) -> AttemptRecord:
     """Run COMMAND against TASK, preserve patch + transcript, grade, and record.
 
@@ -357,10 +362,12 @@ def _attempt(
                     max_repeated_calls=max_repeated_calls,
                     deadline=deadline,
                     extra_environment={BASE_SHA_ENV: workspace_lease.base_sha},
+                    budget=budget,
                 )
                 if deadline is not None and workspace.code not in (
                     WorkspaceCode.COMMAND_TIMEOUT,
                     WorkspaceCode.REPEAT_LIMIT,
+                    WorkspaceCode.BUDGET_EXCEEDED,
                 ):
                     deadline.remaining(DeadlinePhase.COMMAND)
             except AttemptDeadlineExceeded:

@@ -1,9 +1,11 @@
 import argparse
+import json
 from pathlib import Path
 
 import pytest
 
 from satyrn_evals import cli as cli_module
+from satyrn_evals.budget import AttemptBudget
 from satyrn_evals.cli import (
     main,
     parser,
@@ -316,3 +318,32 @@ def test_run_cli_passes_rung_through(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_run_cli_rung_defaults_to_none() -> None:
     assert parser.parse_args(["run", "task", "--n", "1"]).rung is None
+
+
+def _record(tmp_path: Path) -> Path:
+    path = tmp_path / "record.json"
+    path.write_text(json.dumps({
+        "version": 1, "task": "format_number", "task_tree_sha256": "a" * 64, "arm": "baseline",
+        "model": "omlx/Ornith-1.5-9B-MLX-8bit", "condition": "cold", "n": 4, "mode": "attended",
+        "max_minutes": 60, "stop_rule": "infrastructure only", "decision_rule": "fisher",
+        "previous_result": None, "token_budget": 24000, "turn_budget": 36,
+    }))
+    return path
+
+
+def test_run_takes_its_budget_from_the_run_record(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, object] = {}
+    monkeypatch.setattr(cli_module, "run", lambda **kwargs: seen.update(kwargs))
+    assert main(["run", "format_number", "--n", "1", "--run-record", str(_record(tmp_path)), "--", "cmd"]) == 0
+    assert seen["budget"] == AttemptBudget(output_tokens=24000, turns=36)
+
+
+def test_run_without_a_record_has_no_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, object] = {}
+    monkeypatch.setattr(cli_module, "run", lambda **kwargs: seen.update(kwargs))
+    assert main(["run", "format_number", "--n", "1", "--", "cmd"]) == 0
+    assert seen["budget"] is None
+
+
+def test_attempt_with_an_unreadable_record_is_a_usage_error(tmp_path: Path) -> None:
+    assert main(["attempt", "format_number", "--run-record", str(tmp_path / "absent.json"), "--", "cmd"]) == 2

@@ -3,16 +3,23 @@ from pathlib import Path
 
 import pytest
 
+from satyrn_evals.budget import AttemptBudget
 from satyrn_evals.cli import main
 from satyrn_evals.errors import UsageError
-from satyrn_evals.run_record import RunRecord, RunRecordError, gate, load_run_record
+from satyrn_evals.run_record import (
+    RunRecord,
+    RunRecordError,
+    attempt_budget,
+    gate,
+    load_run_record,
+)
 
 GOOD = {
     "version": 1, "task": "agentclinic-repair-misleading-locus", "task_tree_sha256": "a" * 64,
     "arm": "baseline", "model": "omlx/gemma-4-12B-it-MLX-8bit", "condition": "cold", "n": 4,
     "mode": "attended", "max_minutes": 60,
     "stop_rule": "established infrastructure failure only", "decision_rule": "presence counts; no rate",
-    "previous_result": None,
+    "previous_result": None, "token_budget": 32000, "turn_budget": 48,
 }
 
 
@@ -115,3 +122,23 @@ def test_launch_without_check_is_a_usage_error() -> None:
 
 def test_launch_check_accepts_a_good_record(tmp_path: Path) -> None:
     assert main(["launch", "--check", str(_write(tmp_path))]) == 0
+
+
+def test_the_record_carries_the_attempt_budget(tmp_path: Path) -> None:
+    record = load_run_record(_write(tmp_path, token_budget=24000, turn_budget=36))
+    assert attempt_budget(record) == AttemptBudget(output_tokens=24000, turns=36)
+
+
+@pytest.mark.parametrize("field", ["token_budget", "turn_budget"])
+def test_a_record_without_a_budget_is_refused(tmp_path: Path, field: str) -> None:
+    body = {k: v for k, v in GOOD.items() if k != field}
+    path = tmp_path / "r.json"
+    path.write_text(json.dumps(body))
+    with pytest.raises(RunRecordError, match=f"missing {field}"):
+        load_run_record(path)
+
+
+@pytest.mark.parametrize(("field", "value"), [("token_budget", 0), ("turn_budget", -1)])
+def test_a_non_positive_budget_is_refused(tmp_path: Path, field: str, value: int) -> None:
+    with pytest.raises(RunRecordError, match=f"{field} must be a positive integer"):
+        load_run_record(_write(tmp_path, **{field: value}))

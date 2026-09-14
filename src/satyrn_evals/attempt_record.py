@@ -95,6 +95,7 @@ class AttemptCode(StrEnum):
     WORKSPACE_FAILED = "WORKSPACE_FAILED"
     COMMAND_TIMEOUT = "COMMAND_TIMEOUT"
     REPEAT_LIMIT = "REPEAT_LIMIT"
+    BUDGET_EXCEEDED = "BUDGET_EXCEEDED"
     MODEL_ERROR = "MODEL_ERROR"
     CLEANUP_FAILED = "CLEANUP_FAILED"
     GRADE_FAILED = "GRADE_FAILED"
@@ -189,6 +190,16 @@ _ATTEMPT_POLICIES: dict[AttemptCode, _AttemptPolicy] = {
         # and pooling the two is the maintainer's call, not this table's.
         AttemptOutcome.REFUSED,
         _Presence.FORBIDDEN,
+        _Presence.REQUIRED,
+        _Presence.FORBIDDEN,
+        _ArtifactPolicy.ANY,
+    ),
+    AttemptCode.BUDGET_EXCEEDED: _AttemptPolicy(
+        # Over the run record's output-token or turn budget (spec "Budget,
+        # both arms"): a fail. Usually torn down live, so no exit code; a
+        # command seen over budget only in its last lines keeps its exit.
+        AttemptOutcome.REFUSED,
+        _Presence.OPTIONAL,
         _Presence.REQUIRED,
         _Presence.FORBIDDEN,
         _ArtifactPolicy.ANY,
@@ -406,6 +417,9 @@ class AttemptRecord:
                     {DeadlinePhase.PRESERVATION, DeadlinePhase.CLEANUP}
                 ),
                 AttemptCode.REPEAT_LIMIT: frozenset(
+                    {DeadlinePhase.PRESERVATION, DeadlinePhase.CLEANUP}
+                ),
+                AttemptCode.BUDGET_EXCEEDED: frozenset(
                     {DeadlinePhase.PRESERVATION, DeadlinePhase.CLEANUP}
                 ),
                 # A record written before cleanup keeps its independent

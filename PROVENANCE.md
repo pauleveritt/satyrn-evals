@@ -281,3 +281,6 @@
 | tests/integration/data/tasks/calc-build/fixtures/known-broken.patch | created in release-one |
 | tests/integration/data/tasks/calc-build/fixtures/known-good.patch | created in release-one |
 | tests/integration/data/tasks/calc-build/manifest.json | created in release-one |
+| src/satyrn_evals/budget.py | created in release-one |
+| tests/test_budget.py | created in release-one |
+| tests/integration/test_budget_attempt.py | created in release-one |

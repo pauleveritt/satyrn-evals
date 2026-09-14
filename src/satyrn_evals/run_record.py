@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from satyrn_evals.budget import AttemptBudget
 from satyrn_evals.errors import UsageError
 
 type Mode = Literal["attended", "batch"]
@@ -39,12 +40,16 @@ class RunRecord:
     stop_rule: str
     decision_rule: str
     previous_result: str | None
+    # The campaign budget per attempt, spec "Budget, both arms".
+    token_budget: int
+    turn_budget: int
 
 
 _REQUIRED: dict[str, type | tuple[type, ...]] = {
     "version": int, "task": str, "task_tree_sha256": str, "arm": str, "model": str,
     "condition": str, "n": int, "mode": str, "max_minutes": int,
     "stop_rule": str, "decision_rule": str, "previous_result": (str, type(None)),
+    "token_budget": int, "turn_budget": int,
 }
 
 
@@ -69,7 +74,17 @@ def load_run_record(path: Path) -> RunRecord:
     for field in ("stop_rule", "decision_rule"):
         if not body[field].strip():
             raise RunRecordError(f"run record {path}: {field} is empty")
+    for field in ("token_budget", "turn_budget"):
+        if body[field] < 1:
+            raise RunRecordError(
+                f"run record {path}: {field} must be a positive integer"
+            )
     return RunRecord(**{k: body[k] for k in _REQUIRED})
+
+
+def attempt_budget(record: RunRecord) -> AttemptBudget:
+    """The budget every attempt under this record is held to."""
+    return AttemptBudget(output_tokens=record.token_budget, turns=record.turn_budget)
 
 
 def gate(record: RunRecord, *, previous_result_committed: bool | None) -> None:

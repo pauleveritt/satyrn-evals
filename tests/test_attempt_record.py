@@ -652,7 +652,7 @@ def _valid_v4_record(code: AttemptCode) -> AttemptRecord:
             )
         case AttemptCode.WORKSPACE_FAILED:
             pass
-        case AttemptCode.COMMAND_TIMEOUT | AttemptCode.REPEAT_LIMIT:
+        case AttemptCode.COMMAND_TIMEOUT | AttemptCode.REPEAT_LIMIT | AttemptCode.BUDGET_EXCEEDED:
             values["workspace_base_sha"] = "c" * 40
         case AttemptCode.MODEL_ERROR:
             # The command ran and exited; the substrate failed under it.
