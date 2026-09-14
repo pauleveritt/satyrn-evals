@@ -24,9 +24,12 @@ def _whitespace(root: Path) -> list[str]:
     failures: list[str] = []
     paths = sorted({*root.glob("*.md"), *root.glob("docs/**/*.md")})
     for path in paths:
-        if not path.is_file() or any(p in SKIP_PARTS for p in path.parts):
+        if not path.is_file():
             continue
-        rel = path.relative_to(root).as_posix()
+        rel_path = path.relative_to(root)
+        if any(p in SKIP_PARTS for p in rel_path.parts):
+            continue
+        rel = rel_path.as_posix()
         lines = _lines(path)
         failures.extend(f"{rel}:{n}: trailing whitespace" for n, line in enumerate(lines, 1) if line != line.rstrip())
         if lines and lines[-1] == "":

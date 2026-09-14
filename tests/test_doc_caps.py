@@ -62,3 +62,42 @@ def test_trailing_whitespace_and_blank_last_line_fail(tmp_path: Path) -> None:
     root = _docs(tmp_path)
     (root / "docs/lessons.md").write_text("a \nb\n\n")
     assert check(root) == ["docs/lessons.md:1: trailing whitespace", "docs/lessons.md: blank line at EOF"]
+
+
+def test_the_skip_list_is_relative_to_root_not_absolute(tmp_path: Path) -> None:
+    root = _docs(tmp_path / ".claude" / "worktrees" / "x")
+    (root / "docs/lessons.md").write_text("a \n")
+    assert check(root) == ["docs/lessons.md:1: trailing whitespace"]
+
+
+def test_gitkeep_does_not_count_toward_the_result_cap(tmp_path: Path) -> None:
+    root = _docs(tmp_path)
+    (root / "docs/results/.gitkeep").write_text("")
+    for i in range(12):
+        (root / f"docs/results/r{i}.md").write_text("```\nx\n```\n")
+    assert check(root) == []
+
+
+def test_roadmap_at_exactly_150_lines_passes(tmp_path: Path) -> None:
+    root = _docs(tmp_path)
+    (root / "ROADMAP.md").write_text("x\n" * 150)
+    assert check(root) == []
+
+
+def test_result_at_exactly_120_lines_passes(tmp_path: Path) -> None:
+    root = _docs(tmp_path)
+    (root / "docs/results/r.md").write_text("```\nx\n```\n" + "y\n" * 117)
+    assert check(root) == []
+
+
+def test_spec_at_exactly_400_lines_passes(tmp_path: Path) -> None:
+    root = _docs(tmp_path)
+    (root / "docs/superpowers/specs/s.md").write_text("x\n" * 400)
+    assert check(root) == []
+
+
+def test_twelve_results_passes(tmp_path: Path) -> None:
+    root = _docs(tmp_path)
+    for i in range(12):
+        (root / f"docs/results/r{i}.md").write_text("```\nx\n```\n")
+    assert check(root) == []
