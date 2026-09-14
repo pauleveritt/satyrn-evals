@@ -448,7 +448,7 @@ def test_invalid_visibility_value_refused(tmp_path: Path) -> None:
 
 
 def test_bundled_tasks_default_visible() -> None:
-    for name in ("format_number", "local-pings"):
+    for name in ("format_number",):
         manifest = load_manifest(DEFAULT_TASKS_ROOT / name)
         assert manifest.oracle_visibility == "visible"
 

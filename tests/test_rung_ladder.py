@@ -25,10 +25,7 @@ from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, load_manifest, resolve_tas
 #: `base/` byte-identical -- changing it re-derives the contamination
 #: pairs and the 24/24 gate. That is a separate slice, not authoring.
 R0_TASKS = [
-    "agentclinic-repair-depth-2",
-    "agentclinic-repair-depth-3",
     "agentclinic-repair-misleading-locus",
-    "agentclinic-repair-plausible-wrong-fix",
 ]
 
 
@@ -64,12 +61,7 @@ def test_r1_does_name_hidden_checks(task: str) -> None:
 #: check name. R1b must preserve every one of these, or it is not the same
 #: rung -- it is a second R0 wearing R1's label.
 EVIDENCE_SIGNATURES = {
-    "agentclinic-repair-depth-2": ("casefold", "307", "303"),
-    "agentclinic-repair-depth-3": (
-        "casefold", "307", "303", "assert None is not None",
-    ),
     "agentclinic-repair-misleading-locus": ("Codex acceptance test",),
-    "agentclinic-repair-plausible-wrong-fix": ("307", "303"),
 }
 
 

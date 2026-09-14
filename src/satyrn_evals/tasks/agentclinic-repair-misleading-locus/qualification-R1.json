@@ -1,0 +1,178 @@
+{
+  "version": 1,
+  "task": "agentclinic-repair-misleading-locus",
+  "rung": "R1",
+  "status": "justified",
+  "behaviors": [
+    {
+      "id": "record-posted-complaint",
+      "requirement": "A posted complaint is recorded in the shared complaint store, so the next render of the board shows it.",
+      "accessible_evidence": [
+        {
+          "kind": "contract",
+          "path": "manifest.json",
+          "locator": "contracts.R1: one failing check, test_posted_complaint_appears_on_complaints_board -- the posted complaint's text is not in the rendered board HTML. The contract reports the symptom only: it names no file and no cause."
+        },
+        {
+          "kind": "observable-base",
+          "path": "base/app.py",
+          "locator": "add_complaint: updated = complaints.copy(); updated.append(...)"
+        },
+        {
+          "kind": "observable-base",
+          "path": "base/templates/complaints.html",
+          "locator": "the board iterates the module-level complaints list"
+        },
+        {
+          "kind": "public-test",
+          "path": "base/tests/test_app.py",
+          "locator": "test_posted_complaint_appears_on_the_board"
+        }
+      ],
+      "public_tests": [
+        "tests/test_app.py::test_posted_complaint_appears_on_the_board"
+      ],
+      "hidden_checks": [
+        "test_acceptance.py::test_posted_complaint_appears_on_complaints_board"
+      ],
+      "assessment": "justified"
+    },
+    {
+      "id": "preserve-page-board-and-redirect-behavior",
+      "requirement": "Keep the existing page layout, navigation, complaint-board content, add-complaint form, and 303 redirect intact.",
+      "accessible_evidence": [
+        {
+          "kind": "contract",
+          "path": "manifest.json",
+          "locator": "contracts.R1: keep every existing behavior intact"
+        },
+        {
+          "kind": "observable-base",
+          "path": "base/templates/base.html",
+          "locator": "doctype, html lang, shared navigation, and layout"
+        },
+        {
+          "kind": "observable-base",
+          "path": "base/templates/complaints.html",
+          "locator": "heading, one card per complaint, formatted timestamp, and the add-complaint form"
+        },
+        {
+          "kind": "observable-base",
+          "path": "base/app.py",
+          "locator": "add_complaint returns RedirectResponse(\"/complaints\", status_code=303)"
+        },
+        {
+          "kind": "public-test",
+          "path": "base/tests/test_app.py",
+          "locator": "home, board, and redirect cases"
+        }
+      ],
+      "public_tests": [
+        "tests/test_app.py::test_home_returns_200_and_tagline",
+        "tests/test_app.py::test_complaints_returns_200_and_seed_complaint",
+        "tests/test_app.py::test_post_complaint_redirects_to_complaints"
+      ],
+      "hidden_checks": [
+        "test_acceptance.py::test_home_still_returns_200_and_tagline",
+        "test_acceptance.py::test_home_has_html5_doctype",
+        "test_acceptance.py::test_home_html_element_declares_english_language",
+        "test_acceptance.py::test_home_still_has_navigation_links",
+        "test_acceptance.py::test_complaints_board_still_lists_seed_complaint",
+        "test_acceptance.py::test_complaints_board_preserves_the_shared_layout",
+        "test_acceptance.py::test_complaints_board_still_has_its_heading",
+        "test_acceptance.py::test_complaints_board_still_renders_seed_complaint_details",
+        "test_acceptance.py::test_complaints_board_renders_add_complaint_form",
+        "test_acceptance.py::test_post_complaint_redirects_to_complaints_board"
+      ],
+      "assessment": "justified"
+    },
+    {
+      "id": "preserve-complaint-data-contract",
+      "requirement": "Keep the Complaint fields, per-instance timezone-aware default factory, and seeded complaint population intact.",
+      "accessible_evidence": [
+        {
+          "kind": "contract",
+          "path": "manifest.json",
+          "locator": "contracts.R1: keep every existing behavior intact"
+        },
+        {
+          "kind": "observable-base",
+          "path": "base/models.py",
+          "locator": "Complaint fields, default factory, and four seed complaints"
+        }
+      ],
+      "public_tests": [],
+      "hidden_checks": [
+        "test_acceptance.py::test_complaint_model_contract_is_preserved",
+        "test_acceptance.py::test_seed_complaint_count_is_preserved"
+      ],
+      "assessment": "justified"
+    }
+  ],
+  "witnesses": [
+    {
+      "id": "base",
+      "patch": null,
+      "public": {
+        "expected_executed_ids": [
+          "tests/test_app.py::test_complaints_returns_200_and_seed_complaint",
+          "tests/test_app.py::test_home_returns_200_and_tagline",
+          "tests/test_app.py::test_post_complaint_redirects_to_complaints",
+          "tests/test_app.py::test_posted_complaint_appears_on_the_board"
+        ],
+        "expected_nonpassing_ids": [
+          "tests/test_app.py::test_posted_complaint_appears_on_the_board"
+        ]
+      },
+      "hidden_expected_nonpassing_ids": [
+        "test_acceptance.py::test_posted_complaint_appears_on_complaints_board"
+      ]
+    },
+    {
+      "id": "known-good",
+      "patch": "fixtures/known-good.patch",
+      "public": {
+        "expected_executed_ids": [
+          "tests/test_app.py::test_complaints_returns_200_and_seed_complaint",
+          "tests/test_app.py::test_home_returns_200_and_tagline",
+          "tests/test_app.py::test_post_complaint_redirects_to_complaints",
+          "tests/test_app.py::test_posted_complaint_appears_on_the_board"
+        ],
+        "expected_nonpassing_ids": []
+      },
+      "hidden_expected_nonpassing_ids": []
+    },
+    {
+      "id": "known-broken",
+      "patch": "fixtures/known-broken.patch",
+      "omits_behavior_ids": [
+        "record-posted-complaint"
+      ],
+      "violates_behavior_ids": [
+        "preserve-page-board-and-redirect-behavior"
+      ],
+      "violated_hidden_checks": [
+        "test_acceptance.py::test_complaints_board_still_renders_seed_complaint_details"
+      ],
+      "public": {
+        "expected_executed_ids": [
+          "tests/test_app.py::test_complaints_returns_200_and_seed_complaint",
+          "tests/test_app.py::test_home_returns_200_and_tagline",
+          "tests/test_app.py::test_post_complaint_redirects_to_complaints",
+          "tests/test_app.py::test_posted_complaint_appears_on_the_board"
+        ],
+        "expected_nonpassing_ids": [
+          "tests/test_app.py::test_posted_complaint_appears_on_the_board"
+        ]
+      },
+      "hidden_expected_nonpassing_ids": [
+        "test_acceptance.py::test_complaints_board_still_renders_seed_complaint_details",
+        "test_acceptance.py::test_posted_complaint_appears_on_complaints_board"
+      ]
+    }
+  ],
+  "notes": {
+    "why_the_witness_rows_equal_R3s": "A rung changes only the contract text handed to the solver. It does not touch base/, the public suite, or the grader overlay, so the same three witnesses produce the same public and hidden results at every rung. These rows are nonetheless re-derived by running both suites, not copied on that reasoning -- the qualification gate runs them for each (task, rung) it covers, and a rung that did somehow change an outcome would fail there rather than pass by assumption.",
+    "what_R1_withholds": "R1 states the failing check and its symptom. It does not name app.py, does not say the handler appends to a copy, and does not say where to look. Locating the defect is left to ordinary code reasoning over a readable workspace, which is exactly the behavior R3 discloses away."
+  }
+}

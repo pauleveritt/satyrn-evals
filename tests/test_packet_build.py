@@ -17,7 +17,7 @@ from satyrn_evals.patch import within_source
 from satyrn_evals.session_manifest import load_session_spec
 
 REPO = Path(__file__).resolve().parent.parent
-TASK = REPO / "src/satyrn_evals/tasks/agentclinic-session-phased"
+TASK = REPO / "src/satyrn_evals/tasks/agentclinic-complaint-lifecycle"
 REVISION = "3e6607e533792ab0"
 
 

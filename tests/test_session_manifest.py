@@ -485,7 +485,7 @@ def test_a_blank_argv_token_is_refused(tmp_path: Path) -> None:
 def _phased_task() -> Path:
     return (
         Path(__file__).resolve().parent.parent
-        / "src/satyrn_evals/tasks/agentclinic-session-phased"
+        / "src/satyrn_evals/tasks/agentclinic-complaint-lifecycle"
     )
 
 

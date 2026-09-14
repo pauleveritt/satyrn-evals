@@ -27,7 +27,6 @@ FORBIDDEN = ("overlay", "test_acceptance.py", "overlay/test_acceptance.py")
 #: before. tests/integration/test_agentclinic_gate.py imports this list rather
 #: than repeating it, so the two tiers cannot disagree about what is qualified.
 QUALIFIED: list[tuple[str, str]] = [
-    ("depth-3", "R3"),
     ("misleading-locus", "R3"),
     ("misleading-locus", "R1"),
 ]
@@ -86,7 +85,7 @@ def test_manifest_whose_contract_names_overlay_is_refused(tmp_path: Path) -> Non
     the refusal comes from the contract-name check, not the overlay-symlink
     guard.
     """
-    src = resolve_task("agentclinic-repair-plausible-wrong-fix")
+    src = resolve_task("agentclinic-repair-misleading-locus")
     data = json.loads((src / "manifest.json").read_text())
     data["contract"] = "the failure is in test_acceptance.py — fix it"
     root = tmp_path / "tasks"
@@ -132,36 +131,11 @@ def test_all_manifests_share_identical_expected_test_ids() -> None:
 # docs/superpowers/research/2026-09-05-v11a-r1-derivation.md.
 
 DERIVED_FAILING_NAMES: dict[str, tuple[str, ...]] = {
-    "depth-2": (
-        "test_home_html_element_declares_english_language",
-        "test_complaints_board_preserves_the_shared_layout",
-        "test_post_complaint_redirects_to_complaints_board",
-    ),
-    "depth-3": (
-        "test_home_html_element_declares_english_language",
-        "test_complaints_board_preserves_the_shared_layout",
-        "test_complaint_model_contract_is_preserved",
-        "test_post_complaint_redirects_to_complaints_board",
-    ),
-    # The two collection-abort states collect nothing, so they have no
-    # failing function names; their derived evidence is the abort message.
-    "framing-2": (),
-    "framing-2-edit": (),
     "misleading-locus": ("test_posted_complaint_appears_on_complaints_board",),
-    "plausible-wrong-fix": ("test_post_complaint_redirects_to_complaints_board",),
 }
 
 DERIVED_ASSERTION_TEXT: dict[str, tuple[str, ...]] = {
-    "depth-2": ("'NoneType' object has no attribute 'casefold'", "assert 307 == 303"),
-    "depth-3": (
-        "'NoneType' object has no attribute 'casefold'",
-        "assert None is not None",
-        "assert 307 == 303",
-    ),
-    "framing-2": ("ModuleNotFoundError: No module named 'models'",),
-    "framing-2-edit": ("module 'models' has no attribute 'complaints'",),
     "misleading-locus": ("Codex acceptance test",),
-    "plausible-wrong-fix": ("assert 307 == 303",),
 }
 
 
@@ -171,12 +145,7 @@ DERIVED_ASSERTION_TEXT: dict[str, tuple[str, ...]] = {
 #: `specs/` vendored into `base/` -- reversed by V11a to keep `base/`
 #: byte-identical -- and they keep the trim's set until that slice runs.
 EXPECTED_RUNGS = {
-    "depth-2": {"R0", "R1", "R1b", "R3"},
-    "depth-3": {"R0", "R1", "R1b", "R3"},
     "misleading-locus": {"R0", "R1", "R1b", "R3"},
-    "plausible-wrong-fix": {"R0", "R1", "R1b", "R3"},
-    "framing-2": {"R1", "R3"},
-    "framing-2-edit": {"R1", "R3"},
 }
 
 
@@ -205,21 +174,6 @@ def test_every_contract_distinguishes_public_and_absent_acceptance_suites(
         assert "uv run python -m pytest tests/" in text, (state, label)
         assert "acceptance suite" in text, (state, label)
         assert "not present in this workspace" in text, (state, label)
-
-
-def test_framing_2_edit_contracts_do_not_falsely_blame_app_import() -> None:
-    """Only the absent acceptance suite observes the legacy module attribute."""
-    manifest = load_manifest(resolve_task("agentclinic-repair-framing-2-edit"))
-    for label, text in {"default": manifest.contract, **manifest.contracts}.items():
-        assert "models.complaints" in text, label
-        assert "importing the app raises" not in text, label
-        assert "repair the app's import" not in text, label
-
-
-def test_plausible_wrong_fix_contracts_do_not_claim_recording_is_broken() -> None:
-    manifest = load_manifest(resolve_task("agentclinic-repair-plausible-wrong-fix"))
-    for label, text in {"default": manifest.contract, **manifest.contracts}.items():
-        assert "complaint is recorded" not in text, label
 
 
 @pytest.mark.parametrize("state", STATES)

@@ -27,7 +27,7 @@ from satyrn_evals.errors import UsageError
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
 from satyrn_evals.verdict import Verdict
 
-HIDDEN_TASK_NAME = "session-mechanics"
+HIDDEN_TASK_NAME = "agentclinic-repair-misleading-locus"
 # A grade-produced hidden receipt: the patch scanned clean against the overlay.
 _CLEAN_RECEIPT = (
     '{"verdict": "pass", "contamination": {"visibility": "hidden", '

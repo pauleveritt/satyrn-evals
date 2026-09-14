@@ -20,79 +20,8 @@ import pytest
 from satyrn_evals.engine_contract import (
     contract_id,
     render_engine_contract,
-    writable_paths,
 )
-from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, TaskManifest, load_manifest
-
-# The named fixture for the both-directions rows: its base carries app.py,
-# models.py, templates/{base,home,complaints}.html and tests/test_app.py.
-FIXTURE = "agentclinic-repair-plausible-wrong-fix"
-
-
-def _fixture_dir(name: str = FIXTURE) -> Path:
-    return DEFAULT_TASKS_ROOT / name
-
-
-def _matches(pattern: str, path: str) -> bool:
-    from fnmatch import fnmatchcase
-
-    return fnmatchcase(path, pattern)
-
-
-def test_generated_patterns_admit_every_declared_source_file() -> None:
-    """Direction 1, on the known-good half of the fixture named above."""
-    task_dir = _fixture_dir()
-    manifest = load_manifest(task_dir)
-    patterns = writable_paths(task_dir, manifest.source_paths)
-    declared = sorted(
-        p.relative_to(task_dir / "base").as_posix()
-        for p in (task_dir / "base").rglob("*")
-        if p.is_file() and p.name not in ("pyproject.toml", "uv.lock")
-    )
-    assert declared, FIXTURE  # the fixture is not vacuously empty
-    for rel in declared:
-        assert any(_matches(pattern, rel) for pattern in patterns), (
-            FIXTURE,
-            rel,
-            patterns,
-        )
-
-
-@pytest.mark.parametrize(
-    "neighbour",
-    [
-        "templates_backup/base.html",
-        "tests_extra/test_app.py",
-        "nottemplates/home.html",
-        "vendor/app.py",
-        "app.py.bak",
-    ],
-)
-def test_generated_patterns_reject_a_neighbouring_path(neighbour: str) -> None:
-    """Direction 2, on the same fixture: a path outside source_paths."""
-    task_dir = _fixture_dir()
-    manifest = load_manifest(task_dir)
-    patterns = writable_paths(task_dir, manifest.source_paths)
-    assert not any(_matches(pattern, neighbour) for pattern in patterns), (
-        FIXTURE,
-        neighbour,
-        patterns,
-    )
-
-
-def test_file_entry_stays_exact() -> None:
-    task_dir = _fixture_dir()
-    patterns = writable_paths(task_dir, ("app.py", "templates"))
-    assert "app.py" in patterns
-    assert "templates/*" in patterns
-
-
-def test_missing_source_entry_stays_exact() -> None:
-    """framing-2's base has no models.py -- the task must create it, so the
-    entry is a creation target and stays an exact path, not a directory."""
-    task_dir = _fixture_dir("agentclinic-repair-framing-2")
-    assert not (task_dir / "base" / "models.py").exists()
-    assert writable_paths(task_dir, ("models.py",)) == ("models.py",)
+from satyrn_evals.manifest import TaskManifest
 
 
 def _manifest(source_paths: tuple[str, ...]) -> TaskManifest:

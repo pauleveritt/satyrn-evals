@@ -4,19 +4,13 @@ import pytest
 
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
 
-STATES = ["depth-2", "depth-3", "framing-2", "framing-2-edit",
-          "misleading-locus", "plausible-wrong-fix"]
+STATES = ["misleading-locus"]
 
 # spec §2: per-state content overrides/additions, and .delete removals.
 DELTA_FILES = {
-    "depth-2": ["app.py", "templates/base.html"],
-    "depth-3": ["models.py", "app.py", "templates/base.html"],
-    "framing-2": ["app.py"],            # .delete removes models.py
-    "framing-2-edit": ["models.py", "app.py"],
     "misleading-locus": ["app.py"],
-    "plausible-wrong-fix": ["app.py"],
 }
-DELETED = {"framing-2": ["models.py"]}
+DELETED: dict[str, list[str]] = {}
 SHARED = ["app.py", "models.py", "templates/home.html", "templates/base.html",
           "templates/complaints.html", "tests/test_app.py"]
 

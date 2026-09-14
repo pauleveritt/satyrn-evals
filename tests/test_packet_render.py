@@ -28,7 +28,7 @@ from satyrn_evals.packet import (
 from satyrn_evals.session_manifest import load_session_spec
 
 REPO = Path(__file__).resolve().parent.parent
-TASK = REPO / "src/satyrn_evals/tasks/agentclinic-session-phased"
+TASK = REPO / "src/satyrn_evals/tasks/agentclinic-complaint-lifecycle"
 
 
 def _packet(step_id: str = "phase-2-board", **over: object) -> HandoffPacket:

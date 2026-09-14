@@ -507,7 +507,7 @@ def test_pi_child_argv_and_runtime_env_carry_no_overlay_names():
         load_manifest,
     )
 
-    task_dir = DEFAULT_TASKS_ROOT / "session-mechanics"
+    task_dir = DEFAULT_TASKS_ROOT / "agentclinic-repair-misleading-locus"
     manifest = load_manifest(task_dir)
     assert manifest.grader_overlay is not None
     names = _overlay_declared_names(task_dir, manifest.grader_overlay)
