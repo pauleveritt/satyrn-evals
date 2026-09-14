@@ -27,19 +27,20 @@ from satyrn_evals.attempt_pi import (
     main,
     parse_args,
     read_artifact_paths,
+    read_base_sha,
     read_prompt,
 )
+from satyrn_evals.session_patch import RESIDUE_EXCLUDES, PatchCapture
 
 MODEL = "omlx/gemma-4-12B-it-MLX-8bit"
+BASE = "c" * 40
 
 
 class _FakeRun:
     """Records each ``subprocess.run`` call and answers from a script."""
 
-    def __init__(self, *, pi_exit: int, diff: str, diff_exit: int = 0) -> None:
+    def __init__(self, *, pi_exit: int) -> None:
         self.pi_exit = pi_exit
-        self.diff = diff
-        self.diff_exit = diff_exit
         self.calls: list[list[str]] = []
         self.environments: list[dict[str, str]] = []
 
@@ -48,8 +49,6 @@ class _FakeRun:
         if environment := kwargs.get("env"):
             assert isinstance(environment, dict)
             self.environments.append(environment)
-        if argv[0] == "git":
-            return subprocess.CompletedProcess(argv, self.diff_exit, self.diff, "")
         stdout = kwargs["stdout"]
         assert hasattr(stdout, "write")  # the transcript file handle
         stdout.write(b'{"type": "agent_start"}\n')  # type: ignore[union-attr]
@@ -64,7 +63,20 @@ def seam(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, Path]:
     monkeypatch.setenv(attempt_pi.CONTRACT_ENV, "Make the failing test pass.")
     monkeypatch.setenv(attempt_pi.PATCH_ENV, str(patch_path))
     monkeypatch.setenv(attempt_pi.TRANSCRIPT_ENV, str(transcript_path))
+    monkeypatch.setenv(attempt_pi.BASE_SHA_ENV, BASE)
     return {"patch": patch_path, "transcript": transcript_path}
+
+
+def _capture(monkeypatch: pytest.MonkeyPatch, patch_text: str) -> list[tuple[object, ...]]:
+    """Replace the harvest's Git work with a recorded capture."""
+    calls: list[tuple[object, ...]] = []
+
+    def fake(worktree: Path, base: str, environment: object, *, exclude: tuple[str, ...]) -> PatchCapture:
+        calls.append((worktree, base, exclude))
+        return PatchCapture(patch_text, (), ())
+
+    monkeypatch.setattr(attempt_pi, "build_cumulative_patch", fake)
+    return calls
 
 
 # --- the seam's variable names are pinned to attempt.py --------------------
@@ -77,6 +89,7 @@ def test_the_adapter_reads_exactly_the_names_attempt_exports() -> None:
     assert attempt_pi.CONTRACT_ENV == attempt.TASK_CONTRACT_ENV
     assert attempt_pi.PATCH_ENV == attempt.PATCH_ENV
     assert attempt_pi.TRANSCRIPT_ENV == attempt.TRANSCRIPT_ENV
+    assert attempt_pi.BASE_SHA_ENV == attempt.BASE_SHA_ENV
 
 
 # --- argument parsing ------------------------------------------------------
@@ -230,20 +243,34 @@ def test_a_missing_transcript_path_is_refused(
 # --- harvesting ------------------------------------------------------------
 
 
-def test_harvest_returns_the_tracked_diff(monkeypatch: pytest.MonkeyPatch) -> None:
-    fake = _FakeRun(pi_exit=0, diff="diff --git a/x b/x\n")
-    monkeypatch.setattr(attempt_pi.subprocess, "run", fake)
-    assert harvest_patch() == "diff --git a/x b/x\n"
-    assert fake.calls == [["git", "diff", "HEAD"]]
+def test_harvest_is_the_cumulative_patch_from_the_base_without_residue(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls = _capture(monkeypatch, "diff --git a/x b/x\n")
+    assert harvest_patch(tmp_path, BASE) == "diff --git a/x b/x\n"
+    assert calls == [(tmp_path, BASE, RESIDUE_EXCLUDES)]
 
 
-def test_harvest_refuses_when_git_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_harvest_refuses_when_git_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Sibling success: the row above. An unreadable diff must refuse, not
     write an empty patch that grading would read as `NO_PATCH`."""
-    fake = _FakeRun(pi_exit=0, diff="", diff_exit=128)
-    monkeypatch.setattr(attempt_pi.subprocess, "run", fake)
-    with pytest.raises(AdapterError, match="git diff"):
-        harvest_patch()
+
+    def fail(*_args: object, **_kwargs: object) -> PatchCapture:
+        raise subprocess.CalledProcessError(128, ["git", "read-tree"], b"", b"fatal: bad object")
+
+    monkeypatch.setattr(attempt_pi, "build_cumulative_patch", fail)
+    with pytest.raises(AdapterError, match="harvest against c+ failed \\(128\\): fatal: bad object"):
+        harvest_patch(tmp_path, BASE)
+
+
+def test_the_base_sha_comes_from_the_environment(seam: dict[str, Path]) -> None:
+    assert read_base_sha(os.environ) == BASE
+
+
+@pytest.mark.parametrize("value", ["", "HEAD", "c" * 39, "C" * 40])
+def test_a_missing_or_malformed_base_sha_is_refused(value: str) -> None:
+    with pytest.raises(AdapterError, match=attempt_pi.BASE_SHA_ENV):
+        read_base_sha({attempt_pi.BASE_SHA_ENV: value} if value else {})
 
 
 # --- the executable shell --------------------------------------------------
@@ -252,21 +279,24 @@ def test_harvest_refuses_when_git_fails(monkeypatch: pytest.MonkeyPatch) -> None
 def test_main_preserves_transcript_and_patch_and_returns_pi_exit(
     seam: dict[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    fake = _FakeRun(pi_exit=0, diff="diff --git a/s.py b/s.py\n")
+    fake = _FakeRun(pi_exit=0)
     monkeypatch.setattr(attempt_pi.subprocess, "run", fake)
+    calls = _capture(monkeypatch, "diff --git a/s.py b/s.py\n")
     assert main(["--model", MODEL]) == 0
     assert seam["transcript"].read_bytes() == b'{"type": "agent_start"}\n'
     assert seam["patch"].read_text(encoding="utf-8") == "diff --git a/s.py b/s.py\n"
     assert fake.calls[0][0] == "pi"
     assert fake.calls[0][-1] == "Make the failing test pass."
-    assert fake.calls[1] == ["git", "diff", "HEAD"]
+    assert len(fake.calls) == 1
+    assert calls == [(Path.cwd(), BASE, RESIDUE_EXCLUDES)]
 
 
 def test_main_starts_pi_without_the_evals_virtual_environment(
     seam: dict[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    fake = _FakeRun(pi_exit=0, diff="")
+    fake = _FakeRun(pi_exit=0)
     monkeypatch.setattr(attempt_pi.subprocess, "run", fake)
+    _capture(monkeypatch, "")
     monkeypatch.setenv("VIRTUAL_ENV", "/opt/evals/.venv")
     monkeypatch.setenv("PATH", "/opt/evals/.venv/bin:/usr/local/bin")
     assert main(["--model", MODEL]) == 0
@@ -278,8 +308,9 @@ def test_main_preserves_artifacts_even_when_pi_exits_non_zero(
     seam: dict[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """BRIEF rule 3: capture happens before anything else can drop it."""
-    fake = _FakeRun(pi_exit=17, diff="")
+    fake = _FakeRun(pi_exit=17)
     monkeypatch.setattr(attempt_pi.subprocess, "run", fake)
+    _capture(monkeypatch, "")
     assert main(["--model", MODEL]) == 17
     assert seam["transcript"].exists()
     assert seam["patch"].read_text(encoding="utf-8") == ""
@@ -288,14 +319,27 @@ def test_main_preserves_artifacts_even_when_pi_exits_non_zero(
 def test_main_reads_sys_argv_when_given_no_arguments(
     seam: dict[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    fake = _FakeRun(pi_exit=0, diff="")
+    fake = _FakeRun(pi_exit=0)
     monkeypatch.setattr(attempt_pi.subprocess, "run", fake)
+    _capture(monkeypatch, "")
     monkeypatch.setattr(
         attempt_pi.sys, "argv", ["satyrn-evals-attempt-pi", "--model", MODEL]
     )
     assert main() == 0
     assert fake.calls[0][argv_index := fake.calls[0].index("--model") + 1] == MODEL
     assert argv_index > 0
+
+
+def test_main_refuses_before_starting_pi_without_a_base_sha(
+    seam: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Nothing is spent on a cell whose harvest could not run."""
+    fake = _FakeRun(pi_exit=0)
+    monkeypatch.setattr(attempt_pi.subprocess, "run", fake)
+    monkeypatch.delenv(attempt_pi.BASE_SHA_ENV)
+    with pytest.raises(AdapterError, match=attempt_pi.BASE_SHA_ENV):
+        main(["--model", MODEL])
+    assert fake.calls == []
 
 
 # --- hermetic-flag parity with the Engine arm ----------------------------

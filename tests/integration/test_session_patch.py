@@ -88,3 +88,30 @@ def test_capture_reports_renames_as_delete_plus_add(tmp_path: Path) -> None:
     assert {"renamed.txt", "kept.txt"} <= set(capture.changed_paths)
     assert any(line.startswith("D ") for line in capture.status_lines)
     assert any(line.startswith(" A") for line in capture.status_lines)
+
+
+def test_harvest_excludes_runtime_residue_and_keeps_new_files(tmp_path: Path) -> None:
+    from satyrn_evals.session_patch import RESIDUE_EXCLUDES
+
+    repo, base = _repo(tmp_path)
+    (repo / "new_module.py").write_text("x = 1\n")
+    for residue in (".pytest_cache/v/cache/lastfailed", "pkg/__pycache__/m.cpython-314.pyc", ".ruff_cache/0.1/x", ".venv/bin/python"):
+        (repo / residue).parent.mkdir(parents=True, exist_ok=True)
+        (repo / residue).write_text("residue\n")
+    harvested = build_cumulative_patch(repo, base, exclude=RESIDUE_EXCLUDES).patch_text
+    assert "new_module.py" in harvested
+    assert not any(name in harvested for name in (".pytest_cache", "__pycache__", ".ruff_cache", ".venv"))
+    swept = build_cumulative_patch(repo, base).patch_text
+    assert ".pytest_cache" in swept  # sibling: the session path's default is unchanged
+
+
+def test_harvest_survives_a_commit_inside_the_worktree(tmp_path: Path) -> None:
+    repo, base = _repo(tmp_path)
+    (repo / "edited.txt").write_text("edited v2\n")
+    (repo / "committed.txt").write_text("committed\n")
+    (repo / "loose.txt").write_text("untracked\n")
+    _git(repo, "add", "edited.txt", "committed.txt")
+    _git(repo, "-c", "user.name=m", "-c", "user.email=m@m", "commit", "-qm", "model commit")
+    assert _git(repo, "diff", "HEAD").stdout == b""  # what the old harvest saw
+    capture = build_cumulative_patch(repo, base)
+    assert capture.changed_paths == ("committed.txt", "edited.txt", "loose.txt")

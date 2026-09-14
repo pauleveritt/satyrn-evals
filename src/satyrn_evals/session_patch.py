@@ -11,9 +11,19 @@ mode, and delete changes.
 import os
 import subprocess
 import tempfile
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+
+#: Runtime residue a model's own tool runs leave in a worktree. A harvest
+#: passes these so ``git add -N --all`` never sweeps them into a candidate;
+#: the session path passes nothing and is unchanged.
+RESIDUE_EXCLUDES: tuple[str, ...] = (
+    ":(exclude,glob)**/.pytest_cache/**",
+    ":(exclude,glob)**/__pycache__/**",
+    ":(exclude,glob)**/.ruff_cache/**",
+    ":(exclude,glob)**/.venv/**",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +64,8 @@ def build_cumulative_patch(
     worktree: Path,
     base_commit: str,
     environment: Mapping[str, str] | None = None,
+    *,
+    exclude: Sequence[str] = (),
 ) -> PatchCapture:
     """Snapshot the whole tree as one cumulative patch from base_commit.
 
@@ -72,7 +84,7 @@ def build_cumulative_patch(
     }
     try:
         _git(worktree, env, "read-tree", base_commit)
-        _git(worktree, env, "add", "-N", "--all", ".")
+        _git(worktree, env, "add", "-N", "--all", "--", ".", *exclude)
         patch_text = _git(
             worktree, env, "diff", "--binary", "--full-index", base_commit
         ).decode("utf-8", "surrogateescape")

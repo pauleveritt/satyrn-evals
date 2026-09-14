@@ -58,6 +58,7 @@ TASK_NAME_ENV = "SATYRN_TASK_NAME"
 TASK_CONTRACT_ENV = "SATYRN_TASK_CONTRACT"
 PATCH_ENV = "SATYRN_ATTEMPT_PATCH"
 TRANSCRIPT_ENV = "SATYRN_ATTEMPT_TRANSCRIPT"
+BASE_SHA_ENV = "SATYRN_WORKSPACE_BASE_SHA"
 
 type SelectedContract = tuple[str | None, str]
 
@@ -355,6 +356,7 @@ def _attempt(
                     transcript=transcript_path,
                     max_repeated_calls=max_repeated_calls,
                     deadline=deadline,
+                    extra_environment={BASE_SHA_ENV: workspace_lease.base_sha},
                 )
                 if deadline is not None and workspace.code not in (
                     WorkspaceCode.COMMAND_TIMEOUT,

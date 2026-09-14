@@ -87,6 +87,12 @@ def _run(
 ) -> tuple[int, Path, Path]:
     patch_path = tmp_path / "patch.diff"
     transcript_path = tmp_path / "transcript.txt"
+    base = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
     completed = subprocess.run(
         [
             sys.executable,
@@ -103,6 +109,7 @@ def _run(
             attempt_pi.CONTRACT_ENV: "Make double return twice its input.",
             attempt_pi.PATCH_ENV: str(patch_path),
             attempt_pi.TRANSCRIPT_ENV: str(transcript_path),
+            attempt_pi.BASE_SHA_ENV: base,
             **extra,
         },
     )

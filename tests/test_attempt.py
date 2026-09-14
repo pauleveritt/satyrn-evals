@@ -2040,3 +2040,27 @@ def test_hand_authored_engine_contract_keeps_todays_behaviour(
     )
     assert record.command[-1].endswith("format_number/engine-contract.yaml")
     assert not (output / "engine-contracts").exists()
+
+
+def test_the_command_learns_the_workspace_base_commit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The adapter harvests against the commit Evals built, not HEAD."""
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+    seen: dict[str, Any] = {}
+
+    def run(**kwargs: Any) -> WorkspaceResult:
+        seen.update(kwargs)
+        Path(kwargs["environment"][attempt_module.PATCH_ENV]).write_text(GOOD_PATCH)
+        Path(kwargs["environment"][attempt_module.TRANSCRIPT_ENV]).write_text(TRANSCRIPT)
+        return WorkspaceResult(WorkspaceCode.OK, "attempt command completed", 0, "b" * 40)
+
+    _install_workspace_double(monkeypatch, run)
+    monkeypatch.setattr(attempt_module, "grade", _grade_pass)
+    record = attempt_module.attempt(
+        task="t", tasks_root=tasks_root, output=tmp_path / "attempts", command=["fake-agent"]
+    )
+    assert record.code is AttemptCode.OK
+    assert seen["extra_environment"] == {attempt_module.BASE_SHA_ENV: "b" * 40}
+    assert attempt_module.BASE_SHA_ENV not in seen["environment"]

@@ -1636,13 +1636,14 @@ def run_prepared_command(
     transcript: Path | None = None,
     max_repeated_calls: int | None = None,
     deadline: AttemptDeadline | None = None,
+    extra_environment: Mapping[str, str] | None = None,
 ) -> WorkspaceResult:
     """Run one command while leaving the prepared workspace leased."""
     _validate_command_limits(command, timeout, teardown_grace)
     return _run_command(
         command,
         workspace._state,
-        workspace._environment,
+        {**workspace._environment, **(extra_environment or {})},
         timeout,
         teardown_grace,
         transcript=transcript,

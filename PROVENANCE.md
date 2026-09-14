@@ -270,3 +270,14 @@
 | tests/test_suite_durations.py | created in release-one |
 | scripts/seq_design.py | created in release-one |
 | docs/superpowers/plans/2026-09-14-phase-2a-eval-core.md | created in release-one |
+| tests/integration/fake_pi_build.py | created in release-one |
+| tests/integration/test_harvest_qualification.py | created in release-one |
+| tests/integration/data/tasks/calc-build/base/.gitignore | created in release-one |
+| tests/integration/data/tasks/calc-build/base/calc/__init__.py | created in release-one |
+| tests/integration/data/tasks/calc-build/base/calc/core.py | created in release-one |
+| tests/integration/data/tasks/calc-build/base/pyproject.toml | created in release-one |
+| tests/integration/data/tasks/calc-build/base/tests/test_core.py | created in release-one |
+| tests/integration/data/tasks/calc-build/base/tests/test_format.py | created in release-one |
+| tests/integration/data/tasks/calc-build/fixtures/known-broken.patch | created in release-one |
+| tests/integration/data/tasks/calc-build/fixtures/known-good.patch | created in release-one |
+| tests/integration/data/tasks/calc-build/manifest.json | created in release-one |
