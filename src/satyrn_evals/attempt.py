@@ -42,6 +42,7 @@ from satyrn_evals.model_error import infrastructure_failure
 from satyrn_evals.overlay import load_overlay
 from satyrn_evals.patch import parse_patch_paths
 from satyrn_evals.receipt import patch_digest
+from satyrn_evals.timeline import TIMELINE_NAME
 from satyrn_evals.verdict import Verdict
 from satyrn_evals.workspace import (
     DEFAULT_TIMEOUT,
@@ -363,6 +364,7 @@ def _attempt(
                     deadline=deadline,
                     extra_environment={BASE_SHA_ENV: workspace_lease.base_sha},
                     budget=budget,
+                    timeline=attempt_dir / TIMELINE_NAME,
                 )
                 if deadline is not None and workspace.code not in (
                     WorkspaceCode.COMMAND_TIMEOUT,

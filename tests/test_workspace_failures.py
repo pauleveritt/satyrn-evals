@@ -2141,3 +2141,36 @@ def test_a_finished_command_over_budget_is_budget_exceeded_with_its_exit(
     )
     assert (result.code, result.command_exit) == (WorkspaceCode.BUDGET_EXCEEDED, 0)
     assert result.message == "attempt command spent 40000 output tokens, over the budget of 32000"
+
+
+def test_the_timeline_stamps_tool_lines_including_the_tail_read_after_exit(tmp_path: Path) -> None:
+    import json
+
+    from satyrn_evals.timeline import read_timeline
+
+    transcript = tmp_path / "transcript.txt"
+    timeline = tmp_path / "timeline.jsonl"
+    lines = "".join(
+        json.dumps(event) + "\n"
+        for event in (
+            {"type": "tool_execution_start", "toolCallId": "b1", "toolName": "bash", "args": {"command": "ls"}},
+            {"type": "tool_execution_end", "toolCallId": "b1", "toolName": "bash"},
+        )
+    )
+    exit_code, tripped = workspace_module._wait_or_trip(
+        cast("subprocess.Popen[bytes]", _WritesThenExits(transcript, lines)),
+        timeout=5.0, transcript=transcript, limit=None, timeline=timeline,
+    )
+    assert (exit_code, tripped) == (0, None)
+    span = read_timeline(timeline.read_text())["b1"]
+    assert span.tool_name == "bash" and span.ended is not None and span.ended >= span.started
+
+
+def test_no_timeline_is_written_when_none_is_asked_for(tmp_path: Path) -> None:
+    transcript = tmp_path / "transcript.txt"
+    transcript.write_text("")
+    exit_code, tripped = workspace_module._wait_or_trip(
+        _process(_FakeProcess([0])), timeout=5.0, transcript=transcript, limit=None
+    )
+    assert (exit_code, tripped) == (0, None)
+    assert list(tmp_path.iterdir()) == [transcript]

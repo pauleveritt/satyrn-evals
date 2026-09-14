@@ -28,6 +28,7 @@ from satyrn_evals.deadline import AttemptDeadline, AttemptDeadlineExceeded
 from satyrn_evals.errors import OracleError, OverlayError, SatyrnError
 from satyrn_evals.overlay import OverlaySpec, assert_overlay_absent
 from satyrn_evals.repeat_limit import RepeatTripwire
+from satyrn_evals.timeline import TimelineWriter
 
 DEFAULT_TIMEOUT = 900.0
 # 900 s = the corrected probes' observed per-cell ceiling (2-15 min).
@@ -936,6 +937,7 @@ def _wait_or_trip(
     deadline: AttemptDeadline | None = None,
     poll: float = 0.25,
     budget: AttemptBudget | None = None,
+    timeline: Path | None = None,
 ) -> tuple[int | None, RepeatTripwire | BudgetTripwire | None]:
     """Wait for the process, watching the transcript for a locked loop.
 
@@ -949,6 +951,9 @@ def _wait_or_trip(
 
     The transcript is read as it is written, so only whole lines are fed
     and a partial trailing write is held until its newline arrives.
+
+    With ``timeline``, each tool start and end line is stamped as read
+    (``timeline.py``).
     """
 
     def whole_remaining() -> float:
@@ -958,7 +963,7 @@ def _wait_or_trip(
             else timeout
         )
 
-    if transcript is None or (limit is None and budget is None):
+    if transcript is None or (limit is None and budget is None and timeline is None):
         try:
             result = process.wait(timeout=min(timeout, whole_remaining()))
         except subprocess.TimeoutExpired:
@@ -970,8 +975,11 @@ def _wait_or_trip(
         return result, None
     wire = RepeatTripwire(limit) if limit is not None else None
     budget_wire = BudgetTripwire(budget) if budget is not None else None
+    writer = TimelineWriter(timeline) if timeline is not None else None
 
     def tripped_by(line: str) -> RepeatTripwire | BudgetTripwire | None:
+        if writer is not None:
+            writer.feed(line)
         if budget_wire is not None and budget_wire.feed(line):
             return budget_wire
         if wire is not None and wire.feed(line):
@@ -1005,18 +1013,24 @@ def _wait_or_trip(
                 whole_remaining()
                 continue
             whole_remaining()
-            if budget_wire is not None:
-                # A command that finished over budget is still over it: read
-                # what it wrote after the last poll. The repeat rule is a
-                # live spending rule and is not applied to this tail.
-                if handle is None and transcript.is_file():
-                    handle = transcript.open("rb")
-                if handle is not None:
-                    pending += handle.read().decode("utf-8", errors="replace")
-                if any(budget_wire.feed(line) for line in pending.split("\n")):
-                    return result, budget_wire
-            return result, None
+            # What the command wrote after the last poll still counts: a
+            # command that finished over budget is still over it, and its
+            # last tool end still belongs on the timeline. The repeat rule
+            # is a live spending rule and is not applied to this tail.
+            if handle is None and transcript.is_file():
+                handle = transcript.open("rb")
+            if handle is not None:
+                pending += handle.read().decode("utf-8", errors="replace")
+            over = False
+            for line in pending.split("\n"):
+                if writer is not None:
+                    writer.feed(line)
+                if budget_wire is not None:
+                    over = budget_wire.feed(line) or over
+            return result, (budget_wire if over else None)
     finally:
+        if writer is not None:
+            writer.close()
         if handle is not None:
             handle.close()
 
@@ -1032,6 +1046,7 @@ def _run_command(
     max_repeated_calls: int | None = None,
     deadline: AttemptDeadline | None = None,
     budget: AttemptBudget | None = None,
+    timeline: Path | None = None,
 ) -> WorkspaceResult:
     outputs: list[BinaryIO] = []
     pending: WorkspaceResult | None = None
@@ -1084,6 +1099,7 @@ def _run_command(
                     limit=max_repeated_calls,
                     deadline=deadline,
                     budget=budget,
+                    timeline=timeline,
                 )
             except subprocess.TimeoutExpired:
                 try:
@@ -1682,6 +1698,7 @@ def run_prepared_command(
     deadline: AttemptDeadline | None = None,
     extra_environment: Mapping[str, str] | None = None,
     budget: AttemptBudget | None = None,
+    timeline: Path | None = None,
 ) -> WorkspaceResult:
     """Run one command while leaving the prepared workspace leased."""
     _validate_command_limits(command, timeout, teardown_grace)
@@ -1695,6 +1712,7 @@ def run_prepared_command(
         max_repeated_calls=max_repeated_calls,
         deadline=deadline,
         budget=budget,
+        timeline=timeline,
     )
 
 
