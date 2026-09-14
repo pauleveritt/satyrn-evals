@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status: tentative.** Phase 1 is still executing on `release-one` in both trees. Tasks 1–4 and 6 are planned against evals `release-one` as it is now (`39feaa9` plus the spec commit `76e20d8`). Task 5 depends on the merged Phase 1 engine and starts by verifying every name it takes from the Phase 1 plan (see "Phase 1 dependencies").
+**Status: approved 2026-09-14.** Phase 1 is done (evals `b7cf775`, engine `9ad3583`) and this plan is merged on `release-one` (`69fad8d`). Tasks 1–4 and 6 were planned against evals `39feaa9` plus the spec commit `76e20d8`; the only evals change since is Phase 1 Task 13b (`e0f25df`, the E5 wrapper's `UV_PROJECT_ENVIRONMENT`) and the ROADMAP rows. Task 5 starts with the R21 engine fix (Ruling 11), then verifies every name it takes from the Phase 1 plan (see "Phase 1 dependencies").
 
 **Goal:** Harness items 1, 3, 4 and 5 of the release-one design, each with fixture tests in both directions, and the Engine arm running end to end against a fake model: harvest against the workspace base commit (untracked files included, surviving a model `git commit`), an output-token and turn tripwire read live from the transcript, per-cell evidence for every cell whatever its code, and answer-key hygiene in the test suite.
 
@@ -26,6 +26,7 @@ Conflicts between the spec, the rationale and the code as of evals `39feaa9`, ea
 8. **No extra teardown grace.** `deliver` and the engine's `attempt` each run their child in its own process group. Task 5's orphan test shows the fake `pi` gone within the harness's 0.25 s grace (three runs). Ruling: no new grace constant. Phase 3 watch: a real Pi (Node) exiting under `deliver`'s cooperative teardown.
 9. **Moves to 2b or later.** The launcher running cells from a record (`launch` stays `--check`); a committed Engine arm file and its pins (`arms.ENGINE_SOURCES` gains `scope.ts` and `bounds.ts` once the Phase 1 engine commit is frozen); the tally that counts a pass with an out-of-worktree read of grader material as a fail (the Phase 4 result reads `evidence`); per-turn seconds and "suite runs before the last mutation" (derived at result time); the engine's derived default budget (32,000/48, Phase 1 Task 3) against a 24,000/36 campaign record.
 10. **Hygiene is code and tests only.** The manifests test uses the synthetic hidden task; the default tier fails its session if a bundled grader file is left in pytest's base temp. Closing `~/satyrn-smokes` and clearing attempt directories are maintainer steps in Task 6's checklist, not executed.
+11. **R21 lands before the Engine arm** (added at approval, from Phase 1's final review). Phase 1 made engine `attempt` forward Pi's stdout live (R18) so budgets trip mid-run; its pump stops reading when `forward` fails, so a hard-killed `deliver` or `attempt | head` leaves `attempt` and Pi blocked forever on a full pipe, and a `ValueError` from a closed sink escaped `_run`. A hung cell stalls a campaign night, and Task 5's orphan row is the first harness path that kills `deliver`. Ruling: Task 5 Steps 0a–0c fix it in the engine (drop a failing sink, keep draining, raise one `OSError` after Pi exits) before any Engine-arm code. Phase 1 Task 13b's `_is_engine_wrapper_command` in evals `attempt.py` stays: the E5 rows still use that wrapper shape, and the Engine adapter drops the variable itself (Ruling 7); remove both together when the E5 wrapper is retired. Cost if wrong: an engine commit inside an evals plan; it is one file, its own tests and the engine's gates, so a reviewer can reject it apart from the adapter.
 
 ## Phase 1 dependencies
 
@@ -48,9 +49,9 @@ Taken from the Phase 1 plan (`docs/superpowers/plans/2026-09-14-phase-1-implemen
 - **Default test tier: no subprocess, no network, no model** (the audit hook in `tests/conftest.py`). Anything that spawns is `@pytest.mark.integration`.
 - **Every refusal test has a sibling success test**; every detector has a firing row and a silent row.
 - **Every task ends with `just gates` exit 0** (read the exit code; never pipe a gate). New files get `PROVENANCE.md` rows via `uv run python tools/provenance.py new <paths>`; edited files keep theirs. Run `uv run ruff check --fix` before gates (import order).
-- **Integration runs name their files.** `tests/integration/test_attempt.py::test_real_e5_*` (2 rows) fail on today's tree against the Phase 1 engine, before any 2a change; they are not 2a's and their assertions are not edited here.
+- **Integration runs name their files.** `tests/integration/test_attempt.py::test_real_e5_*` (2 rows) pass since Phase 1 Task 13b; they must still pass at the end of every task that touches `attempt.py`, and their assertions are not edited here.
 - **Commit at the end of every task** on evals `release-one`, with the plan's message. Never `--amend`, merge or push. A task whose gates are red is not committed.
-- **Evals tree only.** The engine is read, never edited. Engine checkout: `/Users/pauleveritt/projects/pauleveritt/satyrn-engine` on `release-one`; Task 5's integration rows find it through `SATYRN_V4_ENGINE_REPO` (set it explicitly: `tests/integration/test_attempt.py:464-470` otherwise looks three parents up).
+- **Evals tree only, with one exception.** The engine is read, never edited, except Task 5 Steps 0a–0c (R21, Ruling 11), which run the engine's own `just gates` and `just integration` and commit on engine `release-one`. Engine checkout: `/Users/pauleveritt/projects/pauleveritt/satyrn-engine` on `release-one`; Task 5's integration rows find it through `SATYRN_V4_ENGINE_REPO` (set it explicitly: `tests/integration/test_attempt.py:464-470` otherwise looks three parents up).
 - **Starting point:** evals `release-one` with Phase 1 done and `phase-2-prep` (spec `76e20d8`, this plan) merged. Docs caps stand: `ROADMAP.md` ≤ 150 lines; `just lint-docs` exit 0.
 - Old worktrees under `.claude/worktrees/` are never checked out, edited or removed.
 
@@ -1924,11 +1925,163 @@ git add -A && git commit -m "Phase 2a: summary evidence for every cell, includin
 
 **Files:**
 - Create: `src/satyrn_evals/attempt_engine.py`, `tests/test_attempt_engine.py`, `tests/integration/test_engine_arm.py`
+- Engine tree (Steps 0a–0c only): Create `tests/test_integration_pi_pump.py`; Modify `src/satyrn_engine/attempt.py` (`SubprocessPiRunner.run`), `src/satyrn_engine/cli.py:45-51` (docstring), `PROVENANCE.md`
 - Modify: `pyproject.toml:11-15` (script), `src/satyrn_evals/pathology.py:43-50,213-218`, `src/satyrn_evals/census.py:52-54`, `tests/test_pathology.py:44` (`TOOL_NAMES` gains `self_test` — the only permitted assertion change) and an appended block
 
 **Interfaces:**
 - Consumes: Task 1's `attempt_pi.PATCH_ENV`, `AdapterError`, `clean_pi_environment`, `harvest_patch`, `read_artifact_paths`, `read_base_sha`, `read_prompt`; Task 2's `AttemptBudget`, `attempt(budget=)`; Task 3's `collect_evidence`; `fake_pi_build.py` modes `write`, `spend`; the Phase 1 names in "Phase 1 dependencies".
 - Produces: `attempt_engine.ENGINE_REPO_ENV = "SATYRN_ENGINE_REPO"`, `RECEIPT_NAME = "engine-receipt.json"`, `DERIVE_LOG_NAME = "engine-derive.txt"`, `DELIVER_LOG_NAME = "engine-deliver.txt"`, `DELIVER_TIMEOUT_SECONDS = 1800`; `EngineArgs(model, engine_repo: Path, uv_bin)`; `parse_args(args, environment) -> EngineArgs`; `derive_argv(args, worktree, request) -> list[str]`; `deliver_argv(args, worktree, contract) -> list[str]`; `contract_path(stderr) -> Path`; `candidate_commit(receipt) -> str | None`; `delivery_environment(environment) -> dict[str, str]`; `main(argv=None) -> int`; console script `satyrn-evals-attempt-engine`; `pathology.GUARD_KINDS`; `self_test` in `pathology.TOOL_NAMES` and `census.KNOWN_TOOL_NAMES`.
+
+- [ ] **Step 0a: R21 first — a failing engine test for the closed forward pipe.** This is the one engine edit 2a makes (Ruling 11). In the engine checkout (`/Users/pauleveritt/projects/pauleveritt/satyrn-engine`, branch `release-one`), create `tests/test_integration_pi_pump.py`:
+
+```python
+"""R21: Pi's stdout pump keeps draining when a sink fails.
+
+`SubprocessPiRunner.run` reads Pi's stdout on a thread and writes each line to
+the transcript and to `forward` (R18). If `forward` breaks (deliver killed,
+`attempt | head`) the pump used to stop reading, Pi blocked on a full pipe and
+`process.wait()` never returned. Each row runs a real child that writes far
+more than a pipe buffer (64 KB) and must return within the join timeout.
+"""
+
+import io
+import subprocess
+import sys
+import threading
+from pathlib import Path
+
+import pytest
+
+from satyrn_engine.attempt import SubprocessPiRunner
+
+pytestmark = pytest.mark.integration
+
+LINES = 20_000
+LINE = b"x" * 99 + b"\n"
+CHILD = [sys.executable, "-c", f"import sys\nfor _ in range({LINES}): sys.stdout.buffer.write({LINE!r})\n"]
+JOIN_SECONDS = 30
+
+
+class BrokenForward(io.RawIOBase):
+    def __init__(self, exc: BaseException) -> None:
+        self.exc = exc
+        self.calls = 0
+
+    def writable(self) -> bool:
+        return True
+
+    def write(self, data: bytes) -> int:  # type: ignore[override]
+        self.calls += 1
+        raise self.exc
+
+
+def _run_bounded(transcript, forward) -> tuple[int | None, BaseException | None]:
+    outcome: dict[str, object] = {}
+
+    def target() -> None:
+        try:
+            outcome["code"] = SubprocessPiRunner().run(
+                CHILD, Path.cwd(), {}, transcript, forward, subprocess.DEVNULL  # type: ignore[arg-type]
+            )
+        except BaseException as exc:  # noqa: BLE001 - the row inspects it
+            outcome["error"] = exc
+
+    worker = threading.Thread(target=target, daemon=True)
+    worker.start()
+    worker.join(JOIN_SECONDS)
+    assert not worker.is_alive(), "pump stopped draining: Pi blocked on a full pipe"
+    return outcome.get("code"), outcome.get("error")  # type: ignore[return-value]
+
+
+def test_healthy_sinks_receive_every_line_and_the_exit_code(tmp_path: Path) -> None:
+    forward = io.BytesIO()
+    with (tmp_path / "t.jsonl").open("wb") as transcript:
+        code, error = _run_bounded(transcript, forward)
+    assert (code, error) == (0, None)
+    assert forward.getvalue() == LINE * LINES
+    assert (tmp_path / "t.jsonl").read_bytes() == LINE * LINES
+
+
+@pytest.mark.parametrize("exc", [BrokenPipeError(32, "Broken pipe"), ValueError("I/O operation on closed file")])
+def test_a_broken_forward_keeps_the_transcript_complete_and_raises_oserror(tmp_path: Path, exc: BaseException) -> None:
+    forward = BrokenForward(exc)
+    with (tmp_path / "t.jsonl").open("wb") as transcript:
+        code, error = _run_bounded(transcript, forward)
+    assert code is None
+    assert isinstance(error, OSError)
+    assert "forward" in str(error)
+    assert forward.calls == 1  # a dead sink is not retried line by line
+    assert (tmp_path / "t.jsonl").read_bytes() == LINE * LINES
+
+
+def test_a_broken_transcript_keeps_forwarding_and_raises_oserror(tmp_path: Path) -> None:
+    forward = io.BytesIO()
+    code, error = _run_bounded(BrokenForward(OSError(28, "No space left on device")), forward)
+    assert code is None
+    assert isinstance(error, OSError)
+    assert "transcript" in str(error)
+    assert forward.getvalue() == LINE * LINES
+```
+
+Run: `cd /Users/pauleveritt/projects/pauleveritt/satyrn-engine && uv run pytest -m integration tests/test_integration_pi_pump.py -q; echo "EXIT: $?"`. Expected: the healthy row passes; the three sink-failure rows FAIL on `pump stopped draining` (the join times out at 30 s each) or on `isinstance(error, OSError)` for the `ValueError` row. If a failure row passes on the unchanged engine, stop and report: the finding is not what R21 says.
+
+- [ ] **Step 0b: Implement.** Replace the `pump` closure and the tail of `SubprocessPiRunner.run` in `src/satyrn_engine/attempt.py` (the block from `pump_error: BaseException | None = None` through `return exit_code`) with:
+
+```python
+        sink_errors: dict[str, BaseException] = {}
+
+        def pump() -> None:
+            # R18: a reader thread over Popen.stdout, not a post-exit copy --
+            # every line reaches `transcript` and `forward` while Pi runs,
+            # flushed at once so deliver's live budget counter sees it.
+            # R21: a failing sink is dropped, never the read loop. If
+            # `forward` breaks (deliver killed, `attempt | head`) or the
+            # transcript cannot be written, the pump keeps draining Pi's
+            # stdout into the surviving sink, so Pi never blocks on a full
+            # pipe and `process.wait()` returns. The first error per sink is
+            # raised by run() after Pi exits.
+            assert process.stdout is not None
+            sinks = {"transcript": transcript, "forward": forward}
+            try:
+                for line in process.stdout:
+                    for name in [name for name in sinks if name not in sink_errors]:
+                        try:
+                            sinks[name].write(line)
+                            sinks[name].flush()
+                        except (OSError, ValueError) as exc:
+                            sink_errors[name] = exc
+            except BaseException as exc:  # noqa: BLE001 - surfaced by run(), not swallowed
+                sink_errors.setdefault("pipe", exc)
+
+        reader = threading.Thread(target=pump, name="satyrn-attempt-pi-pump", daemon=True)
+        reader.start()
+        try:
+            exit_code = process.wait()
+        finally:
+            # Join before returning: the pipe's write end can outlive
+            # `process.wait()` by a few scheduler ticks, and the transcript
+            # must be complete before `_run` flushes/closes it.
+            reader.join()
+            self._process = None
+            if process.stdout is not None:
+                process.stdout.close()
+        for name in ("pipe", "transcript", "forward"):
+            if name in sink_errors:
+                exc = sink_errors[name]
+                raise OSError(f"cannot {'read Pi output' if name == 'pipe' else 'write Pi output to ' + name}: {exc}") from exc
+        return exit_code
+```
+
+`_run` already turns an `OSError` from `pi.run` into `cannot run Pi: …`; the `ValueError` leak the final review found is closed because the pump now wraps it. Ctrl-C on a direct `attempt` still waits for Pi to exit: recorded as a minor, not changed here.
+
+- [ ] **Step 0c: Pass, engine gates, engine commit.** In the engine checkout: `uv run pytest -m integration tests/test_integration_pi_pump.py -q; echo "EXIT: $?"` → `4 passed`, each row in well under 30 s. `uv run pytest -m integration tests/test_integration_attempt.py tests/test_integration_delivery.py tests/test_integration_implement.py -q; echo "EXIT: $?"` → 0 (the R18 live-budget and delivery rows still pass). `uv run python tools/provenance.py new tests/test_integration_pi_pump.py`; `just gates; echo "EXIT: $?"` → 0; `just integration; echo "EXIT: $?"` → 0. Then update the stale docstring R21's ledger names (`src/satyrn_engine/cli.py:45-51`, which still describes post-exit forwarding) to say attempt forwards Pi's stdout live and keeps draining when a sink fails. Commit in the engine tree:
+
+```bash
+git add src/satyrn_engine/attempt.py src/satyrn_engine/cli.py tests/test_integration_pi_pump.py PROVENANCE.md
+git commit -m "Phase 2a: attempt's Pi pump keeps draining when a sink fails (R21)"
+```
+
+Record the engine commit hash; Step 5's integration rows and Task 6's morning status name it.
 
 - [ ] **Step 1: Verify the Phase 1 names against the merged engine.** Stop and report if any output differs; do not adapt.
 
@@ -2588,7 +2741,7 @@ git add -A && git commit -m "Phase 2a: no test copies a bundled hidden suite int
 2. Remove leftover attempt parents: `ls -d "$TMPDIR"/satyrn-attempt-*` (120 on 2026-09-14), inspect, then remove the ones no retained record names; also `ls -d "$TMPDIR"/satyrn-engine-*` (a `deliver` killed mid-run leaves one).
 3. Remove pytest's kept base temps holding overlay copies: `uv run python -c 'import os; from pathlib import Path; from satyrn_evals.hygiene import overlay_copies, overlay_digests; [print(p) for p in overlay_copies(Path(os.environ["TMPDIR"]) / f"pytest-of-{os.environ["USER"]}", overlay_digests())]'` lists them (174 on 2026-09-14); delete those directories by hand; re-run → prints nothing.
 
-- [ ] **Step 7: Morning status** (under 200 words): evals head; default-tier and named integration counts; the Task 5 Step 1 verification output (verbatim, one line each); the engine commit Task 5's integration rows ran against; the E5 rows' status; the **Phase 3 watch list** — the model's `uv run` and `self_test` exchange without `UV_PROJECT_ENVIRONMENT` inside `deliver`'s worktree (Ruling 7); a real Pi exiting under `deliver`'s teardown on a harness stop (Ruling 8); stray files outside `source_paths` now visible to the allowlist (Ruling 2); the engine's derived budget against the campaign record (Ruling 9); the maintainer checklist. Do **not** start 2b.
+- [ ] **Step 7: Morning status** (under 200 words): evals head; default-tier and named integration counts; the Task 5 Step 1 verification output (verbatim, one line each); the engine commit Task 5's integration rows ran against, and the R21 engine commit (Task 5 Step 0c); the E5 rows' status; the **Phase 3 watch list** — the model's `uv run` and `self_test` exchange without `UV_PROJECT_ENVIRONMENT` inside `deliver`'s worktree (Ruling 7); a real Pi exiting under `deliver`'s teardown on a harness stop (Ruling 8); stray files outside `source_paths` now visible to the allowlist (Ruling 2); the engine's derived budget against the campaign record (Ruling 9); the maintainer checklist. Do **not** start 2b.
 
 ---
 
@@ -2610,3 +2763,5 @@ Every test this plan specifies was run in a scratch copy of evals `release-one` 
 - Each new test fails on today's tree for the missing implementation only: import or keyword errors, and `test_harvest_qualification.py`'s first row fails `attempt refused: NO_PATCH`, the defect it exists for.
 
 Defects found in the draft and fixed in this plan: the manifests replacement named `test_hidden.py` where the validator matches `tests/test_hidden.py` (did not raise); `_valid_v4_record` needs the `BUDGET_EXCEEDED` case or the code-matrix row fails; the Engine adapter spawned `satyrn-engine` into the attempt's `UV_PROJECT_ENVIRONMENT` and every Engine cell was `NO_PATCH` (Ruling 7); a truncated transcript is `malformed`, not `partial`; `tests/test_pathology.py` has no `pytest` import; a finished-over-budget workspace row needed a write-on-wait process (a pre-written transcript trips live and would signal a fake pid); the six `test_attempt_pi.py` rows, two `tests/integration/test_attempt_pi.py` rows and nine `test_run_record.py` rows that pin old shapes are listed with their changes; ruff wants one blank line before `RESIDUE_EXCLUDES`'s comment and `budget` imported after `attempt_record`; `ls -r` is not recursive; an extra teardown grace was not needed (Ruling 8).
+
+R21 steps (added at approval, verified in a scratch clone of engine `9ad3583`): the Step 0a file as written gives 3 failed, 1 passed on the unchanged engine (each failure a 30 s join timeout, 92 s total); with Step 0b's block applied, 4 passed in 0.24 s, `ruff check` clean, the engine default tier 486 passed, and `test_integration_attempt.py`, `test_integration_delivery.py`, `test_integration_implement.py` 70 passed, 1 skipped. `ruff format --check` reports 10 engine files unformatted before the change; formatting is not an engine gate.
