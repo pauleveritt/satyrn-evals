@@ -182,3 +182,30 @@ def test_redirect_to_protected_path_spelled_other_than_bare_is_blocked(command: 
 ])
 def test_pi_as_argument_or_unrelated_line_is_allowed(command: str) -> None:
     assert decide("Bash", {"command": command}) is None
+
+
+# --- Fix round 3: wrapper prefixes before pi ------------------------------
+
+@pytest.mark.parametrize("command", [
+    "uv run pi -p hi",
+    "env K=1 pi -p hi",
+    "time pi -p hi",
+    "timeout 60 pi -p hi",
+    "sudo pi -p hi",
+    "nohup pi -p hi",
+    "$(pi -p hi)",
+    "`pi -p hi`",
+])
+def test_pi_print_behind_a_wrapper_prefix_is_blocked(command: str) -> None:
+    assert decide("Bash", {"command": command}) is not None
+
+
+@pytest.mark.parametrize("command", [
+    "ls pi -p",
+    "grep -rn pi docs",
+    "echo pi",
+    "pip install -p x",
+    "pipx -p",
+])
+def test_pi_lookalikes_behind_wrapper_shaped_text_are_still_allowed(command: str) -> None:
+    assert decide("Bash", {"command": command}) is None

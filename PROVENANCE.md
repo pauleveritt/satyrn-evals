@@ -260,3 +260,5 @@
 | tools/hooks/__init__.py | created in release-one |
 | tools/hooks/guard.py | created in release-one |
 | tests/test_hook_guard.py | created in release-one |
+| .github/workflows/gates.yml | created in release-one |
+| .claude/settings.json | created in release-one |

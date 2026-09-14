@@ -17,7 +17,7 @@ This is a **living collection**: add what you actually saw, wherever you saw
 it, and cite where it lives — `file:line` for live code, an archive path for
 a retired run. An entry needs an observation behind it, not a plausible
 failure mode reasoned toward. See
-[the lessons file](development/lessons.md) for the general evidence checks
+[the lessons file](lessons.md) for the general evidence checks
 that keep an entry honest before it is written down.
 
 **This list is a reference, not a denominator.** Don't cite it as a rate.
@@ -84,7 +84,7 @@ smoothed away.
    different: the server answered and rejected the input on its own terms
    — a context-window overflow is the case on record — which is genuine
    pathology and stays in the denominator, unlike a 5xx/OOM. See
-   [usage.md](usage.md) (the `MODEL_ERROR` and `--max-repeated-calls`
+   the engine's `docs/usage.md` (the `MODEL_ERROR` and `--max-repeated-calls`
    sections).
 
 6. **`regrade` could not reach an already-collected infrastructure

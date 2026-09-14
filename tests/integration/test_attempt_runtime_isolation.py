@@ -101,7 +101,7 @@ def test_attempt_isolates_uv_and_evals_venv_without_losing_delivery(
     assert "return n * 2" in (cell / "patch.diff").read_text()
     events = [json.loads(line) for line in (cell / "transcript.txt").read_text().splitlines()]
     assert events[0]["virtual_env"] is None
-    assert Path(events[0]["uv_environment"]).name.startswith("satyrn-evals-uv-")
+    assert Path(events[0]["uv_environment"]).name == "environment"
     assert events[1] == {
         "type": "agent_settled",
         "uv_environment_exists": True,
