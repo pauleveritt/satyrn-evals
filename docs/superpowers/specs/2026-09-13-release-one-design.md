@@ -1,9 +1,10 @@
 # Release one — design
 
-**Written 2026-09-13, from the re-planning session of that day. This is the
-first document of the restarted trees; it authorizes Phase 0 below and nothing
-that spends inference.** It supersedes every design under `docs/current/` as
-operating guidance; those remain evidence, tagged on the old `main`.
+**Written 2026-09-13; rewritten 2026-09-14 after Phase 0 and three Ornith
+probes. Phase 0 is done under the first version (git history). This version
+authorizes Phases 1 and 2 and nothing that spends inference except the
+attended admission sittings named below.** Probe results cited here live on
+their probe branches in this repository and are evidence, not guidance.
 
 ## North star, and the one claim release one makes
 
@@ -11,42 +12,60 @@ Keep a small model on track, so a Python developer can use local AI and stay
 at the wheel. The developer's engineering is domain engineering — write down
 what you are building, in specs and tests — not agent engineering.
 
-**Release one ships an Engine that beats bare Pi at three mechanical
-pathologies, and an Eval that proves it.** The pathologies, each observed on
-`gemma-4-12B-it-MLX-8bit` with an existing mechanical remedy:
+**Primary claim.** On the ceiling workload, the Engine delivers a passing
+candidate within budget more often than bare Pi, on Ornith 1.5 9B.
 
-| # | pathology | evidence | remedy |
-|---|---|---|---|
-| 1 | repeat / read-lock loops | 281 identical `read` calls per locked cell (V11c); Baseline locked 8/12 vs Engine 1/12 (V14b); a 158-turn phase-1 loop, 2026-09-13 | the loop breaker, keyed on workspace revision |
-| 2 | never running its own tests | runner took Engine 6/12 → 12/12 (V13e); "wrote tests, edited them twice, never ran one" (`lessons.md`) | the self-test command in the model's loop, result read from the exit code |
-| 3 | writing outside the declared scope | `SCOPE_VIOLATION` sessions 09-04, 09-08, 09-13; Flask + `instance/clinic.db` in the Baseline n=4 | contract-aware writable paths; the mutator refuses the write |
+**Secondary, declared, reported whatever the outcome.** On the floor
+workload, where both arms pass, the Engine costs no more tokens and turns.
 
-Nothing else is claimed. Spec compliance (`complaints` vs `complaints_db`,
-Pydantic for dataclass) is the model and the developer's writing-down, not the
-engine; the eval counts it and does not remediate it.
+Budget is output tokens and turns. Seconds are a machine-specific backstop,
+reported per machine and never compared across machines. Nothing else is
+claimed. Spec compliance is the model's and the developer's writing-down; the
+eval counts it and does not remediate it.
 
 ## What the evidence settled
 
-- **The autonomous chain is retired.** Every "Engine" loss since 2026-09-09 was
-  a cost of a fresh-context worker in an orchestrated chain run *without* the
-  engine's guards: route-dropping edits 19/23 vs Baseline 3/12; suites rewritten
-  every phase (12/12 cells); validation that agreed with itself. That measured
-  isolation, not the engine.
-- **What preserved behaviour in Baseline was tests, not memory.** Baseline's
-  own tests covered `POST /complaints` 12/12; when the worker's did (8/16), the
-  destroyed route was restored 3/3. The edit guard held the route in 0/9
-  delivered candidates. A public check in the self-test cleared the phase-2 wall
-  2/2 on first use.
-- **Every retained run started from an empty session.** "Engine phases peak
-  under 8k" is evidence about cold starts only. Real use starts warm; the
-  tokens-per-second collapse with context is unmeasured. Not evidence against
-  isolation — a gap in the eval, closed below.
-- **Pointer prompts lose** (PD5: 1/8). Facts go inline in the contract; only
-  executable checks live on disk.
-- **Autonomous contract authoring by an SLM lost** (3/8 vs 8/8 by hand; a
-  remediated prompt 0/8). The contract is derived by code.
-- **Taking tools away lost** (V13d: removing `bash`/`write` cost 8/12). Both
-  arms keep the model's native tools; the engine sits at the boundary.
+Carried from the first version:
+
+- **The autonomous chain is retired.** Every "Engine" loss since 2026-09-09
+  was a fresh-context worker in an orchestrated chain run without the
+  engine's guards. That measured isolation, not the engine.
+- **Tests preserved behaviour, not memory.** Baseline's own tests covered the
+  destroyed route 12/12; the edit guard held it in 0/9 candidates.
+- **Pointer prompts lose** (PD5: 1/8). Facts go inline; only executable
+  checks live on disk.
+- **SLM-authored contracts lost** (3/8 vs 8/8). The contract is derived by code.
+- **Taking tools away lost** (V13d). Both arms keep Pi's native tools.
+
+New on 2026-09-14:
+
+- **Ornith does not show gemma's pathologies.** Pathology probe: 0/8, 1/8,
+  0/8 (`main:docs/current/ornith-9b-pathology-probe-result.md`). Ornith was
+  chosen anyway: it fits 16 GB, decodes at a median 43.5 tok/s against
+  gemma-4-12B's 25.8, and the goal is a better coding experience, not a model
+  that fails measurably. The claim moved from pathologies to a ceiling.
+- **Ornith has a ceiling on harder work.** AgentClinic `depth-3` at R1 is
+  0 of 4 uncontaminated at a 900 s command budget
+  (`worktree-ornith-ceiling-probe` 4f0ee53). Tasks cut from this repository's
+  Phase 0 commits fail 3/4, 3/4 and 1/4 once the adapter's artifacts are set
+  aside (`worktree-selfhost-headroom-probe` 635c12b).
+- **The model hunts for the answer key, and the machine has one.** Five of
+  twenty-four ceiling and headroom cells ran root-anchored `find`. The only
+  `depth-3` pass read a copy of the hidden suite that a harness test had left
+  in pytest's temp directory, ran it to 13 passed, then submitted. One
+  self-hosted cell read the reference solution from a controller's staging
+  directory. Neither cell was caught: the receipts said clean and the census
+  counted at most one escape. Isolation is a condition of every cell.
+- **The harvest lost work.** The Pi adapter takes `git diff HEAD`. Four cells
+  committed inside the worktree and scored `NO_PATCH`; untracked new files
+  are invisible to it.
+- **Every Ornith number before 2026-09-14 14:25Z ran on server-default
+  sampling.** The served id had no oMLX settings entry. It is registered and
+  verified now. Earlier numbers admit nothing; they say which tasks are worth
+  re-measuring.
+- **Every retained run started from an empty session.** Real use starts warm.
+  Decode rate falls with context: fitted 48–55 tok/s under 20k input,
+  24–33 tok/s at 80–120k.
 
 ## The product: `/implement`
 
@@ -60,206 +79,277 @@ receipt, never the transcript. The developer reviews the candidate.
 ### Components
 
 1. **Contract derivation** (Python, deterministic; the request is the only free
-   input). From the repo and the request: `objective` (the request; a roadmap
-   phase's text is pulled inline as `facts`), `writable_paths` (files the phase
-   names, or paths the request mentions plus project layout — shown to the
-   developer for confirmation), `self_test_command` (from `pyproject`),
-   `preserve` (the tests that exist now), `checks` (everything under a
-   developer-owned `checks/` directory), budgets (turn limit, deadline). The
-   developer sees it on one screen and says go. Nobody hand-writes it. Reuses
-   HP1's builder and schema (`packet.py`), renamed to what it is.
+   input): `objective`, `writable_paths` (shown for confirmation),
+   `self_test_command` from `pyproject`, `preserve` (tests that exist now),
+   `checks` (the developer-owned `checks/` directory), and budgets in tokens
+   and turns. The developer sees it on one screen and says go. Reuses HP1's
+   builder and schema, renamed to what it is.
 2. **Dispatch** (Python core; TS adapter). One fresh Pi invocation with the
-   same model and the same native tools as the developer's session, plus the
-   engine extension. Worktree branched from the developer's current HEAD. One
-   process per operation, no sidecar — the engine BRIEF's architecture.
-3. **Guards** (TS, in `emitToolCall`, per the engine BRIEF's blast-radius
-   argument): the revision-keyed loop breaker (pathology 1); the writable-path
-   check on every mutation (pathology 3); and a symbol-preservation refusal — an
-   `edit` whose `oldText` removes a symbol the accepted base defines is refused
-   with a message that names what to do instead. Loaded on the dispatch route,
-   always.
-4. **Accepted tests carried read-only.** `preserve` tests are copied to a path
-   outside `writable_paths` and included in the self-test command, so a
-   destroyed behaviour fails in the model's own loop. The developer's `checks/`
-   ride the same way.
+   same model and native tools, plus the engine extension, in a worktree
+   branched from the developer's HEAD. One process per operation.
+3. **Guards** (TS, on Pi's `tool_call` event), each answering a pathology:
+
+   | # | pathology | evidence | guard |
+   |---|---|---|---|
+   | 1 | repeat / read-lock loops | gemma: 281 identical reads per locked cell; Baseline locked 8/12 vs Engine 1/12 (V14b) | loop breaker keyed on workspace revision |
+   | 2 | never running its own tests | gemma: runner took Engine 6/12 → 12/12 (V13e); Ornith G3/G4 timed out with zero suite runs | self-test command in the loop, result from exit code |
+   | 3 | writing outside declared scope | gemma: `SCOPE_VIOLATION` 09-04, 09-08, 09-13 | writable-path check refuses the mutation |
+   | 4 | unbounded command | Ornith: two `depth-3` timeouts spent 843 s and 861 s in `find /` | bash `timeout` set to 120 s when absent, clamped at 300 s; the result appends one sentence naming the bound and the self-test command |
+
+   Plus a symbol-preservation refusal: an `edit` whose `oldText` removes a
+   symbol the accepted base defines is refused with a message that says what
+   to do instead. Guard 4 changes events, so it is proven live in Phase 3;
+   guards 1–3 are proven by replay first.
+4. **Accepted tests carried read-only.** `preserve` tests and `checks/` are
+   copied outside `writable_paths` and run by the self-test command.
 5. **Compact results.** The runner returns failed test ids and the first
-   assertion line, not the pytest transcript; a successful edit returns the
-   changed hunk, not the file. Both are counted in tokens per attempt, so
-   "compact" is a measurement, not an adjective.
-6. **Receipt.** Candidate commit, validation exit code (authoritative — never
-   the model's prose), turns and tool calls used, tokens in and out, guard
-   firings, budget state. One JSON file. This is what the main session sees.
+   assertion line; a successful edit returns the changed hunk. Both are
+   counted in tokens, so "compact" is a measurement.
+6. **Receipt.** Candidate commit, validation exit code (authoritative, never
+   the model's prose), turns, tool calls, tokens in and out, guard firings,
+   budget state. One JSON file.
+
+**Bounds ownership.** Pi owns the per-command bound: its bash `timeout` and
+its own process-group kill. The engine only sets or clamps that field. No
+wrapper process — `timeout`, alarms, `ulimit`, `sandbox-exec` — in either
+tree. The engine's runner keeps its own subprocess timeout for the self-test
+it runs itself. The 120/300 values are frozen in the Phase 1 plan against
+measured suite durations.
 
 ### What `/implement` does not do
 
-No orchestrator, no roadmap-driving loop, no retry or repair campaign, no
-subagent the developer did not invoke, no packet pool, no hidden-grader access.
-Context isolation exists only inside `/implement`; whether it earns its cost is
-what the eval's warm condition decides.
+No orchestrator, no roadmap-driving loop, no retry campaign, no subagent the
+developer did not invoke, no hidden-grader access, no filesystem sandbox.
+
+## The model
+
+Ornith 1.5 9B, served id `Ornith-1.5-9B-MLX-8bit` on oMLX, frozen for the
+whole release. Native context 262,144; a cap is set only if the context-speed
+probe says so. Sampling is the model card's coding setting: temperature 0.6,
+top_p 0.95, top_k 20, min_p 0, thinking on.
+
+**Settings are verified, not declared.** `scripts/preflight_settings.py`
+compares each arm's `inference` block with the oMLX server entry and Pi's
+model entry, fails preflight on any difference, and emits a provenance block
+of digests that every run record carries. The server reads its settings at
+start; a settings change counts only after a restart, and the first request
+after it is logged.
+
+**Context-speed probe (Phase 2, attended, no task outcome).** Decode tok/s at
+prompt sizes near 5k, 20k, 40k, 80k and 160k, read from server logs. It
+decides whether a context cap is set and what the warm condition costs.
 
 ## The eval
 
 **Arms.** *Baseline*: bare Pi 0.85.1, tools `read,bash,edit,write`, no
-extensions, the frozen model. *Engine*: the same session, with each phase run
-through `/implement`. Identical prompts, identical native tools, identical
-model. This is a **product comparison**; attributing a difference to isolation
-versus guards is release two's ablation.
+extensions, the frozen model. *Engine*: the same, with each task run through
+`/implement`. Identical prompts, tools and model. A product comparison;
+attributing a difference to isolation versus guards is release two's.
 
-**Conditions.** *Cold*: the session starts empty (every run to date). *Warm*:
-the session starts with a **recorded prefix** — one real developer session of
-ad-hoc work on AgentClinic, recorded once, replayed byte-identically for every
-cell — then the phases run. Real work, not filler, so it is a condition and not
-a handicap.
+**Isolation, both arms.** The model runs as a second local user,
+`satyrn-cell`, with its own home, per-cell `TMPDIR`, Pi, uv and Pi model
+config. The harness, grader, task directories, scratch and retained cells
+stay under the maintainer's uid at mode 700. The worktree lives in a
+group directory the cell user writes and the grader reads. `~/satyrn-smokes`
+is closed to other users. Nothing is sandboxed: `find /` still runs and finds
+nothing that grades. No container, in this release or as a planned path.
+The control is one condition of the campaign, never a per-arm setting.
 
-**Workloads.** `agentclinic-repair-misleading-locus` at R1 (pathologies 1–2;
-the one place bare Pi demonstrably read-locks) and the plain four-phase
-`agentclinic-complaint-lifecycle` (pathologies 1 and 3; the warm workload,
-because Baseline is 12/12 on it cold). Both re-qualified on import: known-good,
-known-broken, prompt-faithful witnesses; hidden grader byte-identical to the
-tagged tree.
+**Budget, both arms.** 32,000 output tokens, thinking included, and 48 turns
+per attempt, enforced by the harness reading the transcript as it is written.
+A cell over either is `BUDGET_EXCEEDED`, a fail. Wall-clock backstop on this
+machine: 1,800 s per attempt command, 2,100 s attempt deadline; a backstop
+cell is `COMMAND_TIMEOUT`, also a fail. Every observed pass sits under 22k
+tokens and 24 turns; the build tasks' finishing cells used 27–38k tokens and
+44–49 turns. Evals imposes no per-command bound in either arm: Baseline
+commands are unbounded, because that is bare Pi.
 
-**Measures, per cell, from retained artifacts only.**
+### Workloads
 
-- Primary outcome: hidden-grader completion.
-- Pathology counts: longest identical-consecutive tool-call run; self-test
-  invocations before the last mutation; out-of-scope writes. Counted from
-  `tool_execution_start`, one per call, by `census`.
-- Cost: turns, tool calls, tokens in/out (`usage_totals`), guard firings,
-  and **seconds per turn against context size** — within one machine only,
-  never across machines.
-- Preservation: destroyed-then-not-restored accepted behaviour in the
-  delivered candidate.
+**Why a set.** A claim resting on one hand-picked task is a claim about that
+task. The ceiling set is four tasks of two shapes (repair, build) from two
+sources (AgentClinic, this repository), plus two held-out tasks.
 
-**Decision rule, fixed here.** Release one succeeds if both hold at n=12 per
-cell:
+**Admission.** A task enters the ceiling set when, on declared sampling and
+under isolation, bare Pi passes at most 1 of 4 attended cells within budget
+and no passing cell read material outside its worktree. A task enters the
+floor set when bare Pi passes 4 of 4. A ceiling candidate that passes 2 of 4
+or more moves to the floor set.
 
-- **Cold parity.** On each workload, a one-sided Fisher test for *Baseline
-  better than Engine* on completion does not reject at α=0.05, and Engine
-  delivers no candidate with an accepted behaviour destroyed in more than 1 of
-  12. (n=12 detects only a large deficit; the pre-run record states this and
-  carries `scripts/power.py`'s figure for the stipulated effect.)
-- **Warm win.** On `complaint-lifecycle`, Engine completes more often than
-  Baseline, one-sided Fisher α=0.05, with the stipulated effect worth acting
-  on set in the pre-run record before the batch. Seconds-per-turn and the
-  pathology counts are declared secondaries, reported whatever the outcome.
+| ceiling candidate | shape | source | evidence | admitted when |
+|---|---|---|---|---|
+| `agentclinic-repair-depth-3` R1 | repair, three seams | AgentClinic, imported with provenance | 0 of 4 uncontaminated at 900 s | 4 attended cells under isolation |
+| `selfhost-run-record-gate` R1-plan | build, module + CLI wiring | this repo, `cc9ab53` → `b253c99` | 0 of 4 on the rule; three timeouts, one cell read the answer key | harvest fixed; 4 attended cells |
+| `selfhost-guard-prefixes` R1-plan | repair, one regex | this repo, `3e996a1` → `4a54743` | 1 of 4; two timeouts with zero suite runs | 4 attended cells |
+| `selfhost-review-script` R1-plan | build, pure core + CLI | this repo, Phase 0 plan Task 9 | untested | qualified; 4 attended cells |
 
-If cold parity fails with all four engine pieces in place, the shape is wrong
-and release one stops with a stated negative. If cold parity holds and the warm
-win fails, bare Pi's warm figure is the finding, and isolation is dropped from
-release two's design. Both are legitimate completions.
+**Floor set.** `agentclinic-repair-depth-2` R1 (4 of 4, 85–156 s) and
+`selfhost-docs-linter` R1-plan, re-measured on the fixed harvest: its four
+fails were the adapter's, and every model finished. `misleading-locus` and
+`complaint-lifecycle` leave the claim; Ornith passes both 4 of 4.
 
-**Denominators.** Every launched cell stays in its cell's denominator; only an
+**Held-out tasks.** Two tasks are cut by the generator at batch freeze, in
+daylight, from commits no earlier task used, and committed with the campaign
+record. They are qualified offline and never pre-measured. They run in
+Phase 4 with the same test. They cannot supply a win; a held-out task where
+Baseline beats the Engine counts as a loss. No Engine change follows a
+held-out result.
+
+**Rungs.** AgentClinic repairs run at R1: failing check names and their
+assertion text, no location. Self-hosted tasks run at R1-plan: the plan
+task's title, Files, Interfaces → Produces, the prose of each step with code
+fences removed, and the literal message formats the hidden suite asserts.
+R1-plan is richer than R1 and is named so; the two are never compared.
+
+**The self-hosted generator.** A task is `(BASE, GOOD, files, HIDDEN,
+plan-anchor)`. `base/` is `git archive BASE` minus plans, specs, `.claude`,
+`.github`, `PROVENANCE.md` and the hidden files, plus a `.gitignore` for
+runtime residue. `overlay/` holds HIDDEN at GOOD. `known-good.patch` is GOOD's
+diff restricted to `files`; `known-broken.patch` stubs the target.
+`manifest.json` carries provenance shas, the task-tree digest and the prompt
+digest. `tools/cut_task.py` builds it deterministically. Qualification is
+offline: `grade` passes known-good and fails known-broken with zero
+collection errors; a fake attempt that writes GOOD's files, leaves some
+untracked and commits the rest is harvested whole and graded pass; the hidden
+suite passes GOOD three times running. Every merged phase yields candidates.
+
+**Conditions.** Every workload runs cold. Warm is a declared secondary on
+`complaint-lifecycle` only: a recorded developer prefix replayed
+byte-identically, measuring cost against context. It is outside the win rule.
+
+### Measures, per cell, from retained artifacts only
+
+Verdict; output tokens; turns; tool calls; wall seconds; per-turn seconds
+from message timestamps; per-command seconds from the adapter's event
+timeline; commands over 120 s and tool-reported timeouts; root-anchored
+searches and absolute paths outside the worktree, in bash text and file-tool
+paths; hidden-suite text in the transcript, scanned for every cell including
+timeouts and `NO_PATCH`; `git commit` inside the worktree; suite runs before
+the last mutation; guard firings. A passing cell with an out-of-worktree read
+of grader material is reported contaminated and counted as a fail.
+
+### Sample and decision rule
+
+n = 12 per arm per task, arms interleaved. One ceiling task per batch night:
+24 cells, worst case 12 h, expected 6–8 h. Floor tasks share one night. Four
+ceiling nights, two held-out nights and one floor night make seven; a night
+the cap stops early completes the next night under the same record.
+
+**Per task:** one-sided Fisher exact, α = 0.05, on pass within budget.
+Stipulated effect: Baseline ≤ 0.10, Engine ≥ 0.60 (power 0.79 at n = 12). A
+ceiling task whose Phase 4 Baseline rate is 2 of 12 or more is under-powered: it
+is reported and supplies no win.
+
+**Release one wins** when at least 2 of the 4 ceiling tasks reject for the
+Engine, no ceiling or held-out task rejects for Baseline, and every floor
+task holds parity (the test for Baseline better does not reject). Under the
+null, two or more of four rejecting has probability 0.014; the campaign
+record states it and no correction is applied.
+
+If the four engine pieces are in place and no ceiling task rejects, release
+one stops with a stated negative. That is a legitimate completion.
+
+**Campaign record.** One record, committed in daylight before night one,
+freezes model and served id, the server settings digest, Pi version, engine
+commit, every task-tree and prompt digest, budgets, isolation, the stipulated
+effect and this rule. Each night's run record names it; the launcher refuses
+if any pin drifted.
+
+**Denominators.** Every launched cell stays in its denominator; only an
 established infrastructure failure replaces one. Nothing pools across
-conditions, workloads, models or machines, and no figure from the tagged
-trees enters any release-one denominator.
+tasks, arms, conditions or machines. No figure from the tagged trees or from
+a probe enters a release-one denominator.
 
-## The model
+## Harness work the workload depends on
 
-Frozen by the Ornith 1.5 9B pathology probe
-(`docs/current/ornith-9b-pathology-probe-brief.md` on the tagged tree): if two
-or more of the three pathologies appear in ≥ 2 of 8 Baseline cells, release one
-runs on Ornith 1.5 9B and the 16 GB target is alive. Otherwise it runs on
-`gemma-4-12B-it-MLX-8bit` at 32 GB, with Ornith 1.0 35B a second candidate.
-Either way the model is one frozen condition for the whole release; the guards'
-limits are re-checked against it before Phase 3.
+In blocking order; all in Phase 2, both arms:
 
-## The restart
+1. **Harvest against the base commit, untracked files included.** Reuse the
+   session path's temporary-index diff with `workspace_base_sha`. Blocks
+   every build task.
+2. **Two-uid isolation**, including preflight reading the cell user's Pi
+   config. Blocks every task: without it no pass reads as a pass.
+3. **Token and turn tripwire** in the attempt wait loop. Blocks the rule.
+4. **Census extended:** over `COMMAND_TIMEOUT` cells; escapes in bash text;
+   transcript contamination scan for every cell; an adapter timeline of
+   tool-call start and end times, since Pi's events carry none. Blocks the
+   pathology-4 evidence and the contamination cross-tab.
+5. **Hygiene, no control:** close `~/satyrn-smokes`, clear leftover attempt
+   directories, and stop `tests/test_agentclinic_manifests.py` copying a real
+   task into pytest's temp directory.
+6. **The generator and R1-plan**, before any self-hosted task is re-measured.
 
-Tag both `main`s (`pre-release-one-2026-09-13`). In each repo,
-`git worktree add --orphan -b release-one .claude/worktrees/release-one`.
-Nothing arrives by default; every imported file is `git checkout <sha> -- path`
-with the source SHA recorded in `PROVENANCE.md`.
+**Before the Phase 1 plan freezes, no inference:** public-suite durations per
+task from `grade` on known-good (current estimate 2–6 s AgentClinic, 30–45 s
+this repository); decode rate against context from retained transcripts.
 
-**`satyrn-evals` imports:** `grade`, `capture`, `attempt`, `session` and their
-core (`workspace`, `patch`, `oracle_hook`, `verdict`, `receipt`, `manifest`,
-`taskenv`, `deadline`, `repeat_limit`, `contamination`, `errors`); the Pi
-adapters; `census`, `preflight*`, `interleave`, `tally`, `usage_totals`,
-`power`; the two workloads with witnesses; `packet.py` as the contract;
-`BRIEF.md`'s invariants and comparison policy; `pathologies.md`,
-`remediations.md`, `lessons.md`. **Leaves behind:** the packet route
-(`route`, `chain_record`, `engine_delivery`, `hp7_live_route`), Phase V
-(`claim_*`, `phase_ledger`, `reconcile_claims`, the gap register), the
-overnight launchers and grading extractors, the user-story variant,
-`session-ordering-regression`, `session-mechanics`, and all of `docs/current`.
-
-**`satyrn-engine` imports:** contract, protocol and adapter, mutator, runner,
-worktree/candidate/receipt delivery, the TS guards and their replay fixtures,
-V4 authoritative validation, V5 turn/deadline budget. **Leaves behind:**
-`deliver_chain` and the HP3 orchestration surface.
-
-Tests come with their modules; the planted subprocess tripwire comes first.
+**Before admission, attended, after items 1–4:** Baseline only, on declared
+sampling, under isolation, at the campaign budget: `depth-3`,
+`run-record-gate`, `guard-prefixes`, `review-script`, 4 cells each, in
+sittings under the attended cap.
 
 ## Process, and how it is enforced
 
 **Unattended is for building; attended is for deciding and spending.** The
-maintainer and the design agent decide phases and specs in sittings; overnight
-agents execute a written plan, task by task, and stop at anything the plan did
-not foresee.
+maintainer and the design agent decide phases and specs in sittings;
+overnight agents execute a written plan and stop at anything it did not
+foresee. Opus steers and reviews, Sonnet implements, Fable opens and closes
+a phase.
 
-Per phase: brainstorm → spec → plan (attended) → execution (overnight,
-subagent-driven: implementer, then spec-compliance review, then code-quality
-review, per task; TDD against fakes and replay fixtures) → one acceptance
-review (one pass, one model, "accept" or an itemized list; no reviews of
-reviews). Morning: one status page.
+Per phase: brainstorm → spec → plan (attended) → execution (subagent-driven,
+TDD against fakes and replay fixtures, per-task review) → one acceptance
+review. Morning: one status page.
 
-**Mechanical gates, because prose did not hold:**
+**Mechanical gates, in place since Phase 0:**
 
-- The launcher is the only path to a model. It refuses without a frozen JSON
-  record (schema-checked: task digest, arm, model, n, stop rule, decision
-  rule), the previous result committed, and n and wall-clock under the cadence
-  cap. Unattended mode is a flag only the weekly-batch profile may set.
+- The launcher is the only path to a model. It refuses without a frozen run
+  record, the previous result committed, n and wall-clock under the cadence
+  cap, and a clean `preflight_settings` provenance block.
 - `docs/`: a result is one file, ≤ 120 lines, with a fenced recompute
-  command; at most twelve result files before one is folded into
-  `pathologies.md` or `lessons.md`; no new directories. `ROADMAP.md` ≤ 150
-  lines. All fail the gate.
-- Reviews run through one script (commit range, one model, one output file)
-  that refuses if a review for that range exists.
-- Repository hooks block `pi -p` outside the review script, and block writes
-  to result and review files under `docs/` outside the launcher and review
-  script; specs, plans, `pathologies.md` and `lessons.md` stay hand-editable.
-- Overnight stop conditions: plan underspecified → write the question, stop;
-  a task fails acceptance twice → stop; a red gate whose fix is not in the
-  plan → stop; anything wanting inference → stop.
-- Live inference only for what a recording cannot answer. Guards are proven by
-  replay over retained transcripts before they run live; derivation against
-  fixture repos; result shaping against recorded pytest output.
+  command; at most twelve result files; `ROADMAP.md` ≤ 150 lines; this spec
+  ≤ 400 lines.
+- Reviews run through one script that refuses a second review of a range.
+- Repository hooks block `pi -p` and direct runs outside the launcher, and
+  writes to result and review files outside their tools.
+- Live inference only for what a recording cannot answer.
 
-**Cadence.** Attended cycles (≤ 1 GPU-hour, n ≤ 8) until the guards-loaded
-route runs clean once and the probe has answered; then one weekly powered batch
-on the 32 GB M1 Pro (record and grant frozen in daylight). The instrument-only
-cap stands: two consecutive instrument pieces stop the loop, and a token n=1
-run does not restart it.
+**Cadence.** Attended sittings (≤ 60 min, n ≤ 8) for admission and route
+proof. Phase 4 runs as batch nights on this machine, exclusive GPU, record
+and campaign frozen in daylight. The batch cap is amended to one night: 24
+cells across both arms, 720 minutes. The M1 Pro is not used.
 
 ## Roadmap
 
 | # | Phase | Mode | Done when |
 |---|---|---|---|
-| 0 | Restart: tags, orphan worktrees, the import with provenance, gates green, the launcher gate, docs cap, review script, hooks | overnight | both trees build; default tier green; `just gates` enforces the caps; `PROVENANCE.md` names every file's source SHA |
-| 1 | Engine `/implement` v1: derived contract, guards on the dispatch route, carried tests, compact results, receipt | overnight, fake-first | every component has a replay or fixture test in both directions; a fake model completes `/implement` end to end with no inference |
-| 2 | Eval core: two workloads re-qualified, `census` for the three counts, the warm prefix as a fixture, cold/warm launcher profiles | overnight, except the one attended prefix recording | the eval runs both arms and both conditions against a fake and produces the per-cell table |
-| 3 | Route proof: one cell per arm per condition | attended | guards fire where retained evidence says they should; receipts read; the model probe has fixed the model |
-| 4 | Comparison: n=12 per cell on the M1 Pro | unattended batch, frozen in daylight | one result page against the decision rule |
+| 0 | Restart: orphan trees, provenance, gates, launcher gate, docs caps, review script, hooks | overnight | done 2026-09-14 |
+| 1 | Engine `/implement` v1: derived contract, guards 1–4 and symbol preservation, carried tests, compact results, receipt | overnight, fake-first | every component has replay or fixture tests both directions; a fake model completes `/implement` end to end; 120/300 frozen against measured suite durations |
+| 2 | Eval core: harness items 1–6, two-uid isolation, floor and ceiling candidates qualified, context-speed probe, warm prefix recorded | overnight, plus attended isolation setup, probe and recording | the eval runs both arms against a fake under isolation with the budget tripwire; every candidate passes offline qualification; settings provenance verified by preflight |
+| 3 | Admission and route proof: Baseline admission cells; one Engine cell per ceiling task | attended | ceiling and floor sets fixed; guards fire where retained evidence says they should; receipts read |
+| 4 | Comparison: campaign record, held-out cut, seven batch nights | unattended batch, frozen in daylight | one result page per task and one against the rule |
 | 5 | Decide and ship, or stop | attended | release one published, or a stated negative |
-
-The Ornith probe runs alongside 0–2.
 
 ## Carried gaps and risks
 
-- The four engine pieces have never run together; two alone went 7/12 vs 4/12.
-- Guards cost reach: the guard arm reached phase 4 in 8/13 vs plain 21/22. A
-  refusal is a new signal to a model that repeats. Watched in Phase 3.
-- What is not written down is lost: a fresh segment invented `required_fields`
-  where the prior one had `fields`. The contract and checks are the writing-down;
-  this is the product's ceiling and the eval's caveat.
-- Path-less `edit` calls (141 across 19 cells, both arms, night-to-night
-  variance) are counted, not remediated, in release one.
-- The warm win is a prediction with no data behind it.
-- Ad-hoc `/implement` is supported by design and exercised only through the
-  warm recording; it is not separately powered.
+- The engine pieces have never run together; two alone went 7/12 vs 4/12.
+- Guards cost reach: the guard arm reached phase 4 in 8/13 vs plain 21/22.
+  A refusal is a new signal to a model that repeats. Watched in Phase 3.
+- Hunting is Ornith's dominant ceiling mechanism on `depth-3`. Isolation
+  removes the reward, not the behaviour; a Baseline that hunts until the
+  budget runs out is the measured condition, and the result says so.
+- The `depth-3` and `misleading-locus` hidden suites are byte-identical; a
+  leak of one is a leak of both.
+- Admission may empty the ceiling set: declared sampling or isolation may
+  lift Baseline. Then release one reports the ceiling it found and stops.
+- Seven nights of exclusive GPU is the price of a claim resting on four
+  tasks. A stopped night adds one.
+- What is not written down is lost; the contract and checks are the
+  writing-down. This is the product's ceiling and the eval's caveat.
+- Path-less `edit` calls are counted, not remediated.
 
 ## Deferred, deliberately
 
-Contributors bringing their own workflows in as suites; a fifth roadmap phase
-from the real AgentClinic roadmap; the isolation-vs-guards ablation; the
-16 GB target if the probe is negative; the orchestrator skill; the
-`session-ordering-regression` hazard question; any course-derived claim.
+Contributors bringing their own workflows in as suites; the isolation versus
+guards ablation; pattern refusal of hunting commands; a filesystem sandbox
+for `/implement`; the orchestrator skill; a depth-4 AgentClinic task; any
+course-derived claim.
