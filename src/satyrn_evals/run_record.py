@@ -53,6 +53,8 @@ def load_run_record(path: Path) -> RunRecord:
         body = json.loads(path.read_text())
     except (OSError, json.JSONDecodeError) as error:
         raise RunRecordError(f"run record {path}: {error}") from error
+    if not isinstance(body, dict):
+        raise RunRecordError(f"run record {path}: not a JSON object")
     for field, kind in _REQUIRED.items():
         if field not in body:
             raise RunRecordError(f"run record {path}: missing {field}")

@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from satyrn_evals.cli import main
 from satyrn_evals.errors import UsageError
 from satyrn_evals.run_record import RunRecord, RunRecordError, gate, load_run_record
 
@@ -69,3 +70,48 @@ def test_a_previous_result_must_be_committed(tmp_path: Path) -> None:
 def test_an_unknown_condition_is_refused(tmp_path: Path) -> None:
     with pytest.raises(RunRecordError, match="condition"):
         load_run_record(_write(tmp_path, condition="lukewarm"))
+
+
+def test_warm_condition_loads_and_passes_the_gate(tmp_path: Path) -> None:
+    record = load_run_record(_write(tmp_path, condition="warm"))
+    assert record.condition == "warm"
+    gate(record, previous_result_committed=None)
+
+
+@pytest.mark.parametrize("body", ["null", "5"])
+def test_a_non_object_record_is_refused(tmp_path: Path, body: str) -> None:
+    path = tmp_path / "r.json"
+    path.write_text(body)
+    with pytest.raises(RunRecordError, match="not a JSON object"):
+        load_run_record(path)
+
+
+def test_malformed_json_is_refused(tmp_path: Path) -> None:
+    path = tmp_path / "r.json"
+    path.write_text("not json")
+    with pytest.raises(RunRecordError, match="r.json"):
+        load_run_record(path)
+
+
+def test_a_wrong_typed_field_is_refused(tmp_path: Path) -> None:
+    with pytest.raises(RunRecordError, match="n has the wrong type"):
+        load_run_record(_write(tmp_path, n="four"))
+
+
+def test_an_unknown_mode_is_refused(tmp_path: Path) -> None:
+    with pytest.raises(RunRecordError, match="mode must be attended or batch"):
+        load_run_record(_write(tmp_path, mode="turbo"))
+
+
+@pytest.mark.parametrize("field", ["stop_rule", "decision_rule"])
+def test_an_empty_rule_field_is_refused(tmp_path: Path, field: str) -> None:
+    with pytest.raises(RunRecordError, match=f"{field} is empty"):
+        load_run_record(_write(tmp_path, **{field: "   "}))
+
+
+def test_launch_without_check_is_a_usage_error() -> None:
+    assert main(["launch"]) == 2
+
+
+def test_launch_check_accepts_a_good_record(tmp_path: Path) -> None:
+    assert main(["launch", "--check", str(_write(tmp_path))]) == 0
