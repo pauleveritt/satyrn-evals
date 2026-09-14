@@ -9,15 +9,17 @@
 # selfhost-run-record-gate, selfhost-docs-linter, all at R1) and the
 # 900s/1200s budgets widened to 1200s/1500s per the pre-run record.
 #
-# BLOCKING FINDING (see the pre-run record, "Task qualification"):
-# selfhost-run-record-gate does NOT qualify with `satyrn-evals grade` --
-# both known-good and known-broken fixtures grade `unavailable` because
-# the oracle's PYTHONPATH shim always binds the `satyrn_evals` namespace
-# to the outer, real package, shadowing the workspace copy a candidate
-# patch would modify. Cells R1-R4 below are listed in the brief's fixed
-# order but are NOT interpretable evidence about Ornith under the current
-# toolchain -- read the pre-run record before running this, and decide
-# whether to run all twelve cells, only the eight G/D cells, or hold.
+# FIX ROUND (see the pre-run record, "Task qualification"): all three tasks
+# qualify in both directions as of this round. selfhost-run-record-gate
+# initially did not (its oracle's default PYTHONPATH shim shadowed the
+# workspace's own `satyrn_evals` copy with the outer, real package); its
+# manifest.json now sets `oracle` to `env PYTHONPATH=src python -m pytest
+# -p satyrn_evals.oracle_hook`, which replaces rather than prepends
+# PYTHONPATH for that one task so the workspace's own package resolves.
+# The allowlist (`source_paths` excludes oracle_hook.py) still refuses any
+# patch that touches the oracle plugin before the oracle ever runs, so
+# this does not reopen the forgery vector the brief's hazard section warns
+# about. The controller confirmed all twelve cells (n=12) stand.
 #
 # Controller runs this. It is not run as part of preparing the pre-run
 # record.
@@ -108,11 +110,21 @@ fi
 # --- 3) run the twelve cells serially ---
 START_EPOCH=""
 DEADLINE=0
+RAN_ANY=0
 for i in 0 1 2 3 4 5 6 7 8 9 10 11; do
   CELL=$(python3 -c "import json;print(json.load(open('$ROOT/schedule.json'))['cells'][$i]['cell'])")
   DIR=$(python3 -c "import json;print(json.load(open('$ROOT/schedule.json'))['cells'][$i]['dir'])")
   CMD=()
   while IFS= read -r p; do CMD+=("$p"); done < <(python3 -c "import json;[print(p) for p in json.load(open('$ROOT/schedule.json'))['cells'][$i]['command']]")
+
+  # A truncated/empty argv would otherwise silently "succeed" at running
+  # nothing (`"${CMD[@]}"` with zero elements is a no-op that exits 0), and
+  # the per-cell log would then read "done exit=0 duration=0s" for a cell
+  # that never invoked satyrn-evals. Refuse to proceed on that shape.
+  if [ "${#CMD[@]}" -lt 3 ]; then
+    echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) INFRASTRUCTURE STOP: $CELL command argv extracted short (${#CMD[@]} elements): ${CMD[*]-}" | tee -a "$LOG"
+    exit 3
+  fi
 
   if [ -z "$START_EPOCH" ]; then
     START_EPOCH=$(date +%s)
@@ -137,6 +149,7 @@ for i in 0 1 2 3 4 5 6 7 8 9 10 11; do
   RC=$?
   END_TS=$(date -u +%Y-%m-%dT%H:%M:%SZ); END_S=$(date +%s)
   echo "$END_TS $CELL: done exit=$RC duration=$((END_S-START_S))s" | tee -a "$LOG"
+  RAN_ANY=1
 
   if [ "$RC" -eq 127 ]; then
     echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) INFRASTRUCTURE STOP: command not found (exit 127) at $CELL" | tee -a "$LOG"
@@ -144,4 +157,8 @@ for i in 0 1 2 3 4 5 6 7 8 9 10 11; do
   fi
 done
 
-echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) launcher COMPLETE" | tee -a "$LOG"
+if [ "$RAN_ANY" -eq 1 ]; then
+  echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) launcher COMPLETE" | tee -a "$LOG"
+else
+  echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) launcher COMPLETE, all cells NOT-RUN" | tee -a "$LOG"
+fi
