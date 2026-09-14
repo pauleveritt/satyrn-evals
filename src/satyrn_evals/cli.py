@@ -2,6 +2,7 @@
 
 import argparse
 import math
+import subprocess
 import sys
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from satyrn_evals.grade import grade
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, resolve_task
 from satyrn_evals.rescore import regrade_attempt, summarize_output
 from satyrn_evals.run import run
+from satyrn_evals.run_record import gate, load_run_record
 from satyrn_evals.session import run_session
 from satyrn_evals.session_grader import SessionGrader
 from satyrn_evals.session_manifest import DEFAULT_SESSION_SPEC
@@ -151,6 +153,23 @@ def main(argv: list[str] | None = None) -> int:
         args = parser.parse_args(argv)
         if args.command == "census":
             return run_census(args.runs_root, args.json_path)
+        if args.command == "launch":
+            if args.check is None:
+                print("launch: cells are Phase 2; use --check", file=sys.stderr)
+                return UsageError.exit_code
+            record = load_run_record(Path(args.check))
+            previous_result_committed = None
+            if record.previous_result is not None:
+                previous_result_committed = (
+                    subprocess.run(
+                        ["git", "ls-files", "--error-unmatch", record.previous_result],
+                        capture_output=True,
+                    ).returncode
+                    == 0
+                )
+            gate(record, previous_result_committed=previous_result_committed)
+            print("launch: record accepted")
+            return 0
         if args.command == "grade":
             task_dir = resolve_task(args.task, tasks_root=Path(args.tasks_root))
             receipt = grade(task_dir, Path(args.patch), Path(args.receipt))
@@ -348,5 +367,10 @@ session_p.add_argument(
         f"(default: {DEFAULT_SESSION_SPEC}; must be a bare *.json filename)"
     ),
 )
+
+launch_p = sub.add_parser(
+    "launch", help="check a run record's cadence before spending anything (cells are Phase 2)"
+)
+launch_p.add_argument("--check", default=None, help="run record JSON path to check")
 
 build_census_parser(sub)
