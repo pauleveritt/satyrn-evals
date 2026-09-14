@@ -251,3 +251,5 @@
 | ROADMAP.md | created in release-one |
 | docs/results/.gitkeep | created in release-one |
 | docs/reviews/.gitkeep | created in release-one |
+| tools/lint_docs.py | created in release-one |
+| tests/test_doc_caps.py | created in release-one |

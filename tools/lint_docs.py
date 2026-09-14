@@ -1,0 +1,77 @@
+"""Enforce the release-one document caps. No model, network, or subprocess.
+
+The caps are the mechanical form of a rule prose could not hold: a result is
+one short page with its recompute command, the roadmap fits on a screen, and
+docs/ cannot grow new rooms.
+"""
+
+import sys
+from pathlib import Path
+
+ROADMAP_CAP = 150
+RESULT_CAP = 120
+RESULT_COUNT_CAP = 12
+SPEC_CAP = 400
+PERMITTED_DIRS = frozenset({"superpowers", "superpowers/specs", "superpowers/plans", "results", "reviews"})
+SKIP_PARTS = frozenset({"_build", ".venv", "node_modules", ".claude"})
+
+
+def _lines(path: Path) -> list[str]:
+    return path.read_text().splitlines()
+
+
+def _whitespace(root: Path) -> list[str]:
+    failures: list[str] = []
+    paths = sorted({*root.glob("*.md"), *root.glob("docs/**/*.md")})
+    for path in paths:
+        if not path.is_file() or any(p in SKIP_PARTS for p in path.parts):
+            continue
+        rel = path.relative_to(root).as_posix()
+        lines = _lines(path)
+        failures.extend(f"{rel}:{n}: trailing whitespace" for n, line in enumerate(lines, 1) if line != line.rstrip())
+        if lines and lines[-1] == "":
+            failures.append(f"{rel}: blank line at EOF")
+    return failures
+
+
+def check(root: Path) -> list[str]:
+    failures: list[str] = []
+    roadmap = root / "ROADMAP.md"
+    if roadmap.exists() and (n := len(_lines(roadmap))) > ROADMAP_CAP:
+        failures.append(f"ROADMAP.md: {n} lines > {ROADMAP_CAP}")
+    docs = root / "docs"
+    if docs.is_dir():
+        for path in sorted(p for p in docs.rglob("*") if p.is_dir()):
+            rel = path.relative_to(docs).as_posix()
+            if rel not in PERMITTED_DIRS:
+                failures.append(f"docs/{rel}: directory not permitted under docs/")
+        results = sorted(p for p in (docs / "results").glob("*.md")) if (docs / "results").is_dir() else []
+        for path in results:
+            rel = path.relative_to(root).as_posix()
+            lines = _lines(path)
+            if len(lines) > RESULT_CAP:
+                failures.append(f"{rel}: {len(lines)} lines > {RESULT_CAP}")
+            if not any(line.startswith("```") for line in lines):
+                failures.append(f"{rel}: no fenced recompute block")
+        if len(results) > RESULT_COUNT_CAP:
+            failures.append(f"docs/results: {len(results)} result files > {RESULT_COUNT_CAP}")
+        for path in sorted((docs / "superpowers" / "specs").glob("*.md")) if (docs / "superpowers" / "specs").is_dir() else []:
+            if (n := len(_lines(path))) > SPEC_CAP:
+                failures.append(f"{path.relative_to(root).as_posix()}: {n} lines > {SPEC_CAP}")
+    failures.extend(_whitespace(root))
+    return failures
+
+
+def main() -> int:
+    failures = check(Path.cwd())
+    for line in failures:
+        print(f"  {line}")
+    if failures:
+        print(f"\nlint-docs: {len(failures)} failures")
+        return 1
+    print("lint-docs: all documents within cap")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
