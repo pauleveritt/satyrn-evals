@@ -333,4 +333,6 @@ phase-v-track-b-gate
 prompt-delivery-design
 phase-pd-unattended-brief
 ornith-9b-pathology-probe-brief
+ornith-9b-pathology-probe-pre-run-record
+ornith-9b-pathology-probe-result
 ```
