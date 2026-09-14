@@ -6,35 +6,56 @@ import json
 import re
 import sys
 
-# A "pi" command, anchored so it starts a command (start of string, or after
-# whitespace / ; & | ( ) rather than matching inside "pip", "pipx", "mypi",
-# "api", etc.
-_PI_START = re.compile(r"(?:^|[\s;&|(])pi\b")
-# The print flag as its own token, anywhere later in the same command
-# segment (other flags/args may sit between "pi" and it).
+# A command segment boundary: ; & | or a newline. Splitting on these (rather
+# than only searching the whole command) keeps "pi" on one line from pulling
+# in a "-p" flag that belongs to an unrelated command on the next line.
+_SEGMENT_SPLIT = re.compile(r"[;&|\n]")
+# "pi" must LEAD its segment (only whitespace / "(" may precede it) — not
+# merely appear as a bare word anywhere in it — so "ls pi -p" (pi as an
+# argument to ls) and "grep -rn pi docs" do not count as a "pi" invocation.
+_PI_LEAD = re.compile(r"^[\s(]*pi\b")
+# The print flag as its own token, anywhere later in the same segment (other
+# flags/args may sit between "pi" and it).
 _PRINT_FLAG = re.compile(r"(?:^|\s)(?:-p|--print)\b")
 
-# A pacing-tool invocation, anchored the same way, so a quoted occurrence
-# inside e.g. a commit message does not match.
+# A pacing-tool invocation, anchored so it starts a command (start of
+# string, or after whitespace / ; & | ( ) rather than matching a quoted
+# occurrence inside e.g. a commit message.
 _DIRECT_RUN = re.compile(r"(?:^|[\s;&|(])satyrn-evals\s+(?:run|session|attempt)\s")
 
 _RESULT_PATHS = re.compile(r"docs/(?:results|reviews)/")
-# A writing token that actually targets a docs/results or docs/reviews path
-# (immediately, allowing only whitespace in between) — not merely present
-# somewhere else in the same command.
-_WRITE_TARGET = re.compile(r"(?:>>?\s*|\btee\s+|\bcp\s+|\bmv\s+|\btouch\s+)docs/(?:results|reviews)/")
+
+# cp/mv/tee/touch put their target in varying argument positions (last for
+# cp/mv, first for tee/touch) — a shell parser would be needed to find the
+# exact destination, which is out of scope for a tripwire. So: block
+# whenever one of these tokens and a protected path both appear anywhere in
+# the command. This deliberately over-blocks a read like
+# "cp docs/results/a.md /tmp/" — accepted, since missing a write is worse.
+_WRITE_TOKEN = re.compile(r"\b(?:tee|cp|mv|touch)\b")
+
+# A redirect operator (>, >>, or >|) followed by its target token. The
+# target is checked for a protected path anywhere within it (after
+# stripping surrounding quotes), so "./docs/results/…", "/repo/docs/…",
+# "$PWD/docs/…" and quoted forms are all caught, not just the bare path.
+# This deliberately over-blocks a redirect to an unrelated path that merely
+# contains "docs/results/" as a substring (e.g. "/tmp/docs/results/a.md") —
+# accepted, for the same reason.
+_REDIRECT_TARGET = re.compile(r"(?:>>|>\|?)\s*(\S+)")
 
 
 def _blocks_pi_print(command: str) -> bool:
-    for match in _PI_START.finditer(command):
-        start = match.end()
-        segment_end = len(command)
-        for sep in (";", "&", "|"):
-            idx = command.find(sep, start)
-            if idx != -1:
-                segment_end = min(segment_end, idx)
-        segment = command[start:segment_end]
-        if _PRINT_FLAG.search(segment):
+    for segment in _SEGMENT_SPLIT.split(command):
+        if _PI_LEAD.match(segment) and _PRINT_FLAG.search(segment):
+            return True
+    return False
+
+
+def _writes_into_protected_path(command: str) -> bool:
+    if _WRITE_TOKEN.search(command) and _RESULT_PATHS.search(command):
+        return True
+    for match in _REDIRECT_TARGET.finditer(command):
+        target = match.group(1).strip("'\"")
+        if _RESULT_PATHS.search(target):
             return True
     return False
 
@@ -46,7 +67,7 @@ def decide(tool_name: str, tool_input: dict) -> str | None:
             return "blocked: model reviews run only through tools/review.py (one range, one model, one file)"
         if _DIRECT_RUN.search(command) and "satyrn-evals launch" not in command:
             return "blocked: cells run only through `satyrn-evals launch` with a frozen record"
-        if _WRITE_TARGET.search(command) \
+        if _writes_into_protected_path(command) \
                 and "satyrn-evals launch" not in command and "tools/review.py" not in command:
             return "blocked: docs/results and docs/reviews are written only by the launcher and the review script"
         return None

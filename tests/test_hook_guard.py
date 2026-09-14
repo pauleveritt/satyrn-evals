@@ -127,3 +127,58 @@ def test_blocked_write_message_identifies_the_rule(tool: str) -> None:
     message = decide(tool, {"file_path": "/repo/docs/results/x.md"})
     assert message is not None
     assert "docs/results and docs/reviews" in message
+
+
+# --- Fix round 2: regression A (cp/mv/tee/touch destination position) ----
+
+@pytest.mark.parametrize("command", [
+    "cp /tmp/x docs/results/a.md",
+    "mv /tmp/x docs/results/a.md",
+    "cp /tmp/x docs/reviews/a.md",
+    "tee -a docs/results/a.md < /tmp/x",
+    "touch -m docs/results/a.md",
+])
+def test_write_token_with_path_as_destination_is_blocked(command: str) -> None:
+    assert decide("Bash", {"command": command}) is not None
+
+
+@pytest.mark.parametrize("command", [
+    # Deliberate over-block: cp/mv/tee/touch and a protected path both
+    # appear in the command, even though the path here is the source being
+    # read, not the destination being written. Locating the true
+    # destination needs a shell parser, which is out of scope for a
+    # tripwire — see tools/hooks/guard.py's _WRITE_TOKEN comment. Do not
+    # "fix" this back to allowed.
+    "cp docs/results/a.md /tmp/",
+    "mv docs/reviews/a.md /tmp/",
+])
+def test_write_token_with_path_as_source_is_still_blocked_deliberately(command: str) -> None:
+    assert decide("Bash", {"command": command}) is not None
+
+
+# --- Fix round 2: regression B (redirect target spelled other than bare) -
+
+@pytest.mark.parametrize("command", [
+    "echo x > ./docs/results/a.md",
+    "echo x > /repo/docs/results/a.md",
+    "echo x > $PWD/docs/results/a.md",
+    'echo x > "docs/results/a.md"',
+    "cat /tmp/x >| docs/results/a.md",
+])
+def test_redirect_to_protected_path_spelled_other_than_bare_is_blocked(command: str) -> None:
+    assert decide("Bash", {"command": command}) is not None
+
+
+# --- Fix round 2: regression C (pi segmenting and command-lead anchor) ---
+
+@pytest.mark.parametrize("command", [
+    "pi --version\nmkdir -p /tmp/x",
+    "echo pi\nmkdir -p /tmp/x",
+    "grep -rn pi docs\nls -p",
+    "ls pi -p",
+    "mkdir -p pi",
+    "find . -name pi -print",
+    "pi foo | grep -p",
+])
+def test_pi_as_argument_or_unrelated_line_is_allowed(command: str) -> None:
+    assert decide("Bash", {"command": command}) is None
