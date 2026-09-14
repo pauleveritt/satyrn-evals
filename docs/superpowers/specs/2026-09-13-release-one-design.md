@@ -135,9 +135,11 @@ of digests that every run record carries. The server reads its settings at
 start; a settings change counts only after a restart, and the first request
 after it is logged.
 
-**Context-speed probe (Phase 2, attended, no task outcome).** Decode tok/s at
-prompt sizes near 5k, 20k, 40k, 80k and 160k, read from server logs. It
-decides whether a context cap is set and what the warm condition costs.
+**Context-speed and concurrency probe (Phase 2, attended, no task
+outcome).** Decode tok/s at prompt sizes near 5k, 20k, 40k, 80k and 160k,
+and total output tok/s with 1, 2 and 3 concurrent streams, read from server
+logs. It decides whether a context cap is set, what the warm condition costs,
+and the campaign's concurrency.
 
 ## The eval
 
@@ -161,8 +163,16 @@ A cell over either is `BUDGET_EXCEEDED`, a fail. Wall-clock backstop on this
 machine: 1,800 s per attempt command, 2,100 s attempt deadline; a backstop
 cell is `COMMAND_TIMEOUT`, also a fail. Every observed pass sits under 22k
 tokens and 24 turns; the build tasks' finishing cells used 27–38k tokens and
-44–49 turns. Evals imposes no per-command bound in either arm: Baseline
-commands are unbounded, because that is bare Pi.
+44–49 turns. If every Baseline admission pass lands under 15,000 tokens and
+24 turns, the campaign budget is 24,000 tokens and 36 turns instead; the
+campaign record states which. Evals imposes no per-command bound in either
+arm: Baseline commands are unbounded, because that is bare Pi.
+
+**Concurrency, both arms.** Cells run k at a time, with k the largest of 1, 2
+or 3 at which the probe measures total throughput at least 1.5 times k = 1.
+The claim is in tokens and turns, so k does not touch it; seconds are
+reported per k and never compared across k. k is frozen in the campaign
+record and is the same for both arms, which stay interleaved.
 
 ### Workloads
 
@@ -191,8 +201,11 @@ fails were the adapter's, and every model finished. `misleading-locus` and
 **Held-out tasks.** Two tasks are cut by the generator at batch freeze, in
 daylight, from commits no earlier task used, and committed with the campaign
 record. They are qualified offline and never pre-measured. They run in
-Phase 4 with the same test. They cannot supply a win; a held-out task where
-Baseline beats the Engine counts as a loss. No Engine change follows a
+Phase 4 at n = 6 per arm, both in one night. They cannot supply a win; a
+held-out task where the one-sided Fisher test for Baseline better rejects at
+α = 0.05 counts as a loss (at n = 6 that needs a gap of at least 4 of 6). The
+held-out check is a tripwire against tuning, not a powered test: it detects a
+0.60 against 0.10 reversal with probability 0.38. No Engine change follows a
 held-out result.
 
 **Rungs.** AgentClinic repairs run at R1: failing check names and their
@@ -230,10 +243,19 @@ of grader material is reported contaminated and counted as a fail.
 
 ### Sample and decision rule
 
-n = 12 per arm per task, arms interleaved. One ceiling task per batch night:
-24 cells, worst case 12 h, expected 6–8 h. Floor tasks share one night. Four
-ceiling nights, two held-out nights and one floor night make seven; a night
-the cap stops early completes the next night under the same record.
+n = 12 per arm per task, arms interleaved, with one futility look. After 6
+cells per arm, a ceiling task whose Engine passes 1 of 6 or fewer stops and
+supplies no win. Futility stopping cannot raise the false-win rate; it lowers
+power at the stipulated effect from 0.79 to 0.78 and stops 89% of tasks where
+the Engine does nothing. No task stops early for a win: at n = 6 that needs
+0 of 6 against 5 of 6, and it would cost power for a 10% saving
+(`scripts/seq_design.py` computes both).
+
+A ceiling task is 24 cells, worst case 12 h at k = 1, expected 6–8 h. At k = 2
+two ceiling tasks share a night when their expected hours fit the cap.
+Schedule: four ceiling tasks, one held-out night, one floor night — six nights
+at k = 1, three to four at k = 2. A night the cap stops early completes the
+next night under the same record.
 
 **Per task:** one-sided Fisher exact, α = 0.05, on pass within budget.
 Stipulated effect: Baseline ≤ 0.10, Engine ≥ 0.60 (power 0.79 at n = 12). A
@@ -251,8 +273,8 @@ one stops with a stated negative. That is a legitimate completion.
 
 **Campaign record.** One record, committed in daylight before night one,
 freezes model and served id, the server settings digest, Pi version, engine
-commit, every task-tree and prompt digest, budgets, isolation, the stipulated
-effect and this rule. Each night's run record names it; the launcher refuses
+commit, every task-tree and prompt digest, budgets, isolation, k, the
+stipulated effect, the futility look and this rule. Each night's run record names it; the launcher refuses
 if any pin drifted.
 
 **Denominators.** Every launched cell stays in its denominator; only an
@@ -293,12 +315,26 @@ sittings under the attended cap.
 **Unattended is for building; attended is for deciding and spending.** The
 maintainer and the design agent decide phases and specs in sittings;
 overnight agents execute a written plan and stop at anything it did not
-foresee. Opus steers and reviews, Sonnet implements, Fable opens and closes
-a phase.
+foresee. Opus steers, writes plans and reviews; Sonnet implements; Fable
+only when the maintainer names it.
 
 Per phase: brainstorm → spec → plan (attended) → execution (subagent-driven,
 TDD against fakes and replay fixtures, per-task review) → one acceptance
 review. Morning: one status page.
+
+**A phase builds in half a day.** Phase 1 took a day: 13 tasks, a 2,400-line
+plan, and a fix round on most tasks. From Phase 2 on:
+
+- A plan is at most six tasks. A roadmap phase that needs more is split into
+  lettered plans (2a, 2b), each with its own final review.
+- Before execution, the plan reviewer runs every test the plan specifies
+  against the current trees and reports which fail for reasons other than
+  the missing implementation. Plan defects are fixed in the plan, not found
+  by implementers.
+- Task reviews are Opus; scoped re-reviews of a fix diff are Sonnet.
+- The controller blocks on every dispatch; nothing runs in the background.
+- Tasks in different trees that share no file or interface run in parallel,
+  one thread per tree.
 
 **Mechanical gates, in place since Phase 0:**
 
@@ -324,9 +360,10 @@ cells across both arms, 720 minutes. The M1 Pro is not used.
 |---|---|---|---|
 | 0 | Restart: orphan trees, provenance, gates, launcher gate, docs caps, review script, hooks | overnight | done 2026-09-14 |
 | 1 | Engine `/implement` v1: derived contract, guards 1–4 and symbol preservation, carried tests, compact results, receipt | overnight, fake-first | every component has replay or fixture tests both directions; a fake model completes `/implement` end to end; 120/300 frozen against measured suite durations |
-| 2 | Eval core: harness items 1–6, two-uid isolation, floor and ceiling candidates qualified, context-speed probe, warm prefix recorded | overnight, plus attended isolation setup, probe and recording | the eval runs both arms against a fake under isolation with the budget tripwire; every candidate passes offline qualification; settings provenance verified by preflight |
+| 2a | Eval core: harvest, token and turn tripwire, census extensions, hygiene | overnight | harness items 1, 3, 4, 5 have fixture tests both directions; the Engine arm runs against a fake |
+| 2b | Isolation and tasks: two-uid isolation, generator and R1-plan, candidates qualified, context-speed and concurrency probe, warm prefix recorded | overnight, plus attended isolation setup, probe and recording | the eval runs both arms against a fake under isolation with the budget tripwire; every candidate passes offline qualification; k measured; settings provenance verified by preflight |
 | 3 | Admission and route proof: Baseline admission cells; one Engine cell per ceiling task | attended | ceiling and floor sets fixed; guards fire where retained evidence says they should; receipts read |
-| 4 | Comparison: campaign record, held-out cut, seven batch nights | unattended batch, frozen in daylight | one result page per task and one against the rule |
+| 4 | Comparison: campaign record, held-out cut, three to six batch nights | unattended batch, frozen in daylight | one result page per task and one against the rule |
 | 5 | Decide and ship, or stop | attended | release one published, or a stated negative |
 
 ## Carried gaps and risks
@@ -341,8 +378,10 @@ cells across both arms, 720 minutes. The M1 Pro is not used.
   leak of one is a leak of both.
 - Admission may empty the ceiling set: declared sampling or isolation may
   lift Baseline. Then release one reports the ceiling it found and stops.
-- Seven nights of exclusive GPU is the price of a claim resting on four
-  tasks. A stopped night adds one.
+- Three to six nights of exclusive GPU is the price of a claim resting on
+  four tasks. A stopped night adds one. Concurrency may interact with the
+  model's behaviour through prefill contention; the probe measures
+  throughput, not behaviour, and Phase 3's route proof runs at k.
 - What is not written down is lost; the contract and checks are the
   writing-down. This is the product's ceiling and the eval's caveat.
 - Path-less `edit` calls are counted, not remediated.

@@ -268,3 +268,4 @@
 | scripts/suite_durations.py | created in release-one |
 | scripts/suite_durations.json | created in release-one |
 | tests/test_suite_durations.py | created in release-one |
+| scripts/seq_design.py | created in release-one |
