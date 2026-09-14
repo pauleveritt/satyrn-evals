@@ -201,6 +201,24 @@ about a legitimate instrument. **Name the decision first, then size the
 experiment to it** -- and if a screen acquires a power table, ask which
 decision needs the rate.
 
+**"The arm file's inference block was a claim, not a check."**
+`arms/baseline-ornith15-9b.json` recorded `context_window`, `temperature`,
+`top_p`, `top_k`, `min_p`, and `declares_reasoning` for the served id
+`Ornith-1.5-9B-MLX-8bit`. That id was absent from the oMLX server's
+`model_settings.json` (confirmed by direct read 2026-09-14), so the server
+applied whatever it falls back to -- the side that actually governs
+sampling. pi's `models.json` did carry a matching entry, which is why the
+gap was invisible: one of two configurations agreeing is not the setting
+being enforced. Every Ornith cell run before 2026-09-14 therefore executed
+on unknown server defaults while the arm file's block said otherwise --
+and nothing failed, because nothing compared the claim to either config
+file. **The fix is a check that fails preflight, not a comment**:
+`scripts/preflight_settings.py` reads both config files, reports every
+field the arm declares that the live entry lacks or disagrees with, and
+refuses (exit 1) rather than trusting the arm's own text. A frozen
+precondition that is never verified against the system it describes is
+not frozen; it is asserted.
+
 For a specific past incident or original line citation, retrieve its record
 from [the archive](https://github.com/pauleveritt/satyrn-evals/tree/main/archive/2026-09-07-pre-reset).
 

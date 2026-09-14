@@ -12,7 +12,7 @@ claimed.
 |---|---|---|---|---|
 | 0 | Restart: tags, orphan trees, the import with provenance, gates green, launcher gate, docs caps, review script, hooks | overnight | both trees build; default tiers green; `just gates` enforces the caps; `PROVENANCE.md` names every file's source | done 2026-09-14 |
 | 1 | Engine `/implement` v1: derived contract, guards on the dispatch route, carried tests, compact results, receipt | overnight, fake-first | every component has a replay or fixture test in both directions; a fake model completes `/implement` end to end with no inference | not started |
-| 2 | Eval core: two workloads re-qualified, `census` for the three counts, the warm prefix as a fixture, cold/warm launcher profiles | overnight, except one attended prefix recording | the eval runs both arms and both conditions against a fake and produces the per-cell table | not started |
+| 2 | Eval core: two workloads re-qualified, `census` for the three counts, the warm prefix as a fixture, cold/warm launcher profiles | overnight, except one attended prefix recording | the eval runs both arms and both conditions against a fake and produces the per-cell table; settings provenance verified by preflight | not started |
 | 3 | Route proof: one cell per arm per condition | attended | guards fire where retained evidence says they should; receipts read; the model probe has fixed the model | not started |
 | 4 | Comparison: n=12 per cell on the M1 Pro | unattended batch, frozen in daylight | one result page against the decision rule | not started |
 | 5 | Decide and ship, or stop | attended | release one published, or a stated negative | not started |

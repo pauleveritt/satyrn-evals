@@ -262,3 +262,5 @@
 | tests/test_hook_guard.py | created in release-one |
 | .github/workflows/gates.yml | created in release-one |
 | .claude/settings.json | created in release-one |
+| scripts/preflight_settings.py | created in release-one |
+| tests/test_preflight_settings.py | created in release-one |
