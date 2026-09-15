@@ -219,6 +219,34 @@ refuses (exit 1) rather than trusting the arm's own text. A frozen
 precondition that is never verified against the system it describes is
 not frozen; it is asserted.
 
+**"We built the remedy for the failures we saw, and the failures we saw were the harness's."**
+Release one's Engine components (guard 4's command bound, scope, the loop
+breaker, `self_test`) were chosen on 2026-09-14 from the ceiling and headroom
+probes: hunting, timeouts, piecemeal edits, `NO_PATCH`. Every one of those
+signals was later traced, at least in part, to the instrument -- a hidden
+suite leaked into pytest's temp directory and scratch staging, a 900 s cutoff
+since removed, a harvest that missed the model's own commits, and server
+default sampling. The harness was fixed item by item; the Engine's targets
+were never re-derived from the clean harness. Under isolation, a real budget
+and a working harvest, the binding failures were different in kind:
+depth-3 was information-bound (R1 strips the one line naming `tzinfo`),
+run-record-gate was ambiguity-bound (the prompt invites `errors.py`, which the
+allowlist rejects), and docs-linter bound on finishing (cells reached a
+passing state and kept working). The roadmap made it worse by scheduling the
+Engine build (Phase 1) before the harness fixes (Phase 2) and admission
+(Phase 3), and the gates that did exist counted outcomes -- admission counted
+passes, qualification checked the grader, route proof checked that guards
+fired -- so none asked *why* a cell failed. The same error recurred inside a
+day: `self_test` enforcement was built from three route-proof cells and
+measured rigorously on the wrong constraint. **Diagnose before building:
+classify every admission cell's binding constraint from a turn-by-turn
+reconstruction on the clean harness, estimate a remedy's effect offline, and
+build only what the diagnosis says binds.** The offline estimate obeys the
+replay entry above: it is valid only for an intervention whose effect begins
+at or after the point measured (stopping at a reconstructed pass-state is a
+prefix of the recorded run; a guard that changes earlier calls is not).
+Outcome: `docs/superpowers/specs/2026-09-15-release-one-outcome.md`.
+
 For a specific past incident or original line citation, retrieve its record
 from [the archive](https://github.com/pauleveritt/satyrn-evals/tree/main/archive/2026-09-07-pre-reset).
 
