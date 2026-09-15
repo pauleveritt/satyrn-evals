@@ -1,17 +1,22 @@
 """Console entry point: satyrn-evals grade, capture, and attempt."""
 
 import argparse
+import json
 import math
+import os
 import subprocess
 import sys
 from pathlib import Path
 
+from satyrn_evals.arms import load_arm
 from satyrn_evals.attempt import attempt
 from satyrn_evals.attempt_record import AttemptCode, AttemptOutcome
 from satyrn_evals.budget import AttemptBudget
 from satyrn_evals.capture import capture
 from satyrn_evals.capture_record import CaptureOutcome
+from satyrn_evals.cell import CELL_PATH_PREFIX_ENV, Isolation
 from satyrn_evals.cell_engine import export_engine
+from satyrn_evals.cell_preflight import preflight_cell
 from satyrn_evals.census import build_arg_parser as build_census_parser
 from satyrn_evals.census import run_cli as run_census
 from satyrn_evals.errors import SatyrnError, UsageError
@@ -19,7 +24,13 @@ from satyrn_evals.grade import grade
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, resolve_task
 from satyrn_evals.rescore import regrade_attempt, summarize_output
 from satyrn_evals.run import run
-from satyrn_evals.run_record import attempt_budget, gate, load_run_record
+from satyrn_evals.run_record import (
+    RunRecordError,
+    attempt_budget,
+    check_invocation,
+    gate,
+    load_run_record,
+)
 from satyrn_evals.session import run_session
 from satyrn_evals.session_grader import SessionGrader
 from satyrn_evals.session_manifest import DEFAULT_SESSION_SPEC
@@ -60,9 +71,20 @@ def positive_int(value: str) -> int:
     return number
 
 
-def _budget(run_record: str | None) -> AttemptBudget | None:
-    """The attempt budget a run record froze; none without a record."""
-    return None if run_record is None else attempt_budget(load_run_record(Path(run_record)))
+def _record_settings(
+    run_record: str | None, *, task: str, tasks_root: str, command: list[str]
+) -> tuple[AttemptBudget | None, Isolation]:
+    """The budget and profile a run record froze, after checking the invocation is the record's.
+
+    Without a record: no budget, the local profile.
+    """
+    if run_record is None:
+        return None, Isolation.LOCAL
+    record = load_run_record(Path(run_record))
+    check_invocation(
+        record, task=task, task_dir=resolve_task(task, tasks_root=Path(tasks_root)), command=command
+    )
+    return attempt_budget(record), record.isolation
 
 
 def split_attempt_argv(argv: list[str]) -> tuple[list[str], list[str]]:
@@ -88,6 +110,9 @@ def main(argv: list[str] | None = None) -> int:
                     "attempt command is required: attempt TASK [flags] -- COMMAND..."
                 )
             args = parser.parse_args(["attempt", *flags])
+            budget, isolation = _record_settings(
+                args.run_record, task=args.task, tasks_root=args.tasks_root, command=command
+            )
             record = attempt(
                 task=args.task,
                 tasks_root=Path(args.tasks_root),
@@ -97,7 +122,8 @@ def main(argv: list[str] | None = None) -> int:
                 attempt_timeout=args.attempt_timeout,
                 max_repeated_calls=args.max_repeated_calls,
                 rung=args.rung,
-                budget=_budget(args.run_record),
+                budget=budget,
+                isolation=isolation,
             )
             if record.code is AttemptCode.GRADE_FAILED:
                 print(f"satyrn-evals: {record.message}", file=sys.stderr)
@@ -117,6 +143,9 @@ def main(argv: list[str] | None = None) -> int:
                     "run command is required: run TASK [flags] -- COMMAND..."
                 )
             args = parser.parse_args(["run", *flags])
+            budget, isolation = _record_settings(
+                args.run_record, task=args.task, tasks_root=args.tasks_root, command=command
+            )
             run(
                 task=args.task,
                 tasks_root=Path(args.tasks_root),
@@ -127,7 +156,8 @@ def main(argv: list[str] | None = None) -> int:
                 attempt_timeout=args.attempt_timeout,
                 max_repeated_calls=args.max_repeated_calls,
                 rung=args.rung,
-                budget=_budget(args.run_record),
+                budget=budget,
+                isolation=isolation,
             )
             return 0
         if argv[:1] == ["session"]:
@@ -163,8 +193,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "census":
             return run_census(args.runs_root, args.json_path)
         if args.command == "launch":
+            if args.preflight is not None:
+                return _launch_preflight(args)
             if args.check is None:
-                print("launch: cells are Phase 2; use --check", file=sys.stderr)
+                print("launch: cells are Phase 2c; use --check or --preflight", file=sys.stderr)
                 return UsageError.exit_code
             record = load_run_record(Path(args.check))
             previous_result_committed = None
@@ -212,6 +244,34 @@ def main(argv: list[str] | None = None) -> int:
     except SatyrnError as e:
         print(f"satyrn-evals: {e}", file=sys.stderr)
         return e.exit_code
+
+
+def _launch_preflight(args: argparse.Namespace) -> int:
+    """The isolated sitting's cell checks; the JSON report goes to stdout, each problem to stderr."""
+    record = load_run_record(Path(args.preflight))
+    if record.isolation is not Isolation.ISOLATED:
+        raise RunRecordError(f"launch --preflight checks the cell user; {args.preflight} is a local record")
+    if args.arm is None:
+        raise UsageError("launch --preflight needs --arm ARM.json")
+    arm = load_arm(Path(args.arm))
+    if (arm.arm, arm.model) != (record.arm, record.model):
+        raise RunRecordError(
+            f"arm file {args.arm} is {arm.arm} on {arm.model}; the record is {record.arm} on {record.model}"
+        )
+    tasks_root = Path(args.tasks_root)
+    report = preflight_cell(
+        pinned_pi=arm.pins.pi,
+        protected=(Path.cwd(), tasks_root, Path.home()),
+        tasks_root=tasks_root,
+        hunt_root=None if args.no_hunt else "/",
+    )
+    problems = list(report.problems)
+    if os.environ.get(CELL_PATH_PREFIX_ENV):
+        problems.append(f"{CELL_PATH_PREFIX_ENV} is set; it is a test seam, never a sitting's PATH")
+    print(json.dumps({"record": args.preflight, "arm": args.arm, "problems": problems, **report.checked}, indent=2))
+    for problem in problems:
+        print(f"launch preflight FAILED: {problem}", file=sys.stderr)
+    return 1 if problems else 0
 
 
 parser = argparse.ArgumentParser(
@@ -397,8 +457,14 @@ session_p.add_argument(
 )
 
 launch_p = sub.add_parser(
-    "launch", help="check a run record's cadence before spending anything (cells are Phase 2)"
+    "launch", help="check a run record, or preflight the cell user for an isolated one (cells are Phase 2c)"
 )
 launch_p.add_argument("--check", default=None, help="run record JSON path to check")
+launch_p.add_argument("--preflight", default=None, help="isolated run record JSON path to preflight the cell for")
+launch_p.add_argument("--arm", default=None, help="arm JSON the preflight pins pi against")
+launch_p.add_argument("--no-hunt", action="store_true", help="skip the root-anchored find (minutes)")
+launch_p.add_argument(
+    "--tasks-root", default=str(DEFAULT_TASKS_ROOT), help="task root (default: bundled tasks)"
+)
 
 build_census_parser(sub)

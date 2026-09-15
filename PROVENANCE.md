@@ -303,3 +303,7 @@
 | tests/integration/test_cell_isolation.py | created in release-one |
 | src/satyrn_evals/cell_engine.py | created in release-one |
 | tests/integration/test_isolated_arms.py | created in release-one |
+| src/satyrn_evals/task_tree.py | created in release-one |
+| src/satyrn_evals/cell_preflight.py | created in release-one |
+| tests/test_cell_preflight.py | created in release-one |
+| tests/integration/test_cell_preflight.py | created in release-one |

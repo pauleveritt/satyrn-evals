@@ -42,3 +42,11 @@ def test_spans_pair_starts_with_ends_and_keep_unfinished_calls() -> None:
     spans = read_timeline(text)
     assert spans == {"a": ToolSpan("bash", 1.0, None), "b": ToolSpan("read", 2.0, 2.5)}
     assert spans["b"].seconds == 0.5 and spans["a"].seconds is None
+
+
+def test_the_default_clock_is_monotonic(tmp_path: Path) -> None:
+    import time
+
+    from satyrn_evals.timeline import TimelineWriter as Writer
+
+    assert Writer.__init__.__defaults__ == (time.monotonic,)

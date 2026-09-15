@@ -625,3 +625,48 @@ def test_every_arm_names_a_settings_checker_that_exists(arm_path: Path) -> None:
     named = arm["settings_verified_by"]
     assert named == "scripts/preflight_settings.py"
     assert (_REPO_ROOT / named).is_file()
+
+
+# --- 2b: the cell user's models.json -----------------------------------------
+
+import subprocess  # noqa: E402
+
+import preflight_settings as preflight_settings_module  # noqa: E402
+from preflight_settings import CELL_PI_MODELS, read_cell_pi_models  # noqa: E402
+
+
+def test_the_cell_models_are_read_as_the_cell_user() -> None:
+    seen: list[list[str]] = []
+
+    def run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        seen.append(argv)
+        return subprocess.CompletedProcess(argv, 0, json.dumps(_PI_MODELS), "")
+
+    assert read_cell_pi_models(run) == _PI_MODELS
+    assert seen == [["sudo", "-n", "-H", "-u", "satyrn-cell", "--", "/bin/cat", str(CELL_PI_MODELS)]]
+
+
+def test_unreadable_cell_models_are_an_os_error() -> None:
+    def run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(argv, 1, "", "sudo: a password is required")
+
+    with pytest.raises(OSError, match="a password is required"):
+        read_cell_pi_models(run)
+
+
+def test_cli_cell_compares_against_the_cell_users_models(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(preflight_settings_module, "read_cell_pi_models", lambda: _PI_MODELS)
+    omlx_path = _write(tmp_path / "model_settings.json", _OMLX_SETTINGS)
+    assert main([str(_arm_file(tmp_path)), "--omlx-settings", str(omlx_path), "--cell"]) == 0
+    assert json.loads(capsys.readouterr().out)["pi_models"] == f"satyrn-cell:{CELL_PI_MODELS}"
+
+
+def test_cli_cell_exits_2_when_the_cell_models_cannot_be_read(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def unreadable() -> dict:
+        raise OSError("cannot read as satyrn-cell")
+
+    monkeypatch.setattr(preflight_settings_module, "read_cell_pi_models", unreadable)
+    omlx_path = _write(tmp_path / "model_settings.json", _OMLX_SETTINGS)
+    assert main([str(_arm_file(tmp_path)), "--omlx-settings", str(omlx_path), "--cell"]) == 2

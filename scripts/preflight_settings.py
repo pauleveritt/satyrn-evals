@@ -34,28 +34,35 @@ deliberately separate rather than merged into one wider one.
 config files say", never "the server actually samples this way" -- that
 would take a live completion, which is a different check's job.
 
-Deliberately no subprocess: these are file reads.
+File reads, with one exception: ``--cell`` reads the cell user's
+``models.json`` -- the config Pi actually loads under isolation -- through
+``sudo -n -H -u satyrn-cell cat``, because the maintainer cannot open that
+home. The provenance block then names the cell's file as its Pi source.
 
 Usage::
 
     scripts/preflight_settings.py arms/baseline-ornith15-9b.json \\
         [--omlx-settings ~/.omlx/model_settings.json] \\
-        [--pi-models ~/.pi/agent/models.json] \\
+        [--pi-models ~/.pi/agent/models.json | --cell] \\
         [--record PATH]
 """
 
 import argparse
 import hashlib
 import json
+import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from satyrn_evals.arms import ArmError, load_arm  # noqa: E402
+from satyrn_evals.cell import CELL_HOME, CELL_USER  # noqa: E402
 
 DEFAULT_OMLX_SETTINGS = Path.home() / ".omlx" / "model_settings.json"
 DEFAULT_PI_MODELS = Path.home() / ".pi" / "agent" / "models.json"
+CELL_PI_MODELS = CELL_HOME / ".pi" / "agent" / "models.json"
 
 # arm field -> oMLX `models[server_model]` field. Checked only where the
 # arm declares the field: an arm that does not pin a setting is not making
@@ -221,6 +228,17 @@ def provenance(arm_path_text: str, omlx: dict | None, pi: dict | None) -> dict:
     }
 
 
+def read_cell_pi_models(run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run) -> dict:
+    """The cell user's Pi model config, read as the cell user; OSError when it cannot be."""
+    completed = run(
+        ["sudo", "-n", "-H", "-u", CELL_USER, "--", "/bin/cat", str(CELL_PI_MODELS)],
+        cwd="/", capture_output=True, text=True, check=False, timeout=30,
+    )
+    if completed.returncode != 0:
+        raise OSError(f"cannot read {CELL_PI_MODELS} as {CELL_USER}: {completed.stderr.strip()}")
+    return json.loads(completed.stdout)
+
+
 def _read_json(path: Path) -> dict:
     """Parse `path` as a JSON object; raises on any unreadable input.
 
@@ -235,7 +253,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("arm", type=Path)
     parser.add_argument("--omlx-settings", type=Path, default=DEFAULT_OMLX_SETTINGS)
-    parser.add_argument("--pi-models", type=Path, default=DEFAULT_PI_MODELS)
+    sources = parser.add_mutually_exclusive_group()
+    sources.add_argument("--pi-models", type=Path, default=DEFAULT_PI_MODELS)
+    sources.add_argument("--cell", action="store_true", help=f"read {CELL_USER}'s models.json as {CELL_USER}")
     parser.add_argument("--record", type=Path, default=None)
     args = parser.parse_args(argv)
 
@@ -252,8 +272,8 @@ def main(argv: list[str] | None = None) -> int:
         arm_text = args.arm.read_text(encoding="utf-8")
         arm = json.loads(arm_text)
         omlx_settings = _read_json(args.omlx_settings)
-        pi_models = _read_json(args.pi_models)
-    except (OSError, json.JSONDecodeError, ArmError) as exc:
+        pi_models = read_cell_pi_models() if args.cell else _read_json(args.pi_models)
+    except (OSError, json.JSONDecodeError, subprocess.SubprocessError, ArmError) as exc:
         print(f"preflight_settings: unreadable input: {exc}", file=sys.stderr)
         return 2
 
@@ -266,6 +286,7 @@ def main(argv: list[str] | None = None) -> int:
 
     mismatches = compare(inference, omlx, pi)
     record = provenance(arm_text, omlx, pi)
+    record["pi_models"] = f"{CELL_USER}:{CELL_PI_MODELS}" if args.cell else str(args.pi_models)
 
     payload = json.dumps(record, indent=2, sort_keys=True)
     print(payload)

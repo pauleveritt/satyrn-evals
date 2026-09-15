@@ -6,6 +6,7 @@ import pytest
 
 from satyrn_evals import cli as cli_module
 from satyrn_evals.budget import AttemptBudget
+from satyrn_evals.cell import Isolation
 from satyrn_evals.cli import (
     main,
     parser,
@@ -14,7 +15,9 @@ from satyrn_evals.cli import (
     split_attempt_argv,
 )
 from satyrn_evals.errors import SatyrnError, UsageError
+from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
 from satyrn_evals.summary import SUMMARY_NAME
+from satyrn_evals.task_tree import tree_digest
 from satyrn_evals.workspace import DEFAULT_TIMEOUT
 
 
@@ -320,22 +323,45 @@ def test_run_cli_rung_defaults_to_none() -> None:
     assert parser.parse_args(["run", "task", "--n", "1"]).rung is None
 
 
-def _record(tmp_path: Path) -> Path:
+PI = ["satyrn-evals-attempt-pi", "--model", "omlx/Ornith-1.5-9B-MLX-8bit"]
+
+
+def _record(tmp_path: Path, **over: object) -> Path:
     path = tmp_path / "record.json"
     path.write_text(json.dumps({
-        "version": 1, "task": "format_number", "task_tree_sha256": "a" * 64, "arm": "baseline",
-        "model": "omlx/Ornith-1.5-9B-MLX-8bit", "condition": "cold", "n": 4, "mode": "attended",
+        "version": 1, "task": "format_number", "task_tree_sha256": tree_digest(DEFAULT_TASKS_ROOT / "format_number"),
+        "arm": "baseline", "model": "omlx/Ornith-1.5-9B-MLX-8bit", "condition": "cold", "n": 4, "mode": "attended",
         "max_minutes": 60, "stop_rule": "infrastructure only", "decision_rule": "fisher",
         "previous_result": None, "token_budget": 24000, "turn_budget": 36,
+        "isolation": "local", "purpose": "development", **over,
     }))
     return path
 
 
-def test_run_takes_its_budget_from_the_run_record(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_run_takes_its_budget_and_profile_from_the_run_record(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     seen: dict[str, object] = {}
     monkeypatch.setattr(cli_module, "run", lambda **kwargs: seen.update(kwargs))
-    assert main(["run", "format_number", "--n", "1", "--run-record", str(_record(tmp_path)), "--", "cmd"]) == 0
+    assert main(["run", "format_number", "--n", "1", "--run-record", str(_record(tmp_path)), "--", *PI]) == 0
     assert seen["budget"] == AttemptBudget(output_tokens=24000, turns=36)
+    assert seen["isolation"] is Isolation.LOCAL
+
+
+def test_attempt_takes_the_isolated_profile_from_the_run_record(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, object] = {}
+
+    def fake_attempt(**kwargs: object) -> object:
+        seen.update(kwargs)
+        raise UsageError("stop here")
+
+    monkeypatch.setattr(cli_module, "attempt", fake_attempt)
+    record = _record(tmp_path, isolation="isolated", purpose="admission")
+    assert main(["attempt", "format_number", "--run-record", str(record), "--", *PI]) == 2
+    assert seen["isolation"] is Isolation.ISOLATED
+
+
+def test_attempt_refuses_a_command_the_record_does_not_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli_module, "attempt", lambda **kw: pytest.fail("no cell may start"))
+    assert main(["attempt", "format_number", "--run-record", str(_record(tmp_path)), "--", "cmd"]) == 2
 
 
 def test_run_without_a_record_has_no_budget(monkeypatch: pytest.MonkeyPatch) -> None:

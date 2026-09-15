@@ -3,12 +3,14 @@
 Pi's ``--mode json`` events carry no timestamps, so per-command seconds
 cannot be recovered from a transcript afterwards. The harness already reads
 the transcript as it is written (``workspace._wait_or_trip``); it stamps the
-wall-clock moment it read each ``tool_execution_start`` and
+monotonic-clock moment it read each ``tool_execution_start`` and
 ``tool_execution_end`` line into ``timeline.jsonl`` beside the transcript.
 One writer serves both arms, and nothing the model's tools write is used.
 
 Resolution is the harness's poll interval (0.25 s): a stamp is when the line
-was read, never earlier than when it was written. Seconds are reported per
+was read, never earlier than when it was written. The clock is monotonic, so
+a wall-clock step (NTP, sleep) never makes a command negative or hours long;
+stamps compare only within one harness process, which is all a span needs. Seconds are reported per
 machine and never compared across machines (spec, "Budget, both arms").
 """
 
@@ -25,7 +27,7 @@ _EVENTS = {"tool_execution_start": "start", "tool_execution_end": "end"}
 class TimelineWriter:
     """Append one stamped record per tool start or end line fed to it."""
 
-    def __init__(self, path: Path, clock: Callable[[], float] = time.time) -> None:
+    def __init__(self, path: Path, clock: Callable[[], float] = time.monotonic) -> None:
         self._handle = path.open("a", encoding="utf-8")
         self._clock = clock
 
