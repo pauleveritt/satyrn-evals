@@ -1372,3 +1372,5 @@
 | tests/test_cell_engine.py | created in release-one |
 | docs/superpowers/plans/2026-09-14-phase-2c-launcher-loop.md | created in release-one |
 | tests/test_record_new.py | created in release-one |
+| src/satyrn_evals/launch.py | created in release-one |
+| tests/test_launch.py | created in release-one |
