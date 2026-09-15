@@ -295,3 +295,4 @@
 | tests/integration/test_engine_arm.py | created in release-one |
 | src/satyrn_evals/hygiene.py | created in release-one |
 | tests/test_hygiene.py | created in release-one |
+| docs/superpowers/plans/2026-09-14-phase-2b-isolation-and-tasks.md | created in release-one |
