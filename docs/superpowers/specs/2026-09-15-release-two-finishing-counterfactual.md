@@ -168,3 +168,20 @@ on debug cells only. No decision cell had been replayed or graded.
    reported hidden-suite pass-states for some decision cells (docs-linter,
    run-record-gate). It did not measure own-green triggers, which are what
    sections 3–5 count. The result page states this.
+
+4. **Conservative rescues (recorded 2026-09-15, still before the decision
+   phase ran).** The review gate found that a bash command the replay skips
+   can leave files outside `source_paths` that change the harness grade
+   (for example to `unavailable`), and that lexical writer detection misses
+   some writers (`patch`, `python fix.py`, `Path(...)` writes). Either can turn
+   a real not-pass into a reconstructed pass. Therefore a cell whose
+   counterfactual outcome is pass counts as a **rescue** only if every bash
+   command up to and including the trigger step was either replayed or is
+   provably read-only: `cat`, `ls`, `pwd`, `echo` or `printf` without
+   redirection, `grep`/`rg`, `find` without `-exec`/`-delete`/`-fprint`,
+   `head`, `tail`, `wc`, `sort`, `uniq`, `diff`, `sed` without `-i`,
+   `git status`/`diff`/`log`/`show`, and test runs for which `runs_pytest` is
+   true, possibly joined with `cd` into the worktree, pipes into those
+   commands, or `2>&1`. Otherwise the cell is unmeasured with reason
+   `unverified-rescue`. Harm counting is unchanged. The replay's remaining
+   limits are disclosed on the result page.
