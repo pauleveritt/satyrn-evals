@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "task": "agentclinic-repair-misleading-locus",
+  "task_tree_sha256": "b977a69638b6b92637c9c174329d714aca4753b256baba9dea0f8541a21e80d1",
+  "arm": "engine",
+  "model": "omlx/Ornith-1.5-9B-MLX-8bit",
+  "condition": "cold",
+  "n": 2,
+  "mode": "attended",
+  "max_minutes": 60,
+  "stop_rule": "established infrastructure failure only",
+  "decision_rule": "none: Phase 3b development measurement (before), outside the claim",
+  "previous_result": null,
+  "token_budget": 32000,
+  "turn_budget": 48,
+  "isolation": "isolated",
+  "purpose": "development",
+  "k": 3,
+  "rung": "R1",
+  "authority": "maintainer: Phase 3b remediation iteration, GPU granted, 2026-09-15"
+}
