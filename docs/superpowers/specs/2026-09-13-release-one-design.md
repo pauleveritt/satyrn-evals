@@ -5,6 +5,7 @@ probes. Phase 0 is done under the first version (git history). This version
 authorizes Phases 1 and 2 and nothing that spends inference except the
 attended admission sittings named below.** Probe results cited here live on
 their probe branches in this repository and are evidence, not guidance.
+**Concluded 2026-09-15 with a stated negative:** `2026-09-15-release-one-outcome.md`.
 
 ## North star, and the one claim release one makes
 
@@ -388,7 +389,6 @@ is not used.
   tasks. A stopped sitting adds hours, not a week. Concurrency may interact with the
   model's behaviour through prefill contention; the probe measures
   throughput, not behaviour, and Phase 3's route proof runs at k.
-- What is not written down is lost: the product's ceiling and the eval's caveat.
 - Path-less `edit` calls are counted, not remediated.
 
 ## Deferred, deliberately

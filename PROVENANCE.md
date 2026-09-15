@@ -4117,3 +4117,14 @@
 | src/satyrn_evals/pi_models.py | created in release-one |
 | tests/test_pi_models.py | created in release-one |
 | docs/superpowers/plans/2026-09-15-phase-3b-self-test-enforcement.md | created in release-one |
+| docs/superpowers/specs/2026-09-15-release-one-outcome.md | created in release-one |
+| evidence/2026-09-15-release-one-outcome/.gitignore | created in release-one |
+| evidence/2026-09-15-release-one-outcome/README.md | created in release-one |
+| evidence/2026-09-15-release-one-outcome/cells.py | created in release-one |
+| evidence/2026-09-15-release-one-outcome/cells.md | created in release-one |
+| evidence/2026-09-15-release-one-outcome/phases.md | created in release-one |
+| evidence/2026-09-15-release-one-outcome/reconstruct.py | created in release-one |
+| evidence/2026-09-15-release-one-outcome/recon.log | created in release-one |
+| evidence/2026-09-15-release-one-outcome/stats.py | created in release-one |
+| evidence/2026-09-15-release-one-outcome/stats.txt | created in release-one |
+| evidence/2026-09-15-release-one-outcome/fable-review.md | created in release-one |

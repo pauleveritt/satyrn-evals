@@ -47,7 +47,9 @@ markers = [
 # src/satyrn_evals/tasks/ is oracle fixture data: bundled tasks carry a
 # foreign starting tree (e.g. the svcs checkout) that is neither project
 # code nor ours to reformat. pytest and pyrefly already exclude it.
-extend-exclude = ["docs", "src/satyrn_evals/tasks"]
+# evidence/ holds dated analysis scripts kept verbatim with the outputs they
+# produced (the release-one outcome), so they are not reformatted either.
+extend-exclude = ["docs", "evidence", "src/satyrn_evals/tasks"]
 
 [tool.ruff.lint]
 # Proportionate, not maximalist: correctness and clarity rules a
@@ -71,7 +73,7 @@ project-includes = ["src", "tests"]
 # base tests import a bare module name the type checker cannot resolve.
 # The tests/**/data trees are the same shape: vendored fixture bases and
 # grader overlays importing bare module names, not project code.
-project-excludes = ["src/satyrn_evals/tasks", "tests/data", "tests/integration/data"]
+project-excludes = ["evidence", "src/satyrn_evals/tasks", "tests/data", "tests/integration/data"]
 
 [tool.coverage.run]
 branch = true
