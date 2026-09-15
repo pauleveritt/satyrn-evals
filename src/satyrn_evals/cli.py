@@ -26,11 +26,15 @@ from satyrn_evals.qualify import qualify
 from satyrn_evals.rescore import regrade_attempt, summarize_output
 from satyrn_evals.run import run
 from satyrn_evals.run_record import (
+    K_VALUES,
+    PURPOSES,
     RunRecordError,
     attempt_budget,
     check_invocation,
     gate,
     load_run_record,
+    new_record,
+    write_new_record,
 )
 from satyrn_evals.session import run_session
 from satyrn_evals.session_grader import SessionGrader
@@ -222,6 +226,8 @@ def main(argv: list[str] | None = None) -> int:
             gate(record, previous_result_committed=_previous_result_committed(record))
             print("launch: record accepted")
             return 0
+        if args.command == "record":
+            return _record_new(args)
         if args.command == "cell-engine":
             print(export_engine(Path(args.engine_repo), args.commit))
             return 0
@@ -290,6 +296,20 @@ def _launch_preflight(args: argparse.Namespace) -> int:
     for problem in problems:
         print(f"launch preflight FAILED: {problem}", file=sys.stderr)
     return 1 if problems else 0
+
+
+def _record_new(args: argparse.Namespace) -> int:
+    """Write one run record from flags, read it back through the loader and gate, print its path."""
+    body = new_record(
+        task=args.task, tasks_root=Path(args.tasks_root), arm=args.arm, model=args.model, n=args.n, k=args.k,
+        rung=None if args.rung == "contract" else args.rung, purpose=args.purpose, isolation=args.isolation,
+        mode=args.mode, max_minutes=args.max_minutes, token_budget=args.token_budget,
+        turn_budget=args.turn_budget, previous_result=args.previous_result, authority=args.authority,
+        decision_rule=args.decision_rule,
+    )
+    write_new_record(Path(args.output), body)
+    print(f"record: wrote {args.output} (task_tree_sha256 {body['task_tree_sha256']}); commit it before launch")
+    return 0
 
 
 parser = argparse.ArgumentParser(
@@ -492,6 +512,32 @@ launch_p.add_argument("--preflight", default=None, help="isolated run record JSO
 launch_p.add_argument("--arm", default=None, help="arm JSON the preflight pins pi against")
 launch_p.add_argument("--no-hunt", action="store_true", help="skip the root-anchored find (minutes)")
 launch_p.add_argument(
+    "--tasks-root", default=str(DEFAULT_TASKS_ROOT), help="task root (default: bundled tasks)"
+)
+
+record_p = sub.add_parser("record", help="write a run record the launcher accepts")
+record_sub = record_p.add_subparsers(dest="record_command", required=True)
+record_new_p = record_sub.add_parser("new", help="write a new run record from flags; never overwrites")
+record_new_p.add_argument("--output", required=True, help="record path to create (e.g. records/NAME.json)")
+record_new_p.add_argument("--task", required=True, help="task name")
+record_new_p.add_argument("--arm", required=True, help="arm, or arms joined by + to interleave (baseline+engine)")
+record_new_p.add_argument(
+    "--rung", required=True,
+    help="contract rung key from the task manifest (R1, R1-plan), or contract for its default text",
+)
+record_new_p.add_argument("--n", type=positive_int, required=True, help="cells per arm")
+record_new_p.add_argument("--k", type=int, choices=K_VALUES, required=True, help="cells at a time")
+record_new_p.add_argument("--purpose", required=True, choices=sorted(PURPOSES))
+record_new_p.add_argument("--isolation", default="isolated", choices=["isolated", "local"])
+record_new_p.add_argument("--model", default="omlx/Ornith-1.5-9B-MLX-8bit")
+record_new_p.add_argument("--mode", default="attended", choices=["attended", "batch"])
+record_new_p.add_argument("--max-minutes", type=positive_int, default=60)
+record_new_p.add_argument("--token-budget", type=positive_int, default=32000)
+record_new_p.add_argument("--turn-budget", type=positive_int, default=48)
+record_new_p.add_argument("--previous-result", default=None, help="the committed result this record follows")
+record_new_p.add_argument("--authority", default=None, help="who authorized this spend, and when")
+record_new_p.add_argument("--decision-rule", default=None, help="required unless purpose is admission or development")
+record_new_p.add_argument(
     "--tasks-root", default=str(DEFAULT_TASKS_ROOT), help="task root (default: bundled tasks)"
 )
 

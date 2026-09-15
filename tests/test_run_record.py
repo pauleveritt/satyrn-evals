@@ -17,6 +17,7 @@ from satyrn_evals.run_record import (
     command_model,
     gate,
     load_run_record,
+    record_arms,
 )
 from satyrn_evals.task_tree import tree_digest
 
@@ -267,3 +268,44 @@ def test_a_command_with_a_repeated_model_flag_in_equals_form_is_refused(
 
 def test_a_command_with_one_model_flag_still_passes(tmp_path: Path) -> None:
     check_invocation(_pinned(tmp_path), task=TASK, task_dir=DEFAULT_TASKS_ROOT / TASK, command=BASELINE)
+
+
+# --- 2c: concurrency, rung, authority, interleaved arms, the frozen fact -------
+
+
+def test_a_record_without_the_2c_fields_runs_one_cell_at_a_time_on_the_default_contract(tmp_path: Path) -> None:
+    record = load_run_record(_write(tmp_path))
+    assert (record.k, record.rung, record.authority) == (1, None, None)
+    assert record_arms(record) == ("baseline",)
+
+
+def test_the_2c_fields_load(tmp_path: Path) -> None:
+    record = load_run_record(_write(tmp_path, k=3, rung="R1", authority="the maintainer, 2026-09-14"))
+    assert (record.k, record.rung, record.authority) == (3, "R1", "the maintainer, 2026-09-14")
+
+
+@pytest.mark.parametrize("k", [0, 4, True])
+def test_k_outside_one_to_three_is_refused(tmp_path: Path, k: object) -> None:
+    with pytest.raises(RunRecordError, match="k must be 1, 2 or 3|k has the wrong type"):
+        load_run_record(_write(tmp_path, k=k))
+
+
+@pytest.mark.parametrize("arm", ["baseline+baseline", "baseline+", "Baseline"])
+def test_an_ill_formed_arm_list_is_refused(tmp_path: Path, arm: str) -> None:
+    with pytest.raises(RunRecordError, match="arm must name distinct arms"):
+        load_run_record(_write(tmp_path, arm=arm))
+
+
+def test_an_interleaved_record_accepts_either_arms_command(tmp_path: Path) -> None:
+    record = _pinned(tmp_path, arm="baseline+engine")
+    assert record_arms(record) == ("baseline", "engine")
+    engine = ["satyrn-evals-attempt-engine", "--model", "omlx/gemma-4-12B-it-MLX-8bit"]
+    for command in (BASELINE, engine):
+        check_invocation(record, task=TASK, task_dir=DEFAULT_TASKS_ROOT / TASK, command=command)
+
+
+def test_an_unfrozen_record_is_refused_and_a_frozen_one_passes(tmp_path: Path) -> None:
+    record = load_run_record(_write(tmp_path))
+    with pytest.raises(RunRecordError, match="not frozen"):
+        gate(record, previous_result_committed=None, record_frozen=False)
+    gate(record, previous_result_committed=None, record_frozen=True)
