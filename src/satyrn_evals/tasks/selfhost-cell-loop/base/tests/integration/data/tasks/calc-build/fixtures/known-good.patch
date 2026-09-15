@@ -1,0 +1,27 @@
+diff --git a/calc/core.py b/calc/core.py
+index cc02207..1e0f88c 100644
+--- a/calc/core.py
++++ b/calc/core.py
+@@ -1,2 +1,5 @@
++from calc.helpers import add_all
++
++
+ def total(xs):
+-    return 0
++    return add_all(xs)
+diff --git a/calc/format.py b/calc/format.py
+new file mode 100644
+index 0000000..61bc7b7
+--- /dev/null
++++ b/calc/format.py
+@@ -0,0 +1,2 @@
++def render(n):
++    return f"{n:,}"
+diff --git a/calc/helpers.py b/calc/helpers.py
+new file mode 100644
+index 0000000..411fdda
+--- /dev/null
++++ b/calc/helpers.py
+@@ -0,0 +1,2 @@
++def add_all(xs):
++    return sum(xs)

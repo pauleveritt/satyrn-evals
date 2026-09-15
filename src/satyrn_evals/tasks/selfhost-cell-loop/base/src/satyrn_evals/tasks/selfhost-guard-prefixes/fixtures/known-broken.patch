@@ -1,0 +1,11 @@
+diff --git a/tools/hooks/guard.py b/tools/hooks/guard.py
+--- a/tools/hooks/guard.py
++++ b/tools/hooks/guard.py
+@@ -1,6 +1,7 @@
+ """PreToolUse guard for Claude Code. Exit 2 blocks the tool call and shows
+ the message; exit 0 allows it. A tripwire for agents, not a sandbox.
+ """
++# known-broken fixture: wrapper-prefix widening intentionally not applied.
+ 
+ import json
+ import re

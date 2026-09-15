@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5">
+    <h1>Complaints Board</h1>
+    {% for complaint in complaints %}
+    <div class="card my-3">
+        <div class="card-body">
+            <h5 class="card-title">{{ complaint.agent_name }}</h5>
+            <h6 class="card-subtitle mb-2 text-body-secondary">
+                {{ complaint.timestamp.strftime("%Y-%m-%d %H:%M UTC") }}
+            </h6>
+            <p class="card-text">{{ complaint.text }}</p>
+        </div>
+    </div>
+    {% endfor %}
+    <form method="post" action="/complaints" class="my-4">
+        <div class="mb-3">
+            <label for="agent_name" class="form-label">Agent name</label>
+            <input type="text" class="form-control" id="agent_name" name="agent_name" required>
+        </div>
+        <div class="mb-3">
+            <label for="text" class="form-label">Complaint</label>
+            <textarea class="form-control" id="text" name="text" rows="3" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Add complaint</button>
+    </form>
+</div>
+{% endblock %}

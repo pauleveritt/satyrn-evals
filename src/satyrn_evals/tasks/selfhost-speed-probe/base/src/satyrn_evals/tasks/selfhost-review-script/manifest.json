@@ -1,0 +1,62 @@
+{
+  "name": "selfhost-review-script",
+  "contract": "Task 9: The review script's pure core\n\nFiles:\n- Create: `tools/review.py`, `its test module`\n\nInterfaces:\n- Produces: `review_path(root: Path, commit_range: str, model: str) -> Path` → `docs/reviews/<start>..<end>-<model-slug>.md`; `refuse_if_exists(path: Path) -> None` (raises `FileExistsError`); `provider_and_model(spec: str) -> tuple[str, str]` (`\"zai/glm-5.3\"` → `(\"zai\", \"glm-5.3\")`); `build_prompt(diff: str, range_label: str) -> str`; `main(argv)` runs `pi -p --no-session --no-extensions --no-skills -nc --provider P --model M --exclude-tools write,edit PROMPT` and writes its stdout to the path. The `pi` call is the only subprocess and is not exercised in the default tier.\n\nStep 1: Failing tests\n\nStep 2: Run to verify failure — `uv run pytest its test module -q` → `No module named 'tools.review'`\n\nStep 3: Implement\n\nStep 4: Pass — `uv run pytest its test module -q` → 6 passed; `uv run ruff check` → clean.\n\nStep 5: Record and commit\n\nMessage formats the acceptance suite asserts, match them exactly: provider_and_model raises ValueError when the spec has no slash, and the message contains the exact phrase `provider/model`. build_prompt(diff, range_label) returns text that contains range_label, the diff verbatim, and the exact words `Accept` and `itemized`. refuse_if_exists raises FileExistsError only when the path exists. review_path replaces every `/` in the model spec with `-`.\n",
+  "contracts": {
+    "R1-plan": "Task 9: The review script's pure core\n\nFiles:\n- Create: `tools/review.py`, `its test module`\n\nInterfaces:\n- Produces: `review_path(root: Path, commit_range: str, model: str) -> Path` → `docs/reviews/<start>..<end>-<model-slug>.md`; `refuse_if_exists(path: Path) -> None` (raises `FileExistsError`); `provider_and_model(spec: str) -> tuple[str, str]` (`\"zai/glm-5.3\"` → `(\"zai\", \"glm-5.3\")`); `build_prompt(diff: str, range_label: str) -> str`; `main(argv)` runs `pi -p --no-session --no-extensions --no-skills -nc --provider P --model M --exclude-tools write,edit PROMPT` and writes its stdout to the path. The `pi` call is the only subprocess and is not exercised in the default tier.\n\nStep 1: Failing tests\n\nStep 2: Run to verify failure — `uv run pytest its test module -q` → `No module named 'tools.review'`\n\nStep 3: Implement\n\nStep 4: Pass — `uv run pytest its test module -q` → 6 passed; `uv run ruff check` → clean.\n\nStep 5: Record and commit\n\nMessage formats the acceptance suite asserts, match them exactly: provider_and_model raises ValueError when the spec has no slash, and the message contains the exact phrase `provider/model`. build_prompt(diff, range_label) returns text that contains range_label, the diff verbatim, and the exact words `Accept` and `itemized`. refuse_if_exists raises FileExistsError only when the path exists. review_path replaces every `/` in the model spec with `-`.\n"
+  },
+  "oracle": [
+    "python",
+    "-m",
+    "pytest",
+    "-p",
+    "satyrn_evals.oracle_hook"
+  ],
+  "expected_test_ids": [
+    "test_review.py::test_review_path_encodes_range_and_model",
+    "test_review.py::test_an_existing_review_is_refused",
+    "test_review.py::test_an_absent_review_path_is_allowed",
+    "test_review.py::test_provider_and_model_split_on_the_first_slash",
+    "test_review.py::test_a_model_spec_without_a_provider_is_refused",
+    "test_review.py::test_build_prompt_carries_the_diff_and_asks_for_one_verdict"
+  ],
+  "source_paths": [
+    "tools/review.py",
+    "tests"
+  ],
+  "public_suite": [
+    "uv",
+    "run",
+    "pytest",
+    "-q"
+  ],
+  "fixtures": {
+    "known_good": "fixtures/known-good.patch",
+    "known_broken": "fixtures/known-broken.patch"
+  },
+  "grader_overlay": "overlay",
+  "oracle_visibility": "hidden",
+  "provenance": {
+    "repo": "https://github.com/pauleveritt/satyrn-evals.git",
+    "base_sha": "b253c993539c9bca3cb5103bbd5ac159350ae9d3",
+    "fix_sha": "fdd21615ab15c0337ee9e5c421b764d892e8dfe1"
+  },
+  "generator": {
+    "tool": "tools/cut_task.py",
+    "rung": "R1-plan",
+    "files": [
+      "tools/review.py"
+    ],
+    "hidden": [
+      "tests/test_review.py"
+    ],
+    "plan": {
+      "path": "docs/superpowers/plans/2026-09-13-phase-0-restart.md",
+      "heading": "### Task 9: The review script's pure core",
+      "commit": "73ec17217a38b9730c9d34d47c0a5163d9c421e7"
+    }
+  },
+  "digests": {
+    "task_tree": "e1a49e31e3d4884268076b78653dfaddc3f80d20b2ac0bb089180137c049a02e",
+    "prompt": "6900e48f54a4bbdc158e63fffc7d399bef36404e9d918fd33f2b125d6af79463"
+  }
+}

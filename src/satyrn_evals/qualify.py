@@ -68,6 +68,11 @@ FLOOR_CANDIDATES: dict[str, str] = {
     "agentclinic-repair-depth-2": "R1",
     "selfhost-docs-linter": "R1-plan",
 }
+#: The spec's held-out tasks ("Held-out tasks"): cut at batch freeze, qualified offline, never pre-measured.
+HELDOUT_TASKS: dict[str, str] = {
+    "selfhost-cell-loop": "R1-plan",
+    "selfhost-speed-probe": "R1-plan",
+}
 
 
 @dataclass(frozen=True, slots=True)

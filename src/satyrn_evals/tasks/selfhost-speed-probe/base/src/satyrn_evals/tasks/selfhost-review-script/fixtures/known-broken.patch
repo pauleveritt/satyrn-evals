@@ -1,0 +1,24 @@
+diff --git a/tools/review.py b/tools/review.py
+new file mode 100644
+--- /dev/null
++++ b/tools/review.py
+@@ -0,0 +1,19 @@
++"""known-broken fixture stub: importable, behaviorally incomplete."""
++
++from pathlib import Path
++
++
++def review_path(root: Path, commit_range: str, model: str) -> Path:
++    return root
++
++
++def refuse_if_exists(path: Path) -> None:
++    return None
++
++
++def provider_and_model(spec: str) -> tuple[str, str]:
++    return ("", "")
++
++
++def build_prompt(diff: str, range_label: str) -> str:
++    return ""

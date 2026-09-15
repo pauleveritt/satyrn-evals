@@ -83,7 +83,10 @@ def test_a_malformed_spec_is_refused(tmp_path: Path, over: dict[str, object], me
 
 def test_every_committed_spec_loads() -> None:
     names = sorted(load_spec(path).name for path in SPECS.glob("*.json"))
-    assert names == ["selfhost-docs-linter", "selfhost-guard-prefixes", "selfhost-review-script", "selfhost-run-record-gate"]
+    assert names == [
+        "selfhost-cell-loop", "selfhost-docs-linter", "selfhost-guard-prefixes", "selfhost-review-script",
+        "selfhost-run-record-gate", "selfhost-speed-probe",
+    ]
 
 
 @pytest.mark.parametrize(
