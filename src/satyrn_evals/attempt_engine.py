@@ -33,6 +33,7 @@ from pathlib import Path
 
 from satyrn_evals.attempt_pi import (
     PATCH_ENV,
+    TRANSCRIPT_ENV,
     AdapterError,
     clean_pi_environment,
     harvest_patch,
@@ -40,11 +41,19 @@ from satyrn_evals.attempt_pi import (
     read_base_sha,
     read_prompt,
 )
+from satyrn_evals.cell import (
+    CELLS_ROOT,
+    Isolation,
+    cell_command,
+    isolation_from,
+    model_environment,
+)
 
 ENGINE_REPO_ENV = "SATYRN_ENGINE_REPO"
 RECEIPT_NAME = "engine-receipt.json"
 DERIVE_LOG_NAME = "engine-derive.txt"
 DELIVER_LOG_NAME = "engine-deliver.txt"
+CHECKOUT_LOG_NAME = "engine-checkout.txt"
 #: The deliver timeout: the spec's attempt-command backstop on this machine.
 #: The harness's own command timeout and budget stop the cell first.
 DELIVER_TIMEOUT_SECONDS = 1800
@@ -92,19 +101,20 @@ def parse_args(args: list[str], environment: Mapping[str, str]) -> EngineArgs:
     return EngineArgs(model=model, engine_repo=Path(engine_repo), uv_bin=uv_bin)
 
 
-def _engine(args: EngineArgs) -> list[str]:
-    return [args.uv_bin, "run", "--project", os.fspath(args.engine_repo), "satyrn-engine"]
+def _engine(args: EngineArgs, no_sync: bool) -> list[str]:
+    sync = ["--no-sync"] if no_sync else []
+    return [args.uv_bin, "run", *sync, "--project", os.fspath(args.engine_repo), "satyrn-engine"]
 
 
-def derive_argv(args: EngineArgs, worktree: Path, request: str) -> list[str]:
-    return [*_engine(args), "derive", "--repo", os.fspath(worktree), "--", request]
+def derive_argv(args: EngineArgs, worktree: Path, request: str, *, no_sync: bool = False) -> list[str]:
+    return [*_engine(args, no_sync), "derive", "--repo", os.fspath(worktree), "--", request]
 
 
-def deliver_argv(args: EngineArgs, worktree: Path, contract: Path) -> list[str]:
+def deliver_argv(args: EngineArgs, worktree: Path, contract: Path, *, no_sync: bool = False) -> list[str]:
     return [
-        *_engine(args), "deliver", "--repo", os.fspath(worktree),
+        *_engine(args, no_sync), "deliver", "--repo", os.fspath(worktree),
         "--timeout", str(DELIVER_TIMEOUT_SECONDS), os.fspath(contract),
-        "--", *_engine(args), "attempt", f"--model={args.model}", "--", os.fspath(contract),
+        "--", *_engine(args, no_sync), "attempt", f"--model={args.model}", "--", os.fspath(contract),
     ]
 
 
@@ -142,28 +152,74 @@ def delivery_environment(environment: Mapping[str, str]) -> dict[str, str]:
     return cleaned
 
 
+def isolated(args: EngineArgs, environment: Mapping[str, str]) -> bool:
+    """Whether the engine runs as the cell user; refuses an engine the cell cannot read."""
+    try:
+        if isolation_from(environment) is Isolation.LOCAL:
+            return False
+    except ValueError as exc:
+        raise AdapterError(str(exc)) from exc
+    if not args.engine_repo.resolve().is_relative_to(CELLS_ROOT.resolve()):
+        raise AdapterError(
+            f"under isolation the engine must be an export under {CELLS_ROOT} "
+            f"(satyrn-evals cell-engine), not {args.engine_repo}"
+        )
+    return True
+
+
+def as_cell(argv: list[str], args: EngineArgs, environment: Mapping[str, str], worktree: Path) -> list[str]:
+    """An engine call run as the cell user: the transcript path and the engine
+    export are passed through; the model's ``UV_PROJECT_ENVIRONMENT`` is not
+    (Ruling 7 of Phase 2a, unchanged under isolation)."""
+    try:
+        cell = model_environment(
+            environment,
+            {TRANSCRIPT_ENV: environment[TRANSCRIPT_ENV], ENGINE_REPO_ENV: os.fspath(args.engine_repo)},
+        )
+    except (KeyError, ValueError) as exc:
+        raise AdapterError(f"cannot build the cell environment: {exc}") from exc
+    cell.pop("UV_PROJECT_ENVIRONMENT", None)
+    return cell_command(argv, cwd=worktree, environment=cell)
+
+
+def checkout_candidate(commit: str, log: Path) -> int:
+    """Check the candidate out into the Evals worktree; a failure is logged, never raised."""
+    checkout = subprocess.run(["git", "checkout", "-q", "--detach", commit], capture_output=True, text=True, check=False)
+    if checkout.returncode != 0:
+        log.write_text(f"git checkout {commit} exited {checkout.returncode}\n{checkout.stderr}", encoding="utf-8")
+    return checkout.returncode
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(list(sys.argv[1:] if argv is None else argv), os.environ)
     request = read_prompt(os.environ)
     patch_path, transcript_path = read_artifact_paths(os.environ)
     base_sha = read_base_sha(os.environ)
     worktree = Path.cwd()
+    cell = isolated(args, os.environ)
     environment = delivery_environment(os.environ)
+
+    def command(engine_argv: list[str]) -> list[str]:
+        return as_cell(engine_argv, args, os.environ, worktree) if cell else engine_argv
+
     derived = subprocess.run(
-        derive_argv(args, worktree, request), capture_output=True, text=True, env=environment, check=False
+        command(derive_argv(args, worktree, request, no_sync=cell)),
+        capture_output=True, text=True, env=environment, check=False,
     )
-    (transcript_path.parent / DERIVE_LOG_NAME).write_text(derived.stderr, encoding="utf-8")
+    (patch_path.parent / DERIVE_LOG_NAME).write_text(derived.stderr, encoding="utf-8")
     exit_code = derived.returncode
     if derived.returncode == 0:
-        with (transcript_path.parent / DELIVER_LOG_NAME).open("w", encoding="utf-8") as log:
+        with (patch_path.parent / DELIVER_LOG_NAME).open("w", encoding="utf-8") as log:
             delivered = subprocess.run(
-                deliver_argv(args, worktree, contract_path(derived.stderr)),
+                command(deliver_argv(args, worktree, contract_path(derived.stderr), no_sync=cell)),
                 stdout=subprocess.PIPE, stderr=log, text=True, env=environment, check=False,
             )
-        (transcript_path.parent / RECEIPT_NAME).write_text(delivered.stdout, encoding="utf-8")
+        (patch_path.parent / RECEIPT_NAME).write_text(delivered.stdout, encoding="utf-8")
         exit_code = delivered.returncode
-        if (commit := candidate_commit(delivered.stdout)) is not None:
-            subprocess.run(["git", "checkout", "-q", "--detach", commit], check=True, capture_output=True)
+        if (commit := candidate_commit(delivered.stdout)) is not None and (
+            checkout := checkout_candidate(commit, patch_path.parent / CHECKOUT_LOG_NAME)
+        ):
+            exit_code = checkout
     patch_path.write_text(harvest_patch(worktree, base_sha), encoding="utf-8")
     return exit_code
 

@@ -26,10 +26,12 @@ from satyrn_evals.attempt_pi import (
     harvest_patch,
     main,
     parse_args,
+    pi_command,
     read_artifact_paths,
     read_base_sha,
     read_prompt,
 )
+from satyrn_evals.cell import CELL_PARENT_ENV, ISOLATION_ENV
 from satyrn_evals.session_patch import RESIDUE_EXCLUDES, PatchCapture
 
 MODEL = "omlx/gemma-4-12B-it-MLX-8bit"
@@ -400,3 +402,29 @@ def test_an_argv_without_the_flag_is_detected_as_non_parity() -> None:
     tampered = [token for token in argv if token != "--no-context-files"]
     missing = [flag for flag in ENGINE_HERMETIC_FLAGS if flag not in tampered]
     assert missing == ["--no-context-files"]
+
+
+# --- 2b: the isolated profile ------------------------------------------------
+
+
+def test_the_local_profile_runs_pi_directly() -> None:
+    args = parse_args(["--model", MODEL])
+    assert pi_command(args, "fix it", {}, Path("/w")) == build_pi_argv(args, "fix it")
+
+
+def test_the_isolated_profile_runs_pi_as_the_cell_user_in_the_worktree() -> None:
+    args = parse_args(["--model", MODEL])
+    exported = {ISOLATION_ENV: "isolated", CELL_PARENT_ENV: "/cells/a"}
+    argv = pi_command(args, "fix it", exported, Path("/cells/a/worktree"))
+    assert argv[:5] == ["sudo", "-n", "-H", "-u", "satyrn-cell"]
+    assert "TMPDIR=/cells/a/tmp" in argv and "UV_PROJECT_ENVIRONMENT=/cells/a/environment" in argv
+    assert argv[argv.index("satyrn-cell", 5) + 1 :] == ["/cells/a/worktree", *build_pi_argv(args, "fix it")]
+
+
+@pytest.mark.parametrize(
+    ("exported", "message"),
+    [({ISOLATION_ENV: "isolated"}, CELL_PARENT_ENV), ({ISOLATION_ENV: "sandbox"}, "isolated or local")],
+)
+def test_an_isolated_profile_the_harness_did_not_complete_is_refused(exported: dict[str, str], message: str) -> None:
+    with pytest.raises(AdapterError, match=message):
+        pi_command(parse_args(["--model", MODEL]), "fix it", exported, Path("/w"))

@@ -11,6 +11,7 @@ from satyrn_evals.attempt_record import AttemptCode, AttemptOutcome
 from satyrn_evals.budget import AttemptBudget
 from satyrn_evals.capture import capture
 from satyrn_evals.capture_record import CaptureOutcome
+from satyrn_evals.cell_engine import export_engine
 from satyrn_evals.census import build_arg_parser as build_census_parser
 from satyrn_evals.census import run_cli as run_census
 from satyrn_evals.errors import SatyrnError, UsageError
@@ -178,6 +179,9 @@ def main(argv: list[str] | None = None) -> int:
             gate(record, previous_result_committed=previous_result_committed)
             print("launch: record accepted")
             return 0
+        if args.command == "cell-engine":
+            print(export_engine(Path(args.engine_repo), args.commit))
+            return 0
         if args.command == "grade":
             task_dir = resolve_task(args.task, tasks_root=Path(args.tasks_root))
             receipt = grade(task_dir, Path(args.patch), Path(args.receipt))
@@ -227,6 +231,12 @@ grade_p.add_argument(
     default=str(DEFAULT_TASKS_ROOT),
     help="task root (default: bundled tasks)",
 )
+
+cell_engine_p = sub.add_parser(
+    "cell-engine", help="export one engine commit under the cells root for the isolated Engine arm"
+)
+cell_engine_p.add_argument("--engine-repo", required=True, help="the maintainer's engine checkout")
+cell_engine_p.add_argument("--commit", required=True, help="the engine commit the arm runs")
 
 capture_p = sub.add_parser(
     "capture", help="turn a fixing commit into a task (winnable by construction)"

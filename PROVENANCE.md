@@ -301,3 +301,5 @@
 | tests/integration/conftest.py | created in release-one |
 | tests/integration/cell_support.py | created in release-one |
 | tests/integration/test_cell_isolation.py | created in release-one |
+| src/satyrn_evals/cell_engine.py | created in release-one |
+| tests/integration/test_isolated_arms.py | created in release-one |
