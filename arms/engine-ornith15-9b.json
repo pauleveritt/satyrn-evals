@@ -4,7 +4,7 @@
   "argv": [
     "satyrn-evals-attempt-engine",
     "--engine-repo",
-    "/Users/Shared/satyrn-cells/engine-cf71c748c7abb961cdc54f9d13ae6f98732b56b5"
+    "/Users/Shared/satyrn-cells/engine-56f4ac0694be0abbf04fa61d4d1f49ddc20abd8a"
   ],
   "tools": [
     "read",
@@ -17,14 +17,14 @@
   "server_model": "Ornith-1.5-9B-MLX-8bit",
   "pins": {
     "pi": "0.85.1",
-    "engine_commit": "cf71c748c7abb961cdc54f9d13ae6f98732b56b5",
+    "engine_commit": "56f4ac0694be0abbf04fa61d4d1f49ddc20abd8a",
     "digests": {
       "engine.ts": "0f581ffeed8931fb0f656f6df7d547ad14893eb2c3edd1d8e203b819d4b2f9d1",
       "mutator.ts": "d34ed2d44342db67739bf0b9458d6773b2b2d3a21aacde36ad4635ec82e88a52",
       "scope.ts": "2eab1e01e01a34fdf42ec3e0555adadc7863f170fe6e71bc5ab2a42a3711049a",
       "bounds.ts": "9fe674f671f328c1ba7bbe20b4cbb40016a92596a49166478d937d7c8cd67eb6",
       "runner.ts": "c0142503bc13d626d37d6490072b9e3492c411a97c8835af9a187b220c4df5e0",
-      "orchestrator.ts": "83171788dd6084e73dc0fb54405e9a0487f0a35e3c899eeee8f01f2d7f92ded7",
+      "orchestrator.ts": "dd296557cf4643cb63753dfe96c1cc4d0004aec7e3aebf4aeed47a4cdcba8a0d",
       "paths.ts": "9c5822fd01789cd44a648925285b85423b34cf6d1bdbef5e8d9d661fc9cc40bc"
     }
   },
