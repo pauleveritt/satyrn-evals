@@ -34,6 +34,26 @@ def _tripwire_gate(request: pytest.FixtureRequest) -> None:
     _spawn_blocked = request.node.get_closest_marker("integration") is None
 
 
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    """The default tier leaves no bundled grader file in pytest's temp directory.
+
+    pytest keeps the last three base temp directories, and on 2026-09-14 a
+    hunting model read a hidden suite a test had copied there. The default
+    tier (``-m "not integration"``, the addopts value) fails its session if
+    any file under this run's base temp equals a bundled overlay file.
+    """
+    from satyrn_evals.hygiene import overlay_copies, overlay_digests
+
+    factory = getattr(session.config, "_tmp_path_factory", None)
+    if session.config.option.markexpr != "not integration" or factory is None:
+        return
+    copies = overlay_copies(factory.getbasetemp(), overlay_digests())
+    if copies:
+        for path in copies:
+            print(f"bundled grader file copied into pytest's temp directory: {path}")
+        session.exitstatus = pytest.ExitCode.TESTS_FAILED
+
+
 # --- V7 P3 Task 1 fixtures: hidden/visible task dirs + clean/contaminated patches ---
 # Reuses the P1 `_write_task` shape from tests/test_manifest.py: a hidden
 # task declares `grader_overlay` + `oracle_visibility=hidden`; a visible

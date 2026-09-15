@@ -293,3 +293,5 @@
 | src/satyrn_evals/attempt_engine.py | created in release-one |
 | tests/test_attempt_engine.py | created in release-one |
 | tests/integration/test_engine_arm.py | created in release-one |
+| src/satyrn_evals/hygiene.py | created in release-one |
+| tests/test_hygiene.py | created in release-one |

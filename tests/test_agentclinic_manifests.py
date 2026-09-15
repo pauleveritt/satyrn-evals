@@ -7,7 +7,6 @@ refuses any hidden-task contract containing an overlay name at load
 """
 
 import json
-import shutil
 from pathlib import Path
 
 import pytest
@@ -76,24 +75,22 @@ def test_contract_names_the_recorded_failing_check(state: str) -> None:
         assert "failing check" in manifest.contract
 
 
-def test_manifest_whose_contract_names_overlay_is_refused(tmp_path: Path) -> None:
+def test_manifest_whose_contract_names_overlay_is_refused(tmp_hidden_task: Path) -> None:
     """End-to-end refusal at load: a hidden-task contract naming a grader-only
     path must raise ManifestError from load_manifest itself.
 
-    The poisoned task dir is a real copy (not symlinks): the overlay path
-    must resolve as a real directory so the ONLY defect is the contract, and
-    the refusal comes from the contract-name check, not the overlay-symlink
-    guard.
+    The task is the synthetic hidden task from ``tests/conftest.py``, never a
+    copy of a bundled one: a bundled overlay copied into pytest's temp
+    directory is an answer key on disk, and on 2026-09-14 a hunting model read
+    exactly that copy (spec, "What the evidence settled"). Its overlay is a
+    real directory, so the ONLY defect is the contract.
     """
-    src = resolve_task("agentclinic-repair-misleading-locus")
-    data = json.loads((src / "manifest.json").read_text())
-    data["contract"] = "the failure is in test_acceptance.py — fix it"
-    root = tmp_path / "tasks"
-    target = root / data["name"]
-    shutil.copytree(src, target)
-    (target / "manifest.json").write_text(json.dumps(data))
+    manifest_path = tmp_hidden_task / "manifest.json"
+    data = json.loads(manifest_path.read_text())
+    data["contract"] = "the failure is in tests/test_hidden.py — fix it"
+    manifest_path.write_text(json.dumps(data))
     with pytest.raises(ManifestError, match="contract names grader-only path"):
-        load_manifest(target)
+        load_manifest(tmp_hidden_task)
 
 
 @pytest.mark.parametrize("state", STATES)
