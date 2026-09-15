@@ -4140,3 +4140,4 @@
 | evidence/2026-09-15-finishing-counterfactual/decision.txt | created in release-one |
 | evidence/2026-09-15-finishing-counterfactual/debug/cells.json | created in release-one |
 | evidence/2026-09-15-finishing-counterfactual/debug/table.md | created in release-one |
+| evidence/2026-09-15-finishing-counterfactual/README.md | created in release-one |
