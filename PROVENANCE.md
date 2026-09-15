@@ -4129,3 +4129,4 @@
 | evidence/2026-09-15-release-one-outcome/stats.txt | created in release-one |
 | evidence/2026-09-15-release-one-outcome/fable-review.md | created in release-one |
 | docs/superpowers/specs/2026-09-15-release-two-r0-constraints.md | created in release-one |
+| docs/superpowers/specs/2026-09-15-release-two-finishing-counterfactual.md | created in release-one |

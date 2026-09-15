@@ -1,0 +1,147 @@
+# Release two, knowledge stage — the finishing counterfactual (pre-registration)
+
+**Status:** pre-registration, committed before any counterfactual number
+exists. Approved by the maintainer in the R0 design sitting, 2026-09-15.
+Bound by `2026-09-15-release-two-r0-constraints.md`. Nothing in sections 2–5
+changes after the decision run; a bug found afterwards is fixed and re-run
+only with the bug and both results recorded beside each other.
+
+## 1. Question and purpose
+
+R0 chose knowledge first: before release two decides between a defensible
+claim and a better product, find out whether an Engine-addressable failure at
+9B is large enough to build for. Fable's reconstruction of release one
+(`evidence/2026-09-15-release-one-outcome/`) suggests one: cells reach a
+passing state and keep working until the budget ends.
+
+**Question:** if a cell had stopped at the first point the Engine could
+observe as green, how many within-budget passes would that add, and how many
+would it break?
+
+The answer is taken offline from retained cells only. No GPU, no new tasks,
+no Engine or `satyrn_evals` code.
+
+## 2. Scope
+
+All cells are under `~/satyrn-runs/`, on release one's isolated harness with
+declared sampling and a 32,000-token / 48-turn budget. Records and results
+are under `records/`.
+
+**Decision cells: Baseline admission on each task's current prompt.**
+
+| task | record | attempt ids (suffix) | recorded codes |
+|---|---|---|---|
+| agentclinic-repair-depth-3 | 2026-09-14-admission | 971281, 021584, 082295, 700050 | COMMAND_TIMEOUT, BUDGET_EXCEEDED, OK-fail, BUDGET_EXCEEDED |
+| selfhost-run-record-gate | 2026-09-15-admission | 388294, 448568, 519278, 028222 | BUDGET_EXCEEDED ×4 |
+| selfhost-docs-linter | 2026-09-15-admission | 147562, 204433, 270586, 970283 | BUDGET_EXCEEDED, OK-pass, BUDGET_EXCEEDED, BUDGET_EXCEEDED |
+| selfhost-guard-prefixes | 2026-09-15-admission | 812248, 870439, 937944, 424626 | OK-pass ×4 |
+| selfhost-review-script | 2026-09-15-admission | 688090, 746232, 816670, 501161 | OK-pass ×4 |
+| agentclinic-repair-depth-2 | 2026-09-14-admission | 523251, 575297, 634454, 616367 | OK-pass ×4 |
+
+**Budget-shaped tasks** are fixed from recorded codes alone: a task counts if
+at least 2 of its 4 decision cells ended `BUDGET_EXCEEDED` or
+`COMMAND_TIMEOUT`. That selects depth-3, run-record-gate and docs-linter.
+**Floor tasks** are guard-prefixes, review-script and depth-2; they are in
+scope for harm.
+
+**Reported, outside the decision:** the 2026-09-14 self-hosted admission
+nights (run-record-gate, guard-prefixes, review-script; prompt defects since
+fixed), and the Engine cells — route proofs `route-proof-b` depth-3,
+run-record-gate, docs-linter, and the four misleading-locus development
+cells. Engine cells appear in their own column.
+
+**Excluded:** the calc-build first-turn smoke; the first depth-3 route proof
+(719334, the engine crash since fixed); the complaint-lifecycle development
+cells (no tests or hidden suite through `launch`).
+
+## 3. Definitions
+
+**Source edit.** A landed mutation of a file inside the task manifest's
+`source_paths` that is not a test file (basename `test_*.py` or `*_test.py`,
+or a path under a `tests` directory): a `write`, an `edit` whose tool result
+is not an error, or a file-writing bash command the reconstruction replays.
+
+**Own-green**, the Engine-observable trigger: the first test run after the
+first source edit whose recorded result is green —
+
+- a `self_test` result with `ok` true and no failed ids (Engine cells), or
+- a bash command for which `satyrn_evals.cell_evidence.runs_pytest` is true,
+  whose `tool_execution_end` is not an error, and whose output contains a
+  pytest summary line reporting at least one pass and no `failed` or `error`
+  count. A run whose summary line is absent from the output is not green.
+
+The trigger counts only if it falls within the budget: cumulative output
+tokens at that turn ≤ 32,000 and the turn number ≤ 48.
+
+**Counterfactual policy:** the cell stops at the trigger turn.
+
+## 4. Counting rules
+
+**Actual outcome:** pass within budget, from the harness result (code `OK`
+and verdict `pass`); anything else is not-pass.
+
+**Counterfactual outcome:** the hidden-suite verdict of the reconstructed
+worktree as it stood at the end of the trigger turn, graded as the harness
+grades — `satyrn-evals grade`, the task's hidden suite, its allowlist and its
+current manifest (including `ignored_paths`). A cell with no trigger keeps its
+actual outcome.
+
+**Rescue:** actual not-pass, counterfactual pass. **Harm:** actual pass,
+counterfactual not-pass. **Net rescues** per task = rescues − harms.
+
+**Fidelity.** For every decision cell the harness graded (a verdict of
+`pass`, `fail` or `unavailable`), the reconstructed final worktree is graded
+first and must reproduce the harness verdict. Cells without a harness verdict
+(`BUDGET_EXCEEDED`, `COMMAND_TIMEOUT`) are marked `unverifiable` and still
+count.
+
+**Unmeasured.** A decision cell is unmeasured when its fidelity check fails,
+or when the reconstruction skipped a bash command before the trigger turn that
+could have written inside `source_paths`, or when replay or grading raises.
+An unmeasured cell counts as no change and is listed with its reason. A task
+with more than one unmeasured decision cell is `insufficient`.
+
+## 5. Decision (pre-registered)
+
+- **Go** — at least two budget-shaped tasks that are not `insufficient` each
+  have net rescues ≥ 1, **and** the floor tasks together have fewer than 2
+  harm cells, **and** no floor task is `insufficient`.
+- **Verify on clean tasks** — exactly one budget-shaped task qualifies; or
+  two or more qualify but floor harm is ≥ 2 or a floor task is
+  `insufficient`.
+- **Finishing is not the lever** — no budget-shaped task has net rescues ≥ 1.
+
+With 4 cells per task, one net rescue is 25 points. Even **Go** therefore
+earns only the next stage, a Baseline-only diagnostic batch on
+validity-checked build tasks; it never authorizes Engine work. **Verify**
+leads to the same batch sized to the qualifying task's shape. **Not the
+lever** returns R0 to its question 3 (is 9B the honest model and budget?) and
+to finding another Engine-addressable class first.
+
+## 6. Deliverables and order of work
+
+1. **This pre-registration is committed** before step 2 begins.
+2. **The analysis script**
+   `evidence/2026-09-15-finishing-counterfactual/counterfactual.py`, extending
+   the release-one `reconstruct.py` replay. Interface:
+   - `--phase debug` runs only cells outside the decision set (section 2) and
+     refuses any decision attempt id; used to develop and check the trigger
+     and counting code.
+   - `--phase decision` runs exactly the 24 decision cells once and writes
+     `cells.json`, `table.md` and `decision.txt`, each stamped with the evals
+     commit and the command line.
+   - No model, no network, nothing under `/Users/Shared`; scratch worktrees
+     under the script's own directory, git-ignored.
+   Sonnet implements; Opus reviews the trigger and counting code line by
+   line against sections 3–5 before the decision phase runs.
+3. **The decision run.** One run; outputs committed.
+4. **The result:** `evidence/2026-09-15-finishing-counterfactual/README.md`,
+   at most 120 lines: the per-cell table (trigger turn, tokens at trigger,
+   actual, counterfactual, rescue, harm, fidelity, unmeasured reason), the
+   per-task net rescues, the Engine column, the decision, and a fenced
+   recompute command. `docs/results/` stays launcher-only. The R0 row of
+   `ROADMAP.md` records the decision.
+
+**Out of scope:** Engine code; new task cuts; the release-two design spec;
+a tested reconstruction module in `satyrn_evals` (deferred until an
+admission design needs it).
