@@ -147,7 +147,10 @@ def test_a_cell_process_that_exits_without_a_record_stops_the_night(tmp_path: Pa
     spawner = Spawner(tmp_path, clock, codes={1: None})
     outcome = _launch(tmp_path, spawner, clock)
     assert outcome.status is Status.INFRASTRUCTURE
-    assert outcome.reason == "slot 01 (engine): the cell process exited 1 without an attempt record"
+    assert outcome.reason == (
+        "slot 01 (engine): the cell process exited 1 without an attempt record; "
+        f"see {tmp_path / SLOTS_DIR / '01.log'}"
+    )
 
 
 def test_drift_before_a_cell_stops_the_night(tmp_path: Path) -> None:

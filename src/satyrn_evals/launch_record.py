@@ -45,6 +45,7 @@ from satyrn_evals.arms import Arm, build_argv, load_arm
 from satyrn_evals.attempt import resolve_contract
 from satyrn_evals.cell import CELL_PATH_PREFIX_ENV, CELLS_ROOT, Isolation
 from satyrn_evals.cell_preflight import CellPreflight, preflight_cell
+from satyrn_evals.errors import SatyrnError
 from satyrn_evals.launch import (
     SLOTS_DIR,
     CellProcess,
@@ -52,16 +53,17 @@ from satyrn_evals.launch import (
     Slot,
     Status,
     check_night,
+    infrastructure_reason,
     launch_cells,
     read_slots,
     slot_path,
+    write_atomically,
     write_ledger,
 )
 from satyrn_evals.launch_cell import (
     ATTEMPT_DEADLINE,
     COMMAND_BACKSTOP,
     popen_cell,
-    write_atomically,
 )
 from satyrn_evals.manifest import load_manifest, resolve_task
 from satyrn_evals.rescore import (
@@ -174,33 +176,64 @@ def _tolerated(cells_root: Path = CELLS_ROOT) -> tuple[Path, ...]:
     return (root / relative.parts[0],)
 
 
-def write_arm_summaries(night: Path, arms: Sequence[str], n: int, task_dir: Path) -> dict[str, dict]:
-    """``summary.json`` for every arm whose n slots are finished; the counts for every arm."""
-    manifest = load_manifest(task_dir)
-    overlay, visible_texts = pathology_context(task_dir, manifest)
-    finished = read_slots(night)
+def _arm_results(finished: dict[int, dict], arm: str) -> tuple[list[dict], list[dict]]:
+    """This arm's model-outcome results, and its infrastructure results (``slot``/``code``/``attempt_dir``).
+
+    An infrastructure result (``launch.infrastructure_reason``) measured nothing about the model:
+    it is not in the denominator for ``finished``/``passes``/``code_counts`` or a summary (spec,
+    "Denominators"). It is only moved aside by the *next* launch (``_replace_infrastructure_slots``),
+    so a night that stops on one must not commit it into this arm's counts in the meantime.
+    """
+    all_results = [result for _, result in sorted(finished.items()) if result["arm"] == arm]
+    infrastructure = [
+        {"slot": result["slot"], "code": result["code"], "attempt_dir": result["attempt_dir"]}
+        for result in all_results
+        if infrastructure_reason(result) is not None
+    ]
+    results = [result for result in all_results if infrastructure_reason(result) is None]
+    return results, infrastructure
+
+
+def _arm_counts(finished: dict[int, dict], arms: Sequence[str], n: int) -> dict[str, dict]:
+    """The counts ``write_arm_summaries`` reports for every arm, without touching the manifest or a summary.
+
+    Never raises: pure bookkeeping over already-parsed slot records, safe to fall back on when
+    the manifest- and summary-computing half of ``write_arm_summaries`` fails.
+    """
     report: dict[str, dict] = {}
     for arm in arms:
-        results = [result for _, result in sorted(finished.items()) if result["arm"] == arm]
+        results, infrastructure = _arm_results(finished, arm)
         codes: dict[str, int] = {}
         for result in results:
             codes[result["code"]] = codes.get(result["code"], 0) + 1
-        entry: dict[str, object] = {
+        report[arm] = {
             "finished": len(results), "n": n, "code_counts": codes,
             "passes": sum(1 for result in results if result["verdict"] == "pass"), "summary": None,
+            "infrastructure": infrastructure,
         }
-        if len(results) == n:
-            output = night / arm
-            cells = [_load_cell(output / result["attempt_dir"]) for result in results]
-            kwargs = dict(task_dir=task_dir, manifest=manifest, overlay=overlay, visible_texts=visible_texts)
-            summary = compute_summary(
-                cells, oracle_visibility=manifest.oracle_visibility,
-                pathology=compute_pathology(output, cells, **kwargs), evidence=compute_evidence(output, cells, **kwargs),
-            )
-            write_summary(output / SUMMARY_NAME, summary)
-            entry["summary"] = os.fspath(output / SUMMARY_NAME)
-            entry["contamination"] = summary.contamination
-        report[arm] = entry
+    return report
+
+
+def write_arm_summaries(night: Path, arms: Sequence[str], n: int, task_dir: Path) -> dict[str, dict]:
+    """``summary.json`` for every arm whose n non-infrastructure slots are finished; the counts for every arm."""
+    manifest = load_manifest(task_dir)
+    overlay, visible_texts = pathology_context(task_dir, manifest)
+    finished = read_slots(night)
+    report = _arm_counts(finished, arms, n)
+    for arm, entry in report.items():
+        if entry["finished"] != n:
+            continue
+        results, _ = _arm_results(finished, arm)
+        output = night / arm
+        cells = [_load_cell(output / result["attempt_dir"]) for result in results]
+        kwargs = dict(task_dir=task_dir, manifest=manifest, overlay=overlay, visible_texts=visible_texts)
+        summary = compute_summary(
+            cells, oracle_visibility=manifest.oracle_visibility,
+            pathology=compute_pathology(output, cells, **kwargs), evidence=compute_evidence(output, cells, **kwargs),
+        )
+        write_summary(output / SUMMARY_NAME, summary)
+        entry["summary"] = os.fspath(output / SUMMARY_NAME)
+        entry["contamination"] = summary.contamination
     return report
 
 
@@ -306,16 +339,38 @@ def launch_record(
     )
     write_ledger(night, identity=identity, sitting=sitting, outcome=outcome)
     ledger = json.loads((night / "launch.json").read_text(encoding="utf-8"))
+    summary_error: str | None = None
+    try:
+        arms_report: dict[str, dict] | None = write_arm_summaries(night, record_arms(record), record.n, task_dir)
+    except (SatyrnError, OSError, ValueError) as error:
+        # The ledger is already written; the committed result must land regardless of a summary
+        # failure (a corrupt manifest, an unreadable cell directory, a bad JSON write) — an operator
+        # script must not see a stale result from the previous sitting.
+        summary_error = f"{type(error).__name__}: {error}"
+        try:
+            arms_report = _arm_counts(read_slots(night), record_arms(record), record.n)
+        except Exception:  # noqa: BLE001 - counts are best-effort once the real computation has failed
+            arms_report = None
     result = {
         "record": os.fspath(record_path), **identity, "status": outcome.status.value, "reason": outcome.reason, "night": os.fspath(night),
         "task": record.task, "rung": record.rung, "k": record.k, "n": record.n, "purpose": record.purpose,
-        "arms": write_arm_summaries(night, record_arms(record), record.n, task_dir),
-        "cells": [{key: slot[key] for key in ("slot", "arm", "attempt_dir", "code", "verdict")} for slot in ledger["slots"]],
+        "arms": arms_report,
+        "cells": [
+            {**{key: slot[key] for key in ("slot", "arm", "attempt_dir", "code", "verdict")},
+             "infrastructure": infrastructure_reason(slot) is not None}
+            for slot in ledger["slots"]
+        ],
         "replaced": ledger["replaced"], "sittings": ledger["sittings"],
     }
+    if summary_error is not None:
+        result["summary_error"] = summary_error
     write_atomically(record_path.with_suffix(".result.json"), result)
     print(json.dumps({"status": result["status"], "reason": result["reason"], "night": result["night"],
                       "result": os.fspath(record_path.with_suffix(".result.json"))}, indent=2), file=out)
     if outcome.status is not Status.COMPLETE:
         print(f"launch stopped ({outcome.status}): {outcome.reason}", file=err)
+    if summary_error is not None:
+        print(f"launch: writing arm summaries failed: {summary_error}", file=err)
+    if summary_error is not None and outcome.status is Status.COMPLETE:
+        return 3
     return EXIT_CODES[outcome.status]

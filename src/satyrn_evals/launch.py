@@ -147,6 +147,13 @@ def _now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
 
+def write_atomically(path: Path, body: dict[str, object]) -> None:
+    """Write JSON to ``path`` via a same-directory temp file, so a kill mid-write can't corrupt it."""
+    partial = path.with_name(path.name + ".partial")
+    partial.write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8")
+    partial.replace(path)
+
+
 def write_ledger(night: Path, *, identity: dict, sitting: dict, outcome: LaunchOutcome) -> None:
     """Append this sitting to ``launch.json`` and restate the slots every sitting has finished."""
     path = night / LEDGER_NAME
@@ -156,7 +163,7 @@ def write_ledger(night: Path, *, identity: dict, sitting: dict, outcome: LaunchO
     ledger["status"], ledger["reason"] = outcome.status, outcome.reason
     finished = read_slots(night)
     ledger["slots"] = [finished[index] for index in sorted(finished)]
-    path.write_text(json.dumps(ledger, indent=2) + "\n", encoding="utf-8")
+    write_atomically(path, ledger)
 
 
 def check_night(night: Path, identity: dict) -> None:
@@ -236,7 +243,11 @@ def _finish(night: Path, slot: Slot, exit_code: int, outcome: LaunchOutcome) -> 
     """Collect one exited cell; the infrastructure reason it stops the night for, if any."""
     path = slot_path(night, slot)
     if not path.is_file():
-        return f"slot {slot.name} ({slot.arm}): the cell process exited {exit_code} without an attempt record"
+        log_path = night / SLOTS_DIR / f"{slot.name}.log"
+        return (
+            f"slot {slot.name} ({slot.arm}): the cell process exited {exit_code} without an attempt record; "
+            f"see {log_path}"
+        )
     result = json.loads(path.read_text(encoding="utf-8"))
     outcome.finished.append(result)
     return infrastructure_reason(result)

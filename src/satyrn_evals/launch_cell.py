@@ -22,6 +22,7 @@ from satyrn_evals.attempt_record import AttemptRecord
 from satyrn_evals.budget import AttemptBudget
 from satyrn_evals.cell import Isolation
 from satyrn_evals.errors import SatyrnError
+from satyrn_evals.launch import write_atomically
 from satyrn_evals.run import SignalAbort, _abort_on_signals
 
 #: The spec's backstop on this machine ("Budget, both arms"): per attempt command, and the attempt deadline.
@@ -41,12 +42,6 @@ def slot_result(*, slot: int, arm: str, record: AttemptRecord) -> dict[str, obje
         "command_exit": record.command_exit,
         "deadline_phase": None if record.deadline is None else record.deadline.phase.value,
     }
-
-
-def write_atomically(path: Path, body: dict[str, object]) -> None:
-    partial = path.with_name(path.name + ".partial")
-    partial.write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8")
-    partial.replace(path)
 
 
 def run_cell(spec: dict) -> int:

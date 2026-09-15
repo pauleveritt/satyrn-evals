@@ -183,6 +183,78 @@ class Finishing:
     def kill(self) -> None: ...
 
 
+class Recording:
+    """A cell that finishes on its first poll, writing a slot record with a chosen code/verdict."""
+
+    def __init__(self, spec: Path, *, code: str, verdict: str | None) -> None:
+        body = json.loads(spec.read_text())
+        slot_path(spec.parent.parent, Slot(body["slot"], body["arm"])).write_text(json.dumps({
+            "slot": body["slot"], "arm": body["arm"], "attempt_dir": f"t-{body['slot']}", "code": code,
+            "verdict": verdict, "message": f"attempt {code}", "command_exit": 0, "deadline_phase": None,
+        }))
+
+    def poll(self) -> int:
+        return 0
+
+    def terminate(self) -> None: ...
+    def kill(self) -> None: ...
+
+
+def test_an_infrastructure_slot_is_excluded_from_the_arms_counts_and_summary(tmp_path: Path) -> None:
+    """The night stops on slot 1's MODEL_ERROR; slot 0's model outcome still counts, slot 1 does not."""
+    codes, verdicts = iter(["OK", "MODEL_ERROR"]), iter(["pass", None])
+    facts = _facts(spawn_cell=lambda spec, log: Recording(spec, code=next(codes), verdict=next(verdicts)))
+    record = _record(tmp_path)
+    assert _launch(tmp_path, record, facts) == 3
+    result = json.loads(record.with_suffix(".result.json").read_text())
+    assert result["status"] == "infrastructure"
+    arm = result["arms"]["baseline"]
+    assert (arm["finished"], arm["passes"], arm["code_counts"]) == (1, 1, {"OK": 1})
+    assert arm["summary"] is None and "contamination" not in arm
+    assert arm["infrastructure"] == [{"slot": 1, "code": "MODEL_ERROR", "attempt_dir": "t-1"}]
+    assert [cell["infrastructure"] for cell in result["cells"]] == [False, True]
+
+
+def test_an_all_model_outcome_arm_is_unaffected_by_the_infrastructure_exclusion(tmp_path: Path) -> None:
+    """Sibling of the row above: no infrastructure outcome finishes, so nothing is excluded.
+
+    Slot 1 never spawns (the fake raises, as ``_facts()``'s default spawn does for every test
+    above that expects ``interrupted``) so this stays in the default tier without a real
+    attempt directory for a completed arm to summarize.
+    """
+    calls = {"n": 0}
+
+    def spawn_cell(spec: Path, log: Path) -> object:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return Recording(spec, code="NO_PATCH", verdict=None)
+        raise Spawned(spec.read_text())
+
+    facts = _facts(spawn_cell=spawn_cell)
+    record = _record(tmp_path)
+    assert _launch(tmp_path, record, facts) == 3
+    result = json.loads(record.with_suffix(".result.json").read_text())
+    assert result["status"] == "interrupted"
+    arm = result["arms"]["baseline"]
+    assert (arm["finished"], arm["code_counts"]) == (1, {"NO_PATCH": 1})
+    assert arm["infrastructure"] == [] and arm["summary"] is None
+    assert [cell["infrastructure"] for cell in result["cells"]] == [False]
+
+
+def test_a_summary_error_still_writes_a_result_with_best_effort_counts_and_exits_3(tmp_path: Path) -> None:
+    """``write_arm_summaries`` raises once both slots are finished (no real attempt dirs on disk);
+    the committed result must land anyway, with a ``summary_error`` and the counts still computed."""
+    facts = _facts(spawn_cell=lambda spec, log: Recording(spec, code="OK", verdict="pass"))
+    record = _record(tmp_path)
+    assert _launch(tmp_path, record, facts) == 3
+    result = json.loads(record.with_suffix(".result.json").read_text())
+    assert result["status"] == "complete"  # the outcome itself completed; only the summary step failed
+    assert "summary_error" in result and result["summary_error"]
+    arm = result["arms"]["baseline"]
+    assert (arm["finished"], arm["passes"], arm["code_counts"]) == (2, 2, {"OK": 2})
+    assert arm["summary"] is None and arm["infrastructure"] == []
+
+
 def test_a_settings_change_between_cells_stops_the_night_as_drift(tmp_path: Path) -> None:
     answers = iter([(0, SETTINGS), (0, SETTINGS), (0, '{"arm_sha256": "b"}')])
     facts = _facts(settings=lambda path, cell: next(answers), spawn_cell=lambda spec, log: Finishing(spec))
