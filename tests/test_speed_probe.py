@@ -160,11 +160,12 @@ class _FakeServer:
         return _Response()
 
 
-def test_the_driver_times_every_phase_and_sends_only_model_messages_and_max_tokens() -> None:
+def test_the_driver_times_every_phase_and_streams_model_messages_and_max_tokens() -> None:
     server = _FakeServer()
     plan = run("http://fake/v1", MODEL, streams_seconds=0.05, max_tokens=64, opener=server)
     assert [phase["size"] for phase in plan["context"]] == list(CONTEXT_SIZES)
     assert [phase["k"] for phase in plan["concurrency"]] == list(CONCURRENCY)
     assert all(phase["start"] < phase["end"] for phase in [*plan["context"], *plan["concurrency"]])
     assert {tuple(sorted(body)) for body in server.bodies} == {("max_tokens", "messages", "model", "stream")}
+    assert all(body["stream"] is True for body in server.bodies)
     assert len(server.bodies) >= len(CONTEXT_SIZES) + sum(CONCURRENCY)

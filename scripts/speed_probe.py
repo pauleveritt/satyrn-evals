@@ -7,8 +7,12 @@ sizes near 5k, 20k, 40k, 80k and 160k tokens, and total output tok/s with 1,
 
 ``run`` sends the requests and writes a plan: for each phase, its wall-clock
 window. It uses the server's own sampling settings (it sends only the model,
-the messages and ``max_tokens``), so the numbers are for the served
-configuration ``preflight_settings`` verified.
+the messages, ``max_tokens`` and ``stream``), so the numbers are for the
+served configuration ``preflight_settings`` verified. Every request streams
+and drains the whole SSE body: oMLX's non-streaming path logs a rate that
+divides completion tokens by prefill-plus-decode time, but its streaming
+path divides by decode time alone (read from its server.py), and the probe
+wants the decode-only rate.
 
 ``analyze`` reads the server log -- one line per completion, written when it
 ends (format confirmed against ``~/.omlx/logs/server.log`` on 2026-09-14)::
@@ -17,11 +21,12 @@ ends (format confirmed against ``~/.omlx/logs/server.log`` on 2026-09-14)::
     model=Ornith-1.5-9B-MLX-8bit, 758 tokens in 30.62s (27.3 tok/s),
     prompt: 44644, finish_reason=stop, max_tokens=32000, request_max_tokens=32000
 
-(one physical line). The reported rate is decode-only: the seconds include
-prefill, the rate does not. A completion belongs to the phase whose window
-holds its end time. For a concurrency phase, total throughput is the phase's
-output tokens over the span from its first completion's start (end minus
-seconds) to its last completion's end.
+(one physical line; the streaming path logs the same line shape). The
+reported rate is decode-only: the seconds include prefill, the rate does
+not. A completion belongs to the phase whose window holds its end time. For
+a concurrency phase, total throughput is the phase's output tokens over the
+span from its first completion's start (end minus seconds) to its last
+completion's end.
 
 k is the largest of 1, 2 or 3 whose total throughput is at least 1.5 times
 k = 1's (spec, "Concurrency, both arms").
@@ -141,7 +146,8 @@ def filler(tokens: int, chars_per_token: float = 4.0) -> str:
 
 
 def request(base_url: str, model: str, prompt: str, max_tokens: int, opener: Callable = urllib.request.urlopen) -> None:
-    body = json.dumps({"model": model, "messages": [{"role": "user", "content": prompt + "\nSummarize the text above in one sentence."}], "max_tokens": max_tokens, "stream": False}).encode()
+    """Stream the request and drain the whole SSE body, so oMLX logs the decode-only rate."""
+    body = json.dumps({"model": model, "messages": [{"role": "user", "content": prompt + "\nSummarize the text above in one sentence."}], "max_tokens": max_tokens, "stream": True}).encode()
     call = urllib.request.Request(f"{base_url}/chat/completions", data=body, headers={"Content-Type": "application/json", "Authorization": "Bearer local"})
     with opener(call, timeout=3600) as response:
         response.read()
