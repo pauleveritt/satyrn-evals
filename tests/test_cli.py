@@ -341,7 +341,7 @@ def _record(tmp_path: Path, **over: object) -> Path:
 def test_run_takes_its_budget_and_profile_from_the_run_record(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     seen: dict[str, object] = {}
     monkeypatch.setattr(cli_module, "run", lambda **kwargs: seen.update(kwargs))
-    assert main(["run", "format_number", "--n", "1", "--run-record", str(_record(tmp_path)), "--", *PI]) == 0
+    assert main(["run", "format_number", "--n", "4", "--run-record", str(_record(tmp_path)), "--", *PI]) == 0
     assert seen["budget"] == AttemptBudget(output_tokens=24000, turns=36)
     assert seen["isolation"] is Isolation.LOCAL
 
@@ -373,3 +373,56 @@ def test_run_without_a_record_has_no_budget(monkeypatch: pytest.MonkeyPatch) -> 
 
 def test_attempt_with_an_unreadable_record_is_a_usage_error(tmp_path: Path) -> None:
     assert main(["attempt", "format_number", "--run-record", str(tmp_path / "absent.json"), "--", "cmd"]) == 2
+
+
+# --- F3/R13: attempt/run --run-record calls gate(); run --n must match record.n ---
+
+
+def test_attempt_refuses_an_admission_record_under_the_local_profile(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """gate() runs the same as launch --check: a deciding purpose refuses local."""
+    monkeypatch.setattr(cli_module, "attempt", lambda **kw: pytest.fail("no cell may start"))
+    record = _record(tmp_path, isolation="local", purpose="admission")
+    assert main(["attempt", "format_number", "--run-record", str(record), "--", *PI]) == 2
+
+
+def test_run_refuses_an_admission_record_under_the_local_profile(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(cli_module, "run", lambda **kw: pytest.fail("no cell may start"))
+    record = _record(tmp_path, isolation="local", purpose="admission", n=1)
+    assert main(["run", "format_number", "--n", "1", "--run-record", str(record), "--", *PI]) == 2
+
+
+def test_attempt_gate_still_accepts_a_development_record_under_local(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen: dict[str, object] = {}
+
+    def fake_attempt(**kwargs: object) -> object:
+        seen.update(kwargs)
+        raise UsageError("stop here")
+
+    monkeypatch.setattr(cli_module, "attempt", fake_attempt)
+    record = _record(tmp_path, isolation="local", purpose="development")
+    assert main(["attempt", "format_number", "--run-record", str(record), "--", *PI]) == 2
+    assert seen["isolation"] is Isolation.LOCAL
+
+
+def test_run_refuses_an_n_that_disagrees_with_the_record(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(cli_module, "run", lambda **kw: pytest.fail("no cell may start"))
+    record = _record(tmp_path, n=4)
+    assert main(["run", "format_number", "--n", "1", "--run-record", str(record), "--", *PI]) == 2
+
+
+def test_run_accepts_an_n_that_agrees_with_the_record(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen: dict[str, object] = {}
+    monkeypatch.setattr(cli_module, "run", lambda **kwargs: seen.update(kwargs))
+    record = _record(tmp_path, n=1)
+    assert main(["run", "format_number", "--n", "1", "--run-record", str(record), "--", *PI]) == 0
+    assert seen["n"] == 1

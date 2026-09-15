@@ -235,3 +235,35 @@ def test_the_command_arm_and_model_are_read_from_either_spelling() -> None:
     assert command_arm(["cmd"]) is None
     assert command_model(["a", "--model=omlx/m"]) == "omlx/m"
     assert command_model(["a", "--model"]) is None
+
+
+def test_a_command_with_a_repeated_model_flag_is_refused_even_when_the_first_matches(
+    tmp_path: Path,
+) -> None:
+    """F4/R13: command_model returns the first --model; a smuggled second
+    flag must not pass the cross-check on the strength of the first."""
+    smuggled = [
+        "satyrn-evals-attempt-pi",
+        "--model",
+        "omlx/gemma-4-12B-it-MLX-8bit",
+        "--model",
+        "omlx/other",
+    ]
+    with pytest.raises(RunRecordError, match="more than one --model"):
+        check_invocation(_pinned(tmp_path), task=TASK, task_dir=DEFAULT_TASKS_ROOT / TASK, command=smuggled)
+
+
+def test_a_command_with_a_repeated_model_flag_in_equals_form_is_refused(
+    tmp_path: Path,
+) -> None:
+    smuggled = [
+        "satyrn-evals-attempt-pi",
+        "--model=omlx/gemma-4-12B-it-MLX-8bit",
+        "--model=omlx/other",
+    ]
+    with pytest.raises(RunRecordError, match="more than one --model"):
+        check_invocation(_pinned(tmp_path), task=TASK, task_dir=DEFAULT_TASKS_ROOT / TASK, command=smuggled)
+
+
+def test_a_command_with_one_model_flag_still_passes(tmp_path: Path) -> None:
+    check_invocation(_pinned(tmp_path), task=TASK, task_dir=DEFAULT_TASKS_ROOT / TASK, command=BASELINE)

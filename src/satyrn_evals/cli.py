@@ -72,19 +72,38 @@ def positive_int(value: str) -> int:
     return number
 
 
+def _previous_result_committed(record: object) -> bool | None:
+    """Whether the record's ``previous_result`` (if any) is a committed path."""
+    previous_result = record.previous_result
+    if previous_result is None:
+        return None
+    return (
+        subprocess.run(
+            ["git", "ls-files", "--error-unmatch", previous_result],
+            capture_output=True,
+        ).returncode
+        == 0
+    )
+
+
 def _record_settings(
-    run_record: str | None, *, task: str, tasks_root: str, command: list[str]
+    run_record: str | None, *, task: str, tasks_root: str, command: list[str], n: int | None = None
 ) -> tuple[AttemptBudget | None, Isolation]:
-    """The budget and profile a run record froze, after checking the invocation is the record's.
+    """The budget and profile a run record froze, after the same gate ``launch --check``
+    runs and after checking the invocation (task, tree, arm, model, and — for ``run`` —
+    ``--n``) is the record's.
 
     Without a record: no budget, the local profile.
     """
     if run_record is None:
         return None, Isolation.LOCAL
     record = load_run_record(Path(run_record))
+    gate(record, previous_result_committed=_previous_result_committed(record))
     check_invocation(
         record, task=task, task_dir=resolve_task(task, tasks_root=Path(tasks_root)), command=command
     )
+    if n is not None and n != record.n:
+        raise RunRecordError(f"the record asks n={record.n}; --n {n} disagrees")
     return attempt_budget(record), record.isolation
 
 
@@ -145,7 +164,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
             args = parser.parse_args(["run", *flags])
             budget, isolation = _record_settings(
-                args.run_record, task=args.task, tasks_root=args.tasks_root, command=command
+                args.run_record, task=args.task, tasks_root=args.tasks_root, command=command, n=args.n
             )
             run(
                 task=args.task,
@@ -200,16 +219,7 @@ def main(argv: list[str] | None = None) -> int:
                 print("launch: cells are Phase 2c; use --check or --preflight", file=sys.stderr)
                 return UsageError.exit_code
             record = load_run_record(Path(args.check))
-            previous_result_committed = None
-            if record.previous_result is not None:
-                previous_result_committed = (
-                    subprocess.run(
-                        ["git", "ls-files", "--error-unmatch", record.previous_result],
-                        capture_output=True,
-                    ).returncode
-                    == 0
-                )
-            gate(record, previous_result_committed=previous_result_committed)
+            gate(record, previous_result_committed=_previous_result_committed(record))
             print("launch: record accepted")
             return 0
         if args.command == "cell-engine":

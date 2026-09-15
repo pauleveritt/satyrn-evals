@@ -138,6 +138,22 @@ def command_model(command: Sequence[str]) -> str | None:
     return None
 
 
+def count_model_flags(command: Sequence[str]) -> int:
+    """How many ``--model`` flags (space or equals form) the command carries."""
+    count = 0
+    index = 0
+    while index < len(command):
+        token = command[index]
+        if token == "--model":
+            count += 1
+            index += 2
+            continue
+        if token.startswith("--model="):
+            count += 1
+        index += 1
+    return count
+
+
 def command_arm(command: Sequence[str]) -> str | None:
     """The committed arm whose adapter the command runs, if it runs one."""
     for token in command:
@@ -156,5 +172,10 @@ def check_invocation(record: RunRecord, *, task: str, task_dir: Path, command: S
         )
     if (arm := command_arm(command)) != record.arm:
         raise RunRecordError(f"the record is for arm {record.arm}; the command runs {arm or 'no known adapter'}")
+    if count_model_flags(command) > 1:
+        raise RunRecordError(
+            "the command carries more than one --model flag; the record cannot be "
+            "cross-checked against a command whose model an adapter might pick differently"
+        )
     if (model := command_model(command)) != record.model:
         raise RunRecordError(f"the record is for model {record.model}; the command passes --model {model}")
