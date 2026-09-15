@@ -368,6 +368,7 @@ is not used.
 | 2a | Eval core: harvest, token and turn tripwire, census extensions, hygiene | overnight | harness items 1, 3, 4, 5 have fixture tests both directions; the Engine arm runs against a fake |
 | 2b | Isolation and tasks: two-uid isolation, generator and R1-plan, candidates qualified, context-speed and concurrency probe, warm prefix recorded | overnight, plus attended isolation setup, probe and recording | the eval runs both arms against a fake under isolation with the budget tripwire; every candidate passes offline qualification; k measured; settings provenance verified by preflight |
 | 3 | Admission and route proof: Baseline admission cells; one Engine cell per ceiling task | attended | ceiling and floor sets fixed; guards fire where retained evidence says they should; receipts read |
+| 3b | Remediation iteration: Engine changes aimed at the failure modes the route proof retained (unused `self_test` first), measured on development records over tasks outside the ceiling, floor and held-out sets | attended, time-boxed to one day | each change shows its target behaviour moving on development cells; the engine commit freezes after it |
 | 4 | Comparison: campaign record, held-out cut, one batch night plus a day | unattended batch, frozen in daylight | one result page per task and one against the rule |
 | 5 | Decide and ship, or stop | attended | release one published, or a stated negative |
 
@@ -387,8 +388,7 @@ is not used.
   tasks. A stopped sitting adds hours, not a week. Concurrency may interact with the
   model's behaviour through prefill contention; the probe measures
   throughput, not behaviour, and Phase 3's route proof runs at k.
-- What is not written down is lost; the contract and checks are the
-  writing-down. This is the product's ceiling and the eval's caveat.
+- What is not written down is lost: the product's ceiling and the eval's caveat.
 - Path-less `edit` calls are counted, not remediated.
 
 ## Deferred, deliberately
