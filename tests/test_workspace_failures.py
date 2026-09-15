@@ -1421,6 +1421,46 @@ def test_posix_teardown_handles_already_gone_and_kill_error(
     assert detail is not None and "SIGKILL" in detail
 
 
+def test_cell_side_kill_gets_a_floor_independent_of_a_tiny_grace(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """F6/R13: under a tiny teardown grace, the cell-side kill (a second
+    sudo call) must still get CELL_KILL_TIMEOUT_FLOOR, not a sliver of the
+    grace -- a slow sudo under load would otherwise report CLEANUP_FAILED."""
+    process = _FakeProcess([subprocess.TimeoutExpired("x", 1)])
+    monkeypatch.setattr(workspace_module, "_is_posix", lambda: True)
+    monkeypatch.setattr(workspace_module.os, "killpg", lambda *_args: None)
+    # The process group is never confirmed gone after either signal, so
+    # both the SIGKILL branch and the cell-side kill run.
+    monkeypatch.setattr(workspace_module, "_wait_until_group_gone", lambda *_args: False)
+    seen_timeouts: list[float] = []
+
+    def fake_kill_cell_group(_pid: int, *, timeout: float) -> str | None:
+        seen_timeouts.append(timeout)
+        return None
+
+    monkeypatch.setattr(workspace_module, "kill_cell_group", fake_kill_cell_group)
+    tiny_grace = 0.01
+    safe, _detail = workspace_module._teardown_process(_process(process), tiny_grace, cell=True)
+    assert seen_timeouts and seen_timeouts[0] >= workspace_module.CELL_KILL_TIMEOUT_FLOOR
+
+
+def test_local_teardown_never_calls_the_cell_side_kill(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Sibling: cell=False (the local profile) never touches kill_cell_group."""
+    process = _FakeProcess([subprocess.TimeoutExpired("x", 1)])
+    monkeypatch.setattr(workspace_module, "_is_posix", lambda: True)
+    monkeypatch.setattr(workspace_module.os, "killpg", lambda *_args: None)
+    monkeypatch.setattr(workspace_module, "_wait_until_group_gone", lambda *_args: False)
+
+    def fail_if_called(*_args: object, **_kwargs: object) -> str | None:
+        pytest.fail("local teardown must never call kill_cell_group")
+
+    monkeypatch.setattr(workspace_module, "kill_cell_group", fail_if_called)
+    workspace_module._teardown_process(_process(process), 0.01, cell=False)
+
+
 def test_windows_fallback_terminate_kill_and_reap_errors(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

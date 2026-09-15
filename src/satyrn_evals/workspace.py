@@ -43,6 +43,11 @@ DEFAULT_TIMEOUT = 900.0
 # 900 s = the corrected probes' observed per-cell ceiling (2-15 min).
 # Longer paths pass --timeout explicitly.
 DEFAULT_TEARDOWN_GRACE = 0.25
+#: F6/R13: the cell-side kill (`cell.kill_cell_group`, a second sudo call)
+#: needs its own floor independent of the teardown grace -- a small grace
+#: (the default is 0.25s) left ``max(remaining(), 0.05)`` at ~0.125s under a
+#: slow sudo, which reported CLEANUP_FAILED and retained the workspace.
+CELL_KILL_TIMEOUT_FLOOR = 2.0
 
 _GIT_SAFETY_CONFIG = (
     "--no-replace-objects",
@@ -924,7 +929,9 @@ def _teardown_process(
             except OSError as exc:
                 details.append(f"cannot signal process group with SIGKILL: {exc}")
             if cell and (
-                failure := kill_cell_group(process.pid, timeout=max(remaining(), 0.05))
+                failure := kill_cell_group(
+                    process.pid, timeout=max(remaining(), CELL_KILL_TIMEOUT_FLOOR)
+                )
             ):
                 details.append(failure)
     else:  # Windows is a direct-child fallback, not part of V4's proof.

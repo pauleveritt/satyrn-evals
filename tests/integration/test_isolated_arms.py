@@ -99,6 +99,7 @@ def test_an_isolated_baseline_cell_over_budget_is_stopped_and_leaves_no_model_ru
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, cell_scratch: Path
 ) -> None:
     pidfile = _cell_pi(cell_scratch, monkeypatch, "spend")
+    before = {p.name for p in CELLS_ROOT.iterdir()}
     record = attempt(
         task="calc-build", tasks_root=TASKS, output=tmp_path / "attempts", command=_baseline(), timeout=120,
         budget=CAMPAIGN, isolation=Isolation.ISOLATED,
@@ -106,6 +107,7 @@ def test_an_isolated_baseline_cell_over_budget_is_stopped_and_leaves_no_model_ru
     assert record.code is AttemptCode.BUDGET_EXCEEDED, record.message
     assert (record.command_exit, record.retained_path) == (None, None)
     _gone(pidfile)
+    _no_cells_left(before)
 
 
 def _engine_arm(scratch: Path) -> list[str]:
@@ -138,6 +140,7 @@ def test_an_isolated_engine_cell_stopped_by_the_harness_leaves_no_model_running(
     pidfile = _cell_pi(cell_scratch, monkeypatch, "trickle")
     command = _engine_arm(cell_scratch)
     output = tmp_path / "attempts"
+    before = {p.name for p in CELLS_ROOT.iterdir()}
     record = attempt(
         task="calc-build", tasks_root=TASKS, output=output, command=command, timeout=300,
         budget=AttemptBudget(output_tokens=16_000, turns=48), isolation=Isolation.ISOLATED,
@@ -147,6 +150,7 @@ def test_an_isolated_engine_cell_stopped_by_the_harness_leaves_no_model_running(
     _gone(pidfile)
     assert record.attempt_dir is not None
     assert not (output / record.attempt_dir / RECEIPT_NAME).exists()
+    _no_cells_left(before)
 
 
 def test_the_engine_export_is_made_once_and_runs_as_the_cell_user(cell_scratch: Path, capsys: pytest.CaptureFixture[str]) -> None:
