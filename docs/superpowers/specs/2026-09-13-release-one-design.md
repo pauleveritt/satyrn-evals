@@ -201,7 +201,7 @@ generator fix and are superseded). `misleading-locus` and
 **Held-out tasks.** Two tasks are cut by the generator at batch freeze, in
 daylight, from commits no earlier task used, and committed with the campaign
 record. They are qualified offline and never pre-measured. They run in
-Phase 4 at n = 6 per arm, both in one night. They cannot supply a win; a
+Phase 4 at n = 6 per arm. They cannot supply a win; a
 held-out task where the one-sided Fisher test for Baseline better rejects at
 α = 0.05 counts as a loss (at n = 6 that needs a gap of at least 4 of 6). The
 held-out check is a tripwire against tuning, not a powered test: it detects a
@@ -248,7 +248,7 @@ of grader material is reported contaminated and counted as a fail.
 
 ### Sample and decision rule
 
-n = 12 per arm per task, arms interleaved, with one futility look. After 6
+n = 12 per arm per ceiling task, arms interleaved, with one futility look. After 6
 cells per arm, a ceiling task whose Engine passes 1 of 6 or fewer stops and
 supplies no win. Futility stopping cannot raise the false-win rate; it lowers
 power at the stipulated effect from 0.79 to 0.78 and stops 89% of tasks where
@@ -256,11 +256,10 @@ the Engine does nothing. No task stops early for a win: at n = 6 that needs
 0 of 6 against 5 of 6, and it would cost power for a 10% saving
 (`scripts/seq_design.py` computes both).
 
-A ceiling task is 24 cells, worst case 12 h at k = 1, expected 6–8 h. At k = 2
-two ceiling tasks share a night when their expected hours fit the cap.
-Schedule: three ceiling tasks, one held-out night, one floor night — five nights
-at k = 1, two to three at k = 3. A night the cap stops early completes the
-next night under the same record.
+Floor tasks run at n = 6 per arm with the held-out test for parity. At k = 3
+(a failing cell about 25 min): night one runs the ceiling tasks, 72 cells,
+about 10 h worst case; the next day held-out (24 cells, about 3 h) and floor
+(36 cells, about 1.5 h). A sitting the clock stops resumes under its record.
 
 **Per task:** one-sided Fisher exact, α = 0.05, on pass within budget.
 Stipulated effect: Baseline ≤ 0.10, Engine ≥ 0.60 (power 0.79 at n = 12). A
@@ -356,8 +355,9 @@ plan, and a fix round on most tasks. From Phase 2 on:
 
 **Cadence.** Attended sittings (≤ 60 min, n ≤ 8) for admission and route
 proof. Phase 4 runs as batch nights on this machine, exclusive GPU, record
-and campaign frozen in daylight. The batch cap is amended to one night: 24
-cells across both arms, 720 minutes. The M1 Pro is not used.
+and campaign frozen in daylight. The batch cap is 720 minutes of wall
+clock per sitting, with no cell-count cap (amended 2026-09-15). The M1 Pro
+is not used.
 
 ## Roadmap
 
@@ -368,7 +368,7 @@ cells across both arms, 720 minutes. The M1 Pro is not used.
 | 2a | Eval core: harvest, token and turn tripwire, census extensions, hygiene | overnight | harness items 1, 3, 4, 5 have fixture tests both directions; the Engine arm runs against a fake |
 | 2b | Isolation and tasks: two-uid isolation, generator and R1-plan, candidates qualified, context-speed and concurrency probe, warm prefix recorded | overnight, plus attended isolation setup, probe and recording | the eval runs both arms against a fake under isolation with the budget tripwire; every candidate passes offline qualification; k measured; settings provenance verified by preflight |
 | 3 | Admission and route proof: Baseline admission cells; one Engine cell per ceiling task | attended | ceiling and floor sets fixed; guards fire where retained evidence says they should; receipts read |
-| 4 | Comparison: campaign record, held-out cut, three to six batch nights | unattended batch, frozen in daylight | one result page per task and one against the rule |
+| 4 | Comparison: campaign record, held-out cut, one batch night plus a day | unattended batch, frozen in daylight | one result page per task and one against the rule |
 | 5 | Decide and ship, or stop | attended | release one published, or a stated negative |
 
 ## Carried gaps and risks
@@ -383,8 +383,8 @@ cells across both arms, 720 minutes. The M1 Pro is not used.
   leak of one is a leak of both.
 - Admission may empty the ceiling set: declared sampling or isolation may
   lift Baseline. Then release one reports the ceiling it found and stops.
-- Two to five nights of exclusive GPU is the price of a claim resting on
-  three tasks. A stopped night adds one. Concurrency may interact with the
+- About 14 GPU hours at k = 3 is the price of a claim resting on three
+  tasks. A stopped sitting adds hours, not a week. Concurrency may interact with the
   model's behaviour through prefill contention; the probe measures
   throughput, not behaviour, and Phase 3's route proof runs at k.
 - What is not written down is lost; the contract and checks are the

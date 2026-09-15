@@ -17,7 +17,7 @@ more. Nothing else is claimed.
 | 2c | Launcher loop: `launch RECORD` runs n cells per arm at k with arms interleaved under the record's profile, stops on infrastructure, resumes a stopped night; `record new` | overnight | a fake completes a k = 2 interleaved record under isolation through the launcher; a resumed night and an infrastructure stop | built 2026-09-15 — docs/superpowers/plans/2026-09-14-phase-2c-launcher-loop.md |
 | 2d | Warm prefix: a developer prefix recorded and replayed byte-identically (a declared secondary outside the win rule) | overnight, plus attended recording | a recorded prefix replays byte-identically against a fake | not started; lands before Phase 4 |
 | 3 | Admission and route proof: Baseline admission cells; one Engine cell per ceiling task | attended | ceiling and floor sets fixed; guards fire where retained evidence says they should; receipts read | not started |
-| 4 | Comparison: campaign record, held-out cut, seven batch nights | unattended batch, frozen in daylight | one result page per task and one against the rule | not started |
+| 4 | Comparison: campaign record, held-out cut, one batch night plus a day at k = 3 | unattended batch, frozen in daylight | one result page per task and one against the rule | not started |
 | 5 | Decide and ship, or stop | attended | release one published, or a stated negative | not started |
 
 The Ornith pathology probe answered 0/8, 1/8, 0/8 on the tagged tree; the
@@ -26,9 +26,9 @@ settled").
 
 ## Rules that bind every phase
 
-- Attended sittings are ≤ 60 min and n ≤ 8; a batch night is 24 cells across
-  both arms, 720 minutes, record and campaign frozen in daylight, on this
-  machine.
+- Attended sittings are ≤ 60 min and n ≤ 8; a batch sitting is 720 minutes
+  of wall clock with no cell-count cap, record and campaign frozen in
+  daylight, on this machine.
 - A result is one file under `docs/results/`, ≤ 120 lines, with a fenced
   recompute command; at most twelve before one is folded into
   `docs/pathologies.md` or `docs/lessons.md`.
