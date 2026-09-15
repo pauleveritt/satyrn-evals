@@ -24,7 +24,7 @@
 8. **Everything lives in `runner.ts`; no new module.** `arms.ENGINE_SOURCES` stays the seven files, `attempt.build_pi_command` is unchanged (`runner.ts` loads whenever the contract declares `test_command`, which `derive` always does), and only `runner.ts`'s digest changes in the arm (Task 4). The replay tool learns the self-test exchange and a `turn_end` event, so both guards are proven by replay like guards 1–3.
 9. **The after measurement mirrors the operator's before, record for record.** The operator is running the before now: Engine at `56f4ac0`, `agentclinic-repair-misleading-locus` and `agentclinic-complaint-lifecycle`, n = 2 each, k = 3, isolated, `--purpose development`. The after reads each before record's `task`, `rung`, `n` and `k` and writes the same record at the new commit, with `--previous-result` set to that before result. The before is needed: neither development task has an Engine cell at `56f4ac0`, and the target is a change. No fresh self-hosted task is cut. The before sitting has none, so a cut would have no before, and a cut with offline qualification is a task of its own (the held-out cut added a `formats` text per hidden suite and thousands of provenance rows). Cost if wrong: build-shaped evidence rests on `complaint-lifecycle` alone, which is weak. Its `launch` contract is the manifest's one-sentence summary over a bare base with no tests (the four requests live in `session.json`, which only `session` runs), so its cells read for behaviour, not passes. Expect `self_test` to exit 5 there until the model writes tests, and expect the gate to fire after its writes.
 10. **`misleading-locus`'s hidden suite is byte-identical to `depth-3`'s (spec, risks).** Development cells retain transcripts like any other, the overlay scan runs on them, and nothing in this change reads task content. This is an observation for the reading, not a remediation.
-11. **No spec or roadmap edit; the freeze is the reading's.** Row 3b stays "in progress" until the maintainer reads the after records. The engine commit that freezes is Task 2's commit only if the reading shows the target moving. The spec is at 399 of 400 lines.
+11. **No spec or roadmap edit; the freeze is the reading's.** Row 3b stays "in progress" until the maintainer reads the after records. The engine commit that freezes is the arm's pinned commit (`8049d73`, `runner.ts` identical to Task 2's `316432c`) only if the reading shows the target moving. The spec is at 399 of 400 lines.
 
 ## Pi 0.85.1 facts relied on (read from the installed package, `~/.volta/tools/image/packages/@earendil-works/pi-coding-agent/lib/node_modules/@earendil-works/pi-coding-agent/`)
 
@@ -1625,14 +1625,19 @@ runner.ts's digest changes; the other six pinned sources are unchanged."
 
 ## Operator: the after records and the reading
 
-Not executed by the controller: the export changes the real cells root, and the launches spend inference. Run from `$EVALS` after Task 4, one record at a time, each launch in the background. Exit 4 means the sitting's 60 minutes capped it: run the same `launch` again. Exit 1, 2 or 3 stops; report the result's `reason` and the launcher's stderr verbatim. If a preflight names a stale `(mdworker_shared)` cell process, wait a minute and rerun it.
+Not executed by the controller: the export changes the real cells root, and the launches spend inference. Run from `$EVALS` after Task 4, one task at a time, with the procedure below (not a `for` loop: a loop's body keeps going after a bad exit code, so it would commit a result after a stopped launch and move on to the next task). Each launch step runs as its own background invocation that the operator waits on, so the shell is free while a 60-minute sitting runs. `launch` exits 0 complete, 1 preflight problems, 2 usage error, 3 infrastructure/interrupted, 4 capped at the 60-minute sitting limit (records/results and the launcher's stderr documented in `src/satyrn_evals/errors.py` and `launch_record.py`'s `EXIT_CODES`). Exit 4: run the same `launch` again, without committing anything first. Exit 1, 2 or 3: stop, report the result's `reason` (when a result exists) and the launcher's stderr verbatim, and commit nothing. If a preflight names a stale `(mdworker_shared)` cell process, wait a minute and rerun it.
 
 ```bash
-# 0. The before sitting is over and committed; no cell is running.
+# 0. The before sitting is over and committed; no cell is running. The before results are these
+# two files, literally — not rediscovered by grepping git log, so a later before/after ambiguity
+# can't make a fresh git-log lookup return an after result instead.
 ls /Users/Shared/satyrn-cells | grep satyrn-attempt; echo "none running if nothing above"
-BEFORE_ML=$(git log --format= --name-only -- 'records/*.result.json' | grep -m1 'misleading-locus')      # the before results the operator committed
-BEFORE_CL=$(git log --format= --name-only -- 'records/*.result.json' | grep -m1 'complaint-lifecycle')
-echo "$BEFORE_ML $BEFORE_CL"   # check both are the 56f4ac0 development results before going on
+BEFORE_ML=records/2026-09-15-dev-before-agentclinic-repair-misleading-locus.result.json
+BEFORE_CL=records/2026-09-15-dev-before-agentclinic-complaint-lifecycle.result.json
+test -f "$BEFORE_ML" && test -f "$BEFORE_CL" && echo "both before results present"
+# Neither before result.json carries a pinned-commit field (checked: no "commit" key), so the
+# check stops at existence; confirm the 56f4ac0 pin from the before records' own commit history
+# if in doubt.
 
 # 1. The cells root holds only the current export: trash the old one deliberately, export the pinned commit.
 NEW=$(python3 -c 'import json; print(json.load(open("arms/engine-ornith15-9b.json"))["pins"]["engine_commit"])')
@@ -1643,17 +1648,42 @@ uv run python scripts/preflight_settings.py arms/engine-ornith15-9b.json --cell;
 AUTH="maintainer: Phase 3b self_test enforcement, after, 2026-09-15"
 ARM=arms/engine-ornith15-9b.json
 
-# 2. One after record per before record: same task, rung, n and k; previous_result is that before result.
-for BEFORE in "$BEFORE_ML" "$BEFORE_CL"; do
-  REC="${BEFORE%.result.json}.json"
+# 2. One after record per before record: same task, rung, n and k; previous_result is that before
+# result. A shell function, not a for-loop body, so a stopped launch returns before the record's
+# result is ever committed, and the operator runs it once per task rather than iterating.
+after_task() {
+  local BEFORE="$1" TASK RUNG N K OUT rc
+  local REC="${BEFORE%.result.json}.json"
   read TASK RUNG N K <<<"$(python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); print(r["task"], r["rung"] or "contract", r["n"], r["k"])' "$REC")"
   OUT="records/2026-09-15-dev-selftest-after-$TASK.json"
+
   uv run satyrn-evals record new --output "$OUT" --task "$TASK" --rung "$RUNG" --arm engine --n "$N" --k "$K" --purpose development --isolation isolated --token-budget 32000 --turn-budget 48 --max-minutes 60 --authority "$AUTH" --previous-result "$BEFORE"
-  uv run satyrn-evals launch --preflight "$OUT" --arm $ARM; echo "EXIT: $?"   # EXIT: 0 and "problems": []
+
+  uv run satyrn-evals launch --preflight "$OUT" --arm $ARM; rc=$?
+  if [ "$rc" -ne 0 ]; then
+    echo "$TASK: preflight EXIT $rc; commit nothing, fix the problem and rerun this task"
+    return "$rc"
+  fi
+
   git add "$OUT" && git commit -m "Phase 3b development record: $TASK after (Engine at ${NEW:0:7}, n=$N, k=$K, isolated; $AUTH)"
-  uv run satyrn-evals launch "$OUT" --arm $ARM; echo "EXIT: $?"
+
+  # The launch step: its own background invocation, waited on here.
+  uv run satyrn-evals launch "$OUT" --arm $ARM &
+  wait $!; rc=$?
+  while [ "$rc" -eq 4 ]; do
+    echo "$TASK: EXIT 4 (60-minute cap); running the same launch again, nothing committed yet"
+    uv run satyrn-evals launch "$OUT" --arm $ARM &
+    wait $!; rc=$?
+  done
+  if [ "$rc" -ne 0 ]; then
+    echo "$TASK: launch EXIT $rc; report the result's reason (if a result exists) and the launcher's stderr verbatim; commit nothing"
+    return "$rc"
+  fi
   git add "${OUT%.json}.result.json" && git commit -m "Phase 3b development result: $TASK after ($(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["status"])' "${OUT%.json}.result.json"))"
-done
+}
+
+after_task "$BEFORE_ML"
+after_task "$BEFORE_CL"
 
 # 3. The reading table: before and after read by the same evidence code (Task 3), from retained transcripts only; writes nothing.
 uv run python - "$(basename "${BEFORE_ML%.result.json}")" "$(basename "${BEFORE_CL%.result.json}")" 2026-09-15-dev-selftest-after-agentclinic-repair-misleading-locus 2026-09-15-dev-selftest-after-agentclinic-complaint-lifecycle <<'PY'
@@ -1692,12 +1722,12 @@ PY
 
 Fill one line per question, from the table and the result files. Development records decide no task outcome.
 
-1. **Target: `self_test` use.** Before: the cells with `self_test_calls + redirected + enforced > 0`, out of 4. After: the same count, out of 4. The change moved its target if every after cell that landed a mutation shows use, and the before did not.
-2. **Target: ad-hoc test runs replaced.** Before `bash_test_runs` per cell. After `bash_test_runs`, `redirected` and the leftover (`bash_test_runs − redirected`), with the leftover commands quoted from the transcripts. A leftover that is a pure test run is a Ruling 1 defect; a mixed command is Ruling 1 working.
+1. **Observation: who started testing.** Not the target by itself — the before cells at `56f4ac0` already call `self_test` (the record shows 1, 1, 1 and 3 calls across the 4 before cells), so a bare "used it" count can't fail and isn't the change being measured. Report `self_test_calls` (model-started) per cell, before against after, as background only. Separately report the Engine-started counts that only exist after Task 1/2: `redirected`, `enforced` and `follow_ups` per after cell.
+2. **Target: ad-hoc test runs replaced.** Per cell, the after leftover is `bash_test_runs − redirected`. Read each before task's `bash_test_runs` from the before transcripts at reading time (do not hard-code them — they vary by cell and task). The change moved its target if every after cell's leftover is below its own task's before `bash_test_runs`, and no after cell that landed a mutation ends without a completed self-test after its last mutation (read from the `self_test_enforced` entries and the timeline). Quote any leftover command that survives, from the transcript: a leftover that is a pure test run is a Ruling 1 defect; a mixed command is Ruling 1 working.
 3. **The gate.** After cells with `enforced > 0`: how many sent a follow-up (`follow_ups`), what the model did next (turns after the follow-up, a further `self_test` or edit), and whether any cell ended right after a passing enforced run.
 4. **Secondary: cost to first passing self-test.** `first_pass` turn and output tokens, before against after, per task, with the route. No comparison across tasks.
-5. **Side effects.** `code` and `verdict` before against after (e.g. more `BUDGET_EXCEEDED` from follow-up turns); the result's `pathology` block. An after cell reading `unknown_event` or `malformed` where its before did not points at Task 3 or Ruling 4.
-6. **Decision for the maintainer.** Freeze the engine at Task 2's commit, or take Ruling 5's Design 3 next, citing lines 1–5.
+5. **Side effects.** `code` and `verdict` before against after (e.g. more `BUDGET_EXCEEDED` from follow-up turns); the result's `pathology` block. An after cell reading `unknown_event` or `malformed` where its before did not points at Task 3 or Ruling 4. Two more to watch for: a redirected run executes inside the bash call's own span, so it can inflate `commands_over_120s` and `longest_command_seconds` (the gate's own run appears in no span at all, since it is not a bash call); and on `agentclinic-complaint-lifecycle`, a `self_test` exit 5 (no tests collected) counts as not passing and still sends a follow-up, so that task can show extra follow-up turns for a reason unrelated to a failing test.
+6. **Decision for the maintainer.** Freeze the engine at the arm's pinned commit (`8049d73`), or take Ruling 5's Design 3 next, citing lines 1–5.
 
 ---
 
