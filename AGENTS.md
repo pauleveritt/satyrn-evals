@@ -20,6 +20,20 @@ Grade from hook-written evidence, never stdout or exit status. State
 denominators and missingness. Count events from `tool_execution_start`, one
 per call — never `grep -c`. Read a gate's exit code; never pipe a gate.
 
+**Evidence has a harness.** Every design decision -- an Engine target, a
+ceiling task, a budget, a claim -- names the evidence it rests on and the
+harness commit that produced it. When a harness defect is found (a leak, a
+cutoff, a harvest or grading bug, wrong sampling, a prompt defect), list
+every decision whose evidence that defect could have produced, mark each one
+unconfirmed in the ledger, and build nothing on an unconfirmed decision until
+it is re-derived on the fixed harness. No Engine component is designed before
+admission on the comparison's own harness has classified why Baseline fails
+(information, ambiguity, capability, budget, finishing), and no remedy is
+built before an offline estimate on retained cells says it can clear the
+threshold (`docs/lessons.md`, "We built the remedy for the failures we
+saw"). **Going faster shortens building, never the order:** harness
+validity, then diagnosed admission, then the counterfactual, then the build.
+
 **The instrument is not the work.** Two consecutive instrument-only pieces stop
 the loop; a token run does not restart it. If a fix is larger than the
 measurement it unblocks, stop and ask. Every file here has a row in

@@ -58,6 +58,12 @@ settled, and what it leaves for that sitting:
   recompute command; at most twelve before one is folded into
   `docs/pathologies.md` or `docs/lessons.md`.
 - Two consecutive instrument-only pieces stop the loop.
+- A harness fix re-opens every decision its defect could have produced;
+  nothing is built on a re-opened decision until it is re-derived on the
+  fixed harness.
+- No Engine design before diagnosed admission on the comparison harness and
+  an offline estimate of the remedy; speed shortens building, never the
+  order.
 - Nothing pools across conditions, workloads, models, or machines.
 
 ## Deferred
