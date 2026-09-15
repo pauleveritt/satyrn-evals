@@ -28,6 +28,7 @@ from satyrn_evals.attempt_record import (
     load_attempt_record,
     write_attempt_record,
 )
+from satyrn_evals.cell_evidence import collect_evidence
 from satyrn_evals.contamination import scan_transcript
 from satyrn_evals.errors import OverlayError, SatyrnError, UsageError
 from satyrn_evals.grade import grade
@@ -48,6 +49,7 @@ from satyrn_evals.summary import (
     compute_summary,
     write_summary,
 )
+from satyrn_evals.timeline import TIMELINE_NAME
 from satyrn_evals.verdict import Verdict
 
 
@@ -261,6 +263,50 @@ def compute_pathology(
     return blocks
 
 
+def compute_evidence(
+    output: Path,
+    cells: Sequence[AttemptCell],
+    *,
+    task_dir: Path,
+    manifest: TaskManifest,
+    overlay: OverlaySpec | None = None,
+    visible_texts: list[str] | None = None,
+) -> dict[str, dict]:
+    """Per-cell evidence blocks for every cell, whatever its code.
+
+    Unlike ``compute_pathology`` nothing here is conditional on a measured
+    transcript: a ``COMMAND_TIMEOUT``, ``BUDGET_EXCEEDED`` or ``NO_PATCH``
+    cell is read like any other, and a hidden task's overlay is scanned in
+    every transcript that exists. A cell with no readable transcript says
+    so (``transcript: false``) and carries no counts. The harness timeline
+    is read when the cell directory holds one.
+    """
+    if manifest.oracle_visibility == "hidden":
+        if overlay is None:
+            overlay = load_overlay(task_dir, manifest)
+        if visible_texts is None:
+            visible_texts = _base_texts(task_dir)
+    blocks: dict[str, dict] = {}
+    for name, record, _ in cells:
+        text = (
+            None
+            if record.transcript_path is None
+            else _read_transcript(output / name / record.transcript_path)
+        )
+        if text is None:
+            blocks[name] = {"transcript": False}
+            continue
+        timeline = _read_transcript(output / name / TIMELINE_NAME)
+        evidence = collect_evidence(
+            text,
+            timeline=timeline,
+            overlay=overlay,
+            visible_texts=visible_texts or [],
+        )
+        blocks[name] = {"transcript": True, **evidence.to_block()}
+    return blocks
+
+
 def pathology_context(
     task_dir: Path, manifest: TaskManifest
 ) -> tuple[OverlaySpec | None, list[str]]:
@@ -315,10 +361,14 @@ def summarize_output(
         pathology = compute_pathology(
             output, cells, task_dir=task_dir, manifest=manifest
         )
+        evidence = compute_evidence(
+            output, cells, task_dir=task_dir, manifest=manifest
+        )
         summary = compute_summary(
             cells,
             oracle_visibility=manifest.oracle_visibility,
             pathology=pathology,
+            evidence=evidence,
         )
     except ValueError as exc:
         raise SatyrnError(f"summarize: {exc}") from exc

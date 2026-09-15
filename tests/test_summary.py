@@ -599,3 +599,26 @@ def test_summary_rejects_malformed_deadline_provenance() -> None:
                 }
             },
         )
+
+
+def test_summary_evidence_must_name_the_cells_in_order_and_is_written_when_present(tmp_path: Path) -> None:
+    first = dataclasses.replace(make_record(AttemptCode.OK, Verdict.PASS), attempt_dir="t-1")
+    second = dataclasses.replace(make_record(AttemptCode.OK, Verdict.PASS), attempt_dir="t-2")
+    cells = [("t-1", first, None), ("t-2", second, None)]
+    evidence = {"t-1": {"transcript": False}, "t-2": {"transcript": True, "turns": 3}}
+    summary = compute_summary(cells, oracle_visibility="visible", pathology=absent_pathology(cells), evidence=evidence)
+    path = tmp_path / "summary.json"
+    write_summary(path, summary)
+    assert json.loads(path.read_text())["evidence"] == evidence
+    with pytest.raises(ValueError, match="evidence must name exactly the cells"):
+        dataclasses.replace(summary, evidence={"t-2": evidence["t-2"], "t-1": evidence["t-1"]})
+    with pytest.raises(ValueError, match="boolean transcript"):
+        dataclasses.replace(summary, evidence={"t-1": {}, "t-2": {"transcript": True}})
+
+
+def test_a_summary_built_without_evidence_writes_no_evidence_key(tmp_path: Path) -> None:
+    cells = [("t-1", dataclasses.replace(make_record(AttemptCode.OK, Verdict.PASS), attempt_dir="t-1"), None)]
+    summary = compute_summary(cells, oracle_visibility="visible", pathology=absent_pathology(cells))
+    path = tmp_path / "summary.json"
+    write_summary(path, summary)
+    assert "evidence" not in json.loads(path.read_text())

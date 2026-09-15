@@ -59,6 +59,9 @@ class Summary:
     contract_digest: str | None = None
     attempt_timeout: float | None = None
     deadline_provenance: dict[str, dict] | None = None
+    #: Per-cell evidence for every cell whatever its code (``cell_evidence``);
+    #: null only on a summary built without the binder.
+    evidence: dict[str, dict] | None = None
 
     def __post_init__(self) -> None:
         if self.n < 0 or self.attempted < 0 or self.refused < 0:
@@ -83,6 +86,8 @@ class Summary:
             ):
                 raise ValueError("flagged + clean + unmeasured must equal graded")
         _validate_pathology(self.pathology, set(self.cells))
+        if self.evidence is not None:
+            _validate_evidence(self.evidence, self.cells)
         if self.attempt_timeout is not None and (
             type(self.attempt_timeout) not in (int, float)
             or not math.isfinite(self.attempt_timeout)
@@ -164,6 +169,17 @@ def _validate_pathology(pathology: dict[str, dict], cell_names: set[str]) -> Non
         raise ValueError("each pathology block must carry a boolean measured")
 
 
+def _validate_evidence(evidence: dict[str, dict], cells: Sequence[str]) -> None:
+    """Raise ValueError unless evidence names exactly the cells, in order."""
+    if list(evidence) != list(cells):
+        raise ValueError("evidence must name exactly the cells, in cell order")
+    if any(
+        not isinstance(block, dict) or type(block.get("transcript")) is not bool
+        for block in evidence.values()
+    ):
+        raise ValueError("each evidence block must carry a boolean transcript")
+
+
 def absent_pathology(cells: Sequence[AttemptCell]) -> dict[str, dict]:
     """One unmeasured block per cell, keyed in cell order.
 
@@ -181,6 +197,7 @@ def compute_summary(
     *,
     oracle_visibility: str,
     pathology: dict[str, dict],
+    evidence: dict[str, dict] | None = None,
 ) -> Summary:
     if not cells:
         raise ValueError("compute_summary requires at least one cell")
@@ -273,6 +290,7 @@ def compute_summary(
         rung=rung,
         contract_digest=digest,
         deadline_provenance=deadline_provenance or None,
+        evidence=None if evidence is None else {name: evidence[name] for name, _, _ in cells},
     )
 
 
@@ -284,4 +302,6 @@ def write_summary(path: Path, summary: Summary) -> None:
         data.pop("attempt_timeout")
     if summary.deadline_provenance is None:
         data.pop("deadline_provenance")
+    if summary.evidence is None:
+        data.pop("evidence")
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")

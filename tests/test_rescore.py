@@ -23,7 +23,12 @@ from satyrn_evals.manifest import (
     resolve_task,
 )
 from satyrn_evals.receipt import Receipt
-from satyrn_evals.rescore import compute_pathology, regrade_attempt, summarize_output
+from satyrn_evals.rescore import (
+    compute_evidence,
+    compute_pathology,
+    regrade_attempt,
+    summarize_output,
+)
 from satyrn_evals.summary import ABORTED_NAME, SUMMARY_NAME
 from satyrn_evals.verdict import Verdict
 
@@ -982,6 +987,45 @@ def test_regrade_reclassification_is_idempotent(tmp_path: Path) -> None:
     cell = _refusal_cell(tmp_path / "run", "cell-1", _OOM_TRANSCRIPT)
     assert regrade_attempt(cell, tasks_root=DEFAULT_TASKS_ROOT) is not None
     assert regrade_attempt(cell, tasks_root=DEFAULT_TASKS_ROOT) is None
+
+
+def _partial_leak(payload: str) -> str:
+    """A timed-out cell's transcript: the leak is read, nothing closes the turn."""
+    return "\n".join(_leaky_transcript(payload).splitlines()[:5]) + "\n"
+
+
+def test_evidence_scans_a_timed_out_hidden_cell_that_pathology_cannot_measure(tmp_path: Path) -> None:
+    output, task_dir, manifest = _hidden_setup(tmp_path)
+    name, rec, receipt = _pathology_cell(output, "hidden-task-1", task="hidden-task", transcript=_partial_leak(_HIDDEN_OVERLAY))
+    timed_out = replace(
+        rec, outcome=AttemptOutcome.REFUSED, code=AttemptCode.COMMAND_TIMEOUT, command_exit=None,
+        verdict=None, receipt_path=None, patch_path=None, patch_digest=None,
+    )
+    cells = [(name, timed_out, receipt)]
+    assert compute_pathology(output, cells, task_dir=task_dir, manifest=manifest)[name]["measured"] is False
+    block = compute_evidence(output, cells, task_dir=task_dir, manifest=manifest)[name]
+    assert block["transcript"] is True and block["overlay_windows"] == 1
+    assert block["timeline"] is False
+
+
+def test_evidence_for_a_clean_hidden_cell_reports_zero_windows(tmp_path: Path) -> None:
+    output, task_dir, manifest = _hidden_setup(tmp_path)
+    cells = [_pathology_cell(output, "hidden-task-1", task="hidden-task", transcript=_GOOD_TRANSCRIPT)]
+    assert compute_evidence(output, cells, task_dir=task_dir, manifest=manifest)["hidden-task-1"]["overlay_windows"] == 0
+
+
+def test_evidence_says_when_a_cell_has_no_transcript_and_reads_a_timeline_when_present(tmp_path: Path) -> None:
+    output, task_dir, manifest = _visible_setup(tmp_path)
+    absent = _pathology_cell(output, "format_number-1", transcript=None)
+    present = _pathology_cell(output, "format_number-2", transcript=_GOOD_TRANSCRIPT)
+    (output / "format_number-2" / "timeline.jsonl").write_text(
+        '{"at": 1.0, "event": "start", "toolCallId": "b", "toolName": "bash"}\n', encoding="utf-8"
+    )
+    blocks = compute_evidence(output, [absent, present], task_dir=task_dir, manifest=manifest)
+    assert blocks["format_number-1"] == {"transcript": False}
+    assert blocks["format_number-2"]["timeline"] is True
+    assert blocks["format_number-2"]["unfinished_commands"] == 1
+    assert blocks["format_number-2"]["overlay_windows"] is None
 
 
 def test_regrade_reverts_a_reclassification_the_rule_no_longer_supports(
