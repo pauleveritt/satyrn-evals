@@ -177,7 +177,7 @@ record and is the same for both arms, which stay interleaved.
 ### Workloads
 
 **Why a set.** A claim resting on one hand-picked task is a claim about that
-task. The ceiling set is four tasks of two shapes (repair, build) from two
+task. The ceiling set is three tasks of two shapes (repair, build) from two
 sources (AgentClinic, this repository), plus two held-out tasks.
 
 **Admission.** A task enters the ceiling set when, on declared sampling and
@@ -186,16 +186,16 @@ and no passing cell read material outside its worktree. A task enters the
 floor set when bare Pi passes 4 of 4. A ceiling candidate that passes 2 of 4
 or more moves to the floor set.
 
-| ceiling candidate | shape | source | evidence | admitted when |
-|---|---|---|---|---|
-| `agentclinic-repair-depth-3` R1 | repair, three seams | AgentClinic, imported with provenance | 0 of 4 uncontaminated at 900 s | 4 attended cells under isolation |
-| `selfhost-run-record-gate` R1-plan | build, module + CLI wiring | this repo, `cc9ab53` → `b253c99` | 0 of 4 on the rule; three timeouts, one cell read the answer key | harvest fixed; 4 attended cells |
-| `selfhost-guard-prefixes` R1-plan | repair, one regex | this repo, `3e996a1` → `4a54743` | 1 of 4; two timeouts with zero suite runs | 4 attended cells |
-| `selfhost-review-script` R1-plan | build, pure core + CLI | this repo, Phase 0 plan Task 9 | untested | qualified; 4 attended cells |
+| ceiling task | shape | source | admission, 2026-09-14/15 (isolated, k = 3, 32k/48) |
+|---|---|---|---|
+| `agentclinic-repair-depth-3` R1 | repair, three seams | AgentClinic, imported with provenance | 0 of 4 |
+| `selfhost-run-record-gate` R1-plan | build, module + CLI wiring | this repo, `cc9ab53` → `b253c99` | 0 of 4, twice |
+| `selfhost-docs-linter` R1-plan | build, linter rewrite | this repo, Phase 0 plan Task 7 | 1 of 4, clean |
 
-**Floor set.** `agentclinic-repair-depth-2` R1 (4 of 4, 85–156 s) and
-`selfhost-docs-linter` R1-plan, re-measured on the fixed harvest: its four
-fails were the adapter's, and every model finished. `misleading-locus` and
+**Floor set.** `agentclinic-repair-depth-2` R1, `selfhost-guard-prefixes`
+R1-plan and `selfhost-review-script` R1-plan, each 4 of 4 clean at admission
+(records under `records/`; the 2026-09-14 self-hosted results predate the
+generator fix and are superseded). `misleading-locus` and
 `complaint-lifecycle` leave the claim; Ornith passes both 4 of 4.
 
 **Held-out tasks.** Two tasks are cut by the generator at batch freeze, in
@@ -258,8 +258,8 @@ the Engine does nothing. No task stops early for a win: at n = 6 that needs
 
 A ceiling task is 24 cells, worst case 12 h at k = 1, expected 6–8 h. At k = 2
 two ceiling tasks share a night when their expected hours fit the cap.
-Schedule: four ceiling tasks, one held-out night, one floor night — six nights
-at k = 1, three to four at k = 2. A night the cap stops early completes the
+Schedule: three ceiling tasks, one held-out night, one floor night — five nights
+at k = 1, two to three at k = 3. A night the cap stops early completes the
 next night under the same record.
 
 **Per task:** one-sided Fisher exact, α = 0.05, on pass within budget.
@@ -267,10 +267,10 @@ Stipulated effect: Baseline ≤ 0.10, Engine ≥ 0.60 (power 0.79 at n = 12). A
 ceiling task whose Phase 4 Baseline rate is 2 of 12 or more is under-powered: it
 is reported and supplies no win.
 
-**Release one wins** when at least 2 of the 4 ceiling tasks reject for the
+**Release one wins** when at least 2 of the 3 ceiling tasks reject for the
 Engine, no ceiling or held-out task rejects for Baseline, and every floor
 task holds parity (the test for Baseline better does not reject). Under the
-null, two or more of four rejecting has probability 0.014; the campaign
+null, two or more of three rejecting has probability at most 0.007; the campaign
 record states it and no correction is applied.
 
 If the four engine pieces are in place and no ceiling task rejects, release
@@ -383,8 +383,8 @@ cells across both arms, 720 minutes. The M1 Pro is not used.
   leak of one is a leak of both.
 - Admission may empty the ceiling set: declared sampling or isolation may
   lift Baseline. Then release one reports the ceiling it found and stops.
-- Three to six nights of exclusive GPU is the price of a claim resting on
-  four tasks. A stopped night adds one. Concurrency may interact with the
+- Two to five nights of exclusive GPU is the price of a claim resting on
+  three tasks. A stopped night adds one. Concurrency may interact with the
   model's behaviour through prefill contention; the probe measures
   throughput, not behaviour, and Phase 3's route proof runs at k.
 - What is not written down is lost; the contract and checks are the
