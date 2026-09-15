@@ -219,12 +219,17 @@ plan-anchor)`. `base/` is `git archive BASE` minus plans, specs, `.claude`,
 `.github`, `PROVENANCE.md` and the hidden files, plus a `.gitignore` for
 runtime residue. `overlay/` holds HIDDEN at GOOD. `known-good.patch` is GOOD's
 diff restricted to `files`; `known-broken.patch` stubs the target.
-`manifest.json` carries provenance shas, the task-tree digest and the prompt
-digest. `tools/cut_task.py` builds it deterministically. Qualification is
-offline: `grade` passes known-good and fails known-broken with zero
-collection errors; a fake attempt that writes GOOD's files, leaves some
-untracked and commits the rest is harvested whole and graded pass; the hidden
-suite passes GOOD three times running. Every merged phase yields candidates.
+`manifest.json` carries provenance shas, the task-tree digest, the prompt
+digest and `ignored_paths: ["PROVENANCE.md"]`: the base keeps `AGENTS.md`,
+which asks for provenance rows, so grading drops those files from a patch
+before the allowlist and lists them on the receipt. The prompt writes a
+hidden path as its directory (`tests/`). `tools/cut_task.py` builds it
+deterministically. Qualification is offline: `grade` passes known-good and
+fails known-broken with zero collection errors; a fake attempt that writes
+GOOD's files and `PROVENANCE.md`, leaves some untracked and commits the rest
+is harvested whole and graded pass; the R1-plan prompt names no path outside
+`base/` and `files`; the hidden suite passes GOOD three times running. Every
+merged phase yields candidates.
 
 **Conditions.** Every workload runs cold. Warm is a declared secondary on
 `complaint-lifecycle` only: a recorded developer prefix replayed

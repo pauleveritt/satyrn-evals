@@ -18,8 +18,15 @@ spec file under ``tools/task_specs/`` (spec, "The self-hosted generator"):
 The R1-plan prompt is the plan task's title, Files, Interfaces minus its
 Consumes lines, and the prose of every step with fenced code removed, plus
 the literal message formats the hidden suite asserts (the spec's ``formats``
-text). HIDDEN paths and basenames are written as "its test module": a
-contract that names a grader-only path is refused at load.
+text). A HIDDEN path is written as its directory (``tests/test_x.py`` becomes
+``tests/``) and a bare HIDDEN basename as "a test module under tests/": a
+contract that names a grader-only path is refused at load, and the prompt
+must still name a directory the model can put its own tests in.
+
+The manifest's ``ignored_paths`` is ``PROVENANCE.md``: ``base/`` drops it but
+keeps ``AGENTS.md``, which requires a row per file, so grading drops a
+patch's ``PROVENANCE.md`` instead of refusing the verdict. Qualification's
+fake attempt writes the same files (``SELF_HOSTED_CONVENTION_FILES``).
 
 The expected test ids are the hidden suite collected at GOOD by this
 interpreter's pytest, with the spec's ``oracle_env`` applied.
@@ -47,6 +54,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from satyrn_evals.attempt import contract_digest
+from satyrn_evals.qualify import SELF_HOSTED_CONVENTION_FILES
 from satyrn_evals.task_tree import tree_digest
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -55,8 +63,8 @@ RUNG = "R1-plan"
 REPO_URL = "https://github.com/pauleveritt/satyrn-evals.git"
 EXCLUDED_PREFIXES = ("docs/superpowers/plans/", "docs/superpowers/specs/", ".claude/", ".github/")
 EXCLUDED_FILES = frozenset({"PROVENANCE.md"})
+IGNORED_PATHS = SELF_HOSTED_CONVENTION_FILES
 RESIDUE_IGNORES = (".pytest_cache/", "__pycache__/", ".ruff_cache/", ".venv/")
-HIDDEN_STAND_IN = "its test module"
 ORACLE = ("python", "-m", "pytest", "-p", "satyrn_evals.oracle_hook")
 PUBLIC_SUITE = ("uv", "run", "pytest", "-q")
 _SHA = re.compile(r"\A[0-9a-f]{40}\Z")
@@ -123,6 +131,8 @@ def load_spec(path: Path) -> TaskSpec:
     if not isinstance(body["formats"], str):
         raise CutError(f"spec {path}: formats must be a string (empty when the suite asserts none)")
     hidden = _strings(body["hidden"], "hidden")
+    if any("/" not in h for h in hidden):
+        raise CutError(f"spec {path}: every hidden file must sit under a directory (the prompt names the directory)")
     if len({Path(h).name for h in hidden}) != len(hidden):
         raise CutError(f"spec {path}: hidden basenames must be distinct (the overlay is flattened)")
     return TaskSpec(
@@ -186,10 +196,15 @@ def r1_plan_prompt(section: str, hidden: Sequence[str], formats: str) -> str:
     if formats.strip():
         prompt += "\n\nMessage formats the acceptance suite asserts, match them exactly: " + formats.strip()
     for path in sorted(hidden, key=len, reverse=True):
-        prompt = prompt.replace(path, HIDDEN_STAND_IN)
+        prompt = prompt.replace(path, hidden_directory(path))
     for path in hidden:
-        prompt = prompt.replace(Path(path).name, HIDDEN_STAND_IN)
+        prompt = prompt.replace(Path(path).name, f"a test module under {hidden_directory(path)}")
     return prompt + "\n"
+
+
+def hidden_directory(path: str) -> str:
+    """The directory a HIDDEN path is written as, with a trailing slash (``tests/``)."""
+    return f"{Path(path).parent.as_posix()}/"
 
 
 def broken_patch(base_texts: Mapping[str, str | None], broken: Mapping[str, str]) -> str:
@@ -224,6 +239,7 @@ def manifest_body(
         "oracle": oracle,
         "expected_test_ids": list(expected_test_ids),
         "source_paths": [*spec.files, "tests"],
+        "ignored_paths": list(IGNORED_PATHS),
         "public_suite": list(PUBLIC_SUITE),
         "fixtures": {"known_good": "fixtures/known-good.patch", "known_broken": "fixtures/known-broken.patch"},
         "grader_overlay": "overlay",

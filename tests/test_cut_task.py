@@ -7,7 +7,7 @@ import pytest
 
 from satyrn_evals.attempt import contract_digest
 from tools.cut_task import (
-    HIDDEN_STAND_IN,
+    IGNORED_PATHS,
     RUNG,
     CutError,
     broken_patch,
@@ -72,6 +72,7 @@ def test_a_complete_spec_loads(tmp_path: Path) -> None:
         ({"broken": {}}, "broken must name at least one file"),
         ({"broken": {"tools/x.py": "no newline"}}, "must end with a newline"),
         ({"hidden": ["tests/a/test_x.py", "tests/b/test_x.py"]}, "basenames must be distinct"),
+        ({"hidden": ["test_x.py"]}, "must sit under a directory"),
         ({"plan": {"path": "p", "heading": "h"}}, "plan must be"),
     ],
 )
@@ -122,8 +123,14 @@ def test_the_r1_plan_rung_keeps_prose_and_produces_and_drops_code_consumes_and_h
     assert prompt.startswith("Chunk 1: The x tool\n\nFiles:\n")
     assert "Produces: `f() -> int`" in prompt
     assert "Consumes" not in prompt and "def test_f" not in prompt and "**" not in prompt and "- [ ]" not in prompt
-    assert "test_x.py" not in prompt and f"`tools/x.py`, `{HIDDEN_STAND_IN}`" in prompt
+    assert "test_x.py" not in prompt and "its test module" not in prompt
+    assert "- Create: `tools/x.py`, `tests/`" in prompt and "`uv run pytest tests/ -q`" in prompt
     assert prompt.endswith("Message formats the acceptance suite asserts, match them exactly: `f` returns `1`.\n")
+
+
+def test_a_bare_hidden_basename_is_written_as_a_test_module_under_its_directory() -> None:
+    prompt = r1_plan_prompt("### Task 1: X\n\nPut the cases in test_x.py.\n", ["tests/unit/test_x.py"], "")
+    assert prompt == "Task 1: X\n\nPut the cases in a test module under tests/unit/.\n"
 
 
 def test_the_r1_plan_rung_has_no_formats_paragraph_when_the_suite_asserts_none() -> None:
@@ -155,6 +162,7 @@ def test_the_manifest_pins_the_rung_the_provenance_and_both_digests(tmp_path: Pa
     assert body["contract"] == "prompt\n" and body["contracts"] == {RUNG: "prompt\n"}
     assert body["oracle"] == ["env", "PYTHONPATH=src", "python", "-m", "pytest", "-p", "satyrn_evals.oracle_hook"]
     assert body["source_paths"] == ["tools/x.py", "tests"]
+    assert body["ignored_paths"] == list(IGNORED_PATHS) == ["PROVENANCE.md"]
     assert body["provenance"] == {"repo": "https://github.com/pauleveritt/satyrn-evals.git", "base_sha": SHA_A, "fix_sha": SHA_B}
     assert body["digests"] == {"task_tree": "d" * 64, "prompt": contract_digest("prompt\n")}
 
