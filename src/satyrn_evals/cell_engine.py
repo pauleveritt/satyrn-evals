@@ -29,6 +29,7 @@ import tarfile
 from collections.abc import Mapping
 from pathlib import Path
 
+from satyrn_evals.arms import Arm
 from satyrn_evals.cell import CELLS_ROOT, grant_maintainer, share_with_cell
 from satyrn_evals.errors import UsageError
 from satyrn_evals.hygiene import overlay_copies, overlay_digests
@@ -100,6 +101,46 @@ def verify_export(dest: Path, digests: Mapping[str, str] | None = None) -> str:
     if leaks := export_leaks(dest, overlay_digests() if digests is None else digests):
         raise EngineExportError(f"export {dest} holds grader material: {'; '.join(leaks)}")
     return sha
+
+
+def arm_export_problems(arm: Arm, cells_root: Path = CELLS_ROOT) -> list[str]:
+    """Why the export an Engine arm's argv names is not the engine the arm pins; empty when it is.
+
+    ``launch`` and ``launch --preflight`` run this before any cell: the arm
+    file names its export (``--engine-repo``), and the pins are claims until
+    the export is checked against them. The export must be
+    ``engine-<engine_commit>`` under ``cells_root``, pass ``verify_export``
+    (maintainer-owned, read-only, a complete marker, no grader material),
+    hold the pinned commit in its marker, and hold every pinned
+    ``packages/engine`` source byte for byte. Other arms have no export.
+    """
+    if arm.arm != "engine":
+        return []
+    argv = list(arm.argv)
+    if "--engine-repo" not in argv[:-1]:
+        return ["the engine arm's argv names no --engine-repo export (satyrn-evals cell-engine)"]
+    export = Path(argv[argv.index("--engine-repo") + 1])
+    if export.name != f"engine-{arm.pins.engine_commit}":
+        return [f"the engine export {export} is not engine-{arm.pins.engine_commit}, the arm's pinned commit"]
+    if not export.resolve().is_relative_to(cells_root.resolve()):
+        return [f"the engine export {export} is not under {cells_root}"]
+    try:
+        sha = verify_export(export)
+    except EngineExportError as exc:
+        return [str(exc)]
+    if sha != arm.pins.engine_commit:
+        return [f"the engine export {export} holds {sha}, not the arm's pinned {arm.pins.engine_commit}"]
+    problems: list[str] = []
+    for name, digest in sorted(arm.pins.digests.items()):
+        source = export / "packages" / "engine" / name
+        try:
+            actual = hashlib.sha256(source.read_bytes()).hexdigest()
+        except OSError:
+            problems.append(f"the engine export {export} has no packages/engine/{name}")
+            continue
+        if actual != digest:
+            problems.append(f"the engine export {export} has packages/engine/{name} other than the pinned bytes")
+    return problems
 
 
 def export_engine(engine_repo: Path, commit: str, *, root: Path = CELLS_ROOT, python: Path = CELL_PYTHON) -> Path:

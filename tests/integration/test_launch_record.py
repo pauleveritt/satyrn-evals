@@ -22,7 +22,8 @@ from integration.test_attempt import (
     _engine_repo,  # type: ignore[missing-import]  # pytest sibling resolution
 )
 from integration.test_isolated_arms import _cell_pi  # type: ignore[missing-import]
-from satyrn_evals.arms import ENGINE_SOURCES, ENGINE_TOOLS
+from satyrn_evals.arms import load_arm
+from satyrn_evals.attempt_engine import RECEIPT_NAME
 from satyrn_evals.cell import CELLS_ROOT
 from satyrn_evals.cell_engine import export_engine
 from satyrn_evals.cli import main
@@ -32,6 +33,7 @@ from satyrn_evals.summary import SUMMARY_NAME
 pytestmark = pytest.mark.integration
 
 TASKS = Path(__file__).parent / "data" / "tasks"
+ENGINE_ARM = Path(__file__).resolve().parents[2] / "arms" / "engine-ornith15-9b.json"
 ENTRY = "import sys; from satyrn_evals.cli import main; sys.exit(main())"
 
 
@@ -39,7 +41,9 @@ def _git(repo: Path, *argv: str) -> None:
     subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid", *argv], cwd=repo, check=True, capture_output=True)
 
 
-def _frozen_record(tmp_path: Path, name: str, *, arm: str, n: int, k: int, max_minutes: int = 60) -> Path:
+def _frozen_record(
+    tmp_path: Path, name: str, *, arm: str, n: int, k: int, max_minutes: int = 60, model: str = "omlx/fixture"
+) -> Path:
     repo = tmp_path / "records"
     if not (repo / ".git").exists():
         repo.mkdir()
@@ -48,7 +52,7 @@ def _frozen_record(tmp_path: Path, name: str, *, arm: str, n: int, k: int, max_m
     assert main([
         "record", "new", "--output", str(path), "--task", "calc-build", "--tasks-root", str(TASKS), "--arm", arm,
         "--rung", "contract", "--n", str(n), "--k", str(k), "--purpose", "development",
-        "--max-minutes", str(max_minutes), "--model", "omlx/fixture",
+        "--max-minutes", str(max_minutes), "--model", model,
     ]) == 0
     _git(repo, "add", path.name)
     _git(repo, "commit", "-qm", name)
@@ -61,15 +65,28 @@ def _arm_file(tmp_path: Path, name: str, argv: list[str]) -> Path:
         "server_model": "fixture",
         "pins": {"pi": "0.85.1", "engine_commit": None, "digests": {}},
     }
-    if name == "engine":
-        body["tools"] = list(ENGINE_TOOLS)
-        body["pins"] = {
-            "pi": "0.85.1", "engine_commit": "0" * 40,
-            "digests": {source: "0" * 64 for source in ENGINE_SOURCES},
-        }
     path = tmp_path / f"{name}.json"
     path.write_text(json.dumps(body))
     return path
+
+
+def _engine_arm(tmp_path: Path, export: Path, *, model: str | None = None) -> Path:
+    """The committed Engine arm, byte for byte but for its export path (a scratch export of the same commit)
+    and, for a record interleaved with the fixture Baseline, its model."""
+    body = json.loads(ENGINE_ARM.read_text())
+    repo = body["argv"].index("--engine-repo") + 1
+    body["argv"][repo] = os.fspath(export)
+    if model is not None:
+        body["model"], body["server_model"] = model, model.split("/", 1)[1]
+    path = tmp_path / "engine.json"
+    path.write_text(json.dumps(body))
+    return path
+
+
+def _pinned_export(cell_scratch: Path) -> Path:
+    commit = load_arm(ENGINE_ARM).pins.engine_commit
+    assert commit is not None
+    return export_engine(_engine_repo(), commit, root=cell_scratch)
 
 
 def _baseline_arm(tmp_path: Path) -> Path:
@@ -95,11 +112,7 @@ def test_a_fake_completes_a_k2_interleaved_record_under_isolation_through_the_la
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, cell_scratch: Path
 ) -> None:
     _cell_pi(cell_scratch, monkeypatch, "write")  # the Engine arm's deliver commits; Baseline's harvest takes the files
-    export = export_engine(_engine_repo(), "HEAD", root=cell_scratch)
-    engine = _arm_file(
-        tmp_path, "engine",
-        [sys.executable, "-m", "satyrn_evals.attempt_engine", "--engine-repo", os.fspath(export), "--uv-bin", "uv"],
-    )
+    engine = _engine_arm(tmp_path, _pinned_export(cell_scratch), model="omlx/fixture")
     record = _frozen_record(tmp_path, "interleaved", arm="baseline+engine", n=2, k=2)
     before = _attempt_dirs()
     assert _launch(record, [_baseline_arm(tmp_path), engine], tmp_path / "runs") == 0
@@ -110,6 +123,28 @@ def test_a_fake_completes_a_k2_interleaved_record_under_isolation_through_the_la
         assert result["arms"][arm]["passes"] == 2 and result["arms"][arm]["code_counts"] == {"OK": 2}
         summary = json.loads((tmp_path / "runs" / "interleaved" / arm / SUMMARY_NAME).read_text())
         assert summary["n"] == 2 and summary["verdict_counts"]["pass"] == 2
+    assert _attempt_dirs() <= before
+
+
+def test_the_committed_engine_arm_completes_a_route_proof_shaped_record_under_isolation_through_the_launcher(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, cell_scratch: Path
+) -> None:
+    """Phase 3's route-proof cell against a fake: one Engine cell, k = 1, the committed arm on the record's model,
+    its export checked against its pins, the receipt kept. ``development`` only because the fake ``pi`` is a seam."""
+    _cell_pi(cell_scratch, monkeypatch, "write")
+    engine = _engine_arm(tmp_path, _pinned_export(cell_scratch))
+    record = _frozen_record(tmp_path, "route-proof", arm="engine", n=1, k=1, model="omlx/Ornith-1.5-9B-MLX-8bit")
+    before = _attempt_dirs()
+    assert _launch(record, [engine], tmp_path / "runs") == 0
+    result = _result(record)
+    assert result["status"] == "complete" and [(c["arm"], c["code"], c["verdict"]) for c in result["cells"]] == [
+        ("engine", "OK", "pass")
+    ]
+    receipt = json.loads((tmp_path / "runs" / "route-proof" / "engine" / result["cells"][0]["attempt_dir"] / RECEIPT_NAME).read_text())
+    assert (receipt["code"], receipt["validation"]) == ("OK", "passed")
+    assert set(receipt["guard_firings"]) >= {"scope_refused", "symbol_preserved", "command_bounded"}
+    ledger = json.loads((tmp_path / "runs" / "route-proof" / LEDGER_NAME).read_text())
+    assert ledger["sittings"][0]["preflight"]["tolerated"] == [os.fspath(cell_scratch)]
     assert _attempt_dirs() <= before
 
 

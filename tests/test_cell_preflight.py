@@ -279,3 +279,18 @@ def test_preflight_fails_on_a_cell_problem_or_the_test_path_seam(
 
 def test_the_preflight_module_names_its_runner_default() -> None:
     assert cell_preflight.preflight_cell.__kwdefaults__["run"] is subprocess.run
+
+
+ENGINE_ARM = REPO / "arms" / "engine-ornith15-9b.json"
+
+
+def test_preflight_for_the_engine_arm_checks_its_export(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(cli_module, "preflight_cell", lambda **kw: CellPreflight([], {"pi_version": "0.85.1"}))
+    record = _record(tmp_path, arm="engine", purpose="route-proof")
+    monkeypatch.setattr(cli_module, "arm_export_problems", lambda arm: [])
+    assert main(["launch", "--preflight", record, "--arm", str(ENGINE_ARM), "--no-hunt"]) == 0
+    monkeypatch.setattr(cli_module, "arm_export_problems", lambda arm: [f"export for {arm.arm} is missing"])
+    assert main(["launch", "--preflight", record, "--arm", str(ENGINE_ARM), "--no-hunt"]) == 1
+    assert "launch preflight FAILED: export for engine is missing" in capsys.readouterr().err

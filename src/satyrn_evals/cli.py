@@ -15,7 +15,7 @@ from satyrn_evals.budget import AttemptBudget
 from satyrn_evals.capture import capture
 from satyrn_evals.capture_record import CaptureOutcome
 from satyrn_evals.cell import CELL_PATH_PREFIX_ENV, Isolation
-from satyrn_evals.cell_engine import export_engine
+from satyrn_evals.cell_engine import arm_export_problems, export_engine
 from satyrn_evals.cell_preflight import preflight_cell
 from satyrn_evals.census import build_arg_parser as build_census_parser
 from satyrn_evals.census import run_cli as run_census
@@ -300,7 +300,7 @@ def _launch_preflight(args: argparse.Namespace) -> int:
         tasks_root=tasks_root,
         hunt_root=None if args.no_hunt else "/",
     )
-    problems = list(report.problems)
+    problems = [*report.problems, *arm_export_problems(arm)]
     if os.environ.get(CELL_PATH_PREFIX_ENV):
         problems.append(f"{CELL_PATH_PREFIX_ENV} is set; it is a test seam, never a sitting's PATH")
     print(json.dumps({"record": args.preflight, "arm": args.arm[0], "problems": problems, **report.checked}, indent=2))

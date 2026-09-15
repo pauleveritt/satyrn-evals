@@ -11,7 +11,9 @@ The spec's launcher gates ("Process"), in order, before any cell:
 3. ``gate``: the record is frozen (tracked, unchanged against ``HEAD``), the
    previous result is committed, n and wall clock are under the cadence cap,
    and a deciding purpose is isolated;
-4. under isolation, the cell preflight (``cell_preflight.preflight_cell``) is clean;
+4. under isolation, the cell preflight (``cell_preflight.preflight_cell``) is clean,
+   and an Engine arm's export is the commit and bytes it pins
+   (``cell_engine.arm_export_problems``);
 5. ``scripts/preflight_settings.py`` exits 0 for every arm (``--cell`` under
    isolation); its provenance block is kept for the drift check.
 
@@ -44,6 +46,7 @@ from typing import TextIO
 from satyrn_evals.arms import Arm, build_argv, load_arm
 from satyrn_evals.attempt import resolve_contract
 from satyrn_evals.cell import CELL_PATH_PREFIX_ENV, CELLS_ROOT, Isolation
+from satyrn_evals.cell_engine import arm_export_problems
 from satyrn_evals.cell_preflight import CellPreflight, preflight_cell
 from satyrn_evals.errors import SatyrnError
 from satyrn_evals.launch import (
@@ -129,6 +132,7 @@ class LaunchFacts:
     preflight: Callable[..., CellPreflight] = preflight_cell
     settings: Callable[[Path, bool], tuple[int, str]] = settings_provenance
     spawn_cell: Callable[[Path, Path], CellProcess] = popen_cell
+    engine_export: Callable[[Arm], list[str]] = arm_export_problems
 
 
 def _sha256(path: Path) -> str:
@@ -287,6 +291,8 @@ def launch_record(
         )
         problems += report.problems
         checked["preflight"] = report.checked
+        for name, (_, arm) in arms.items():
+            problems += [f"{name}: {problem}" for problem in facts.engine_export(arm)]
     baseline_settings: dict[str, str] = {}
     if settings:
         for name, (path, _) in arms.items():

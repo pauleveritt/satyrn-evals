@@ -6,13 +6,21 @@ planted file proves the refusal and its removal proves the silence.
 """
 
 import json
+import os
 import stat
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
+from integration.cell_support import (
+    run_as_cell,  # type: ignore[missing-import]  # pytest sibling resolution
+)
+from integration.test_attempt import _engine_repo  # type: ignore[missing-import]
 from satyrn_evals.arms import load_arm
+from satyrn_evals.cell import cell_environment
+from satyrn_evals.cell_engine import arm_export_problems, export_engine
 from satyrn_evals.cell_preflight import preflight_cell
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
 
@@ -81,3 +89,22 @@ def test_the_hunt_finds_a_planted_answer_key_and_nothing_once_it_is_gone(
 def test_the_cell_users_pi_models_are_read_as_the_cell(cell_scratch: Path) -> None:
     models = read_cell_pi_models()
     assert "omlx" in models["providers"], json.dumps(models)[:200]
+
+
+def test_the_hunt_run_as_the_cell_over_the_pinned_engine_export_finds_nothing(
+    cell_scratch: Path, hermetic_cells_root: Path
+) -> None:
+    """The 2026-09-15 hunt refused on the whole-tree export; the allowlisted export of the same commit is silent,
+    though the cell reads it, and it is the engine the committed arm pins."""
+    committed = load_arm(REPO / "arms" / "engine-ornith15-9b.json")
+    assert committed.pins.engine_commit is not None
+    export = export_engine(_engine_repo(), committed.pins.engine_commit, root=cell_scratch)
+    found = run_as_cell(
+        ["/usr/bin/find", os.fspath(export / "packages"), "-name", "engine.ts"], cwd=export,
+        environment=cell_environment(parent=cell_scratch),
+    )
+    assert found.stdout.strip() == os.fspath(export / "packages" / "engine" / "engine.ts"), found.stderr
+    report = preflight_cell(pinned_pi=PINNED, protected=(), hunt_root=str(export), cells_root=hermetic_cells_root)
+    assert report.problems == [] and report.checked["hunt_hits"] == []
+    pointed = replace(committed, argv=("satyrn-evals-attempt-engine", "--engine-repo", os.fspath(export)))
+    assert arm_export_problems(pointed) == []

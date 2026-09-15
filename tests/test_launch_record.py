@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from satyrn_evals.arms import Arm
 from satyrn_evals.cell import CELL_PATH_PREFIX_ENV, CELLS_ROOT
 from satyrn_evals.cell_preflight import CellPreflight
 from satyrn_evals.cli import main
@@ -273,3 +274,53 @@ def test_a_night_directory_of_another_record_is_refused(tmp_path: Path) -> None:
     other.parent.mkdir()
     other.write_text(first.read_text().replace('"k": 1', '"k": 2'))
     assert "belongs to another record" in _refused(tmp_path, other, _facts())
+
+
+# --- the Engine arm: route proof --------------------------------------------
+
+ENGINE_ARM = REPO / "arms" / "engine-ornith15-9b.json"
+ROUTE_PROOF_RULE = "route proof: guards fire where retained Baseline evidence says they should; receipt read"
+
+
+def _route_proof(tmp_path: Path) -> Path:
+    body = new_record(
+        task=TASK, tasks_root=DEFAULT_TASKS_ROOT, arm="engine", model="omlx/Ornith-1.5-9B-MLX-8bit", n=1, k=1,
+        rung="R1", purpose="route-proof", isolation="isolated", mode="attended", max_minutes=60,
+        token_budget=32000, turn_budget=48, previous_result="records/x.result.json", authority="test",
+        decision_rule=ROUTE_PROOF_RULE,
+    )
+    path = tmp_path / "records" / "route-proof.json"
+    write_new_record(path, body)
+    return path
+
+
+def test_a_route_proof_record_runs_the_committed_engine_arm_on_its_export(tmp_path: Path) -> None:
+    seen: list[str] = []
+
+    def export(arm: Arm) -> list[str]:
+        seen.append(arm.arm)
+        return []
+
+    record = _route_proof(tmp_path)
+    assert launch_record(
+        record, [ENGINE_ARM], tasks_root=DEFAULT_TASKS_ROOT, runs_root=tmp_path / "runs",
+        facts=_facts(engine_export=export), poll_interval=0.0, grace=0.0,
+    ) == 3  # the fake spawn raised: interrupted
+    assert seen == ["engine"]
+    spec = json.loads((tmp_path / "runs" / "route-proof" / SLOTS_DIR / "00.spec.json").read_text())
+    commit = "341d4c450317f63e6af8958d45606cb737a131af"
+    assert spec["command"] == [
+        "satyrn-evals-attempt-engine", "--engine-repo", f"/Users/Shared/satyrn-cells/engine-{commit}",
+        "--model", "omlx/Ornith-1.5-9B-MLX-8bit",
+    ]
+    assert (spec["arm"], spec["rung"], spec["isolation"]) == ("engine", "R1", "isolated")
+
+
+def test_an_engine_export_problem_exits_1_and_runs_nothing(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    facts = _facts(engine_export=lambda arm: ["the engine export /x is not under /Users/Shared/satyrn-cells"])
+    assert launch_record(
+        _route_proof(tmp_path), [ENGINE_ARM], tasks_root=DEFAULT_TASKS_ROOT, runs_root=tmp_path / "runs",
+        facts=facts, poll_interval=0.0, grace=0.0,
+    ) == 1
+    assert "launch FAILED: engine: the engine export /x is not under" in capsys.readouterr().err
+    assert not (tmp_path / "runs").exists()
