@@ -2,27 +2,45 @@
 
 The Engine arm's ``derive`` and ``deliver`` run as the cell user, and the
 cell cannot read the maintainer's engine checkout (his home is 700). So the
-maintainer exports the pinned commit -- ``git archive``, no history -- into
-``CELLS_ROOT/engine-<commit>``, syncs its environment offline from his own
-uv cache against a Python the cell can execute (Homebrew's, world-readable;
+maintainer exports the pinned commit -- ``git archive`` of ``EXPORT_PATHS``
+only, no history -- into ``CELLS_ROOT/engine-<commit>``, syncs its
+environment offline from his own uv cache against a Python the cell can
+execute (Homebrew's, world-readable;
 uv's managed Pythons live under his home), and shares it with the group
 read-only (Ruling 10: the pinned engine stays enforceable only if the cell
 cannot write into its export -- source or ``.venv``). The marker file is
 written last, so a half-made export is never reused.
+
+The cell can read the export, and a hunting model reads whatever it can
+reach: on 2026-09-15 the launch preflight's hunt found the engine's own
+``tests/test_doc_caps.py`` in a whole-tree export, the basename of
+selfhost-docs-linter's hidden suite. So the export holds only what
+``uv sync`` builds and the cell runs, and an export holding any file named
+like, or with the bytes of, a bundled hidden grader file is refused when it
+is made and every time it is verified.
 """
 
+import hashlib
 import io
 import os
 import stat
 import subprocess
 import tarfile
+from collections.abc import Mapping
 from pathlib import Path
 
 from satyrn_evals.cell import CELLS_ROOT, grant_maintainer, share_with_cell
 from satyrn_evals.errors import UsageError
+from satyrn_evals.hygiene import overlay_copies, overlay_digests
 
 MARKER = ".satyrn-engine-export"
 CELL_PYTHON = Path("/opt/homebrew/bin/python3.14")
+#: What an export holds: the package sources ``uv sync`` builds (``src``,
+#: ``pyproject.toml``, ``uv.lock``, and ``README.md``, which hatchling's
+#: ``readme`` field refuses to build without), the extensions pi loads
+#: (``packages``), and the licence that travels with a copy. Never ``tests``,
+#: ``docs``, ``tools`` or anything else of the engine repository.
+EXPORT_PATHS: tuple[str, ...] = ("src", "packages", "pyproject.toml", "uv.lock", "README.md", "LICENSE")
 
 
 class EngineExportError(UsageError):
@@ -33,14 +51,36 @@ def export_path(commit: str, root: Path = CELLS_ROOT) -> Path:
     return root / f"engine-{commit}"
 
 
-def verify_export(dest: Path) -> str:
+def export_leaks(dest: Path, digests: Mapping[str, str]) -> list[str]:
+    """Every file under ``dest`` named like, or holding the bytes of, a hidden grader file.
+
+    ``digests`` is ``hygiene.overlay_digests``: grader-file SHA-256 to its
+    path under the tasks root. A name match is a leak even with other bytes,
+    because the preflight hunt (``cell_preflight.hunt_names``) and a hunting
+    model both look by name.
+    """
+    names = {Path(relative).name: relative for relative in digests.values()}
+    leaks = [
+        f"{Path(directory) / name} is named like the hidden {names[name]}"
+        for directory, _dirs, files in os.walk(dest)
+        for name in files
+        if name in names
+    ]
+    for path in overlay_copies(dest, dict(digests)):
+        leaks.append(f"{path} holds the bytes of the hidden {digests[hashlib.sha256(path.read_bytes()).hexdigest()]}")
+    return sorted(leaks)
+
+
+def verify_export(dest: Path, digests: Mapping[str, str] | None = None) -> str:
     """The commit this export holds, once it is confirmed safe to reuse or run (F2/R11).
 
     A cell able to rename or remove entries under a non-sticky cells root
     could plant its own directory with a matching marker; this refuses
     anything the maintainer does not still exclusively control: owned by
     the current uid, no group-write and no other-write bit, and a complete
-    marker. Raises ``EngineExportError`` naming which check failed.
+    marker. It also refuses an export holding grader material
+    (``export_leaks`` against ``digests``, default the bundled tasks').
+    Raises ``EngineExportError`` naming which check failed.
     """
     try:
         info = dest.stat()
@@ -57,6 +97,8 @@ def verify_export(dest: Path) -> str:
         raise EngineExportError(f"export {dest} has no complete marker: {exc}") from exc
     if not sha:
         raise EngineExportError(f"export {dest} has an empty marker")
+    if leaks := export_leaks(dest, overlay_digests() if digests is None else digests):
+        raise EngineExportError(f"export {dest} holds grader material: {'; '.join(leaks)}")
     return sha
 
 
@@ -80,7 +122,10 @@ def export_engine(engine_repo: Path, commit: str, *, root: Path = CELLS_ROOT, py
         if existing_sha != sha:
             raise EngineExportError(f"{dest} exists without a complete export marker; remove it deliberately")
         return dest
-    archive = subprocess.run(["git", "-C", os.fspath(engine_repo), "archive", "--format=tar", sha], capture_output=True, check=False)
+    archive = subprocess.run(
+        ["git", "-C", os.fspath(engine_repo), "archive", "--format=tar", sha, "--", *EXPORT_PATHS],
+        capture_output=True, check=False,
+    )
     if archive.returncode != 0:
         raise EngineExportError(f"git archive {sha} failed: {os.fsdecode(archive.stderr).strip()}")
     dest.mkdir()
@@ -95,6 +140,8 @@ def export_engine(engine_repo: Path, commit: str, *, root: Path = CELLS_ROOT, py
     )
     if synced.returncode != 0:
         raise EngineExportError(f"uv sync in {dest} failed: {synced.stderr.strip()}")
+    if leaks := export_leaks(dest, overlay_digests()):
+        raise EngineExportError(f"{dest} holds grader material; no marker written: {'; '.join(leaks)}")
     share_with_cell(dest, writable=False)
     (dest / MARKER).write_text(sha + "\n")
     share_with_cell(dest, writable=False)

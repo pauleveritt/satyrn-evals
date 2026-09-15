@@ -21,6 +21,7 @@ from integration.cell_support import cell_process_alive
 from integration.test_attempt import (
     _engine_repo,  # type: ignore[missing-import]  # pytest sibling resolution
 )
+from satyrn_evals.arms import load_arm
 from satyrn_evals.attempt import attempt
 from satyrn_evals.attempt_engine import RECEIPT_NAME
 from satyrn_evals.attempt_record import AttemptCode
@@ -31,7 +32,14 @@ from satyrn_evals.cell import (
     Isolation,
     share_with_cell,
 )
-from satyrn_evals.cell_engine import export_engine
+from satyrn_evals.cell_engine import (
+    EXPORT_PATHS,
+    MARKER,
+    export_engine,
+    export_leaks,
+    verify_export,
+)
+from satyrn_evals.hygiene import overlay_digests
 from satyrn_evals.patch import parse_patch_paths
 from satyrn_evals.verdict import Verdict
 
@@ -160,6 +168,7 @@ def test_the_engine_export_is_made_once_and_runs_as_the_cell_user(cell_scratch: 
 
     first = export_engine(_engine_repo(), "HEAD", root=cell_scratch)
     assert export_engine(_engine_repo(), "HEAD", root=cell_scratch) == first
+    assert sorted(path.name for path in first.iterdir()) == sorted([*EXPORT_PATHS, ".venv", MARKER])
     environment = cell_environment(parent=cell_scratch)
     environment.pop("UV_PROJECT_ENVIRONMENT")  # as `attempt_engine.as_cell` does
     ran = run_as_cell(
@@ -171,3 +180,18 @@ def test_the_engine_export_is_made_once_and_runs_as_the_cell_user(cell_scratch: 
     touched = run_as_cell(["/usr/bin/touch", os.fspath(probe)], cwd=first, environment=environment)
     assert touched.returncode != 0 and not probe.exists(), touched.stderr
     assert main(["cell-engine", "--engine-repo", os.fspath(_engine_repo()), "--commit", "not-a-commit"]) == 2
+
+
+ENGINE_ARM = Path(__file__).resolve().parents[2] / "arms" / "engine-ornith15-9b.json"
+
+
+def test_the_export_of_the_arms_pinned_commit_holds_no_grader_material(cell_scratch: Path) -> None:
+    """341d4c4's whole tree holds ``tests/test_doc_caps.py``, the name of selfhost-docs-linter's hidden suite;
+    its export holds only ``EXPORT_PATHS`` and the environment, and verifies."""
+    commit = load_arm(ENGINE_ARM).pins.engine_commit
+    assert commit is not None
+    export = export_engine(_engine_repo(), commit, root=cell_scratch)
+    assert export.name == f"engine-{commit}"
+    assert not (export / "tests").exists() and not (export / "docs").exists()
+    assert export_leaks(export, overlay_digests()) == []
+    assert verify_export(export) == commit
