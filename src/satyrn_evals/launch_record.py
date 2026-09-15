@@ -14,7 +14,10 @@ The spec's launcher gates ("Process"), in order, before any cell:
 4. under isolation, the cell preflight (``cell_preflight.preflight_cell``) is clean,
    and an Engine arm's export is the commit and bytes it pins
    (``cell_engine.arm_export_problems``);
-5. ``scripts/preflight_settings.py`` exits 0 for every arm (``--cell`` under
+5. the arm's model server answers ``GET <base_url>/v1/models`` and lists
+   its ``server_model`` (``model_server.model_server_problems``), skipped
+   only on the test PATH seam a deciding record already refused above;
+6. ``scripts/preflight_settings.py`` exits 0 for every arm (``--cell`` under
    isolation); its provenance block is kept for the drift check.
 
 Between cells the drift probe re-reads the record and arm file bytes, the
@@ -69,6 +72,7 @@ from satyrn_evals.launch_cell import (
     popen_cell,
 )
 from satyrn_evals.manifest import load_manifest, resolve_task
+from satyrn_evals.model_server import DEFAULT_MODEL_SERVER_URL, model_server_problems
 from satyrn_evals.rescore import (
     _load_cell,
     compute_evidence,
@@ -133,6 +137,7 @@ class LaunchFacts:
     settings: Callable[[Path, bool], tuple[int, str]] = settings_provenance
     spawn_cell: Callable[[Path, Path], CellProcess] = popen_cell
     engine_export: Callable[[Arm], list[str]] = arm_export_problems
+    model_server: Callable[[str, str], list[str]] = model_server_problems
 
 
 def _sha256(path: Path) -> str:
@@ -293,6 +298,13 @@ def launch_record(
         checked["preflight"] = report.checked
         for name, (_, arm) in arms.items():
             problems += [f"{name}: {problem}" for problem in facts.engine_export(arm)]
+    if not os.environ.get(CELL_PATH_PREFIX_ENV):
+        # A development record on the fake-pi seam (`CELL_PATH_PREFIX_ENV`) never
+        # reaches a real model server, the same reason it may skip settings; a
+        # deciding record has already refused that seam above, so it never skips.
+        first_arm = next(iter(arms.values()))[1]
+        problems += facts.model_server(DEFAULT_MODEL_SERVER_URL, first_arm.server_model)
+        checked["model_server"] = {"base_url": DEFAULT_MODEL_SERVER_URL, "server_model": first_arm.server_model}
     baseline_settings: dict[str, str] = {}
     if settings:
         for name, (path, _) in arms.items():

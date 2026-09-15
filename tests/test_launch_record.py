@@ -44,7 +44,7 @@ def _facts(**over: object) -> LaunchFacts:
     base = dict(
         frozen=lambda path: True, committed=lambda path: True, head=lambda: "f" * 40,
         preflight=lambda **kw: CellPreflight([], {"pi_version": "0.85.1"}), settings=lambda path, cell: (0, SETTINGS),
-        spawn_cell=spawn,
+        spawn_cell=spawn, model_server=lambda base_url, server_model: [],
     )
     return LaunchFacts(**{**base, **over})  # type: ignore[arg-type]
 
@@ -123,8 +123,9 @@ def test_an_arm_file_the_record_does_not_run_is_refused(tmp_path: Path) -> None:
     [
         _facts(preflight=lambda **kw: CellPreflight(["the cell can find /x/known-good.patch"], {})),
         _facts(settings=lambda path, cell: (1, "preflight_settings FAILED: temperature")),
+        _facts(model_server=lambda base_url, server_model: [f"the model server at {base_url} is unreachable: refused"]),
     ],
-    ids=["cell-preflight", "settings"],
+    ids=["cell-preflight", "settings", "model-server"],
 )
 def test_a_preflight_or_settings_problem_exits_1_and_runs_nothing(
     tmp_path: Path, facts: LaunchFacts, capsys: pytest.CaptureFixture[str]
@@ -132,6 +133,43 @@ def test_a_preflight_or_settings_problem_exits_1_and_runs_nothing(
     assert _launch(tmp_path, _record(tmp_path), facts) == 1
     assert "launch FAILED:" in capsys.readouterr().err
     assert not (tmp_path / "runs").exists()
+
+
+def test_the_model_server_check_is_asked_about_the_default_base_url_and_the_arms_server_model(tmp_path: Path) -> None:
+    from satyrn_evals.model_server import DEFAULT_MODEL_SERVER_URL
+
+    seen: dict[str, object] = {}
+
+    def model_server(base_url: str, server_model: str) -> list[str]:
+        seen["base_url"], seen["server_model"] = base_url, server_model
+        return []
+
+    assert _launch(tmp_path, _record(tmp_path), _facts(model_server=model_server)) == 3  # the fake spawn raised
+    assert seen == {"base_url": DEFAULT_MODEL_SERVER_URL, "server_model": "Ornith-1.5-9B-MLX-8bit"}
+
+
+def test_an_unreachable_model_server_names_the_url_and_reason_in_the_launch_failure(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    facts = _facts(model_server=lambda base_url, server_model: [f"the model server at {base_url} is unreachable: [Errno 61] Connection refused"])
+    assert _launch(tmp_path, _record(tmp_path), facts) == 1
+    err = capsys.readouterr().err
+    assert "launch FAILED: the model server at http://127.0.0.1:8001 is unreachable: [Errno 61] Connection refused" in err
+    assert not (tmp_path / "runs").exists()
+
+
+def test_a_development_record_on_the_fake_pi_seam_skips_the_model_server_check(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The same seam a deciding record has already refused (Ruling 7) is the one
+    a development record uses to skip this check, the same way it skips settings."""
+    monkeypatch.setenv(CELL_PATH_PREFIX_ENV, "/fake/bin")
+
+    def boom(base_url: str, server_model: str) -> list[str]:
+        raise AssertionError("model_server must not be consulted on the fake-pi seam")
+
+    record = _record(tmp_path, purpose="development", decision_rule="none")
+    assert _launch(tmp_path, record, _facts(model_server=boom), settings=False, hunt=False) == 3
 
 
 def test_the_preflight_protects_the_runs_root_and_hunts_by_default(tmp_path: Path) -> None:

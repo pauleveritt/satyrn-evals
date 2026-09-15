@@ -4112,3 +4112,5 @@
 | src/satyrn_evals/tasks/selfhost-speed-probe/overlay/test_speed_probe.py | created in release-one |
 | tools/task_specs/selfhost-cell-loop.json | created in release-one |
 | tools/task_specs/selfhost-speed-probe.json | created in release-one |
+| src/satyrn_evals/model_server.py | created in release-one |
+| tests/test_model_server.py | created in release-one |

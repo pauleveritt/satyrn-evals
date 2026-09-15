@@ -7,11 +7,13 @@ the real one. Every record here is ``purpose: development`` (the only purpose
 the test PATH seam and ``--no-settings`` are allowed for). No model runs.
 """
 
+import http.server
 import json
 import os
 import signal
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -28,6 +30,7 @@ from satyrn_evals.cell import CELLS_ROOT
 from satyrn_evals.cell_engine import export_engine
 from satyrn_evals.cli import main
 from satyrn_evals.launch import LEDGER_NAME
+from satyrn_evals.model_server import model_server_problems
 from satyrn_evals.summary import SUMMARY_NAME
 
 pytestmark = pytest.mark.integration
@@ -225,3 +228,47 @@ def test_sigterm_stops_the_launcher_and_its_running_cell_leaves_no_model(
     assert ledger["status"] == "interrupted" and "SignalAbort: SIGTERM" in ledger["reason"]
     assert ledger["slots"] == []
     assert _attempt_dirs() <= before
+
+
+# --- model_server_problems: a real local stub, both directions -------------
+
+
+class _ModelsHandler(http.server.BaseHTTPRequestHandler):
+    """Answers ``GET /v1/models`` with whatever ``server_class.served`` names."""
+
+    def do_GET(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler's naming
+        if self.path != "/v1/models":
+            self.send_response(404)
+            self.end_headers()
+            return
+        body = json.dumps({"data": [{"id": self.server.served}]}).encode()  # type: ignore[attr-defined]
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *args: object) -> None:  # quiet: this is a test fixture, not a server under test
+        pass
+
+
+def test_model_server_problems_against_a_real_local_stub_http_server() -> None:
+    """Both directions, against a real socket rather than a faked ``urlopen``: a server that lists
+    the model is clean, the same server naming a different model is not, and once it stops
+    listening the same URL is unreachable -- the exact port `launch_record`'s default tier never
+    dials (`_facts().model_server` fakes this everywhere else)."""
+    server = http.server.HTTPServer(("127.0.0.1", 0), _ModelsHandler)
+    server.served = "Ornith-1.5-9B-MLX-8bit"  # type: ignore[attr-defined]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base_url = f"http://127.0.0.1:{server.server_port}"
+    try:
+        assert model_server_problems(base_url, "Ornith-1.5-9B-MLX-8bit") == []
+        assert model_server_problems(base_url, "some-other-model") == [
+            f"the model server at {base_url} does not serve some-other-model"
+        ]
+    finally:
+        server.shutdown()
+        thread.join(timeout=5)
+    problems = model_server_problems(base_url, "Ornith-1.5-9B-MLX-8bit", timeout=1.0)
+    assert len(problems) == 1 and problems[0].startswith(f"the model server at {base_url} is unreachable:")
