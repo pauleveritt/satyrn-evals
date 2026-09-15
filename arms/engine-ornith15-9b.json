@@ -4,7 +4,7 @@
   "argv": [
     "satyrn-evals-attempt-engine",
     "--engine-repo",
-    "/Users/Shared/satyrn-cells/engine-341d4c450317f63e6af8958d45606cb737a131af"
+    "/Users/Shared/satyrn-cells/engine-cf71c748c7abb961cdc54f9d13ae6f98732b56b5"
   ],
   "tools": [
     "read",
@@ -17,7 +17,7 @@
   "server_model": "Ornith-1.5-9B-MLX-8bit",
   "pins": {
     "pi": "0.85.1",
-    "engine_commit": "341d4c450317f63e6af8958d45606cb737a131af",
+    "engine_commit": "cf71c748c7abb961cdc54f9d13ae6f98732b56b5",
     "digests": {
       "engine.ts": "0f581ffeed8931fb0f656f6df7d547ad14893eb2c3edd1d8e203b819d4b2f9d1",
       "mutator.ts": "d34ed2d44342db67739bf0b9458d6773b2b2d3a21aacde36ad4635ec82e88a52",
