@@ -23,6 +23,11 @@ The escape rules are lexical and stated so a reader can recompute them:
   file tool's ``..`` path is.
 - an unquoted newline ends a simple command exactly like ``;``; a newline
   inside a quoted argument stays part of that argument's text.
+- a heredoc body (``<<WORD`` / ``<<-WORD``, ``WORD`` optionally quoted; not
+  ``<<<``) is never a command -- its lines, up to and including the line
+  matching the delimiter (leading tabs stripped for ``<<-``), are dropped
+  before commands are split; an unterminated heredoc swallows the rest of
+  the text, as it does in a real shell.
 """
 
 import json
@@ -118,35 +123,116 @@ def outside(cwd: str | None, path: str) -> bool:
     return not PurePosixPath(_canonical(candidate)).is_relative_to(_canonical(cwd))
 
 
+def _heredoc_word(command: str, index: int) -> tuple[str | None, int]:
+    """The delimiter word starting at ``index`` (quotes stripped), and the
+    index just past it; ``None`` if there is no word before the newline."""
+    n = len(command)
+    while index < n and command[index] in " \t":
+        index += 1
+    if index >= n or command[index] == "\n":
+        return None, index
+    quote: str | None = None
+    word: list[str] = []
+    while index < n:
+        char = command[index]
+        if quote is not None:
+            if char == quote:
+                quote = None
+            else:
+                word.append(char)
+            index += 1
+            continue
+        if char in "'\"":
+            quote = char
+            index += 1
+            continue
+        if char in " \t\n":
+            break
+        word.append(char)
+        index += 1
+    return ("".join(word) or None), index
+
+
+def _skip_heredoc_body(command: str, index: int, delimiter: str, strip_tabs: bool) -> int:
+    """Index just past the line matching ``delimiter``, dropping every line
+    from ``index`` up to and including it; ``len(command)`` if unterminated."""
+    n = len(command)
+    while index <= n:
+        newline = command.find("\n", index)
+        end = newline if newline != -1 else n
+        line = command[index:end]
+        candidate = line.lstrip("\t") if strip_tabs else line
+        if candidate == delimiter:
+            return end + 1 if newline != -1 else n
+        if newline == -1:
+            return n
+        index = newline + 1
+    return n
+
+
 def _mask_unquoted_newlines(command: str) -> str:
     """Turn an unquoted newline into ``;`` so ``_segments`` treats it as the
     separator it is in a shell; a newline inside a quoted argument (or right
-    after a backslash) is left alone -- it is text, not a separator."""
+    after a backslash) is left alone -- it is text, not a separator. A
+    heredoc body is dropped outright: its lines are literal stdin text, not
+    commands, even though they sit at column zero unquoted."""
     pieces: list[str] = []
     quote: str | None = None
     escaped = False
-    for char in command:
+    pending_heredocs: list[tuple[str, bool]] = []
+    index = 0
+    length = len(command)
+    while index < length:
+        char = command[index]
         if escaped:
             pieces.append(char)
             escaped = False
+            index += 1
         elif quote == "'":
             pieces.append(char)
             if char == "'":
                 quote = None
+            index += 1
         elif char == "\\" and quote != "'":
             pieces.append(char)
             escaped = True
+            index += 1
         elif quote == '"':
             pieces.append(char)
             if char == '"':
                 quote = None
+            index += 1
         elif char in "'\"":
             pieces.append(char)
             quote = char
+            index += 1
+        elif (
+            quote is None
+            and char == "<"
+            and command.startswith("<<", index)
+            and not command.startswith("<<<", index)
+        ):
+            operator_end = index + 2
+            strip_tabs = command.startswith("-", operator_end)
+            if strip_tabs:
+                operator_end += 1
+            delimiter, after = _heredoc_word(command, operator_end)
+            if delimiter is None:
+                pieces.append(char)
+                index += 1
+            else:
+                pieces.append(command[index:after])
+                pending_heredocs.append((delimiter, strip_tabs))
+                index = after
         elif char == "\n":
             pieces.append(";")
+            index += 1
+            for delimiter, strip_tabs in pending_heredocs:
+                index = _skip_heredoc_body(command, index, delimiter, strip_tabs)
+            pending_heredocs = []
         else:
             pieces.append(char)
+            index += 1
     return "".join(pieces)
 
 

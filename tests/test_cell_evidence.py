@@ -48,6 +48,7 @@ def _transcript(*lines: str, header: bool = True) -> str:
         "mdfind test_acceptance.py",
         "sudo find /private/var/folders -name overlay",
         "cd tests\nfind / -name x",
+        "cat <<EOF\nhello\nEOF\nfind / -name x",
     ],
 )
 def test_root_anchored_searches_fire(command: str) -> None:
@@ -63,6 +64,9 @@ def test_root_anchored_searches_fire(command: str) -> None:
         "ls -lart /tmp",
         "grep -n casefold app.py",
         "uv run python -m pytest tests/ 2>/dev/null",
+        "cat <<EOF\nfind / -name x\nEOF",
+        "cat <<'EOF'\nfind / -name x\nEOF",
+        "cat <<-EOF\n\tfind / -name x\n\tEOF",
     ],
 )
 def test_searches_inside_the_worktree_and_plain_listings_are_silent(command: str) -> None:
@@ -92,6 +96,7 @@ def test_file_tool_paths_are_outside_only_when_they_leave_the_worktree() -> None
         ("git status && git diff HEAD", False),
         ("echo 'git commit'", False),
         ("git add -A\ngit commit -m x", True),
+        ("cat <<EOF\ngit commit -m x\nEOF", False),
     ],
 )
 def test_git_commit_inside_the_worktree(command: str, expected: bool) -> None:
