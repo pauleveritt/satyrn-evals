@@ -250,27 +250,40 @@ def test_no_green_run_after_the_edit_means_no_trigger() -> None:
     assert cf.find_trigger(steps, [0]) is None
 
 
-def test_a_green_bash_run_on_the_same_step_as_the_first_source_edit_is_not_its_own_trigger() -> None:
-    """Documents behaviour: the trigger step must be strictly after the first source
-    edit's index, even when a single bash step both writes a source file (per the
-    touched map) and prints a green pytest summary."""
+def test_a_same_step_source_write_with_a_green_pytest_remainder_is_its_own_trigger() -> None:
+    """Finding 3: a source write earlier in the same bash command as a green pytest
+    run precedes that pytest in stream order, so the write-and-test step is its own
+    trigger when the replay performed the write and the remainder runs pytest."""
     command = "cat > src/satyrn_evals/cli.py <<EOF\nx\nEOF\nuv run pytest tests/test_run_record.py -q"
     steps = cf.steps_of(stream(turn(), assistant(100), call("a", "bash", {"command": command}, "3 passed in 0.1s")))
     touched = {0: ("src/satyrn_evals/cli.py",)}
     source_edits = cf.source_edit_indices(steps, SOURCES, CWD, touched)
     assert source_edits == [0]
-    assert cf.find_trigger(steps, source_edits) is None
+    trigger = cf.find_trigger(steps, source_edits, CWD)
+    assert trigger == cf.Trigger(step=0, turn=1, output_tokens=100, route="bash", within_budget=True)
 
 
-def test_a_later_green_run_after_a_same_step_write_is_the_trigger() -> None:
-    command = "cat > src/satyrn_evals/cli.py <<EOF\nx\nEOF\nuv run pytest tests/test_run_record.py -q"
+def test_a_same_step_write_to_a_test_file_only_with_a_green_remainder_is_not_a_trigger() -> None:
+    """The same shape, but the write lands on a test file (not a source edit) and there
+    is no other edit: no source edit at all, so there is nothing to trigger from."""
+    command = "cat > tests/test_x.py <<EOF\nx\nEOF\nuv run pytest tests/test_run_record.py -q"
+    steps = cf.steps_of(stream(turn(), assistant(100), call("a", "bash", {"command": command}, "3 passed in 0.1s")))
+    touched = {0: ("tests/test_x.py",)}
+    source_edits = cf.source_edit_indices(steps, SOURCES, CWD, touched)
+    assert source_edits == []
+    assert cf.find_trigger(steps, source_edits, CWD) is None
+
+
+def test_a_non_bash_first_edit_step_is_never_its_own_trigger() -> None:
+    """A write/edit tool step is never itself a trigger -- ``is_test_run`` is only ever
+    true for ``self_test`` or a ``bash`` step -- so the trigger is the later bash run."""
     steps = cf.steps_of(stream(
-        turn(), assistant(100), call("a", "bash", {"command": command}, "3 passed in 0.1s"),
+        turn(), assistant(100), call("a", "edit", EDIT_SOURCE, "ok"),
         turn(), assistant(100), call("b", "bash", PYTEST, "3 passed in 0.1s"),
     ))
-    touched = {0: ("src/satyrn_evals/cli.py",)}
-    source_edits = cf.source_edit_indices(steps, SOURCES, CWD, touched)
-    trigger = cf.find_trigger(steps, source_edits)
+    source_edits = cf.source_edit_indices(steps, SOURCES, CWD, {})
+    assert source_edits == [0]
+    trigger = cf.find_trigger(steps, source_edits, CWD)
     assert trigger is not None and trigger.step == 1
 
 
@@ -373,13 +386,6 @@ def test_mentions_source_matches_a_directory_entry_by_absolute_or_dot_slash_path
     assert not cf.mentions_source("open('mytests/x.py','w')", SOURCES)
 
 
-def test_plan_bash_reports_the_tree_relative_write_targets() -> None:
-    heredoc = cf.plan_bash(f"cd {CWD} && cat > tools/hooks/guard.py << 'EOF'\nprint(1)\nEOF\nuv run pytest -q", CWD)
-    assert heredoc.targets == ("tools/hooks/guard.py",)
-    simple = cf.plan_bash("printf 'x' > app.py", CWD)
-    assert simple.targets == ("app.py",)
-
-
 def test_unroot_head_strips_the_private_alias_deterministically() -> None:
     cwd = "/Users/Shared/satyrn-cells/a/worktree"
     command = f"cat > /private{cwd}/app.py << 'EOF'\nx\nEOF\n"
@@ -389,18 +395,19 @@ def test_unroot_head_strips_the_private_alias_deterministically() -> None:
 
 
 def test_counts_as_skipped_write_only_when_failed() -> None:
-    assert not cf.counts_as_skipped_write(0, False, (), SOURCES)
-    assert not cf.counts_as_skipped_write(0, True, ("src/satyrn_evals/cli.py",), SOURCES)
+    assert not cf.counts_as_skipped_write(0, False)
+    assert not cf.counts_as_skipped_write(0, True)
 
 
 def test_counts_as_skipped_write_keeps_the_non_error_rule() -> None:
-    assert cf.counts_as_skipped_write(1, False, (), SOURCES)
-    assert cf.counts_as_skipped_write(1, False, ("outside/x.py",), SOURCES)
+    assert cf.counts_as_skipped_write(1, False)
 
 
-def test_counts_as_skipped_write_also_flags_an_errored_original_targeting_source() -> None:
-    assert cf.counts_as_skipped_write(1, True, ("src/satyrn_evals/cli.py",), SOURCES)
-    assert not cf.counts_as_skipped_write(1, True, ("outside/x.py",), SOURCES)
+def test_counts_as_skipped_write_is_false_when_the_original_also_errored() -> None:
+    """Finding 4, reversed from the prior round: if the original step already errored,
+    a failing replay landed no write either time -- not a skipped writer, even on a
+    target inside source_paths."""
+    assert not cf.counts_as_skipped_write(1, True)
 
 
 # --- section 4: outcomes, fidelity, unmeasured ----------------------------------
@@ -428,7 +435,10 @@ def test_fidelity(harness: str | None, replayed: str | None, expected: str) -> N
 
 
 TRIGGER = cf.Trigger(step=5, turn=10, output_tokens=20_000, route="bash", within_budget=True)
-NONE_SKIPPED = {"skipped_writer_turns": [], "anchor_miss_turns": [], "raised": None}
+NONE_SKIPPED = {
+    "skipped_writer_turns": [], "anchor_miss_turns": [], "raised": None,
+    "actual": True, "trigger_verdict": None, "unverified_bash_turns": [],
+}
 
 
 def test_a_failed_fidelity_check_is_unmeasured() -> None:
@@ -444,22 +454,137 @@ def test_a_skipped_writer_or_anchor_miss_through_the_trigger_turn_is_unmeasured(
     reasons = cf.unmeasured_reasons(
         fidelity_result="unverifiable", harness_verdict=None, final_verdict=None, trigger=TRIGGER,
         skipped_writer_turns=[4, 10], anchor_miss_turns=[7], raised=None,
+        actual=True, trigger_verdict=None, unverified_bash_turns=[],
     )
     assert reasons == ["skipped bash writer at turn 4", "skipped bash writer at turn 10", "replay raised: edit anchor missing at turn 7"]
 
 
 def test_a_skipped_writer_after_the_trigger_or_without_a_counted_trigger_is_measured() -> None:
-    late = {"skipped_writer_turns": [11], "anchor_miss_turns": [12], "raised": None}
+    late = {"skipped_writer_turns": [11], "anchor_miss_turns": [12], "raised": None, "actual": True, "trigger_verdict": None, "unverified_bash_turns": []}
     assert cf.unmeasured_reasons(fidelity_result="unverifiable", harness_verdict=None, final_verdict=None, trigger=TRIGGER, **late) == []
-    early = {"skipped_writer_turns": [2], "anchor_miss_turns": [], "raised": None}
+    early = {"skipped_writer_turns": [2], "anchor_miss_turns": [], "raised": None, "actual": True, "trigger_verdict": None, "unverified_bash_turns": []}
     assert cf.unmeasured_reasons(fidelity_result="unverifiable", harness_verdict=None, final_verdict=None, trigger=None, **early) == []
     over = cf.Trigger(step=5, turn=10, output_tokens=40_000, route="bash", within_budget=False)
     assert cf.unmeasured_reasons(fidelity_result="unverifiable", harness_verdict=None, final_verdict=None, trigger=over, **early) == []
 
 
 def test_a_raise_is_unmeasured() -> None:
-    reasons = cf.unmeasured_reasons(fidelity_result="unverifiable", harness_verdict=None, final_verdict=None, trigger=None, skipped_writer_turns=[], anchor_miss_turns=[], raised="CalledProcessError: git")
+    reasons = cf.unmeasured_reasons(
+        fidelity_result="unverifiable", harness_verdict=None, final_verdict=None, trigger=None,
+        skipped_writer_turns=[], anchor_miss_turns=[], raised="CalledProcessError: git",
+        actual=True, trigger_verdict=None, unverified_bash_turns=[],
+    )
     assert reasons == ["raised: CalledProcessError: git"]
+
+
+# --- spec 7.4: conservative rescues --------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        'cd "$(pwd)" && uv run pytest tests/ -q 2>&1 | tail -30',
+        "grep -n def src/x.py | head",
+        "git diff",
+        "find . -name '*.py'",
+        "sed -n '1,20p' f",
+    ],
+)
+def test_is_read_only_bash_true_cases(command: str) -> None:
+    assert cf.is_read_only_bash(command, CWD)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "echo x > f",
+        "sort -o out f",
+        "find . -delete",
+        "sed -i 's/a/b/' f",
+        "git checkout .",
+        "cat f > /dev/null",
+        "cd /tmp && ls",
+        "ls $(python fix.py)",
+        "tee f",
+    ],
+)
+def test_is_read_only_bash_false_cases(command: str) -> None:
+    assert not cf.is_read_only_bash(command, CWD)
+
+
+def test_a_reconstructed_pass_over_read_only_only_bash_history_is_a_rescue() -> None:
+    steps = cf.steps_of(stream(
+        turn(), assistant(100), call("a", "bash", {"command": "cat notes.txt"}, "hi"),
+        turn(), assistant(100), call("b", "edit", EDIT_SOURCE, "ok"),
+        turn(), assistant(100), call("c", "bash", PYTEST, "3 passed in 0.1s"),
+    ))
+    trigger = cf.find_trigger(steps, cf.source_edit_indices(steps, SOURCES, CWD, {}), CWD)
+    assert trigger is not None and trigger.within_budget
+    unverified = cf.unverified_bash_turns(steps, CWD, trigger.turn)
+    assert unverified == []
+    reasons = cf.unmeasured_reasons(
+        fidelity_result="unverifiable", harness_verdict=None, final_verdict=None, trigger=trigger,
+        skipped_writer_turns=[], anchor_miss_turns=[], raised=None,
+        actual=False, trigger_verdict="pass", unverified_bash_turns=unverified,
+    )
+    assert reasons == []
+    counter = cf.counterfactual_pass(False, trigger, reasons, "pass")
+    assert cf.change(False, counter) == "rescue"
+
+
+def test_a_reconstructed_pass_with_unverified_bash_in_history_is_not_a_rescue() -> None:
+    steps = cf.steps_of(stream(
+        turn(), assistant(100), call("a", "bash", {"command": "python fix.py"}, ""),
+        turn(), assistant(100), call("b", "edit", EDIT_SOURCE, "ok"),
+        turn(), assistant(100), call("c", "bash", {"command": "patch -p1 < fix.diff"}, ""),
+        turn(), assistant(100), call("d", "bash", {"command": "uv run ruff format ."}, ""),
+        turn(), assistant(100), call("e", "bash", PYTEST, "3 passed in 0.1s"),
+    ))
+    trigger = cf.find_trigger(steps, cf.source_edit_indices(steps, SOURCES, CWD, {}), CWD)
+    assert trigger is not None and trigger.within_budget
+    unverified = cf.unverified_bash_turns(steps, CWD, trigger.turn)
+    assert unverified
+    reasons = cf.unmeasured_reasons(
+        fidelity_result="unverifiable", harness_verdict=None, final_verdict=None, trigger=trigger,
+        skipped_writer_turns=[], anchor_miss_turns=[], raised=None,
+        actual=False, trigger_verdict="pass", unverified_bash_turns=unverified,
+    )
+    assert reasons and reasons[-1].startswith("unverified-rescue")
+    counter = cf.counterfactual_pass(False, trigger, reasons, "pass")
+    assert counter is False
+    assert cf.change(False, counter) == "none"
+
+
+def test_a_replayed_writer_with_a_read_only_remainder_is_verified_and_rescue_still_allowed() -> None:
+    """A source write covered by the replay, whose remainder is itself a read-only test
+    run, is not unverified -- the rescue still goes through."""
+    write_command = "cat > src/satyrn_evals/cli.py <<EOF\nx\nEOF\nuv run pytest -q"
+    steps = cf.steps_of(stream(turn(), assistant(100), call("a", "bash", {"command": write_command}, "3 passed in 0.1s")))
+    touched = {0: ("src/satyrn_evals/cli.py",)}
+    source_edits = cf.source_edit_indices(steps, SOURCES, CWD, touched)
+    trigger = cf.find_trigger(steps, source_edits, CWD)
+    assert trigger is not None and trigger.step == 0 and trigger.within_budget
+    unverified = cf.unverified_bash_turns(steps, CWD, trigger.turn)
+    assert unverified == []
+    reasons = cf.unmeasured_reasons(
+        fidelity_result="unverifiable", harness_verdict=None, final_verdict=None, trigger=trigger,
+        skipped_writer_turns=[], anchor_miss_turns=[], raised=None,
+        actual=False, trigger_verdict="pass", unverified_bash_turns=unverified,
+    )
+    assert reasons == []
+    assert cf.change(False, cf.counterfactual_pass(False, trigger, reasons, "pass")) == "rescue"
+
+
+def test_unverified_bash_does_not_prevent_harm_on_an_actual_pass_cell() -> None:
+    """Harm counting is unaffected by 7.4: an actual pass with unverified bash and a
+    failing trigger verdict is still a harm."""
+    reasons = cf.unmeasured_reasons(
+        fidelity_result="pass", harness_verdict="pass", final_verdict="pass", trigger=TRIGGER,
+        skipped_writer_turns=[], anchor_miss_turns=[], raised=None,
+        actual=True, trigger_verdict="fail", unverified_bash_turns=[3, 7],
+    )
+    assert reasons == []
+    assert cf.change(True, cf.counterfactual_pass(True, TRIGGER, reasons, "fail")) == "harm"
 
 
 def test_rescue_harm_and_no_change() -> None:

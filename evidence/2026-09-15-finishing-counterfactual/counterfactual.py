@@ -30,6 +30,7 @@ import json
 import os
 import posixpath
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -340,14 +341,27 @@ def within_budget(output_tokens: int, turn: int) -> bool:
     return output_tokens <= TOKEN_BUDGET and turn <= TURN_BUDGET
 
 
-def find_trigger(steps: list[Step], source_edits: list[int]) -> Trigger | None:
-    """Spec section 3: the first green test run after the first source edit."""
+def find_trigger(steps: list[Step], source_edits: list[int], cwd: str | None = None) -> Trigger | None:
+    """Spec section 3: the first green test run after the first source edit. Finding 3:
+    a bash step at the first edit's own index also counts when its ``plan_bash`` replay
+    performed the write and its remainder (the text the replay does not run) itself runs
+    pytest -- a source write earlier in the same bash command as a green pytest precedes
+    that pytest in stream order, so the step is its own trigger. A write/edit tool step
+    is never its own trigger: ``is_test_run`` is only ever true for ``self_test`` or a
+    ``bash`` step."""
     if not source_edits:
         return None
     first_edit = min(source_edits)
     for step in steps:
-        if step.index > first_edit and is_test_run(step) and is_green(step):
-            return Trigger(step.index, step.turn, step.output_tokens, step.name, within_budget(step.output_tokens, step.turn))
+        if step.index < first_edit or not (is_test_run(step) and is_green(step)):
+            continue
+        if step.index == first_edit:
+            if step.name != "bash":
+                continue
+            plan = plan_bash(str(step.args.get("command", "")), cwd)
+            if plan.replay is None or not runs_pytest(plan.remainder):
+                continue
+        return Trigger(step.index, step.turn, step.output_tokens, step.name, within_budget(step.output_tokens, step.turn))
     return None
 
 
@@ -380,12 +394,10 @@ def strip_cd(command: str, cwd: str | None) -> str | None:
 @dataclass(frozen=True, slots=True)
 class BashPlan:
     """How a bash command replays: the shell text to run in the scratch tree (or
-    None), the remainder the replay does not run, and the tree-relative paths the
-    replay writes."""
+    None), and the remainder the replay does not run."""
 
     replay: str | None
     remainder: str
-    targets: tuple[str, ...] = ()
 
 
 def plan_bash(command: str, cwd: str | None) -> BashPlan:
@@ -408,13 +420,11 @@ def plan_bash(command: str, cwd: str | None) -> BashPlan:
         if end is None or not _inside(target):
             return BashPlan(None, command)
         cut = end.end() + 1 if end.end() < len(stripped) else end.end()
-        resolved = tree_path(target, None)
-        return BashPlan(stripped[: end.end()] + "\n", stripped[cut:], (resolved,) if resolved is not None else ())
+        return BashPlan(stripped[: end.end()] + "\n", stripped[cut:])
     if _SIMPLE_WRITE.match(stripped) and len(_segments(stripped)) == 1 and "\n" not in stripped.strip():
         targets = _write_targets(_segments(stripped)[0])[2]
         if targets and all(_inside(t) for t in targets):
-            resolved_targets = tuple(t for t in (tree_path(target, None) for target in targets) if t is not None)
-            return BashPlan(stripped, "", resolved_targets)
+            return BashPlan(stripped, "")
     return BashPlan(None, command)
 
 
@@ -542,14 +552,120 @@ def could_write_source(command: str, source_paths: tuple[str, ...], cwd: str | N
     return False
 
 
-def counts_as_skipped_write(returncode: int, was_original_error: bool, targets: tuple[str, ...], source_paths: tuple[str, ...]) -> bool:
+def counts_as_skipped_write(returncode: int, was_original_error: bool) -> bool:
     """A replayed bash write that failed (nonzero ``returncode``) is a skipped writer
-    when the transcript did not already record the step as an error (the pre-existing
-    rule), or -- regardless of that -- when one of its targets lies inside
-    ``source_paths``: a discrepancy on a source path is never silently dropped."""
-    if returncode == 0:
+    only when the transcript did not already record the step as an error. Finding 4: if
+    the original step errored too, no write landed either time, so nothing was skipped
+    -- reversing the prior round's source-target override."""
+    return returncode != 0 and not was_original_error
+
+
+# --- spec 7.4: conservative rescues --------------------------------------------
+
+_READ_ONLY_SIMPLE = frozenset({"cat", "ls", "pwd", "grep", "rg", "head", "tail", "wc", "uniq", "diff"})
+_READ_ONLY_NO_REDIRECT = frozenset({"echo", "printf"})
+_GIT_READ_ONLY = frozenset({"status", "diff", "log", "show"})
+_FIND_WRITE_FLAGS = frozenset({"-exec", "-execdir", "-ok", "-okdir", "-delete"})
+_REDIRECT_LIKE = frozenset({">", ">>", ">|", "&>", "&>>", ">&", "<", "<<", "<<<"})
+
+
+def _strip_stderr_merge(rest: list[str]) -> tuple[bool, list[str]]:
+    """True (with the ``2 >& 1`` token sequence removed) when every redirection-like
+    token in ``rest`` is part of exactly that sequence; False (with ``rest`` unchanged)
+    when some other redirection is present."""
+    cleaned = []
+    index = 0
+    while index < len(rest):
+        if rest[index] == "2" and rest[index + 1 : index + 3] == [">&", "1"]:
+            index += 3
+            continue
+        cleaned.append(rest[index])
+        index += 1
+    if any(token in _REDIRECT_LIKE for token in cleaned):
+        return False, rest
+    return True, cleaned
+
+
+def is_read_only_bash(command: str, cwd: str | None) -> bool:
+    """Spec 7.4: whether a bash command is provably read-only -- ``cat``, ``ls``,
+    ``pwd``, ``echo``/``printf`` without redirection, ``grep``/``rg``, ``find`` without
+    a write action, ``head``, ``tail``, ``wc``, ``sort`` without ``-o``/``--output``,
+    ``uniq``, ``diff``, ``sed`` without ``-i``, ``git status``/``diff``/``log``/``show``
+    (no ``--output``), or a test run for which ``runs_pytest`` is true, joined by pipes,
+    ``&&``, ``||``, ``;``, and ``cd`` into the worktree, with at most a trailing
+    ``2>&1``. Any other redirection, or a ``$(...)``/backtick other than ``$(pwd)``,
+    makes it not read-only. Conservative: unsure means False."""
+    remaining = command.replace("$(pwd)", "").replace("`pwd`", "")
+    if "$(" in remaining or "`" in remaining:
         return False
-    return not was_original_error or any(in_source_paths(t, source_paths) for t in targets)
+    segments = _segments(command)
+    index = 0
+    while index < len(segments):
+        words = segments[index]
+        program, rest = _program(words)
+        if program == "cd":
+            destination = rest[0] if rest else "~"
+            if destination in _PWD_TOKENS:
+                index += 1
+                continue
+            if destination == "$" and rest == ["$"] and index + 1 < len(segments) and segments[index + 1] == ["pwd"]:
+                index += 2
+                continue
+            if destination.startswith(("~", "$")) or tree_path(destination, cwd) is None:
+                return False
+            index += 1
+            continue
+        ok, stripped_rest = _strip_stderr_merge(rest)
+        if not ok:
+            return False
+        if runs_pytest(shlex.join(words)):
+            index += 1
+            continue
+        if program in _READ_ONLY_SIMPLE or program in _READ_ONLY_NO_REDIRECT:
+            index += 1
+            continue
+        if program == "find" and not any(w in _FIND_WRITE_FLAGS or w.startswith("-fprint") for w in stripped_rest):
+            index += 1
+            continue
+        if program == "sort" and not any(w == "-o" or w == "--output" or w.startswith("--output=") for w in stripped_rest):
+            index += 1
+            continue
+        if program == "sed" and not any(
+            re.fullmatch(r"-[a-zA-Z0-9]*i\S*", w) or w == "--in-place" or w.startswith("--in-place=") for w in stripped_rest
+        ):
+            index += 1
+            continue
+        if (
+            program == "git"
+            and stripped_rest
+            and stripped_rest[0] in _GIT_READ_ONLY
+            and not any(w == "--output" or w.startswith("--output=") for w in stripped_rest)
+        ):
+            index += 1
+            continue
+        return False
+    return True
+
+
+def bash_verified(step: Step, cwd: str | None) -> bool:
+    """Spec 7.4: whether a bash step's whole command can be trusted -- provably
+    read-only outright, or replayed with only a read-only (or empty) remainder left
+    unrun."""
+    command = step.args.get("command")
+    if not isinstance(command, str):
+        return False
+    if is_read_only_bash(command, cwd):
+        return True
+    plan = plan_bash(command, cwd)
+    if plan.replay is None:
+        return False
+    return not plan.remainder.strip() or is_read_only_bash(plan.remainder, cwd)
+
+
+def unverified_bash_turns(steps: list[Step], cwd: str | None, through_turn: int) -> list[int]:
+    """Spec 7.4: turns of bash steps, through the end of ``through_turn``, whose command
+    was not verified (replayed, or provably read-only)."""
+    return sorted({step.turn for step in steps if step.name == "bash" and step.turn <= through_turn and not bash_verified(step, cwd)})
 
 
 # --- section 4: outcomes, fidelity, unmeasured --------------------------------
@@ -576,9 +692,16 @@ def unmeasured_reasons(
     skipped_writer_turns: list[int],
     anchor_miss_turns: list[int],
     raised: str | None,
+    actual: bool,
+    trigger_verdict: str | None,
+    unverified_bash_turns: list[int],
 ) -> list[str]:
     """Spec section 4 "unmeasured". Skips and anchor misses count through the end of the
-    trigger turn, the state the counterfactual grades."""
+    trigger turn, the state the counterfactual grades. Spec 7.4: a reconstructed pass
+    (trigger within budget, ``trigger_verdict == "pass"``) over an actual not-pass is
+    unmeasured, reason ``unverified-rescue``, when any bash step through the trigger
+    turn was not verified (read-only or replayed). Harm counting (an actual pass) is
+    unaffected."""
     reasons = []
     if raised:
         reasons.append(f"raised: {raised}")
@@ -591,6 +714,9 @@ def unmeasured_reasons(
         for turn in sorted(set(anchor_miss_turns)):
             if turn <= trigger.turn:
                 reasons.append(f"replay raised: edit anchor missing at turn {turn}")
+        if not actual and trigger_verdict == "pass" and unverified_bash_turns:
+            turns_text = ", ".join(str(turn) for turn in sorted(set(unverified_bash_turns)))
+            reasons.append(f"unverified-rescue: bash at turns {turns_text}")
     return reasons
 
 
@@ -742,7 +868,7 @@ def replay(spec: CellSpec, steps: list[Step], cwd: str | None, source_paths: tup
                     after = _digests(work)
                     out.bash_touched[step.index] = tuple(sorted(p for p in before.keys() | after.keys() if before.get(p) != after.get(p)))
                     out.applied["bash"] += 1
-                    if counts_as_skipped_write(done.returncode, step.is_error, plan.targets, source_paths):
+                    if counts_as_skipped_write(done.returncode, step.is_error):
                         out.skipped_writer_turns.append(step.turn)
                 if plan.remainder and could_write_source(plan.remainder, source_paths, cwd):
                     out.skipped_writer_turns.append(step.turn)
@@ -789,6 +915,7 @@ def measure(spec: CellSpec, grade_root: Path) -> dict:
     final_verdict = trigger_verdict = raised = None
     skipped: list[int] = []
     misses: list[int] = []
+    unverified: list[int] = []
     try:
         events = parse_events((folder / "transcript.txt").read_text())
         cwd = session_cwd(events)
@@ -796,7 +923,7 @@ def measure(spec: CellSpec, grade_root: Path) -> dict:
         full = replay(spec, steps, cwd, source_paths, None)
         skipped, misses = full.skipped_writer_turns, full.anchor_miss_turns
         row["applied"] = full.applied
-        trigger = find_trigger(steps, source_edit_indices(steps, source_paths, cwd, full.bash_touched))
+        trigger = find_trigger(steps, source_edit_indices(steps, source_paths, cwd, full.bash_touched), cwd)
         if harness_verdict in GRADED:
             final_verdict = grade(spec.task, full.patch, grade_root, f"{spec.attempt}-final")
         if trigger is not None and trigger.within_budget:
@@ -804,12 +931,14 @@ def measure(spec: CellSpec, grade_root: Path) -> dict:
             skipped = sorted(set(skipped) | set(at.skipped_writer_turns))
             misses = sorted(set(misses) | set(at.anchor_miss_turns))
             trigger_verdict = grade(spec.task, at.patch, grade_root, f"{spec.attempt}-turn-{trigger.turn:02d}")
+            unverified = unverified_bash_turns(steps, cwd, trigger.turn)
     except Exception as exc:  # spec section 4: replay or grading raises -> unmeasured
         raised = f"{type(exc).__name__}: {exc}"[:200]
     fid = fidelity(harness_verdict, final_verdict)
     reasons = unmeasured_reasons(
         fidelity_result=fid, harness_verdict=harness_verdict, final_verdict=final_verdict, trigger=trigger,
         skipped_writer_turns=skipped, anchor_miss_turns=misses, raised=raised,
+        actual=actual, trigger_verdict=trigger_verdict, unverified_bash_turns=unverified,
     )
     counter = counterfactual_pass(actual, trigger, reasons, trigger_verdict)
     row.update({
@@ -819,6 +948,7 @@ def measure(spec: CellSpec, grade_root: Path) -> dict:
         "fidelity": fid,
         "counterfactual": "pass" if counter else "not-pass",
         "change": change(actual, counter),
+        "unverified_bash_turns": sorted(set(unverified)),
         "unmeasured": reasons,
         "skipped_writer_turns": sorted(set(skipped)),
         "anchor_miss_turns": sorted(set(misses)),
