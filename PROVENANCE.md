@@ -1378,3 +1378,4 @@
 | src/satyrn_evals/launch_record.py | created in release-one |
 | tests/test_launch_record.py | created in release-one |
 | tests/integration/test_launch_record.py | created in release-one |
+| docs/superpowers/plans/2026-09-15-generator-fix.md | created in release-one |
