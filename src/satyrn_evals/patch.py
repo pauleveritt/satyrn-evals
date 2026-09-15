@@ -182,3 +182,31 @@ def check_allowlist(paths: tuple[str, ...], source_paths: tuple[str, ...]) -> No
     for path in paths:
         if not within_source(path, source_paths):
             raise PatchRejected(f"patch touches non-source path: {path}")
+
+
+def drop_ignored(patch_text: str, ignored: tuple[str, ...]) -> tuple[str, tuple[str, ...]]:
+    """Remove every ``diff --git`` section whose paths are all in ``ignored``.
+
+    Returns the remaining patch text and the paths dropped, sorted. A section
+    that also touches any other path stays whole, so the allowlist still
+    judges it; text before the first section is kept. Lines split on ``\\n``
+    only, so the kept sections are the original bytes. With nothing ignored
+    the patch comes back unchanged and unparsed.
+    """
+    if not ignored:
+        return patch_text, ()
+    sections: list[list[str]] = [[]]
+    for line in re.split(r"(?<=\n)", patch_text):
+        if line.startswith("diff --git "):
+            sections.append([])
+        sections[-1].append(line)
+    wanted = set(ignored)
+    kept = list(sections[0])
+    dropped: set[str] = set()
+    for section in sections[1:]:
+        paths = set(parse_patch_paths("".join(section)))
+        if paths <= wanted:
+            dropped |= paths
+        else:
+            kept.extend(section)
+    return "".join(kept), tuple(sorted(dropped))

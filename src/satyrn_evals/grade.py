@@ -24,7 +24,7 @@ from satyrn_evals.errors import (
 )
 from satyrn_evals.manifest import TaskManifest, load_manifest
 from satyrn_evals.overlay import OverlaySpec, load_overlay, materialize_overlay
-from satyrn_evals.patch import check_allowlist, parse_patch_paths
+from satyrn_evals.patch import check_allowlist, drop_ignored, parse_patch_paths
 from satyrn_evals.receipt import Receipt, patch_digest, write_receipt
 from satyrn_evals.taskenv import has_locked_project, parse_freeze
 from satyrn_evals.verdict import (
@@ -158,14 +158,18 @@ def grade(
     evidence: HookResultData | None = None
     reason = ""
     resolved_versions: dict[str, str] | None = None
+    # The manifest's ignored files leave the patch before the allowlist and
+    # the apply; the receipt lists them. Digest and contamination scan still
+    # read the patch as harvested.
+    graded_text, ignored = drop_ignored(patch_text, manifest.ignored_paths)
     try:
-        paths = parse_patch_paths(patch_text)
+        paths = parse_patch_paths(graded_text) if graded_text.strip() or not ignored else ()
         if enforce_allowlist:
             check_allowlist(paths, manifest.source_paths)
         hook, resolved_versions = _run_oracle(
             manifest,
             task_dir,
-            patch_text,
+            graded_text,
             overlay=overlay,
             selectors=selectors,
             workspace_parent=receipt_path.parent,
@@ -225,6 +229,7 @@ def grade(
         evidence=evidence,
         contamination=contamination,
         resolved_versions=resolved_versions,
+        ignored_paths=ignored,
     )
     if deadline is not None:
         deadline.remaining(DeadlinePhase.GRADING)
@@ -302,6 +307,8 @@ def _apply_patch(
         raise
     except (OSError, subprocess.CalledProcessError) as e:
         raise ApplyError(f"cannot run git: {e}") from e
+    if not patch_text.strip():
+        return  # every section was an ignored path: the oracle grades BASE
     applied = _run_grading_subprocess(
         ["git", *GIT_SAFETY_CONFIG, "apply", "-"],
         input=os.fsencode(patch_text),

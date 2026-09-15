@@ -659,3 +659,36 @@ def test_a_malformed_public_suite_is_refused(tmp_path: Path, bad: object) -> Non
 
     with pytest.raises(ManifestError, match="public_suite must be a non-empty list"):
         load_manifest(task)
+
+
+def _task_with_ignored(tmp_path: Path, ignored: object) -> Path:
+    task = _valid_task(tmp_path)
+    data = json.loads((task / "manifest.json").read_text())
+    data["ignored_paths"] = ignored
+    (task / "manifest.json").write_text(json.dumps(data))
+    return task
+
+
+def test_a_manifest_without_ignored_paths_ignores_nothing(tmp_path: Path) -> None:
+    assert load_manifest(_valid_task(tmp_path)).ignored_paths == ()
+
+
+def test_declared_ignored_paths_load_in_order(tmp_path: Path) -> None:
+    task = _task_with_ignored(tmp_path, ["PROVENANCE.md", "docs/notes.md"])
+    assert load_manifest(task).ignored_paths == ("PROVENANCE.md", "docs/notes.md")
+
+
+@pytest.mark.parametrize(
+    ("ignored", "message"),
+    [
+        ("PROVENANCE.md", "must be a list of non-empty strings"),
+        ([""], "must be a list of non-empty strings"),
+        (["/PROVENANCE.md"], "safe relative POSIX path"),
+        (["docs/../PROVENANCE.md"], "safe relative POSIX path"),
+        (["PROVENANCE.md", "PROVENANCE.md"], "repeats entry"),
+        (["solution.py"], "inside source_paths"),
+    ],
+)
+def test_malformed_ignored_paths_are_refused(tmp_path: Path, ignored: object, message: str) -> None:
+    with pytest.raises(ManifestError, match=message):
+        load_manifest(_task_with_ignored(tmp_path, ignored))

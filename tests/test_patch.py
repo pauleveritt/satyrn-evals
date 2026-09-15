@@ -1,7 +1,7 @@
 import pytest
 
 from satyrn_evals.errors import PatchParseError, PatchRejected
-from satyrn_evals.patch import check_allowlist, parse_patch_paths
+from satyrn_evals.patch import check_allowlist, drop_ignored, parse_patch_paths
 
 GOOD = (
     "diff --git a/solution.py b/solution.py\n"
@@ -263,3 +263,37 @@ def test_check_allowlist_directory_entry_accepts_children() -> None:
                     ("src/textkit",))  # must not raise
     with pytest.raises(PatchRejected, match="non-source"):
         check_allowlist(("tests/test_slugify.py",), ("src/textkit",))
+
+
+PROVENANCE_SECTION = (
+    "diff --git a/PROVENANCE.md b/PROVENANCE.md\n"
+    "new file mode 100644\n"
+    "--- /dev/null\n"
+    "+++ b/PROVENANCE.md\n"
+    "@@ -0,0 +1 @@\n"
+    "+| solution.py | created |\n"
+)
+
+
+def test_an_ignored_section_is_dropped_and_the_rest_kept_byte_for_byte() -> None:
+    assert drop_ignored(PROVENANCE_SECTION + GOOD, ("PROVENANCE.md",)) == (GOOD, ("PROVENANCE.md",))
+    assert drop_ignored(GOOD + PROVENANCE_SECTION, ("PROVENANCE.md",)) == (GOOD, ("PROVENANCE.md",))
+
+
+def test_nothing_ignored_returns_the_patch_unchanged() -> None:
+    assert drop_ignored(PROVENANCE_SECTION + GOOD, ()) == (PROVENANCE_SECTION + GOOD, ())
+    assert drop_ignored(GOOD, ("PROVENANCE.md",)) == (GOOD, ())
+
+
+def test_a_section_touching_an_ignored_and_another_path_is_kept() -> None:
+    rename = "diff --git a/PROVENANCE.md b/solution.py\nsimilarity index 100%\nrename from PROVENANCE.md\nrename to solution.py\n"
+    assert drop_ignored(rename, ("PROVENANCE.md",)) == (rename, ())
+
+
+def test_a_patch_of_only_ignored_sections_leaves_nothing() -> None:
+    assert drop_ignored(PROVENANCE_SECTION, ("PROVENANCE.md",)) == ("", ("PROVENANCE.md",))
+
+
+def test_hunk_text_that_looks_like_a_diff_header_does_not_split_a_section() -> None:
+    added = GOOD.replace("+    return n * 2\n", "+    return n * 2\n+diff --git a/PROVENANCE.md b/PROVENANCE.md\n")
+    assert drop_ignored(added, ("PROVENANCE.md",)) == (added, ())

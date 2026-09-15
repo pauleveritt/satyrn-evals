@@ -19,6 +19,9 @@ class Receipt:
     evidence: HookResultData | None
     contamination: dict | None = None
     resolved_versions: dict[str, str] | None = None
+    #: Paths the patch touched that the manifest's ``ignored_paths`` names,
+    #: dropped before the allowlist and the apply. Written only when non-empty.
+    ignored_paths: tuple[str, ...] = ()
 
 
 def patch_digest(data: bytes) -> str:
@@ -52,4 +55,8 @@ def write_receipt(path: Path, receipt: Receipt) -> None:
         data.pop("contamination")
     if receipt.resolved_versions is None:
         data.pop("resolved_versions")
+    if not receipt.ignored_paths:
+        data.pop("ignored_paths")
+    else:
+        data["ignored_paths"] = list(receipt.ignored_paths)
     write_json_atomically(path, data)

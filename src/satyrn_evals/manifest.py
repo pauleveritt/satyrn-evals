@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Literal
 
 from satyrn_evals.errors import ManifestError
+from satyrn_evals.patch import within_source
 
 #: The oracle hook plugin name. A public suite naming it would run the
 #: hidden grader through the executor's own process.
@@ -55,6 +56,12 @@ class TaskManifest:
     #: task has no directory entries, and the renderer refuses it against a
     #: tree that holds one. HP4.
     source_dirs: tuple[str, ...] | None = None
+    #: Repository files a patch may touch that grading drops before the
+    #: allowlist and the apply, listing them on the receipt. A self-hosted
+    #: base keeps ``AGENTS.md``, which requires a ``PROVENANCE.md`` row for
+    #: every file, while the generator strips ``PROVENANCE.md``; a model that
+    #: follows the repository's conventions must not lose its verdict for it.
+    ignored_paths: tuple[str, ...] = ()
 
 
 def _validate_source_dirs(
@@ -85,6 +92,34 @@ def _validate_source_dirs(
             raise ManifestError(
                 f"source_dirs names {entry!r}, which is not in source_paths"
             )
+    return declared
+
+
+def _validate_ignored_paths(
+    value: object, source_paths: tuple[str, ...]
+) -> tuple[str, ...]:
+    """Validate the optional ignored files: safe, distinct, outside ``source_paths``.
+
+    An ignored path inside ``source_paths`` is refused: grading would drop
+    the very work the task asks for.
+    """
+    match value:
+        case None:
+            return ()
+        case list() if all(isinstance(entry, str) and entry for entry in value):
+            declared = tuple(value)
+        case _:
+            raise ManifestError("ignored_paths must be a list of non-empty strings")
+    for entry in declared:
+        parts = entry.split("/")
+        if entry.startswith("/") or "\\" in entry or "\0" in entry or any(
+            part in ("", ".", "..") for part in parts
+        ):
+            raise ManifestError(f"ignored_paths entry must be a safe relative POSIX path: {entry!r}")
+        if declared.count(entry) > 1:
+            raise ManifestError(f"ignored_paths repeats entry: {entry}")
+        if within_source(entry, source_paths):
+            raise ManifestError(f"ignored_paths names {entry!r}, which is inside source_paths")
     return declared
 
 
@@ -321,6 +356,7 @@ def load_manifest(task_dir: Path) -> TaskManifest:
     grader_overlay = _validate_grader_overlay(task_dir, data.get("grader_overlay"))
     public_suite = _validate_public_suite(data.get("public_suite"), grader_overlay)
     source_dirs = _validate_source_dirs(data.get("source_dirs"), sources)
+    ignored_paths = _validate_ignored_paths(data.get("ignored_paths"), sources)
     visibility_raw = data.get("oracle_visibility", "visible")
     if visibility_raw not in ("visible", "hidden"):
         raise ManifestError(
@@ -352,6 +388,7 @@ def load_manifest(task_dir: Path) -> TaskManifest:
         contracts=contracts,
         public_suite=public_suite,
         source_dirs=source_dirs,
+        ignored_paths=ignored_paths,
     )
 
 

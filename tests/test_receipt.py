@@ -106,3 +106,15 @@ def test_receipt_serializes_resolved_versions_when_present(tmp_path) -> None:
     write_receipt(path, receipt)
     data = json.loads(path.read_text())
     assert data["resolved_versions"] == {"fastapi": "0.115.10"}
+
+
+def test_receipt_omits_ignored_paths_when_none_were_dropped(tmp_path) -> None:
+    path = tmp_path / "receipt.json"
+    write_receipt(path, Receipt("t", "d", Verdict.PASS, "ok", None))
+    assert "ignored_paths" not in json.loads(path.read_text())
+
+
+def test_receipt_lists_the_ignored_paths_it_dropped(tmp_path) -> None:
+    path = tmp_path / "receipt.json"
+    write_receipt(path, Receipt("t", "d", Verdict.PASS, "ok", None, ignored_paths=("PROVENANCE.md",)))
+    assert json.loads(path.read_text())["ignored_paths"] == ["PROVENANCE.md"]

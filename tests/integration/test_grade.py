@@ -211,6 +211,48 @@ def test_patch_touching_tests_records_unavailable(tmp_task: Path, tmp_path: Path
     assert "non-source" in data["reason"]
 
 
+PROVENANCE_SECTION = (
+    "diff --git a/PROVENANCE.md b/PROVENANCE.md\n"
+    "new file mode 100644\n"
+    "--- /dev/null\n"
+    "+++ b/PROVENANCE.md\n"
+    "@@ -0,0 +1 @@\n"
+    "+| solution.py | created |\n"
+)
+
+
+def _ignore_provenance(task_dir: Path) -> None:
+    manifest_path = task_dir / "manifest.json"
+    data = json.loads(manifest_path.read_text())
+    data["ignored_paths"] = ["PROVENANCE.md"]
+    manifest_path.write_text(json.dumps(data))
+
+
+def test_an_ignored_path_is_dropped_and_listed_and_the_rest_grades(tmp_task: Path, tmp_path: Path) -> None:
+    _ignore_provenance(tmp_task)
+    patch = tmp_path / "with-provenance.patch"
+    patch.write_text(PROVENANCE_SECTION + GOOD_PATCH)
+    receipt_path = tmp_path / "r.json"
+    receipt = grade(tmp_task, patch, receipt_path)
+    assert receipt.verdict is Verdict.PASS
+    assert json.loads(receipt_path.read_text())["ignored_paths"] == ["PROVENANCE.md"]
+
+
+def test_a_patch_of_only_ignored_paths_grades_the_base(tmp_task: Path, tmp_path: Path) -> None:
+    _ignore_provenance(tmp_task)
+    patch = tmp_path / "only-provenance.patch"
+    patch.write_text(PROVENANCE_SECTION)
+    receipt = grade(tmp_task, patch, tmp_path / "r.json")
+    assert (receipt.verdict, receipt.ignored_paths) == (Verdict.FAIL, ("PROVENANCE.md",))
+
+
+def test_an_undeclared_provenance_file_still_makes_the_verdict_unavailable(tmp_task: Path, tmp_path: Path) -> None:
+    patch = tmp_path / "with-provenance.patch"
+    patch.write_text(PROVENANCE_SECTION + GOOD_PATCH)
+    receipt = grade(tmp_task, patch, tmp_path / "r.json")
+    assert (receipt.verdict, receipt.reason) == (Verdict.UNAVAILABLE, "patch touches non-source path: PROVENANCE.md")
+
+
 def test_unreadable_patch_is_a_usage_error(tmp_task: Path, tmp_path: Path) -> None:
     with pytest.raises(PatchReadError, match="cannot read patch"):
         grade(tmp_task, tmp_path / "missing.patch", tmp_path / "r.json")
