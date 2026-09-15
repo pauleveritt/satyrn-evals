@@ -1374,3 +1374,7 @@
 | tests/test_record_new.py | created in release-one |
 | src/satyrn_evals/launch.py | created in release-one |
 | tests/test_launch.py | created in release-one |
+| src/satyrn_evals/launch_cell.py | created in release-one |
+| src/satyrn_evals/launch_record.py | created in release-one |
+| tests/test_launch_record.py | created in release-one |
+| tests/integration/test_launch_record.py | created in release-one |

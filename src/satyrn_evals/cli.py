@@ -21,6 +21,8 @@ from satyrn_evals.census import build_arg_parser as build_census_parser
 from satyrn_evals.census import run_cli as run_census
 from satyrn_evals.errors import SatyrnError, UsageError
 from satyrn_evals.grade import grade
+from satyrn_evals.launch_cell import ATTEMPT_DEADLINE, COMMAND_BACKSTOP
+from satyrn_evals.launch_record import DEFAULT_RUNS_ROOT, launch_record
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, resolve_task
 from satyrn_evals.qualify import qualify
 from satyrn_evals.rescore import regrade_attempt, summarize_output
@@ -34,6 +36,7 @@ from satyrn_evals.run_record import (
     gate,
     load_run_record,
     new_record,
+    record_arms,
     write_new_record,
 )
 from satyrn_evals.session import run_session
@@ -219,8 +222,16 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "launch":
             if args.preflight is not None:
                 return _launch_preflight(args)
+            if args.record is not None:
+                if args.check is not None:
+                    raise UsageError("launch takes RECORD or --check RECORD, not both")
+                return launch_record(
+                    Path(args.record), [Path(path) for path in args.arm or []], tasks_root=Path(args.tasks_root),
+                    runs_root=Path(args.runs_root), timeout=args.timeout, attempt_timeout=args.attempt_timeout,
+                    hunt=not args.no_hunt, settings=not args.no_settings,
+                )
             if args.check is None:
-                print("launch: cells are Phase 2c; use --check or --preflight", file=sys.stderr)
+                print("launch: RECORD --arm ARM.json, --check RECORD, or --preflight RECORD --arm ARM.json", file=sys.stderr)
                 return UsageError.exit_code
             record = load_run_record(Path(args.check))
             gate(record, previous_result_committed=_previous_result_committed(record))
@@ -275,10 +286,10 @@ def _launch_preflight(args: argparse.Namespace) -> int:
     record = load_run_record(Path(args.preflight))
     if record.isolation is not Isolation.ISOLATED:
         raise RunRecordError(f"launch --preflight checks the cell user; {args.preflight} is a local record")
-    if args.arm is None:
+    if not args.arm:
         raise UsageError("launch --preflight needs --arm ARM.json")
-    arm = load_arm(Path(args.arm))
-    if (arm.arm, arm.model) != (record.arm, record.model):
+    arm = load_arm(Path(args.arm[0]))
+    if arm.arm not in record_arms(record) or arm.model != record.model:
         raise RunRecordError(
             f"arm file {args.arm} is {arm.arm} on {arm.model}; the record is {record.arm} on {record.model}"
         )
@@ -292,7 +303,7 @@ def _launch_preflight(args: argparse.Namespace) -> int:
     problems = list(report.problems)
     if os.environ.get(CELL_PATH_PREFIX_ENV):
         problems.append(f"{CELL_PATH_PREFIX_ENV} is set; it is a test seam, never a sitting's PATH")
-    print(json.dumps({"record": args.preflight, "arm": args.arm, "problems": problems, **report.checked}, indent=2))
+    print(json.dumps({"record": args.preflight, "arm": args.arm[0], "problems": problems, **report.checked}, indent=2))
     for problem in problems:
         print(f"launch preflight FAILED: {problem}", file=sys.stderr)
     return 1 if problems else 0
@@ -505,12 +516,19 @@ session_p.add_argument(
 )
 
 launch_p = sub.add_parser(
-    "launch", help="check a run record, or preflight the cell user for an isolated one (cells are Phase 2c)"
+    "launch", help="run a frozen record's cells; or check a record, or preflight the cell user for one"
 )
+launch_p.add_argument("record", nargs="?", default=None, help="frozen run record JSON whose cells to run")
 launch_p.add_argument("--check", default=None, help="run record JSON path to check")
 launch_p.add_argument("--preflight", default=None, help="isolated run record JSON path to preflight the cell for")
-launch_p.add_argument("--arm", default=None, help="arm JSON the preflight pins pi against")
-launch_p.add_argument("--no-hunt", action="store_true", help="skip the root-anchored find (minutes)")
+launch_p.add_argument("--arm", action="append", default=None, help="arm JSON, once per arm the record runs")
+launch_p.add_argument("--no-hunt", action="store_true", help="skip the root-anchored find (development records only)")
+launch_p.add_argument("--no-settings", action="store_true", help="skip preflight_settings (development records only)")
+launch_p.add_argument("--runs-root", default=str(DEFAULT_RUNS_ROOT), help="where the night directory lives")
+launch_p.add_argument("--timeout", type=positive_finite_timeout, default=COMMAND_BACKSTOP, help="command backstop, seconds")
+launch_p.add_argument(
+    "--attempt-timeout", type=positive_finite_timeout, default=ATTEMPT_DEADLINE, help="attempt deadline, seconds"
+)
 launch_p.add_argument(
     "--tasks-root", default=str(DEFAULT_TASKS_ROOT), help="task root (default: bundled tasks)"
 )

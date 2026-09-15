@@ -103,13 +103,21 @@ def _lines(stdout: str) -> list[str]:
     return [line for line in stdout.splitlines() if line.strip()]
 
 
-def _cells_root_problems(cells_root: Path) -> list[str]:
+def _cells_root_problems(cells_root: Path, tolerated: Sequence[Path] = ()) -> list[str]:
     """A non-sticky root or an entry it does not vouch for (F2/R11).
 
     Read-only, run as the maintainer: a cell that can rename or remove
     entries in a group-writable, non-sticky root could plant its own
     directory carrying a matching export marker, so preflight names any
     entry that is not a maintainer-owned directory named ``engine-*``.
+
+    ``tolerated`` (R5) additionally excuses an entry the launcher itself
+    put there under a test seam (``cell_scratch``'s ``satyrn-test-*``
+    directory, named through ``SATYRN_CELL_PATH_PREFIX``) -- but only when
+    that entry is still a maintainer-owned directory; a cell-owned or
+    non-directory entry at a tolerated path is still a problem, since
+    tolerating it blind would let a cell plant exactly what this check
+    exists to catch.
     """
     problems: list[str] = []
     try:
@@ -124,13 +132,17 @@ def _cells_root_problems(cells_root: Path) -> list[str]:
     except OSError as exc:
         problems.append(f"cannot list the cells root {cells_root}: {exc}")
         return problems
+    tolerated_set = set(tolerated)
     for entry in entries:
         try:
             info = entry.stat()
         except OSError as exc:
             problems.append(f"cannot stat {entry}: {exc}")
             continue
-        if not (stat.S_ISDIR(info.st_mode) and info.st_uid == owner and entry.name.startswith("engine-")):
+        maintainer_owned_dir = stat.S_ISDIR(info.st_mode) and info.st_uid == owner
+        if entry in tolerated_set and maintainer_owned_dir:
+            continue
+        if not (maintainer_owned_dir and entry.name.startswith("engine-")):
             problems.append(f"unexpected entry in the cells root: {entry}")
     return problems
 
@@ -142,9 +154,15 @@ def preflight_cell(
     tasks_root: Path = DEFAULT_TASKS_ROOT,
     hunt_root: str | None = "/",
     cells_root: Path = CELLS_ROOT,
+    tolerated: Sequence[Path] = (),
     run: Runner = subprocess.run,
 ) -> CellPreflight:
-    """Every check; ``hunt_root=None`` skips the hunt (minutes on a real disk)."""
+    """Every check; ``hunt_root=None`` skips the hunt (minutes on a real disk).
+
+    ``tolerated`` (R5) is threaded straight to ``_cells_root_problems``:
+    a maintainer-owned directory at one of these paths is silent, and is
+    recorded in ``checked`` for the report.
+    """
     if (reason := cell_unavailable_reason(run)) is not None:
         return CellPreflight([reason])
     environment = {"HOME": os.fspath(CELL_HOME), "PATH": os.pathsep.join(CELL_PATH)}
@@ -167,7 +185,7 @@ def preflight_cell(
             problems.append(f"the {name} probe did not complete (no sentinel; the cell wrapper may have failed)")
         return stdout
 
-    problems += _cells_root_problems(cells_root)
+    problems += _cells_root_problems(cells_root, tolerated)
     ps = run(["/bin/ps", "-A", "-o", "pid=,uid=,command="], capture_output=True, text=True, check=False, timeout=60)
     stale = stale_cell_processes(ps.stdout, pwd.getpwnam(CELL_USER).pw_uid)
     problems += [f"a cell process is still running: {line}" for line in stale]
@@ -185,6 +203,7 @@ def preflight_cell(
     checked: dict[str, object] = {
         "cell_user": CELL_USER,
         "cells_root": os.fspath(cells_root),
+        "tolerated": [os.fspath(path) for path in tolerated],
         "pi_version": version,
         "unreadable_checked": paths,
         "hunt_root": hunt_root,

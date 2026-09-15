@@ -158,6 +158,31 @@ def test_an_unvouched_entry_in_the_cells_root_is_a_problem(cells_root: Path) -> 
     assert report.problems == [f"unexpected entry in the cells root: {stray}"]
 
 
+def test_a_tolerated_maintainer_owned_entry_is_silent_but_another_stray_is_still_flagged(
+    cells_root: Path,
+) -> None:
+    tolerated = cells_root / "satyrn-test-abc123"
+    tolerated.mkdir()
+    stray = cells_root / "leftover"
+    stray.mkdir()
+    report = preflight_cell(
+        pinned_pi="0.85.1", protected=(REPO,), hunt_root="/",
+        run=_Runner(ps="  101 560 /usr/libexec/lsd\n"), cells_root=cells_root, tolerated=(tolerated,),
+    )
+    assert report.problems == [f"unexpected entry in the cells root: {stray}"]
+    assert report.checked["tolerated"] == [str(tolerated)]
+
+
+def test_a_tolerated_path_that_is_not_a_directory_is_still_flagged(cells_root: Path) -> None:
+    tolerated = cells_root / "satyrn-test-abc123"
+    tolerated.write_text("not a directory")
+    report = preflight_cell(
+        pinned_pi="0.85.1", protected=(REPO,), hunt_root="/",
+        run=_Runner(ps="  101 560 /usr/libexec/lsd\n"), cells_root=cells_root, tolerated=(tolerated,),
+    )
+    assert report.problems == [f"unexpected entry in the cells root: {tolerated}"]
+
+
 # --- a missing sentinel names the wrapper failure, not a clean certificate (F5/R13) ---
 
 

@@ -19,6 +19,9 @@ stdout:
   only a tighter harness budget can trip it, never `deliver`'s live
   enforcement or the engine's own `attempt` -- record its pid in
   ``SATYRN_FAKE_PI_PIDFILE``, then sleep so only a tripwire can end it.
+- ``unreachable``: change nothing and end the one turn the way Pi does when
+  the model server cannot be reached (``stopReason: error`` with no status),
+  which the harness records as ``MODEL_ERROR`` (Phase 2c's infrastructure stop).
 """
 
 import json
@@ -61,6 +64,11 @@ def main() -> int:
             Path(pidfile).write_text(str(os.getpid()))
         turn(20_000)
         time.sleep(120)
+        return 0
+    if mode == "unreachable":
+        emit({"type": "turn_start"})
+        emit({"type": "turn_end", "message": {"role": "assistant", "content": [], "stopReason": "error", "errorMessage": "Connection error."}})
+        emit({"type": "agent_end"})
         return 0
     if mode in ("commit", "write"):
         emit({"type": "turn_start"})
