@@ -1,0 +1,24 @@
+{
+  "name": "selfhost-run-record-gate",
+  "base": "cc9ab53107a8862a84843b1c3030274503d53d0b",
+  "good": "b253c993539c9bca3cb5103bbd5ac159350ae9d3",
+  "files": [
+    "src/satyrn_evals/run_record.py",
+    "src/satyrn_evals/cli.py"
+  ],
+  "hidden": [
+    "tests/test_run_record.py"
+  ],
+  "plan": {
+    "path": "docs/superpowers/plans/2026-09-13-phase-0-restart.md",
+    "heading": "### Task 8: The run-record gate",
+    "commit": "73ec17217a38b9730c9d34d47c0a5163d9c421e7"
+  },
+  "formats": "RunRecordError's text is what its acceptance suite matches, by exact substring in most cases and by these two exact phrases in the strict cases -- match them exactly. When the parsed JSON is not an object (for example it parses to null or to a bare number), the message contains the exact phrase `not a JSON object`. When a required field is present but the wrong Python type for its column above, the message contains the exact phrase `<field> has the wrong type`, with `<field>` replaced by that field's schema name (for example `n has the wrong type` when n is a string instead of an int). When mode is neither attended nor batch, the message contains the exact phrase `mode must be attended or batch`. When stop_rule or decision_rule is empty or all whitespace, the message contains the exact phrase `<field> is empty` (for example `stop_rule is empty`). Every other refusal's message only needs to mention, somewhere, the name of the field or mode it concerns (a missing field names that field; an attended- or batch-cap refusal says \"attended\" or \"batch\"; a bad digest names task_tree_sha256; an uncommitted result names previous_result; a bad condition names condition), and a message about a file that could not be read or parsed should include that file's path. Malformed JSON syntax (not merely the wrong shape) is refused too, with a message including the path.",
+  "broken": {
+    "src/satyrn_evals/run_record.py": "\"\"\"known-broken fixture stub: importable, behaviorally incomplete.\"\"\"\n\nfrom dataclasses import dataclass\nfrom pathlib import Path\n\nfrom satyrn_evals.errors import UsageError\n\n\nclass RunRecordError(UsageError):\n    \"\"\"Stub: not yet implemented.\"\"\"\n\n\n@dataclass(frozen=True, slots=True)\nclass RunRecord:\n    version: int | None = None\n    task: str | None = None\n    task_tree_sha256: str | None = None\n    arm: str | None = None\n    model: str | None = None\n    condition: str | None = None\n    n: int | None = None\n    mode: str | None = None\n    max_minutes: int | None = None\n    stop_rule: str | None = None\n    decision_rule: str | None = None\n    previous_result: str | None = None\n\n\ndef load_run_record(path: Path) -> None:\n    return None\n\n\ndef gate(record: RunRecord, *, previous_result_committed: bool | None) -> None:\n    return None\n"
+  },
+  "oracle_env": {
+    "PYTHONPATH": "src"
+  }
+}

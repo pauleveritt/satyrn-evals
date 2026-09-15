@@ -35,6 +35,10 @@ FLEET: dict[str, tuple[str, ...]] = {
         "tests/*",
     ),
     "format_number": ("solution.py",),
+    "selfhost-docs-linter": ("tools/lint_docs.py", "tests/*"),
+    "selfhost-guard-prefixes": ("tools/hooks/guard.py", "tests/*"),
+    "selfhost-review-script": ("tools/review.py", "tests/*"),
+    "selfhost-run-record-gate": ("src/satyrn_evals/run_record.py", "src/satyrn_evals/cli.py", "tests/*"),
 }
 
 
