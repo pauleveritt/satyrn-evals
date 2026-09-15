@@ -5,8 +5,10 @@ cell cannot read the maintainer's engine checkout (his home is 700). So the
 maintainer exports the pinned commit -- ``git archive``, no history -- into
 ``CELLS_ROOT/engine-<commit>``, syncs its environment offline from his own
 uv cache against a Python the cell can execute (Homebrew's, world-readable;
-uv's managed Pythons live under his home), and shares it with the group.
-The marker file is written last, so a half-made export is never reused.
+uv's managed Pythons live under his home), and shares it with the group
+read-only (Ruling 10: the pinned engine stays enforceable only if the cell
+cannot write into its export -- source or ``.venv``). The marker file is
+written last, so a half-made export is never reused.
 """
 
 import io
@@ -59,7 +61,7 @@ def export_engine(engine_repo: Path, commit: str, *, root: Path = CELLS_ROOT, py
     )
     if synced.returncode != 0:
         raise EngineExportError(f"uv sync in {dest} failed: {synced.stderr.strip()}")
-    share_with_cell(dest)
+    share_with_cell(dest, writable=False)
     (dest / MARKER).write_text(sha + "\n")
-    share_with_cell(dest)
+    share_with_cell(dest, writable=False)
     return dest

@@ -204,19 +204,29 @@ def grant_maintainer(
     return None
 
 
-def share_with_cell(root: Path) -> None:
-    """Make every directory under ``root`` group rwx+setgid and every file group rw.
+def share_with_cell(root: Path, *, writable: bool = True) -> None:
+    """Make every directory under ``root`` group-readable and every file group-readable.
 
     The cells root is ``pauleveritt:satyrn`` 2770, so new entries are already
     group ``satyrn`` (BSD group inheritance); only the mode needs widening.
     Entries the cell user created are its own to share (it writes under
     ``umask 007``) and are left alone, as are symbolic links.
+
+    ``writable`` (the default) widens directories to 2770 and files to
+    group rw, as workspaces need. Passing ``writable=False`` shares a tree
+    read-only: directories 2750 (group r-x, setgid), files g+r and g+x only
+    where the owner already has x -- no group write bit anywhere under the
+    tree. The engine export uses this so a cell cannot write into it.
     """
     owner = os.getuid()
     for directory, _dirs, files in os.walk(root):  # never follows directory symlinks
         if os.stat(directory).st_uid == owner:
-            os.chmod(directory, 0o2770)
+            os.chmod(directory, 0o2770 if writable else 0o2750)
         for name in files:
             path = Path(directory) / name
             if not path.is_symlink() and (info := path.stat()).st_uid == owner:
-                os.chmod(path, info.st_mode & 0o7777 | 0o060)
+                if writable:
+                    os.chmod(path, info.st_mode & 0o7777 | 0o060)
+                else:
+                    group_bits = 0o040 | (0o010 if info.st_mode & 0o100 else 0o000)
+                    os.chmod(path, info.st_mode & ~0o070 | group_bits)

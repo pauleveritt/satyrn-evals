@@ -122,6 +122,18 @@ def test_sharing_widens_group_bits_on_the_maintainers_entries(tmp_path: Path) ->
     assert stat.S_IMODE((tmp_path / "d" / "f").stat().st_mode) == 0o660
 
 
+def test_sharing_read_only_grants_group_read_and_execute_but_never_write(tmp_path: Path) -> None:
+    (tmp_path / "d").mkdir(mode=0o700)
+    (tmp_path / "d" / "f").write_text("x")
+    (tmp_path / "d" / "f").chmod(0o600)
+    (tmp_path / "d" / "run").write_text("#!/bin/sh\n")
+    (tmp_path / "d" / "run").chmod(0o700)
+    share_with_cell(tmp_path, writable=False)
+    assert stat.S_IMODE((tmp_path / "d").stat().st_mode) == 0o2750
+    assert stat.S_IMODE((tmp_path / "d" / "f").stat().st_mode) == 0o640
+    assert stat.S_IMODE((tmp_path / "d" / "run").stat().st_mode) == 0o750
+
+
 def test_a_live_transcript_is_copied_into_the_attempt_directory(tmp_path: Path) -> None:
     live = tmp_path / "parent" / LIVE_TRANSCRIPT_NAME
     live.parent.mkdir()

@@ -163,4 +163,7 @@ def test_the_engine_export_is_made_once_and_runs_as_the_cell_user(cell_scratch: 
         cwd=first, environment=environment,
     )
     assert ran.returncode == 0 and "derive" in ran.stdout, ran.stderr
+    probe = first / "probe"
+    touched = run_as_cell(["/usr/bin/touch", os.fspath(probe)], cwd=first, environment=environment)
+    assert touched.returncode != 0 and not probe.exists(), touched.stderr
     assert main(["cell-engine", "--engine-repo", os.fspath(_engine_repo()), "--commit", "not-a-commit"]) == 2
