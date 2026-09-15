@@ -13,6 +13,8 @@ satyrn-evals = "satyrn_evals.cli:main"
 satyrn-evals-session-pi = "satyrn_evals.adapters.pi_session:main"
 # The Baseline arm's attempt adapter (arms/baseline.json names this).
 satyrn-evals-attempt-pi = "satyrn_evals.attempt_pi:main"
+# The Engine arm's attempt adapter: the same task text through /implement.
+satyrn-evals-attempt-engine = "satyrn_evals.attempt_engine:main"
 
 [build-system]
 requires = ["hatchling"]

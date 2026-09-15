@@ -47,11 +47,21 @@ EVENT_TYPES = frozenset(
 # unknown_event` at the first call -- the vocabulary was blind to the tool
 # the route exists to exercise. Like `tool_execution_update` it is
 # recognised and counted as an ordinary execution.
-TOOL_NAMES = frozenset({"read", "bash", "edit", "write", "run_self_test"})
+# `self_test` added in Phase 2a: the engine's `/implement` child registers
+# the runner under that name (satyrn-engine Phase 1 Ruling 1, Task 9).
+TOOL_NAMES = frozenset({"read", "bash", "edit", "write", "run_self_test", "self_test"})
 FILE_TOOLS = frozenset({"read", "edit", "write"})
 WRITE_TOOLS = frozenset({"edit", "write"})
 SHELL_TOOLS = frozenset({"bash"})
 RUNNER_NAMES = frozenset({"pytest"})
+
+#: The engine's guard-firing entries (satyrn-engine Phase 1 Task 2,
+#: `budget.GUARD_KINDS`), each a `pi.appendEntry` custom entry the stream
+#: carries as `entry_appended` (Phase 1 Ruling 7). Counted as nothing here;
+#: `cell_evidence` counts them.
+GUARD_KINDS = frozenset(
+    {"loop_broken", "scope_refused", "symbol_preserved", "command_bounded", "command_timed_out"}
+)
 
 type PathologyReason = Literal[
     "absent", "empty", "unparseable", "unsupported_version",
@@ -214,7 +224,7 @@ def _vocabulary_ok(events: list[dict]) -> PathologyReason | None:
             entry = event.get("entry")
             if not isinstance(entry, dict) or not isinstance(entry.get("customType"), str):
                 return "malformed"
-            if entry["customType"] != "loop_broken":
+            if entry["customType"] not in GUARD_KINDS:
                 return "unknown_event"
     return None
 

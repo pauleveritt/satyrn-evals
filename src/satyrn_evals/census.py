@@ -50,7 +50,7 @@ PATHOLOGY_NAMES: tuple[PathologyName, ...] = (
 #: product does -- adding a real tool means adding its name here, not
 #: reworking the detector.
 KNOWN_TOOL_NAMES = frozenset(
-    {"read", "bash", "edit", "write", "run_tests", "run_self_test"}
+    {"read", "bash", "edit", "write", "run_tests", "run_self_test", "self_test"}
 )
 
 _SCHEMA_REFUSAL_MARKER = "Validation failed for tool"

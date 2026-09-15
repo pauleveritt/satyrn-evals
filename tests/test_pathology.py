@@ -41,7 +41,7 @@ def test_documented_constants() -> None:
     # `run_self_test` added 2026-09-11 (V2b cause 1): the packet route's
     # adapter registers it, so a packet-route transcript is ``unknown_event``
     # without it.
-    assert {"read", "bash", "edit", "write", "run_self_test"} == TOOL_NAMES
+    assert {"read", "bash", "edit", "write", "run_self_test", "self_test"} == TOOL_NAMES
     assert {
         "session", "agent_start", "turn_start", "turn_end", "message_start",
         "message_update", "message_end", "tool_execution_start",
@@ -1064,3 +1064,19 @@ def test_a_multi_session_concatenation_is_named_not_malformed() -> None:
 
     assert block.measured is False
     assert block.reason == "multi_session"
+
+
+# --- 2a: the /implement child's vocabulary (satyrn-engine Phase 1) ---------
+
+
+def test_every_engine_guard_entry_is_measured() -> None:
+    for kind in ("loop_broken", "scope_refused", "symbol_preserved", "command_bounded", "command_timed_out"):
+        block = count_transcript(_LOOP_BROKEN_DOC.replace('"loop_broken"', f'"{kind}"'), had_patch=True)
+        assert (block.measured, block.reason) == (True, None), kind
+        assert block.loop_broken == (1 if kind == "loop_broken" else 0), kind
+
+
+def test_the_self_test_tool_is_a_known_tool() -> None:
+    doc = _UPDATE_DOC.replace('"toolName": "bash"', '"toolName": "self_test"')
+    block = count_transcript(doc, had_patch=True)
+    assert (block.measured, block.tool_calls) == (True, {"self_test": 1})

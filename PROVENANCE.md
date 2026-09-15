@@ -290,3 +290,6 @@
 | tests/test_cell_evidence.py | created in release-one |
 | tests/integration/test_timeline_attempt.py | created in release-one |
 | tests/integration/test_evidence_run.py | created in release-one |
+| src/satyrn_evals/attempt_engine.py | created in release-one |
+| tests/test_attempt_engine.py | created in release-one |
+| tests/integration/test_engine_arm.py | created in release-one |
