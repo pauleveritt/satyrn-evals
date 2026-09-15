@@ -49,10 +49,27 @@ def _transcript(*lines: str, header: bool = True) -> str:
         "sudo find /private/var/folders -name overlay",
         "cd tests\nfind / -name x",
         "cat <<EOF\nhello\nEOF\nfind / -name x",
+        "echo $((1<<2))\nfind / -name x",
+        "x=$((n<<1))\nfind / -name x",
+        "x=$((n << 1))\nfind / -name x",
+        "cat <<<word\nfind / -name x",
+        'cat <<< "word"\nfind / -name x',
+        "cat <<EOF\nfind / -name x",
     ],
 )
 def test_root_anchored_searches_fire(command: str) -> None:
     assert root_search(command, CWD)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "cat <<",
+        "cat <<<",
+    ],
+)
+def test_odd_heredoc_like_input_does_not_raise(command: str) -> None:
+    assert root_search(command, CWD) is False
 
 
 @pytest.mark.parametrize(

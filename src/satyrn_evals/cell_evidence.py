@@ -24,10 +24,14 @@ The escape rules are lexical and stated so a reader can recompute them:
 - an unquoted newline ends a simple command exactly like ``;``; a newline
   inside a quoted argument stays part of that argument's text.
 - a heredoc body (``<<WORD`` / ``<<-WORD``, ``WORD`` optionally quoted; not
-  ``<<<``) is never a command -- its lines, up to and including the line
-  matching the delimiter (leading tabs stripped for ``<<-``), are dropped
-  before commands are split; an unterminated heredoc swallows the rest of
-  the text, as it does in a real shell.
+  ``<<<``, and not ``<<`` that never resolves to a matching terminator line)
+  is never a command -- its lines, up to and including the line matching
+  the delimiter (leading tabs stripped for ``<<-``), are dropped before
+  commands are split; an **unterminated** heredoc (no later line equals the
+  delimiter -- including a false ``<<`` from arithmetic left-shift, whose
+  "delimiter" is text like ``2))``) is treated as no heredoc at all: the
+  text is kept and the newline that started it still ends the command like
+  ``;``, so a real command after it is never dropped.
 """
 
 import json
@@ -153,9 +157,11 @@ def _heredoc_word(command: str, index: int) -> tuple[str | None, int]:
     return ("".join(word) or None), index
 
 
-def _skip_heredoc_body(command: str, index: int, delimiter: str, strip_tabs: bool) -> int:
+def _skip_heredoc_body(command: str, index: int, delimiter: str, strip_tabs: bool) -> int | None:
     """Index just past the line matching ``delimiter``, dropping every line
-    from ``index`` up to and including it; ``len(command)`` if unterminated."""
+    from ``index`` up to and including it; ``None`` if no such line exists
+    (an unterminated heredoc -- per R6, treated as no heredoc at all, so the
+    caller keeps the text instead of swallowing it)."""
     n = len(command)
     while index <= n:
         newline = command.find("\n", index)
@@ -165,9 +171,9 @@ def _skip_heredoc_body(command: str, index: int, delimiter: str, strip_tabs: boo
         if candidate == delimiter:
             return end + 1 if newline != -1 else n
         if newline == -1:
-            return n
+            return None
         index = newline + 1
-    return n
+    return None
 
 
 def _mask_unquoted_newlines(command: str) -> str:
@@ -206,12 +212,12 @@ def _mask_unquoted_newlines(command: str) -> str:
             pieces.append(char)
             quote = char
             index += 1
-        elif (
-            quote is None
-            and char == "<"
-            and command.startswith("<<", index)
-            and not command.startswith("<<<", index)
-        ):
+        elif quote is None and command.startswith("<<<", index):
+            # Here-string: never a heredoc. Consume all three `<` at once so
+            # the third one can't be re-matched as the start of `<<`.
+            pieces.append(command[index : index + 3])
+            index += 3
+        elif quote is None and char == "<" and command.startswith("<<", index):
             operator_end = index + 2
             strip_tabs = command.startswith("-", operator_end)
             if strip_tabs:
@@ -228,7 +234,13 @@ def _mask_unquoted_newlines(command: str) -> str:
             pieces.append(";")
             index += 1
             for delimiter, strip_tabs in pending_heredocs:
-                index = _skip_heredoc_body(command, index, delimiter, strip_tabs)
+                # R6: an unterminated heredoc (no line matches the
+                # delimiter) is not a heredoc at all -- keep the text and
+                # let the newline's `;` still separate commands, rather
+                # than swallowing everything after it.
+                skipped = _skip_heredoc_body(command, index, delimiter, strip_tabs)
+                if skipped is not None:
+                    index = skipped
             pending_heredocs = []
         else:
             pieces.append(char)
