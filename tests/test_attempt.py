@@ -166,6 +166,38 @@ def _run_attempt(
     return record, _cells(output)[0]
 
 
+# --- F8/R13: the local profile never inherits the maintainer's cell variables ---
+
+
+def test_local_profile_strips_a_stray_isolation_and_cell_parent_from_the_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A stray SATYRN_ISOLATION/SATYRN_CELL_PARENT in the maintainer's own
+    shell must not reach the local-profile command: the adapter would then
+    believe it is isolated and try to run as the cell."""
+    from satyrn_evals.cell import CELL_PARENT_ENV, ISOLATION_ENV
+
+    monkeypatch.setenv(ISOLATION_ENV, "isolated")
+    monkeypatch.setenv(CELL_PARENT_ENV, "/Users/Shared/satyrn-cells/stray")
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+    seen: dict[str, str] = {}
+
+    def fake_run_workspace(**kwargs: Any) -> WorkspaceResult:
+        seen.update(kwargs["environment"])
+        # Leave the patch/transcript unwritten: the attempt refuses NO_PATCH
+        # before grading, so nothing here spawns a subprocess (this row is
+        # about the exported environment, not the grade path).
+        return WorkspaceResult(WorkspaceCode.OK, "attempt command completed", 0, "b" * 40)
+
+    _install_workspace_double(monkeypatch, fake_run_workspace)
+    attempt_module.attempt(
+        task="t", tasks_root=tasks_root, output=tmp_path / "attempts", command=["fake-agent"], timeout=1.0
+    )
+    assert seen[ISOLATION_ENV] == "local"
+    assert CELL_PARENT_ENV not in seen
+
+
 def test_valid_artifacts_proceed() -> None:
     assert decide_refusal(GOOD_PATCH, TRANSCRIPT) is None
 

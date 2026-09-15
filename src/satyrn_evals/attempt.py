@@ -256,6 +256,13 @@ def _attempt(
     transcript_path = attempt_dir / "transcript.txt"
 
     env = dict(os.environ)
+    if isolation is Isolation.LOCAL:
+        # F8/R13: a stray SATYRN_ISOLATION/SATYRN_CELL_PARENT in the
+        # maintainer's own shell must never reach a local-profile command --
+        # an adapter reading it would believe it is isolated and try to run
+        # as the cell. Isolated attempts set these explicitly below.
+        env[ISOLATION_ENV] = Isolation.LOCAL.value
+        env.pop(CELL_PARENT_ENV, None)
     env[TASK_NAME_ENV] = manifest.name
     env[TASK_CONTRACT_ENV] = contract_text
     env[PATCH_ENV] = str(patch_path)
