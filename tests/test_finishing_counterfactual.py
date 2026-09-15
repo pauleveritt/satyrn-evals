@@ -206,6 +206,13 @@ def test_a_self_test_that_failed_refused_or_timed_out_is_not_green(details: dict
     assert cf.is_test_run(step) and not cf.is_green(step)
 
 
+def test_a_self_test_with_ok_details_but_a_failing_summary_text_is_not_green() -> None:
+    """Documents behaviour: exit_code 0 / ok True in details does not override a
+    failing pytest summary in the step's own text."""
+    [step] = cf.steps_of(stream(turn(), assistant(5), call("a", "self_test", {}, "1 failed, 2 passed in 0.1s", details=self_test_details(0))))
+    assert cf.is_test_run(step) and not cf.is_green(step)
+
+
 def test_steps_carry_evals_turn_and_output_token_counts_at_their_end() -> None:
     steps = cf.steps_of(stream(
         turn(), assistant(100), call("a", "bash", {"command": "ls"}),
@@ -241,6 +248,30 @@ def test_no_green_run_after_the_edit_means_no_trigger() -> None:
         turn(), assistant(100), call("b", "bash", PYTEST, "1 failed in 0.1s", error=True),
     ))
     assert cf.find_trigger(steps, [0]) is None
+
+
+def test_a_green_bash_run_on_the_same_step_as_the_first_source_edit_is_not_its_own_trigger() -> None:
+    """Documents behaviour: the trigger step must be strictly after the first source
+    edit's index, even when a single bash step both writes a source file (per the
+    touched map) and prints a green pytest summary."""
+    command = "cat > src/satyrn_evals/cli.py <<EOF\nx\nEOF\nuv run pytest tests/test_run_record.py -q"
+    steps = cf.steps_of(stream(turn(), assistant(100), call("a", "bash", {"command": command}, "3 passed in 0.1s")))
+    touched = {0: ("src/satyrn_evals/cli.py",)}
+    source_edits = cf.source_edit_indices(steps, SOURCES, CWD, touched)
+    assert source_edits == [0]
+    assert cf.find_trigger(steps, source_edits) is None
+
+
+def test_a_later_green_run_after_a_same_step_write_is_the_trigger() -> None:
+    command = "cat > src/satyrn_evals/cli.py <<EOF\nx\nEOF\nuv run pytest tests/test_run_record.py -q"
+    steps = cf.steps_of(stream(
+        turn(), assistant(100), call("a", "bash", {"command": command}, "3 passed in 0.1s"),
+        turn(), assistant(100), call("b", "bash", PYTEST, "3 passed in 0.1s"),
+    ))
+    touched = {0: ("src/satyrn_evals/cli.py",)}
+    source_edits = cf.source_edit_indices(steps, SOURCES, CWD, touched)
+    trigger = cf.find_trigger(steps, source_edits)
+    assert trigger is not None and trigger.step == 1
 
 
 @pytest.mark.parametrize(
@@ -304,6 +335,10 @@ def test_other_bash_forms_do_not_replay(command: str) -> None:
         "python3 -c \"open('./tests/x.py','w').write('x')\"",
         "sed --in-place 's/a/b/' src/satyrn_evals/cli.py && uv run pytest",
         "sed --in-place=bak 's/a/b/' src/satyrn_evals/cli.py && uv run pytest",
+        'cd "$(pwd)" && sed -i \'s/a/b/\' src/satyrn_evals/cli.py && uv run pytest',
+        "cd $(pwd) && perl -i -pe 's/a/b/' src/satyrn_evals/cli.py",
+        "cd $PWD && echo x > src/satyrn_evals/cli.py; ls",
+        'echo x > "$(pwd)/src/satyrn_evals/cli.py" && true',
     ],
 )
 def test_unreplayed_bash_that_could_write_a_source_path(command: str) -> None:
@@ -324,6 +359,8 @@ def test_unreplayed_bash_that_could_write_a_source_path(command: str) -> None:
         "uv run ruff format --check src/",
         "cd /tmp && echo x > cli.py",
         "cp tests/its.py its.py",
+        'cd "$(pwd)" && echo x > notes.txt',
+        'cd "$(pwd)" && uv run pytest tests/ -q',
     ],
 )
 def test_unreplayed_bash_that_could_not_write_a_source_path(command: str) -> None:

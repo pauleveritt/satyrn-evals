@@ -362,6 +362,8 @@ _REDIRECTS = frozenset({">", ">>", ">|", "&>", "&>>"})
 _LAST_OPERAND_WRITERS = frozenset({"cp", "install", "ln", "rsync"})
 _EVERY_OPERAND_WRITERS = frozenset({"mv", "rm", "touch", "truncate", "tee", "patch"})
 _GIT_WRITERS = frozenset({"apply", "am", "checkout", "restore", "reset", "stash", "mv", "rm", "cherry-pick", "revert", "merge", "pull", "switch", "clean"})
+_PWD_TOKENS = frozenset({"$(pwd)", "$PWD", "${PWD}"})
+_PWD_PREFIXES = ("$(pwd)/", "$PWD/", "${PWD}/")
 
 
 def strip_cd(command: str, cwd: str | None) -> str | None:
@@ -489,19 +491,35 @@ def could_write_source(command: str, source_paths: tuple[str, ...], cwd: str | N
     ``--check``/``--diff``, always could; a redirection, ``tee``/``mv``/``rm``/``touch``/
     ``truncate``/``patch`` operand, ``cp``/``install``/``ln``/``rsync`` destination, or
     ``sed -i``/``perl -i`` operand could when it resolves (after any ``cd`` earlier in the
-    command) inside source_paths. Python file writes anywhere in the text (heredoc bodies
-    included) could when the text names a source path."""
+    command) inside source_paths. Ruling 10: ``cd $(pwd)``/``cd $PWD``/``cd ${PWD}`` (quoted
+    or not) count as the worktree itself and leave a tracked directory unchanged, and a
+    target prefixed ``$(pwd)/``, ``$PWD/`` or ``${PWD}/`` resolves against that directory.
+    Python file writes anywhere in the text (heredoc bodies included) could when the text
+    names a source path."""
     if _PY_WRITE.search(command) and mentions_source(command, source_paths):
         return True
     directory: str | None = "."
-    for words in _segments(command):
+    segments = _segments(command)
+    index = 0
+    while index < len(segments):
+        words = segments[index]
         program, rest, targets = _write_targets(words)
         if program == "cd":
             destination = rest[0] if rest else "~"
+            if destination in _PWD_TOKENS:
+                index += 1
+                continue
+            # Unquoted ``cd $(pwd)`` is lexed as a ``$`` token followed by a bare ``pwd``
+            # segment (the parens are separators): recognize that split and treat it the
+            # same as the quoted, single-token form.
+            if destination == "$" and rest == ["$"] and index + 1 < len(segments) and segments[index + 1] == ["pwd"]:
+                index += 2
+                continue
             if destination.startswith(("/", "~", "$")):
                 directory = tree_path(destination, cwd) if destination.startswith("/") else None
             elif directory is not None:
                 directory = posixpath.normpath(posixpath.join(directory, destination))
+            index += 1
             continue
         if program == "git" and any(w in _GIT_WRITERS for w in rest if not w.startswith("-")):
             return True
@@ -509,7 +527,10 @@ def could_write_source(command: str, source_paths: tuple[str, ...], cwd: str | N
             return True
         for target in targets:
             target = target.strip("'\"")
-            if target.startswith("/"):
+            pwd_prefix = next((p for p in _PWD_PREFIXES if target.startswith(p)), None)
+            if pwd_prefix is not None:
+                resolved = None if directory is None else tree_path(posixpath.join(directory, target[len(pwd_prefix) :]), None)
+            elif target.startswith("/"):
                 resolved = tree_path(target, cwd)
             elif directory is None or target.startswith(("~", "$")):
                 resolved = None
@@ -517,6 +538,7 @@ def could_write_source(command: str, source_paths: tuple[str, ...], cwd: str | N
                 resolved = tree_path(posixpath.join(directory, target), None)
             if resolved is not None and in_source_paths(resolved, source_paths):
                 return True
+        index += 1
     return False
 
 
