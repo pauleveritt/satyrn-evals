@@ -22,7 +22,11 @@ from satyrn_evals.census import run_cli as run_census
 from satyrn_evals.errors import SatyrnError, UsageError
 from satyrn_evals.grade import grade
 from satyrn_evals.launch_cell import ATTEMPT_DEADLINE, COMMAND_BACKSTOP
-from satyrn_evals.launch_record import DEFAULT_RUNS_ROOT, launch_record
+from satyrn_evals.launch_record import (
+    DEFAULT_RUNS_ROOT,
+    launch_record,
+    model_server_checks,
+)
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, resolve_task
 from satyrn_evals.qualify import qualify
 from satyrn_evals.rescore import regrade_attempt, summarize_output
@@ -301,9 +305,16 @@ def _launch_preflight(args: argparse.Namespace) -> int:
         hunt_root=None if args.no_hunt else "/",
     )
     problems = [*report.problems, *arm_export_problems(arm)]
+    checked: dict[str, object] = dict(report.checked)
+    if not os.environ.get(CELL_PATH_PREFIX_ENV):
+        # Same check, same skip rule as `launch_record`'s: a real preflight run
+        # never carries the test PATH seam (flagged just below when it does),
+        # so this only ever skips there, never for a record this path accepts.
+        server_problems, checked["model_server"] = model_server_checks([arm], record.isolation)
+        problems += server_problems
     if os.environ.get(CELL_PATH_PREFIX_ENV):
         problems.append(f"{CELL_PATH_PREFIX_ENV} is set; it is a test seam, never a sitting's PATH")
-    print(json.dumps({"record": args.preflight, "arm": args.arm[0], "problems": problems, **report.checked}, indent=2))
+    print(json.dumps({"record": args.preflight, "arm": args.arm[0], "problems": problems, **checked}, indent=2))
     for problem in problems:
         print(f"launch preflight FAILED: {problem}", file=sys.stderr)
     return 1 if problems else 0

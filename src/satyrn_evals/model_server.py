@@ -18,10 +18,13 @@ starting oMLX and the other by pointing the arm at the right id.
 
 import json
 import urllib.request
+from collections.abc import Mapping
 
-#: oMLX's default port on this host. Pi's own `models.json` names the same
-#: origin with a `/v1` suffix already applied (`providers.omlx.baseUrl`);
-#: this is the bare origin the `/v1/models` path is joined to.
+from satyrn_evals.pi_models import provider_base_url
+
+#: oMLX's default port on this host, used only when the arm's own Pi
+#: config names no provider for its model (`model_server_base_url`) --
+#: never a hard-coded stand-in for reading that config.
 DEFAULT_MODEL_SERVER_URL = "http://127.0.0.1:8001"
 
 #: The spec's ceiling: a hung server must not turn a preflight into a
@@ -48,7 +51,33 @@ def model_server_problems(base_url: str, server_model: str, *, timeout: float = 
         payload = json.loads(body)
     except ValueError as exc:
         return [f"the model server at {base_url} is unreachable: {exc}"]
-    ids = {entry.get("id") for entry in (payload.get("data") or []) if isinstance(entry, dict)}
+    if not isinstance(payload, dict) or not isinstance(payload.get("data"), list):
+        return [f"the model server at {base_url} does not answer /v1/models with a model list"]
+    ids = {entry.get("id") for entry in payload["data"] if isinstance(entry, dict)}
     if server_model not in ids:
         return [f"the model server at {base_url} does not serve {server_model}"]
     return []
+
+
+def model_server_base_url(pi_models: Mapping[str, object] | None, model: str) -> tuple[str, str | None]:
+    """The origin an arm's ``GET /v1/models`` check should hit, and why it fell back if it did.
+
+    `model` is the pi-facing string an arm carries (`omlx/Ornith-1.5-9B-MLX-8bit`);
+    its prefix names the provider block in the Pi model config (`pi_models`,
+    from `satyrn_evals.pi_models.read_pi_models`) whose `baseUrl` (`/v1`
+    stripped) is the origin that provider's requests actually go to.
+
+    Falls back to `DEFAULT_MODEL_SERVER_URL` only when `pi_models` could not
+    be read at all (`None`) or has no block for this provider -- both
+    reported in the second element so a caller can say so in its problem or
+    receipt text, never silently.
+    """
+    provider = model.partition("/")[0]
+    if pi_models is not None:
+        base_url = provider_base_url(pi_models, provider)
+        if base_url is not None:
+            return base_url, None
+    return (
+        DEFAULT_MODEL_SERVER_URL,
+        f"no {provider!r} provider in the Pi model config; using the default {DEFAULT_MODEL_SERVER_URL}",
+    )

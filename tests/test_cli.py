@@ -426,3 +426,79 @@ def test_run_accepts_an_n_that_agrees_with_the_record(
     record = _record(tmp_path, n=1)
     assert main(["run", "format_number", "--n", "1", "--run-record", str(record), "--", *PI]) == 0
     assert seen["n"] == 1
+
+
+ARM = Path(__file__).resolve().parent.parent / "arms" / "baseline-ornith15-9b.json"
+
+
+def _preflight_record(tmp_path: Path, **over: object) -> Path:
+    return _record(tmp_path, isolation="isolated", purpose="admission", **over)
+
+
+def _fake_preflight(monkeypatch: pytest.MonkeyPatch, *, model_server_problems: list[str] | None = None) -> None:
+    from satyrn_evals.cell_preflight import CellPreflight
+
+    monkeypatch.setattr(cli_module, "preflight_cell", lambda **kw: CellPreflight([], {"pi_version": "0.85.1"}))
+    monkeypatch.setattr(cli_module, "arm_export_problems", lambda arm: [])
+    monkeypatch.setattr(
+        cli_module, "model_server_checks",
+        lambda arms, isolation, **kw: (model_server_problems or [], {arm.server_model: {"base_url": "http://x"} for arm in arms}),
+    )
+
+
+def test_launch_preflight_exits_1_when_the_model_server_check_finds_a_problem(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _fake_preflight(monkeypatch, model_server_problems=["the model server at http://x is unreachable: refused"])
+    record = _preflight_record(tmp_path)
+    assert main(["launch", "--preflight", str(record), "--arm", str(ARM)]) == 1
+    captured = capsys.readouterr()
+    out = json.loads(captured.out)
+    assert out["problems"] == ["the model server at http://x is unreachable: refused"]
+    assert "launch preflight FAILED: the model server at http://x is unreachable: refused" in captured.err
+
+
+def test_launch_preflight_exits_0_when_the_model_server_check_is_clean(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _fake_preflight(monkeypatch, model_server_problems=[])
+    record = _preflight_record(tmp_path)
+    assert main(["launch", "--preflight", str(record), "--arm", str(ARM)]) == 0
+
+
+def test_launch_preflight_asks_the_model_server_check_about_this_arm(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from satyrn_evals.cell_preflight import CellPreflight
+
+    seen: dict[str, object] = {}
+    monkeypatch.setattr(cli_module, "preflight_cell", lambda **kw: CellPreflight([], {}))
+    monkeypatch.setattr(cli_module, "arm_export_problems", lambda arm: [])
+
+    def model_server_checks(arms: list, isolation: Isolation, **kw: object) -> tuple[list[str], dict]:
+        seen["arms"] = [arm.server_model for arm in arms]
+        seen["isolation"] = isolation
+        return [], {}
+
+    monkeypatch.setattr(cli_module, "model_server_checks", model_server_checks)
+    record = _preflight_record(tmp_path)
+    assert main(["launch", "--preflight", str(record), "--arm", str(ARM)]) == 0
+    assert seen == {"arms": ["Ornith-1.5-9B-MLX-8bit"], "isolation": Isolation.ISOLATED}
+
+
+def test_launch_preflight_skips_the_model_server_check_on_the_fake_pi_seam(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from satyrn_evals.cell import CELL_PATH_PREFIX_ENV
+    from satyrn_evals.cell_preflight import CellPreflight
+
+    monkeypatch.setenv(CELL_PATH_PREFIX_ENV, "/fake/bin")
+    monkeypatch.setattr(cli_module, "preflight_cell", lambda **kw: CellPreflight([], {}))
+    monkeypatch.setattr(cli_module, "arm_export_problems", lambda arm: [])
+    monkeypatch.setattr(
+        cli_module, "model_server_checks",
+        lambda arms, isolation, **kw: pytest.fail("model_server_checks must not be consulted on the fake-pi seam"),
+    )
+    record = _preflight_record(tmp_path)
+    # exits 1 regardless (the seam itself is flagged as a problem), but must not have blown up
+    assert main(["launch", "--preflight", str(record), "--arm", str(ARM)]) == 1

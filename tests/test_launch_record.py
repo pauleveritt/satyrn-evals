@@ -6,13 +6,13 @@ from pathlib import Path
 
 import pytest
 
-from satyrn_evals.arms import Arm
-from satyrn_evals.cell import CELL_PATH_PREFIX_ENV, CELLS_ROOT
+from satyrn_evals.arms import Arm, ArmPins
+from satyrn_evals.cell import CELL_PATH_PREFIX_ENV, CELLS_ROOT, Isolation
 from satyrn_evals.cell_preflight import CellPreflight
 from satyrn_evals.cli import main
 from satyrn_evals.errors import SatyrnError
 from satyrn_evals.launch import SLOTS_DIR, Slot, slot_path
-from satyrn_evals.launch_record import LaunchFacts, launch_record
+from satyrn_evals.launch_record import LaunchFacts, launch_record, model_server_checks
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
 from satyrn_evals.run_record import new_record, write_new_record
 
@@ -44,7 +44,7 @@ def _facts(**over: object) -> LaunchFacts:
     base = dict(
         frozen=lambda path: True, committed=lambda path: True, head=lambda: "f" * 40,
         preflight=lambda **kw: CellPreflight([], {"pi_version": "0.85.1"}), settings=lambda path, cell: (0, SETTINGS),
-        spawn_cell=spawn, model_server=lambda base_url, server_model: [],
+        spawn_cell=spawn, model_server=lambda base_url, server_model: [], pi_models=lambda cell: {},
     )
     return LaunchFacts(**{**base, **over})  # type: ignore[arg-type]
 
@@ -170,6 +170,79 @@ def test_a_development_record_on_the_fake_pi_seam_skips_the_model_server_check(
 
     record = _record(tmp_path, purpose="development", decision_rule="none")
     assert _launch(tmp_path, record, _facts(model_server=boom), settings=False, hunt=False) == 3
+
+
+def _arm(server_model: str, arm: str = "baseline") -> Arm:
+    return Arm(
+        arm=arm, argv=("satyrn-evals-attempt-pi",), tools=("read", "bash", "edit", "write"),
+        model=f"omlx/{server_model}", server_model=server_model,
+        pins=ArmPins(pi="0.85.1", engine_commit=None, digests={}),
+    )
+
+
+def test_model_server_checks_asks_once_per_distinct_server_model() -> None:
+    asked: list[str] = []
+
+    def model_server(base_url: str, server_model: str) -> list[str]:
+        asked.append(server_model)
+        return []
+
+    arms = [_arm("model-a"), _arm("model-a"), _arm("model-b")]
+    problems, checked = model_server_checks(
+        arms, Isolation.LOCAL, pi_models=lambda cell: {}, model_server=model_server
+    )
+    assert problems == []
+    assert asked == ["model-a", "model-b"]
+    assert set(checked) == {"model-a", "model-b"}
+
+
+def test_model_server_checks_derives_the_base_url_from_the_arms_own_provider() -> None:
+    pi_models = {"providers": {"omlx": {"baseUrl": "http://10.0.0.5:9001/v1"}}}
+    seen: dict[str, object] = {}
+
+    def model_server(base_url: str, server_model: str) -> list[str]:
+        seen["base_url"] = base_url
+        return []
+
+    problems, checked = model_server_checks(
+        [_arm("model-a")], Isolation.ISOLATED, pi_models=lambda cell: pi_models, model_server=model_server
+    )
+    assert problems == [] and seen["base_url"] == "http://10.0.0.5:9001"
+    assert checked == {"model-a": {"base_url": "http://10.0.0.5:9001"}}
+
+
+def test_model_server_checks_falls_back_and_says_so_only_when_the_check_fails() -> None:
+    problems, checked = model_server_checks(
+        [_arm("model-a")], Isolation.LOCAL, pi_models=lambda cell: {"providers": {}},
+        model_server=lambda base_url, server_model: [],
+    )
+    assert problems == []
+    assert checked["model-a"]["fallback"].startswith("no 'omlx' provider")
+
+    problems, _ = model_server_checks(
+        [_arm("model-a")], Isolation.LOCAL, pi_models=lambda cell: {"providers": {}},
+        model_server=lambda base_url, server_model: [f"the model server at {base_url} is unreachable: refused"],
+    )
+    assert problems == [
+        "the model server at http://127.0.0.1:8001 is unreachable: refused "
+        "(no 'omlx' provider in the Pi model config; using the default http://127.0.0.1:8001)"
+    ]
+
+
+def test_model_server_checks_reports_an_unreadable_pi_config_instead_of_raising() -> None:
+    def pi_models(cell: bool) -> dict:
+        raise OSError("cannot read models.json as satyrn-cell: no password")
+
+    problems, checked = model_server_checks(
+        [_arm("model-a")], Isolation.ISOLATED, pi_models=pi_models,
+        model_server=lambda base_url, server_model: [f"the model server at {base_url} is unreachable: refused"],
+    )
+    assert problems == [
+        "the model server at http://127.0.0.1:8001 is unreachable: refused "
+        "(the Pi model config is unreadable: cannot read models.json as satyrn-cell: no password; "
+        "no 'omlx' provider in the Pi model config; using the default http://127.0.0.1:8001)"
+    ]
+    assert checked["model-a"]["read_problem"].startswith("the Pi model config is unreadable")
 
 
 def test_the_preflight_protects_the_runs_root_and_hunts_by_default(tmp_path: Path) -> None:

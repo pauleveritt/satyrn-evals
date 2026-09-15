@@ -58,11 +58,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from satyrn_evals.arms import ArmError, load_arm  # noqa: E402
-from satyrn_evals.cell import CELL_HOME, CELL_USER  # noqa: E402
+from satyrn_evals.cell import CELL_USER  # noqa: E402
+from satyrn_evals.pi_models import CELL_PI_MODELS, DEFAULT_PI_MODELS  # noqa: E402
+from satyrn_evals.pi_models import (
+    read_cell_pi_models as _read_cell_pi_models,  # noqa: E402
+)
 
 DEFAULT_OMLX_SETTINGS = Path.home() / ".omlx" / "model_settings.json"
-DEFAULT_PI_MODELS = Path.home() / ".pi" / "agent" / "models.json"
-CELL_PI_MODELS = CELL_HOME / ".pi" / "agent" / "models.json"
 
 # arm field -> oMLX `models[server_model]` field. Checked only where the
 # arm declares the field: an arm that does not pin a setting is not making
@@ -229,14 +231,13 @@ def provenance(arm_path_text: str, omlx: dict | None, pi: dict | None) -> dict:
 
 
 def read_cell_pi_models(run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run) -> dict:
-    """The cell user's Pi model config, read as the cell user; OSError when it cannot be."""
-    completed = run(
-        ["sudo", "-n", "-H", "-u", CELL_USER, "--", "/bin/cat", str(CELL_PI_MODELS)],
-        cwd="/", capture_output=True, text=True, check=False, timeout=30,
-    )
-    if completed.returncode != 0:
-        raise OSError(f"cannot read {CELL_PI_MODELS} as {CELL_USER}: {completed.stderr.strip()}")
-    return json.loads(completed.stdout)
+    """The cell user's Pi model config, read as the cell user; OSError when it cannot be.
+
+    Delegates to `satyrn_evals.pi_models` -- the same reader `launch`'s
+    model-server check uses for the base URL -- so there is exactly one
+    place that knows how to read the cell's `models.json`.
+    """
+    return _read_cell_pi_models(run=run)
 
 
 def _read_json(path: Path) -> dict:

@@ -9,7 +9,11 @@ import urllib.error
 
 import pytest
 
-from satyrn_evals.model_server import DEFAULT_MODEL_SERVER_URL, model_server_problems
+from satyrn_evals.model_server import (
+    DEFAULT_MODEL_SERVER_URL,
+    model_server_base_url,
+    model_server_problems,
+)
 
 BASE_URL = "http://127.0.0.1:8001"
 SERVER_MODEL = "Ornith-1.5-9B-MLX-8bit"
@@ -97,3 +101,45 @@ def test_the_url_joins_base_url_and_v1_models(monkeypatch: pytest.MonkeyPatch) -
 
 def test_the_default_base_url_is_the_omlx_port() -> None:
     assert DEFAULT_MODEL_SERVER_URL == "http://127.0.0.1:8001"
+
+
+def test_a_json_array_payload_is_named_not_a_model_list(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "satyrn_evals.model_server.urllib.request.urlopen",
+        lambda url, timeout: _FakeResponse(json.dumps(["not", "an", "object"]).encode()),
+    )
+    assert model_server_problems(BASE_URL, SERVER_MODEL) == [
+        f"the model server at {BASE_URL} does not answer /v1/models with a model list"
+    ]
+
+
+def test_a_json_object_without_a_data_list_is_named_not_a_model_list(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "satyrn_evals.model_server.urllib.request.urlopen",
+        lambda url, timeout: _FakeResponse(json.dumps({"data": "nope"}).encode()),
+    )
+    assert model_server_problems(BASE_URL, SERVER_MODEL) == [
+        f"the model server at {BASE_URL} does not answer /v1/models with a model list"
+    ]
+
+
+PI_MODELS = {"providers": {"omlx": {"baseUrl": "http://127.0.0.1:8001/v1"}}}
+
+
+def test_model_server_base_url_reads_the_arms_provider_from_the_pi_config() -> None:
+    assert model_server_base_url(PI_MODELS, "omlx/Ornith-1.5-9B-MLX-8bit") == ("http://127.0.0.1:8001", None)
+
+
+def test_model_server_base_url_falls_back_when_the_provider_is_absent() -> None:
+    base_url, fallback = model_server_base_url({"providers": {}}, "omlx/Ornith-1.5-9B-MLX-8bit")
+    assert base_url == DEFAULT_MODEL_SERVER_URL
+    assert fallback == (
+        "no 'omlx' provider in the Pi model config; using the default "
+        f"{DEFAULT_MODEL_SERVER_URL}"
+    )
+
+
+def test_model_server_base_url_falls_back_when_the_config_is_unreadable() -> None:
+    base_url, fallback = model_server_base_url(None, "omlx/Ornith-1.5-9B-MLX-8bit")
+    assert base_url == DEFAULT_MODEL_SERVER_URL
+    assert fallback is not None and "omlx" in fallback

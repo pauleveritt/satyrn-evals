@@ -72,7 +72,8 @@ from satyrn_evals.launch_cell import (
     popen_cell,
 )
 from satyrn_evals.manifest import load_manifest, resolve_task
-from satyrn_evals.model_server import DEFAULT_MODEL_SERVER_URL, model_server_problems
+from satyrn_evals.model_server import model_server_base_url, model_server_problems
+from satyrn_evals.pi_models import read_pi_models
 from satyrn_evals.rescore import (
     _load_cell,
     compute_evidence,
@@ -126,6 +127,51 @@ def settings_provenance(arm_path: Path, cell: bool) -> tuple[int, str]:
     return ran.returncode, ran.stdout if ran.returncode == 0 else ran.stdout + ran.stderr
 
 
+def model_server_checks(
+    arms: Sequence[Arm],
+    isolation: Isolation,
+    *,
+    pi_models: Callable[[bool], dict] = read_pi_models,
+    model_server: Callable[[str, str], list[str]] = model_server_problems,
+) -> tuple[list[str], dict[str, dict]]:
+    """``model_server_problems`` for every distinct ``server_model`` among ``arms``.
+
+    Reads the Pi model config once -- the cell user's under isolation, the
+    maintainer's own otherwise -- and derives each arm's base URL from its
+    own provider block (``model_server_base_url``), falling back to
+    ``DEFAULT_MODEL_SERVER_URL`` -- named in both the problem text and the
+    returned receipt -- only when the config has no such provider or could
+    not be read at all. Two arms sharing a ``server_model`` (the only shape
+    a record's arms can take today, since ``model`` -- and so the id a
+    ``server_model`` must equal -- is pinned record-wide) are checked once;
+    this still asks about every *distinct* one rather than only the first,
+    should that ever change.
+    """
+    try:
+        pi_config = pi_models(isolation is Isolation.ISOLATED)
+    except OSError as exc:
+        pi_config, read_problem = None, f"the Pi model config is unreadable: {exc}"
+    else:
+        read_problem = None
+    problems: list[str] = []
+    checked: dict[str, dict] = {}
+    for arm in arms:
+        if arm.server_model in checked:
+            continue
+        base_url, fallback = model_server_base_url(pi_config, arm.model)
+        server_problems = model_server(base_url, arm.server_model)
+        if server_problems and (fallback or read_problem):
+            note = "; ".join(text for text in (read_problem, fallback) if text)
+            server_problems = [f"{problem} ({note})" for problem in server_problems]
+        problems += server_problems
+        checked[arm.server_model] = {
+            "base_url": base_url,
+            **({"fallback": fallback} if fallback else {}),
+            **({"read_problem": read_problem} if read_problem else {}),
+        }
+    return problems, checked
+
+
 @dataclass(frozen=True, slots=True)
 class LaunchFacts:
     """Everything that spawns or reads git, replaceable by the default tier."""
@@ -138,6 +184,7 @@ class LaunchFacts:
     spawn_cell: Callable[[Path, Path], CellProcess] = popen_cell
     engine_export: Callable[[Arm], list[str]] = arm_export_problems
     model_server: Callable[[str, str], list[str]] = model_server_problems
+    pi_models: Callable[[bool], dict] = read_pi_models
 
 
 def _sha256(path: Path) -> str:
@@ -302,9 +349,11 @@ def launch_record(
         # A development record on the fake-pi seam (`CELL_PATH_PREFIX_ENV`) never
         # reaches a real model server, the same reason it may skip settings; a
         # deciding record has already refused that seam above, so it never skips.
-        first_arm = next(iter(arms.values()))[1]
-        problems += facts.model_server(DEFAULT_MODEL_SERVER_URL, first_arm.server_model)
-        checked["model_server"] = {"base_url": DEFAULT_MODEL_SERVER_URL, "server_model": first_arm.server_model}
+        server_problems, checked["model_server"] = model_server_checks(
+            [arm for _, arm in arms.values()], record.isolation,
+            pi_models=facts.pi_models, model_server=facts.model_server,
+        )
+        problems += server_problems
     baseline_settings: dict[str, str] = {}
     if settings:
         for name, (path, _) in arms.items():

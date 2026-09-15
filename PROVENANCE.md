@@ -4114,3 +4114,5 @@
 | tools/task_specs/selfhost-speed-probe.json | created in release-one |
 | src/satyrn_evals/model_server.py | created in release-one |
 | tests/test_model_server.py | created in release-one |
+| src/satyrn_evals/pi_models.py | created in release-one |
+| tests/test_pi_models.py | created in release-one |
