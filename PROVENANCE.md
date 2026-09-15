@@ -4116,3 +4116,4 @@
 | tests/test_model_server.py | created in release-one |
 | src/satyrn_evals/pi_models.py | created in release-one |
 | tests/test_pi_models.py | created in release-one |
+| docs/superpowers/plans/2026-09-15-phase-3b-self-test-enforcement.md | created in release-one |
