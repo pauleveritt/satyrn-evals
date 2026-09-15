@@ -1070,10 +1070,35 @@ def test_a_multi_session_concatenation_is_named_not_malformed() -> None:
 
 
 def test_every_engine_guard_entry_is_measured() -> None:
-    for kind in ("loop_broken", "scope_refused", "symbol_preserved", "command_bounded", "command_timed_out"):
+    for kind in (
+        "loop_broken", "scope_refused", "symbol_preserved", "command_bounded", "command_timed_out",
+        "self_test_redirected", "self_test_enforced",
+    ):
         block = count_transcript(_LOOP_BROKEN_DOC.replace('"loop_broken"', f'"{kind}"'), had_patch=True)
         assert (block.measured, block.reason) == (True, None), kind
         assert block.loop_broken == (1 if kind == "loop_broken" else 0), kind
+
+
+def test_the_engine_follow_up_after_an_enforced_run_is_one_measured_run() -> None:
+    """Phase 3b: a failing enforced self-test queues a custom follow-up message
+    at turn_end; Pi continues the same run (one agent_end, alternating turns)."""
+    turn_end = '{"type": "turn_end", "message": {"role": "assistant", "content": [{"type": "text", "text": "done"}]}}'
+    doc = _UPDATE_DOC.replace(
+        turn_end,
+        "\n".join([
+            turn_end,
+            '{"type": "entry_appended", "entry": {"type": "custom", "customType": "self_test_enforced", '
+            '"data": {"generation": 1, "code": "OK", "exit_code": 1, "follow_up": true}}}',
+            '{"type": "turn_start"}',
+            '{"type": "message_start", "message": {"role": "custom", "customType": "self_test_enforced", '
+            '"content": "Before you finish", "display": true}}',
+            '{"type": "message_end", "message": {"role": "custom", "customType": "self_test_enforced", '
+            '"content": "Before you finish", "display": true}}',
+            turn_end,
+        ]),
+    )
+    block = count_transcript(doc, had_patch=True)
+    assert (block.measured, block.reason) == (True, None)
 
 
 def test_the_self_test_tool_is_a_known_tool() -> None:

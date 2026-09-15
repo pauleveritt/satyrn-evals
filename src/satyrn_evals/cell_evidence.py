@@ -21,6 +21,17 @@ The escape rules are lexical and stated so a reader can recompute them:
   ``mdfind`` search the disk and always count);
 - relative escapes in bash text (``cd .. && find .``) are not counted; a
   file tool's ``..`` path is.
+- a **bash test run** is a ``bash`` command with any simple command whose
+  program, after leading ``NAME=value`` words, ``env`` and a ``timeout
+  DURATION`` wrapper, and after ``uv run`` and its options, is ``pytest`` or
+  ``py.test``, or ``python``/``python3[.N]`` followed by ``-m pytest``; the
+  Engine's redirect (a narrower rule: nothing else in the command) is read
+  from ``guard_firings``;
+- the **first passing self-test** is the first of: a ``self_test`` result
+  whose text starts ``Test command exited 0``; a ``bash`` result whose text
+  starts with the Engine's redirect sentence and holds that line; a
+  ``self_test_enforced`` entry with ``exit_code`` 0. It records the turns and
+  output tokens counted up to that event, and which route it took;
 - an unquoted newline ends a simple command exactly like ``;``; a newline
   inside a quoted argument stays part of that argument's text.
 - a heredoc body (``<<WORD`` / ``<<-WORD``, ``WORD`` optionally quoted; not
@@ -58,6 +69,14 @@ _DISK_SEARCH_PROGRAMS = frozenset({"locate", "mdfind"})
 _RECURSIVE_FLAGS = {"grep": "rR", "egrep": "rR", "fgrep": "rR", "ls": "R"}
 _FILE_TOOLS = frozenset({"read", "edit", "write"})
 _TIMED_OUT = re.compile(r"Command timed out after \d+(?:\.\d+)? seconds")
+_PYTHON = re.compile(r"python(?:3(?:\.\d+)?)?")
+#: satyrn-engine runner.ts: `successResult`'s first line and `redirectSentence`'s opening.
+_SELF_TEST_PASSED = "Test command exited 0"
+_REDIRECTED = "The Engine ran self_test in place of this command"
+_UV_RUN_VALUE_FLAGS = frozenset(
+    {"--with", "--with-requirements", "--project", "--directory", "--python", "-p", "--group",
+     "--extra", "--package", "--env-file", "--index"}
+)
 _SEPARATORS = frozenset("|&;()")
 
 
@@ -72,6 +91,9 @@ class CellEvidence:
     git_commits: int = 0
     tool_reported_timeouts: int = 0
     guard_firings: dict[str, int] = field(default_factory=dict)
+    self_test_calls: int = 0
+    bash_test_runs: int = 0
+    first_passing_self_test: dict[str, object] | None = None
     timeline: bool = False
     commands_over_120s: int = 0
     unfinished_commands: int = 0
@@ -89,6 +111,9 @@ class CellEvidence:
             "git_commits": self.git_commits,
             "tool_reported_timeouts": self.tool_reported_timeouts,
             "guard_firings": dict(sorted(self.guard_firings.items())),
+            "self_test_calls": self.self_test_calls,
+            "bash_test_runs": self.bash_test_runs,
+            "first_passing_self_test": self.first_passing_self_test,
             "timeline": self.timeline,
             "commands_over_120s": self.commands_over_120s,
             "unfinished_commands": self.unfinished_commands,
@@ -284,6 +309,55 @@ def _program(words: Sequence[str]) -> tuple[str, list[str]]:
     return posixpath.basename(words[index]), list(words[index + 1 :])
 
 
+def _unwrap(words: Sequence[str]) -> list[str]:
+    rest = list(words)
+    while rest and (rest[0] == "env" or re.match(r"^[A-Za-z_]\w*=", rest[0])):
+        rest = rest[1:]
+    if rest[:1] == ["timeout"]:
+        rest = rest[1:]
+        while rest and rest[0].startswith("-"):
+            rest = rest[1:]
+        rest = rest[1:]
+    return rest
+
+
+def runs_pytest(command: str) -> bool:
+    """Whether any simple command in a bash command runs pytest (module docstring)."""
+    for segment in _segments(command):
+        words = _unwrap(segment)
+        if len(words) >= 2 and posixpath.basename(words[0]) == "uv" and words[1] == "run":
+            words = words[2:]
+            while words and words[0].startswith("-"):
+                words = words[2:] if words[0] in _UV_RUN_VALUE_FLAGS else words[1:]
+            words = _unwrap(words)
+        if not words:
+            continue
+        program = posixpath.basename(words[0])
+        if program in ("pytest", "py.test") or (_PYTHON.fullmatch(program) and words[1:3] == ["-m", "pytest"]):
+            return True
+    return False
+
+
+def _passing_route(event: dict) -> str | None:
+    match event.get("type"):
+        case "tool_execution_end":
+            text = _result_text(event)
+            if event.get("toolName") == "self_test" and text.split("\n", 1)[0] == _SELF_TEST_PASSED:
+                return "tool"
+            if event.get("toolName") == "bash" and text.startswith(_REDIRECTED) and _SELF_TEST_PASSED in text.split("\n")[1:2]:
+                return "redirected"
+        case "entry_appended":
+            entry = event.get("entry")
+            if (
+                isinstance(entry, dict)
+                and entry.get("customType") == "self_test_enforced"
+                and isinstance(entry.get("data"), dict)
+                and entry["data"].get("exit_code") == 0
+            ):
+                return "enforced"
+    return None
+
+
 def root_search(command: str, cwd: str | None) -> bool:
     for segment in _segments(command):
         program, rest = _program(segment)
@@ -339,8 +413,11 @@ def collect_evidence(
         None,
     )
     usage = UsageCounter()
+    first_pass: dict[str, object] | None = None
     for event in events:
         usage.feed_event(event)
+        if first_pass is None and (route := _passing_route(event)) is not None:
+            first_pass = {"turn": usage.turns, "output_tokens": usage.output_tokens, "route": route}
     starts = [e for e in events if e.get("type") == "tool_execution_start" and isinstance(e.get("toolName"), str)]
     commands = [
         e["args"]["command"]
@@ -376,6 +453,9 @@ def collect_evidence(
         git_commits=sum(1 for command in commands if git_commit(command)),
         tool_reported_timeouts=timeouts,
         guard_firings=dict(guard_firings),
+        self_test_calls=sum(1 for e in starts if e["toolName"] == "self_test"),
+        bash_test_runs=sum(1 for command in commands if runs_pytest(command)),
+        first_passing_self_test=first_pass,
         timeline=timeline is not None,
         commands_over_120s=sum(1 for seconds in finished if seconds > LONG_COMMAND_SECONDS),
         unfinished_commands=sum(1 for span in spans if span.ended is None),

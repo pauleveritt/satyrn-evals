@@ -17,6 +17,7 @@ from satyrn_evals.cell_evidence import (
     outside,
     outside_paths,
     root_search,
+    runs_pytest,
 )
 from satyrn_evals.overlay import OverlaySpec
 
@@ -141,7 +142,8 @@ def test_a_timed_out_cell_without_agent_end_still_yields_every_count() -> None:
     assert block == {
         "turns": 1, "output_tokens": 1500, "tool_calls": 3, "root_searches": 1, "bash_outside_paths": 1,
         "file_tool_escapes": 1, "git_commits": 1, "tool_reported_timeouts": 0,
-        "guard_firings": {"command_bounded": 1}, "timeline": False, "commands_over_120s": 0,
+        "guard_firings": {"command_bounded": 1}, "self_test_calls": 0, "bash_test_runs": 0,
+        "first_passing_self_test": None, "timeline": False, "commands_over_120s": 0,
         "unfinished_commands": 0, "longest_command_seconds": None, "overlay_windows": None,
     }
 
@@ -184,3 +186,107 @@ def test_overlay_windows_are_scanned_for_hidden_tasks_only() -> None:
     assert collect_evidence(_transcript(leak), overlay=spec).overlay_windows == 1
     assert collect_evidence(_transcript(*_bash("b1", "ls")), overlay=spec).overlay_windows == 0
     assert collect_evidence(_transcript(leak)).overlay_windows is None
+
+
+# --- Phase 3b: self-test use -------------------------------------------------
+
+_REDIRECT = (
+    'The Engine ran self_test in place of this command: it runs "uv run python -m pytest -q" '
+    "over the whole suite, whatever paths or flags the command named."
+)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "uv run python -m pytest -q",
+        'cd "$(pwd)"; uv run pytest tests/test_lint_docs.py -q 2>&1 | tail -25',
+        "cd /w; timeout 115 uv run python -m pytest -q 2>&1 | tail -40",
+        "uv run pytest tests/test_review.py -q 2>&1 | tail -5; uv run ruff check",
+        "PYTHONPATH=src python3 -m pytest -x tests/test_a.py",
+        "uv run --with httpx pytest -k home",
+        ".venv/bin/pytest -q",
+    ],
+)
+def test_a_bash_command_that_runs_pytest_anywhere_counts(command: str) -> None:
+    assert runs_pytest(command)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        'uv run python -c "import app"',
+        "grep -rn pytest tests/",
+        "cat pyproject.toml | grep pytest",
+        "uv run ruff check",
+        "just test",
+        "python3 -m http.server",
+    ],
+)
+def test_a_bash_command_that_never_runs_pytest_does_not_count(command: str) -> None:
+    assert not runs_pytest(command)
+
+
+def _assistant(tokens: int) -> str:
+    return _line({"type": "message_end", "message": {"role": "assistant", "usage": {"output": tokens}}})
+
+
+def _end(call_id: str, tool: str, text: str) -> str:
+    return _line({"type": "tool_execution_end", "toolCallId": call_id, "toolName": tool,
+                  "result": {"content": [{"type": "text", "text": text}]}})
+
+
+def test_self_test_calls_bash_test_runs_and_the_first_passing_self_test_through_the_tool() -> None:
+    text = _transcript(
+        _assistant(100),
+        *_bash("b1", "uv run pytest -q 2>&1 | tail -5"),
+        _line({"type": "tool_execution_start", "toolCallId": "s1", "toolName": "self_test", "args": {}}),
+        _end("s1", "self_test", "Test command exited 1\nFAILED tests/test_a.py::test_b - assert 1 == 2"),
+        _line({"type": "turn_start"}),
+        _assistant(250),
+        _line({"type": "tool_execution_start", "toolCallId": "s2", "toolName": "self_test", "args": {}}),
+        _end("s2", "self_test", "Test command exited 0\n3 passed"),
+        _line({"type": "turn_start"}),
+        _assistant(40),
+    )
+    block = collect_evidence(text).to_block()
+    assert (block["self_test_calls"], block["bash_test_runs"]) == (2, 1)
+    assert block["first_passing_self_test"] == {"turn": 2, "output_tokens": 350, "route": "tool"}
+
+
+def test_a_redirected_bash_run_and_an_enforced_run_are_passing_routes() -> None:
+    redirected = _transcript(
+        _assistant(70),
+        _line({"type": "tool_execution_start", "toolCallId": "b1", "toolName": "bash", "args": {"command": "pytest"}}),
+        _line({"type": "entry_appended", "entry": {"type": "custom", "customType": "self_test_redirected", "data": {"toolCallId": "b1"}}}),
+        _end("b1", "bash", f"{_REDIRECT}\nTest command exited 0\n3 passed"),
+    )
+    block = collect_evidence(redirected).to_block()
+    assert block["first_passing_self_test"] == {"turn": 1, "output_tokens": 70, "route": "redirected"}
+    assert (block["bash_test_runs"], block["self_test_calls"]) == (1, 0)
+    assert block["guard_firings"] == {"self_test_redirected": 1}
+    enforced = _transcript(
+        _assistant(90),
+        _line({"type": "entry_appended", "entry": {"type": "custom", "customType": "self_test_enforced",
+               "data": {"generation": 2, "code": "OK", "exit_code": 0, "follow_up": False}}}),
+    )
+    assert collect_evidence(enforced).to_block()["first_passing_self_test"] == {
+        "turn": 1, "output_tokens": 90, "route": "enforced"
+    }
+
+
+def test_failing_runs_and_look_alike_text_are_not_a_passing_self_test() -> None:
+    text = _transcript(
+        _assistant(10),
+        _line({"type": "tool_execution_start", "toolCallId": "s1", "toolName": "self_test", "args": {}}),
+        _end("s1", "self_test", "Test command exited 1\nTest command exited 0 was expected"),
+        *_bash("b0", "echo x"),
+        _end("b0", "bash", "Test command exited 0"),
+        _end("b1", "bash", f"{_REDIRECT}\nTest command exited 2\nFAILED t"),
+        _line({"type": "entry_appended", "entry": {"type": "custom", "customType": "self_test_enforced",
+               "data": {"generation": 0, "code": "OK", "exit_code": 1, "follow_up": True}}}),
+        _line({"type": "entry_appended", "entry": "not an object"}),
+    )
+    block = collect_evidence(text).to_block()
+    assert block["first_passing_self_test"] is None
+    assert block["self_test_calls"] == 1

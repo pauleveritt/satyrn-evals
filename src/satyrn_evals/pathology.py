@@ -58,9 +58,15 @@ RUNNER_NAMES = frozenset({"pytest"})
 #: The engine's guard-firing entries (satyrn-engine Phase 1 Task 2,
 #: `budget.GUARD_KINDS`), each a `pi.appendEntry` custom entry the stream
 #: carries as `entry_appended` (Phase 1 Ruling 7). Counted as nothing here;
-#: `cell_evidence` counts them.
+#: `cell_evidence` counts them. `self_test_redirected` and `self_test_enforced`
+#: added in Phase 3b (a bash test run answered by `self_test`; the Engine's own
+#: run when the model stops untested): without them every cell where either
+#: fires would read `unknown_event`.
 GUARD_KINDS = frozenset(
-    {"loop_broken", "scope_refused", "symbol_preserved", "command_bounded", "command_timed_out"}
+    {
+        "loop_broken", "scope_refused", "symbol_preserved", "command_bounded", "command_timed_out",
+        "self_test_redirected", "self_test_enforced",
+    }
 )
 
 type PathologyReason = Literal[
