@@ -24,6 +24,15 @@ from typing import BinaryIO
 
 from satyrn_evals.attempt_record import DeadlinePhase
 from satyrn_evals.budget import AttemptBudget, BudgetTripwire
+from satyrn_evals.cell import (
+    CELLS_ROOT,
+    Isolation,
+    cell_gitconfig,
+    cell_paths,
+    grant_maintainer,
+    kill_cell_group,
+    share_with_cell,
+)
 from satyrn_evals.deadline import AttemptDeadline, AttemptDeadlineExceeded
 from satyrn_evals.errors import OracleError, OverlayError, SatyrnError
 from satyrn_evals.overlay import OverlaySpec, assert_overlay_absent
@@ -200,6 +209,7 @@ class _WorkspaceState:
     registration: Registration = Registration.ABSENT
     process_cleanup_safe: bool = True
     base_sha: str | None = None
+    isolation: Isolation = Isolation.LOCAL
 
     def begin_add(self) -> None:
         if self.registration is not Registration.ABSENT:
@@ -356,10 +366,18 @@ def _contains_path(root: Path, path: Path) -> bool:
         ) from exc
 
 
-def _safe_temp_parent(protected: Sequence[Path]) -> Path:
-    """Allocate outside task/output roots without trusting inherited TMPDIR."""
+def _safe_temp_parent(
+    protected: Sequence[Path], roots: Sequence[Path] | None = None
+) -> Path:
+    """Allocate outside task/output roots without trusting inherited TMPDIR.
+
+    ``roots`` replaces the temporary-directory candidates; an isolated
+    attempt passes the cells root and nothing else.
+    """
     candidate_roots = dict.fromkeys(
-        (Path(tempfile.gettempdir()), Path("/tmp"), Path("/var/tmp"))
+        roots
+        if roots is not None
+        else (Path(tempfile.gettempdir()), Path("/tmp"), Path("/var/tmp"))
     )
     failures: list[str] = []
     protected_roots = tuple(path.resolve() for path in protected)
@@ -867,13 +885,17 @@ def _wait_until_group_gone(process_group: int, deadline: float) -> bool:
 
 
 def _teardown_process(
-    process: subprocess.Popen[bytes], grace: float
+    process: subprocess.Popen[bytes], grace: float, *, cell: bool = False
 ) -> tuple[bool, str | None]:
     """Best-effort teardown within one grace period.
 
     The allowance begins with termination, rather than being granted afresh
     for each signal, reap, and process-group observation.  Safe still means
     that the direct child is reaped and (on POSIX) its process group is gone.
+
+    ``cell``: the group holds processes the cell user owns. The maintainer's
+    SIGKILL cannot reach them, so a group still present after SIGTERM is
+    also killed from the cell side (`cell.kill_cell_group`).
     """
     details: list[str] = []
     started = time.monotonic()
@@ -901,6 +923,10 @@ def _teardown_process(
                 pass
             except OSError as exc:
                 details.append(f"cannot signal process group with SIGKILL: {exc}")
+            if cell and (
+                failure := kill_cell_group(process.pid, timeout=max(remaining(), 0.05))
+            ):
+                details.append(failure)
     else:  # Windows is a direct-child fallback, not part of V4's proof.
         try:
             process.terminate()
@@ -926,6 +952,15 @@ def _teardown_process(
     if not gone:
         details.append("process group disappearance is unconfirmed")
     return reaped and gone, "; ".join(details) or None
+
+
+def _teardown(
+    process: subprocess.Popen[bytes], grace: float, state: _WorkspaceState
+) -> tuple[bool, str | None]:
+    """Tear down the command, from the cell side too when the attempt is isolated."""
+    if state.isolation is Isolation.ISOLATED:
+        return _teardown_process(process, grace, cell=True)
+    return _teardown_process(process, grace)
 
 
 def _wait_or_trip(
@@ -1103,7 +1138,7 @@ def _run_command(
                 )
             except subprocess.TimeoutExpired:
                 try:
-                    safe, detail = _teardown_process(process, teardown_grace)
+                    safe, detail = _teardown(process, teardown_grace, state)
                 except BaseException as exc:
                     active_exception = exc
                     _add_exception_note(
@@ -1131,7 +1166,7 @@ def _run_command(
             except BaseException as exc:
                 active_exception = exc
                 try:
-                    safe, detail = _teardown_process(process, teardown_grace)
+                    safe, detail = _teardown(process, teardown_grace, state)
                 except BaseException as cleanup_error:
                     _add_exception_note(
                         exc,
@@ -1164,7 +1199,7 @@ def _run_command(
                     # a stopped cell is never mistaken for one that refused
                     # on its own. Artifacts already written are harvested.
                     try:
-                        safe, detail = _teardown_process(process, teardown_grace)
+                        safe, detail = _teardown(process, teardown_grace, state)
                     except BaseException as exc:
                         active_exception = exc
                         _add_exception_note(
@@ -1577,6 +1612,30 @@ def _validate_command_limits(
         )
 
 
+def _share_workspace(
+    state: _WorkspaceState,
+    environment: Mapping[str, str],
+    *,
+    deadline: AttemptDeadline | None = None,
+) -> None:
+    """Hand the cell user a group-shared repository and its own TMPDIR, uv environment and git config."""
+    _deadline_git(
+        state.repository,
+        ("config", "core.sharedRepository", "group"),
+        environment,
+        deadline=deadline,
+        phase=DeadlinePhase.SETUP,
+    )
+    tmpdir, uv_environment, gitconfig = cell_paths(state.parent)
+    try:
+        tmpdir.mkdir()
+        uv_environment.mkdir()
+        gitconfig.write_text(cell_gitconfig(state.worktree), encoding="utf-8")
+        share_with_cell(state.parent)
+    except OSError as exc:
+        raise _WorkspaceError(f"cannot share the workspace with the cell user: {exc}") from exc
+
+
 def prepare_workspace(
     *,
     base: Path,
@@ -1584,8 +1643,15 @@ def prepare_workspace(
     environment: Mapping[str, str],
     overlay: OverlaySpec | None = None,
     deadline: AttemptDeadline | None = None,
+    isolation: Isolation = Isolation.LOCAL,
 ) -> PreparedWorkspace:
-    """Reconstruct a detached worktree and retain its cleaned environment."""
+    """Reconstruct a detached worktree and retain its cleaned environment.
+
+    ``Isolation.ISOLATED`` allocates the parent under the cells root and,
+    once the base is verified, shares it with the cell user: a group-shared
+    repository, the cell's TMPDIR, uv environment and git config beside the
+    worktree, every entry group-writable.
+    """
     state: _WorkspaceState | None = None
     parent: Path | None = None
     git_environment: dict[str, str] | None = None
@@ -1607,7 +1673,13 @@ def prepare_workspace(
             git_protected = _git_protected_paths(requested_protected, git_environment)
         if deadline is not None:
             deadline.remaining(DeadlinePhase.SETUP)
-        parent = _safe_temp_parent((*requested_protected, *git_protected))
+        parent = (
+            _safe_temp_parent((*requested_protected, *git_protected), (CELLS_ROOT,))
+            if isolation is Isolation.ISOLATED
+            else _safe_temp_parent((*requested_protected, *git_protected))
+        )
+        if isolation is Isolation.ISOLATED and (failure := grant_maintainer(parent)):
+            raise _WorkspaceError(f"cannot keep the maintainer's access to {parent}: {failure}")
         if deadline is not None:
             deadline.remaining(DeadlinePhase.SETUP)
         state = _WorkspaceState(
@@ -1617,6 +1689,7 @@ def prepare_workspace(
             # neutral lease must not rename this internal directory.
             repository=parent / "seed",
             worktree=parent / "worktree",
+            isolation=isolation,
         )
         if deadline is not None:
             _prepare_repository(base, state, git_environment, deadline=deadline)
@@ -1628,6 +1701,8 @@ def prepare_workspace(
             assert_overlay_absent(state.worktree, overlay)
             if deadline is not None:
                 deadline.remaining(DeadlinePhase.SETUP)
+        if isolation is Isolation.ISOLATED:
+            _share_workspace(state, git_environment, deadline=deadline)
         assert state.base_sha is not None
         return PreparedWorkspace(
             parent=parent,

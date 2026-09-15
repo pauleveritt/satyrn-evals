@@ -29,6 +29,7 @@ from satyrn_evals.attempt_record import (
     write_attempt_record,
 )
 from satyrn_evals.budget import AttemptBudget
+from satyrn_evals.cell import CELL_PARENT_ENV, ISOLATION_ENV, Isolation
 from satyrn_evals.deadline import AttemptDeadline, AttemptDeadlineExceeded
 from satyrn_evals.engine_contract import (
     engine_contract_path,
@@ -61,6 +62,10 @@ TASK_CONTRACT_ENV = "SATYRN_TASK_CONTRACT"
 PATCH_ENV = "SATYRN_ATTEMPT_PATCH"
 TRANSCRIPT_ENV = "SATYRN_ATTEMPT_TRANSCRIPT"
 BASE_SHA_ENV = "SATYRN_WORKSPACE_BASE_SHA"
+#: Under isolation the command's transcript is written here, beside the
+#: worktree where the cell user can write, and copied into the attempt
+#: directory as soon as the command returns.
+LIVE_TRANSCRIPT_NAME = "transcript.txt"
 
 type SelectedContract = tuple[str | None, str]
 
@@ -147,6 +152,12 @@ def _is_engine_wrapper_command(command: list[str]) -> bool:
     )
 
 
+def _collect_live_transcript(live: Path, transcript_path: Path) -> None:
+    """Copy an isolated command's transcript into the attempt directory, if it wrote one."""
+    if live != transcript_path and live.is_file():
+        shutil.copyfile(live, transcript_path)
+
+
 def _add_exception_note(error: BaseException, note: str) -> None:
     """Attach recovery evidence without replacing the primary exception."""
     with suppress(BaseException):
@@ -191,6 +202,7 @@ def attempt(
     max_repeated_calls: int | None = None,
     attempt_timeout: float | None = None,
     budget: AttemptBudget | None = None,
+    isolation: Isolation = Isolation.LOCAL,
 ) -> AttemptRecord:
     """Run an unbounded attempt through the stable public API."""
     return _attempt(
@@ -203,6 +215,7 @@ def attempt(
         max_repeated_calls=max_repeated_calls,
         attempt_timeout=attempt_timeout,
         budget=budget,
+        isolation=isolation,
     )
 
 
@@ -218,6 +231,7 @@ def _attempt(
     deadline: AttemptDeadline | None = None,
     attempt_timeout: float | None = None,
     budget: AttemptBudget | None = None,
+    isolation: Isolation = Isolation.LOCAL,
 ) -> AttemptRecord:
     """Run COMMAND against TASK, preserve patch + transcript, grade, and record.
 
@@ -301,6 +315,7 @@ def _attempt(
                     else None
                 ),
                 deadline=deadline,
+                isolation=isolation,
             )
         except WorkspacePrepareError as exc:
             if exc.deadline is not None:
@@ -354,18 +369,28 @@ def _attempt(
                 # above) so prepare_workspace still receives it for anything
                 # that materializes the task workspace's environment.
                 workspace_lease._environment.pop("UV_PROJECT_ENVIRONMENT", None)
+            exported = {BASE_SHA_ENV: workspace_lease.base_sha}
+            live_transcript = transcript_path
+            if isolation is Isolation.ISOLATED:
+                live_transcript = workspace_lease.parent / LIVE_TRANSCRIPT_NAME
+                exported[ISOLATION_ENV] = isolation.value
+                exported[CELL_PARENT_ENV] = os.fspath(workspace_lease.parent)
+                exported[TRANSCRIPT_ENV] = os.fspath(live_transcript)
             try:
-                workspace = run_prepared_command(
-                    workspace_lease,
-                    command=effective_command,
-                    timeout=timeout,
-                    transcript=transcript_path,
-                    max_repeated_calls=max_repeated_calls,
-                    deadline=deadline,
-                    extra_environment={BASE_SHA_ENV: workspace_lease.base_sha},
-                    budget=budget,
-                    timeline=attempt_dir / TIMELINE_NAME,
-                )
+                try:
+                    workspace = run_prepared_command(
+                        workspace_lease,
+                        command=effective_command,
+                        timeout=timeout,
+                        transcript=live_transcript,
+                        max_repeated_calls=max_repeated_calls,
+                        deadline=deadline,
+                        extra_environment=exported,
+                        budget=budget,
+                        timeline=attempt_dir / TIMELINE_NAME,
+                    )
+                finally:
+                    _collect_live_transcript(live_transcript, transcript_path)
                 if deadline is not None and workspace.code not in (
                     WorkspaceCode.COMMAND_TIMEOUT,
                     WorkspaceCode.REPEAT_LIMIT,
