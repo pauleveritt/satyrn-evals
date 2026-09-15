@@ -4135,3 +4135,8 @@
 | evidence/2026-09-15-finishing-counterfactual/counterfactual.py | created in release-one |
 | evidence/2026-09-15-finishing-counterfactual/.gitignore | created in release-one |
 | tests/test_finishing_counterfactual.py | created in release-one |
+| evidence/2026-09-15-finishing-counterfactual/cells.json | created in release-one |
+| evidence/2026-09-15-finishing-counterfactual/table.md | created in release-one |
+| evidence/2026-09-15-finishing-counterfactual/decision.txt | created in release-one |
+| evidence/2026-09-15-finishing-counterfactual/debug/cells.json | created in release-one |
+| evidence/2026-09-15-finishing-counterfactual/debug/table.md | created in release-one |
