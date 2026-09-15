@@ -14,6 +14,11 @@ stdout:
 - ``spend``: change nothing, report 20,000 output tokens on each of two
   turns, record its pid in ``SATYRN_FAKE_PI_PIDFILE``, then sleep so only a
   tripwire can end it.
+- ``trickle``: change nothing, report 20,000 output tokens on a single
+  turn -- under the engine's own default budget (32,000, `derive.py`) so
+  only a tighter harness budget can trip it, never `deliver`'s live
+  enforcement or the engine's own `attempt` -- record its pid in
+  ``SATYRN_FAKE_PI_PIDFILE``, then sleep so only a tripwire can end it.
 """
 
 import json
@@ -48,6 +53,12 @@ def main() -> int:
         if pidfile := os.environ.get("SATYRN_FAKE_PI_PIDFILE"):
             Path(pidfile).write_text(str(os.getpid()))
         turn(20_000)
+        turn(20_000)
+        time.sleep(120)
+        return 0
+    if mode == "trickle":
+        if pidfile := os.environ.get("SATYRN_FAKE_PI_PIDFILE"):
+            Path(pidfile).write_text(str(os.getpid()))
         turn(20_000)
         time.sleep(120)
         return 0

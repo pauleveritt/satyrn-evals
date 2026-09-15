@@ -1,7 +1,8 @@
 """Cumulative patch capture from an evolving worktree, via an alternate index.
 
-Evals — never the adapter — obtains the patch with Git (2026-09-01 spec,
-Checkpoint lifecycle). A temporary index outside the worktree is seeded
+Each attempt adapter obtains its own patch with Git (Ruling 1: the adapter
+stays the seam and harvests; Evals never reads the worktree directly). A
+temporary index outside the worktree is seeded
 from the exact base commit and given intent-to-add entries, making
 untracked paths visible without touching the real index the next prompt
 observes. The patch is cumulative from the base and includes binary,

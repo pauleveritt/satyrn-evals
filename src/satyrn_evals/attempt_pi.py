@@ -1,7 +1,7 @@
 """The Baseline attempt adapter: bare Pi behind the Evals attempt seam.
 
 One `pi --print --mode json` turn against the workspace Evals allocated,
-its stream-JSON written to ``SATYRN_ATTEMPT_TRANSCRIPT`` and the tracked
+its stream-JSON written to ``SATYRN_ATTEMPT_TRANSCRIPT`` and the cumulative
 diff harvested into ``SATYRN_ATTEMPT_PATCH`` after pi exits. Derived from
 the wrapper recorded in
 `docs/superpowers/research/2026-09-03-local-pings-reprobe-protocol.md`,
@@ -20,12 +20,15 @@ flag; the V8 smoke lost a run to exactly that at 0.84.4, and engine commit
 2026-09-10 (usage-error paths only, no inference) before repinning every
 arm to it -- the behavior is unchanged.
 
-Stated limits, neither of them papered over:
+The harvest's scope, fixed by the incident that named it (Ruling 2):
 
 - **The harvest is the cumulative diff from the workspace base commit**
   (`SATYRN_WORKSPACE_BASE_SHA`), untracked files included and runtime
   residue excluded, so a model `git commit` hides nothing (2026-09-14:
   four cells scored `NO_PATCH` under `git diff HEAD`).
+
+Stated limit, not papered over:
+
 - **The diff is harvested only after pi exits**, so a cell killed by the
   attempt timeout retains no intermediate patch. Report that beside
   retained-patch production; never read a completion floor under this
@@ -44,8 +47,10 @@ from satyrn_evals.arms import KNOWN_TOOLS
 from satyrn_evals.errors import UsageError
 from satyrn_evals.session_patch import RESIDUE_EXCLUDES, build_cumulative_patch
 
-#: The three variables Evals exports around an attempt command
-#: (`attempt.py:109-112`). A default-tier test pins them to that module.
+#: The four variables Evals exports around an attempt command --
+#: ``TASK_CONTRACT_ENV``, ``PATCH_ENV``, ``TRANSCRIPT_ENV`` and
+#: ``BASE_SHA_ENV`` (`attempt.py`'s own constants of the same names). A
+#: default-tier test pins them to that module.
 CONTRACT_ENV = "SATYRN_TASK_CONTRACT"
 PATCH_ENV = "SATYRN_ATTEMPT_PATCH"
 TRANSCRIPT_ENV = "SATYRN_ATTEMPT_TRANSCRIPT"
