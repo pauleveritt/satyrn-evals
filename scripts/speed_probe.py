@@ -122,11 +122,16 @@ def choose_k(throughput: dict[int, float]) -> int:
 
 def analyze(plan: dict, lines: Sequence[str]) -> dict:
     model = plan["model"]
-    context = [c for phase in plan["context"] for c in completions_in(lines, model, phase["start"], phase["end"])]
-    throughput = {
-        int(phase["k"]): total_throughput(completions_in(lines, model, phase["start"], phase["end"]))
+    context_completions = {
+        int(phase["size"]): completions_in(lines, model, phase["start"], phase["end"])
+        for phase in plan["context"]
+    }
+    context = [c for completions in context_completions.values() for c in completions]
+    concurrency_completions = {
+        int(phase["k"]): completions_in(lines, model, phase["start"], phase["end"])
         for phase in plan["concurrency"]
     }
+    throughput = {k: total_throughput(completions) for k, completions in concurrency_completions.items()}
     decode = decode_by_size(context)
     return {
         "model": model,
@@ -134,6 +139,14 @@ def analyze(plan: dict, lines: Sequence[str]) -> dict:
         "missing_sizes": [size for size in CONTEXT_SIZES if size not in decode],
         "total_tok_s_by_k": {str(k): round(value, 1) for k, value in sorted(throughput.items())},
         "k": choose_k(throughput),
+        # F9/R13: the log-observed count per phase, so a lost stream (fewer
+        # completions than requested) is visible in the report itself.
+        "context_completions_by_size": {
+            str(size): len(completions) for size, completions in sorted(context_completions.items())
+        },
+        "concurrency_completions_by_k": {
+            str(k): len(completions) for k, completions in sorted(concurrency_completions.items())
+        },
     }
 
 
@@ -153,28 +166,72 @@ def request(base_url: str, model: str, prompt: str, max_tokens: int, opener: Cal
         response.read()
 
 
-def _stream(base_url: str, model: str, stop: float, max_tokens: int, opener: Callable) -> None:
+def _stream(
+    base_url: str, model: str, stop: float, max_tokens: int, opener: Callable, results: list[tuple[int, int]]
+) -> None:
+    """One concurrent stream's loop; its own (completed, failed) count, never raised.
+
+    F9/R13: an uncaught exception here used to kill only this thread -- the
+    phase would complete with fewer than k streams and nothing downstream
+    could tell. Every request outcome is now counted instead.
+    """
+    completed = errors = 0
     while time.time() < stop:
-        request(base_url, model, filler(CONTEXT_SIZES[0]), max_tokens, opener)
+        try:
+            request(base_url, model, filler(CONTEXT_SIZES[0]), max_tokens, opener)
+        except Exception:  # noqa: BLE001 - counted, never silently dropped
+            errors += 1
+        else:
+            completed += 1
+    results.append((completed, errors))
 
 
 def run(base_url: str, model: str, *, streams_seconds: float, max_tokens: int, opener: Callable = urllib.request.urlopen) -> dict:
+    """The plan, with every phase's own request/error counts (F9/R13).
+
+    A context request's own failure is counted the same way, so the
+    attended run's plan never hides a lost request behind a phase that
+    just looks empty.
+    """
     plan: dict = {"model": model, "base_url": base_url, "context": [], "concurrency": []}
     for size in CONTEXT_SIZES:
         start = time.time()
-        request(base_url, model, filler(size), max_tokens, opener)
-        plan["context"].append({"size": size, "start": start, "end": time.time() + 1})
+        try:
+            request(base_url, model, filler(size), max_tokens, opener)
+        except Exception:  # noqa: BLE001 - counted, never silently dropped
+            plan["context"].append(
+                {"size": size, "start": start, "end": time.time() + 1, "requests": 0, "errors": 1}
+            )
+            continue
+        plan["context"].append(
+            {"size": size, "start": start, "end": time.time() + 1, "requests": 1, "errors": 0}
+        )
     for k in CONCURRENCY:
         start = time.time()
         stop = start + streams_seconds
 
-        threads = [threading.Thread(target=_stream, args=(base_url, model, stop, max_tokens, opener)) for _ in range(k)]
+        results: list[tuple[int, int]] = []
+        threads = [
+            threading.Thread(target=_stream, args=(base_url, model, stop, max_tokens, opener, results))
+            for _ in range(k)
+        ]
         for thread in threads:
             thread.start()
         for thread in threads:
             thread.join()
-        plan["concurrency"].append({"k": k, "start": start, "end": time.time() + 1})
+        plan["concurrency"].append({
+            "k": k,
+            "start": start,
+            "end": time.time() + 1,
+            "requests": sum(completed for completed, _errors in results),
+            "errors": sum(errors for _completed, errors in results),
+        })
     return plan
+
+
+def any_phase_failed(plan: dict) -> bool:
+    """Whether any context or concurrency phase recorded a request error (F9/R13)."""
+    return any(phase.get("errors", 0) for phase in (*plan["context"], *plan["concurrency"]))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -192,8 +249,14 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.action == "run":
         plan = run(args.base_url, args.model, streams_seconds=args.stream_seconds, max_tokens=args.max_tokens)
+        # F9/R13: write what was measured before deciding the exit code, so
+        # an attended run that lost a stream is never silently wrong -- the
+        # plan on disk is never withheld, only the exit status is non-zero.
         args.plan.write_text(json.dumps(plan, indent=2) + "\n")
         print(args.plan)
+        if any_phase_failed(plan):
+            print("speed_probe: at least one phase recorded a failed request; see the plan's errors", file=sys.stderr)
+            return 2
         return 0
     try:
         report = analyze(json.loads(args.plan.read_text()), args.log.read_text(encoding="utf-8").splitlines())

@@ -134,6 +134,18 @@ def test_the_analyze_command_refuses_a_phase_with_no_completions(tmp_path: Path)
     assert main(["analyze", "--plan", str(tmp_path / "plan.json"), "--log", str(tmp_path / "server.log")]) == 2
 
 
+# --- F9/R13: per-phase counts, and a lost stream must not be silent ---
+
+
+def test_the_analysis_reports_per_phase_completion_counts() -> None:
+    plan, lines = _plan_and_log()
+    report = analyze(plan, lines)
+    assert report["context_completions_by_size"] == {
+        "5000": 1, "20000": 1, "40000": 1, "80000": 1, "160000": 1,
+    }
+    assert report["concurrency_completions_by_k"] == {"1": 1, "2": 2, "3": 3}
+
+
 def test_the_filler_approximates_the_requested_size() -> None:
     assert 19_000 * 4 <= len(filler(20_000)) <= 20_000 * 4
 
@@ -169,3 +181,74 @@ def test_the_driver_times_every_phase_and_streams_model_messages_and_max_tokens(
     assert {tuple(sorted(body)) for body in server.bodies} == {("max_tokens", "messages", "model", "stream")}
     assert all(body["stream"] is True for body in server.bodies)
     assert len(server.bodies) >= len(CONTEXT_SIZES) + sum(CONCURRENCY)
+    assert all(phase["requests"] == 1 and phase["errors"] == 0 for phase in plan["context"])
+    assert all(phase["errors"] == 0 for phase in plan["concurrency"])
+    assert all(phase["requests"] >= phase["k"] for phase in plan["concurrency"])
+
+
+class _FailingOpener:
+    """Succeeds every context request, then fails every concurrency request."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def __call__(self, request: object, timeout: float) -> object:
+        self.calls += 1
+        if self.calls > len(CONTEXT_SIZES):
+            raise OSError("connection reset")
+
+        class _Response:
+            def __enter__(self) -> _Response:
+                return self
+
+            def __exit__(self, *exc: object) -> None:
+                return None
+
+            def read(self) -> bytes:
+                return b"{}"
+
+        return _Response()
+
+
+def test_a_lost_stream_is_counted_as_an_error_not_silently_dropped() -> None:
+    plan = run("http://fake/v1", MODEL, streams_seconds=0.02, max_tokens=8, opener=_FailingOpener())
+    assert all(phase["errors"] == 0 and phase["requests"] == 1 for phase in plan["context"])
+    assert all(phase["errors"] > 0 for phase in plan["concurrency"])
+    assert all(phase["requests"] == 0 for phase in plan["concurrency"])
+
+
+def test_main_run_exits_non_zero_when_the_plan_reports_a_stream_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import speed_probe
+
+    monkeypatch.setattr(
+        speed_probe,
+        "run",
+        lambda *a, **k: {
+            "model": MODEL, "base_url": "x",
+            "context": [{"size": 5000, "start": 0, "end": 1, "requests": 1, "errors": 0}],
+            "concurrency": [{"k": 1, "start": 0, "end": 1, "requests": 2, "errors": 1}],
+        },
+    )
+    plan_path = tmp_path / "plan.json"
+    assert main(["run", "--model", MODEL, "--plan", str(plan_path)]) == 2
+    assert json.loads(plan_path.read_text())["concurrency"][0]["errors"] == 1
+
+
+def test_main_run_exits_zero_when_every_phase_is_clean(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import speed_probe
+
+    monkeypatch.setattr(
+        speed_probe,
+        "run",
+        lambda *a, **k: {
+            "model": MODEL, "base_url": "x",
+            "context": [{"size": 5000, "start": 0, "end": 1, "requests": 1, "errors": 0}],
+            "concurrency": [{"k": 1, "start": 0, "end": 1, "requests": 3, "errors": 0}],
+        },
+    )
+    plan_path = tmp_path / "plan.json"
+    assert main(["run", "--model", MODEL, "--plan", str(plan_path)]) == 0
