@@ -378,10 +378,12 @@ def strip_cd(command: str, cwd: str | None) -> str | None:
 @dataclass(frozen=True, slots=True)
 class BashPlan:
     """How a bash command replays: the shell text to run in the scratch tree (or
-    None), and the remainder the replay does not run."""
+    None), the remainder the replay does not run, and the tree-relative paths the
+    replay writes."""
 
     replay: str | None
     remainder: str
+    targets: tuple[str, ...] = ()
 
 
 def plan_bash(command: str, cwd: str | None) -> BashPlan:
@@ -404,17 +406,23 @@ def plan_bash(command: str, cwd: str | None) -> BashPlan:
         if end is None or not _inside(target):
             return BashPlan(None, command)
         cut = end.end() + 1 if end.end() < len(stripped) else end.end()
-        return BashPlan(stripped[: end.end()] + "\n", stripped[cut:])
+        resolved = tree_path(target, None)
+        return BashPlan(stripped[: end.end()] + "\n", stripped[cut:], (resolved,) if resolved is not None else ())
     if _SIMPLE_WRITE.match(stripped) and len(_segments(stripped)) == 1 and "\n" not in stripped.strip():
         targets = _write_targets(_segments(stripped)[0])[2]
         if targets and all(_inside(t) for t in targets):
-            return BashPlan(stripped, "")
+            resolved_targets = tuple(t for t in (tree_path(target, None) for target in targets) if t is not None)
+            return BashPlan(stripped, "", resolved_targets)
     return BashPlan(None, command)
 
 
 def _unroot_head(command: str, cwd: str) -> str:
+    """Strip the worktree root (and its /private alias) from ``head``. Tried longest
+    prefix first, deterministically, so ``/private`` + cwd is fully consumed before
+    the shorter bare ``cwd`` can eat part of it and leave a ``/private`` residue."""
     head, sep, body = command.partition("\n")
-    for root in {cwd, "/private" + cwd, cwd.removeprefix("/private")}:
+    roots = sorted({cwd, "/private" + cwd, cwd.removeprefix("/private")}, key=lambda r: (-len(r), r))
+    for root in roots:
         head = head.replace(root + "/", "").replace(root, ".")
     return head + sep + body
 
@@ -430,7 +438,7 @@ def mentions_source(text: str, source_paths: tuple[str, ...]) -> bool:
         if "." in posixpath.basename(name):
             if name in text or re.search(rf"(?<![\w.]){re.escape(posixpath.basename(name))}\b", text):
                 return True
-        elif re.search(rf"(?<![\w/.-]){re.escape(name)}/", text):
+        elif re.search(rf"(?<![\w.-]){re.escape(name)}/", text):
             return True
     return False
 
@@ -465,7 +473,8 @@ def _write_targets(words: list[str]) -> tuple[str, list[str], list[str]]:
     if program in _LAST_OPERAND_WRITERS and operands:
         targets.append(operands[-1])
     elif program in _EVERY_OPERAND_WRITERS or (
-        program in ("sed", "perl") and any(re.fullmatch(r"-[a-zA-Z0-9]*i\S*", w) for w in rest)
+        program in ("sed", "perl")
+        and any(re.fullmatch(r"-[a-zA-Z0-9]*i\S*", w) or w == "--in-place" or w.startswith("--in-place=") for w in rest)
     ):
         targets.extend(operands)
     elif program == "dd":
@@ -509,6 +518,16 @@ def could_write_source(command: str, source_paths: tuple[str, ...], cwd: str | N
             if resolved is not None and in_source_paths(resolved, source_paths):
                 return True
     return False
+
+
+def counts_as_skipped_write(returncode: int, was_original_error: bool, targets: tuple[str, ...], source_paths: tuple[str, ...]) -> bool:
+    """A replayed bash write that failed (nonzero ``returncode``) is a skipped writer
+    when the transcript did not already record the step as an error (the pre-existing
+    rule), or -- regardless of that -- when one of its targets lies inside
+    ``source_paths``: a discrepancy on a source path is never silently dropped."""
+    if returncode == 0:
+        return False
+    return not was_original_error or any(in_source_paths(t, source_paths) for t in targets)
 
 
 # --- section 4: outcomes, fidelity, unmeasured --------------------------------
@@ -701,7 +720,7 @@ def replay(spec: CellSpec, steps: list[Step], cwd: str | None, source_paths: tup
                     after = _digests(work)
                     out.bash_touched[step.index] = tuple(sorted(p for p in before.keys() | after.keys() if before.get(p) != after.get(p)))
                     out.applied["bash"] += 1
-                    if done.returncode != 0 and not step.is_error:
+                    if counts_as_skipped_write(done.returncode, step.is_error, plan.targets, source_paths):
                         out.skipped_writer_turns.append(step.turn)
                 if plan.remainder and could_write_source(plan.remainder, source_paths, cwd):
                     out.skipped_writer_turns.append(step.turn)
@@ -826,7 +845,7 @@ def main(argv: list[str]) -> int:
         print("counterfactual: cells.json exists; the decision phase runs once (spec section 6)", file=sys.stderr)
         return 2
     grade_root = args.grade_root.resolve() / args.phase
-    if markers := project_markers(grade_root.parent):
+    if markers := project_markers(grade_root):
         print(f"counterfactual: --grade-root sits under {markers[0]}; pytest would read it while grading", file=sys.stderr)
         return 2
     header = stamp(argv)

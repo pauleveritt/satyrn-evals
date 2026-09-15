@@ -300,6 +300,10 @@ def test_other_bash_forms_do_not_replay(command: str) -> None:
         "cd src/satyrn_evals && perl -i -pe 's/a/b/' cli.py && cd ../.. && uv run pytest",
         "mv src/satyrn_evals/run_record.py /tmp/r.bak; uv run pytest; mv /tmp/r.bak src/satyrn_evals/run_record.py",
         "uv run python - <<'EOF'\nfrom pathlib import Path\nPath('src/satyrn_evals/cli.py').write_text(s)\nEOF",
+        f"python3 -c \"open('{CWD}/tests/x.py','w').write('x')\"",
+        "python3 -c \"open('./tests/x.py','w').write('x')\"",
+        "sed --in-place 's/a/b/' src/satyrn_evals/cli.py && uv run pytest",
+        "sed --in-place=bak 's/a/b/' src/satyrn_evals/cli.py && uv run pytest",
     ],
 )
 def test_unreplayed_bash_that_could_write_a_source_path(command: str) -> None:
@@ -324,6 +328,42 @@ def test_unreplayed_bash_that_could_write_a_source_path(command: str) -> None:
 )
 def test_unreplayed_bash_that_could_not_write_a_source_path(command: str) -> None:
     assert not cf.could_write_source(command, SOURCES, CWD)
+
+
+def test_mentions_source_matches_a_directory_entry_by_absolute_or_dot_slash_path() -> None:
+    assert cf.mentions_source(f"open('{CWD}/tests/x.py','w')", SOURCES)
+    assert cf.mentions_source("open('./tests/x.py','w')", SOURCES)
+    assert not cf.mentions_source("open('mytests/x.py','w')", SOURCES)
+
+
+def test_plan_bash_reports_the_tree_relative_write_targets() -> None:
+    heredoc = cf.plan_bash(f"cd {CWD} && cat > tools/hooks/guard.py << 'EOF'\nprint(1)\nEOF\nuv run pytest -q", CWD)
+    assert heredoc.targets == ("tools/hooks/guard.py",)
+    simple = cf.plan_bash("printf 'x' > app.py", CWD)
+    assert simple.targets == ("app.py",)
+
+
+def test_unroot_head_strips_the_private_alias_deterministically() -> None:
+    cwd = "/Users/Shared/satyrn-cells/a/worktree"
+    command = f"cat > /private{cwd}/app.py << 'EOF'\nx\nEOF\n"
+    result = cf._unroot_head(command, cwd)
+    assert result.startswith("cat > app.py")
+    assert "/private" not in result
+
+
+def test_counts_as_skipped_write_only_when_failed() -> None:
+    assert not cf.counts_as_skipped_write(0, False, (), SOURCES)
+    assert not cf.counts_as_skipped_write(0, True, ("src/satyrn_evals/cli.py",), SOURCES)
+
+
+def test_counts_as_skipped_write_keeps_the_non_error_rule() -> None:
+    assert cf.counts_as_skipped_write(1, False, (), SOURCES)
+    assert cf.counts_as_skipped_write(1, False, ("outside/x.py",), SOURCES)
+
+
+def test_counts_as_skipped_write_also_flags_an_errored_original_targeting_source() -> None:
+    assert cf.counts_as_skipped_write(1, True, ("src/satyrn_evals/cli.py",), SOURCES)
+    assert not cf.counts_as_skipped_write(1, True, ("outside/x.py",), SOURCES)
 
 
 # --- section 4: outcomes, fidelity, unmeasured ----------------------------------
@@ -484,4 +524,11 @@ def test_a_grade_root_with_no_project_above_it_is_clean(tmp_path: Path) -> None:
 
 def test_the_cli_refuses_a_grade_root_inside_the_evals_checkout(capsys: pytest.CaptureFixture[str]) -> None:
     assert cf.main(["--phase", "debug", "--cell", "490384", "--grade-root", str(cf.HERE / "work")]) == 2
+    assert "pytest would read it while grading" in capsys.readouterr().err
+
+
+def test_the_cli_refuses_a_grade_root_whose_phase_folder_itself_has_a_marker(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    (tmp_path / "debug").mkdir()
+    (tmp_path / "debug" / "pyproject.toml").write_text("[project]\n")
+    assert cf.main(["--phase", "debug", "--cell", "490384", "--grade-root", str(tmp_path)]) == 2
     assert "pytest would read it while grading" in capsys.readouterr().err
