@@ -488,6 +488,9 @@ def test_a_raise_is_unmeasured() -> None:
         "git diff",
         "find . -name '*.py'",
         "sed -n '1,20p' f",
+        "sed -n '1,20p' notes.txt",
+        "rg -n def src/x.py",
+        "grep -rn foo .",
     ],
 )
 def test_is_read_only_bash_true_cases(command: str) -> None:
@@ -509,6 +512,13 @@ def test_is_read_only_bash_true_cases(command: str) -> None:
         "sed -n 'w out.txt' f",
         "find . -fls out.txt",
         "uniq a.txt src/satyrn_evals/cli.py",
+        "sed --expression='w out.txt' f",
+        "sed -e 'w out.txt' f",
+        "sed --expression 'w out.txt' f",
+        "sed -f cmds.sed f",
+        "sed --file=cmds.sed f",
+        "rg --pre ./prog",
+        "rg --pre-glob '*.gz' foo .",
     ],
 )
 def test_is_read_only_bash_false_cases(command: str) -> None:
@@ -517,6 +527,12 @@ def test_is_read_only_bash_false_cases(command: str) -> None:
 
 def test_is_read_only_bash_uniq_with_a_single_operand_is_still_true() -> None:
     assert cf.is_read_only_bash("uniq a.txt", CWD)
+
+
+def test_is_read_only_bash_sed_write_still_rejected_via_the_conservative_operand_scan() -> None:
+    """Documents pre-existing behaviour: a filename that happens to contain the letter
+    ``w`` is conservatively rejected too, even with no actual ``w`` script command."""
+    assert not cf.is_read_only_bash("sed -n '1,20p' write.txt", CWD)
 
 
 def test_a_reconstructed_pass_over_read_only_only_bash_history_is_a_rescue() -> None:

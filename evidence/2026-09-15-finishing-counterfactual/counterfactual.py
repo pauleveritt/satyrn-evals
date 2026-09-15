@@ -562,7 +562,7 @@ def counts_as_skipped_write(returncode: int, was_original_error: bool) -> bool:
 
 # --- spec 7.4: conservative rescues --------------------------------------------
 
-_READ_ONLY_SIMPLE = frozenset({"cat", "ls", "pwd", "grep", "rg", "head", "tail", "wc", "diff"})
+_READ_ONLY_SIMPLE = frozenset({"cat", "ls", "pwd", "grep", "head", "tail", "wc", "diff"})
 _READ_ONLY_NO_REDIRECT = frozenset({"echo", "printf"})
 _GIT_READ_ONLY = frozenset({"status", "diff", "log", "show"})
 _FIND_WRITE_FLAGS = frozenset({"-exec", "-execdir", "-ok", "-okdir", "-delete"})
@@ -588,17 +588,21 @@ def _strip_stderr_merge(rest: list[str]) -> tuple[bool, list[str]]:
 
 def is_read_only_bash(command: str, cwd: str | None) -> bool:
     """Spec 7.4: whether a bash command is provably read-only -- ``cat``, ``ls``,
-    ``pwd``, ``echo``/``printf`` without redirection, ``grep``/``rg``, ``find`` without
-    a write action (any ``-exec``/``-execdir``/``-ok``/``-okdir``/``-delete`` or any
-    ``-f``-prefixed action such as ``-fls``/``-fprint*``), ``head``, ``tail``, ``wc``,
-    ``sort`` without ``-o``/``--output``, ``uniq`` with at most one non-flag operand
-    (a second operand is uniq's output file), ``diff``, ``sed`` without ``-i`` and with
-    no non-flag operand containing the letter ``w`` (conservative against sed's ``w``
-    script command, which writes without ``-i``), ``git status``/``diff``/``log``/
-    ``show`` (no ``--output``), or a test run for which ``runs_pytest`` is true, joined
-    by pipes, ``&&``, ``||``, ``;``, and ``cd`` into the worktree, with at most a
-    trailing ``2>&1``. Any other redirection, or a ``$(...)``/backtick other than
-    ``$(pwd)``, makes it not read-only. Conservative: unsure means False."""
+    ``pwd``, ``echo``/``printf`` without redirection, ``grep``, ``rg`` without
+    ``--pre``/``--pre-glob`` (a preprocessor hook), ``find`` without a write action
+    (any ``-exec``/``-execdir``/``-ok``/``-okdir``/``-delete`` or any ``-f``-prefixed
+    action such as ``-fls``/``-fprint*``), ``head``, ``tail``, ``wc``, ``sort`` without
+    ``-o``/``--output``, ``uniq`` with at most one non-flag operand (a second operand
+    is uniq's output file), ``diff``, ``sed`` without ``-i``, without ``-f``/``--file``
+    (an unreadable script file that may itself contain a ``w`` command), and with no
+    argument at all -- flag or operand -- containing the letter ``w`` (conservative
+    against sed's ``w`` script command, which writes without ``-i``, in any form:
+    ``-e``/``--expression=``, a bare script argument, or fused into another flag),
+    ``git status``/``diff``/``log``/``show`` (no ``--output``), or a test run for which
+    ``runs_pytest`` is true, joined by pipes, ``&&``, ``||``, ``;``, and ``cd`` into the
+    worktree, with at most a trailing ``2>&1``. Any other redirection, or a
+    ``$(...)``/backtick other than ``$(pwd)``, makes it not read-only. Conservative:
+    unsure means False."""
     remaining = command.replace("$(pwd)", "").replace("`pwd`", "")
     if "$(" in remaining or "`" in remaining:
         return False
@@ -628,6 +632,11 @@ def is_read_only_bash(command: str, cwd: str | None) -> bool:
         if program in _READ_ONLY_SIMPLE or program in _READ_ONLY_NO_REDIRECT:
             index += 1
             continue
+        if program == "rg" and not any(
+            w == "--pre" or w.startswith("--pre=") or w == "--pre-glob" or w.startswith("--pre-glob=") for w in stripped_rest
+        ):
+            index += 1
+            continue
         if program == "uniq" and len([w for w in stripped_rest if not w.startswith("-")]) <= 1:
             index += 1
             continue
@@ -640,7 +649,8 @@ def is_read_only_bash(command: str, cwd: str | None) -> bool:
         if (
             program == "sed"
             and not any(re.fullmatch(r"-[a-zA-Z0-9]*i\S*", w) or w == "--in-place" or w.startswith("--in-place=") for w in stripped_rest)
-            and not any("w" in w for w in stripped_rest if not w.startswith("-"))
+            and not any(w == "-f" or w.startswith("--file") for w in stripped_rest)
+            and not any("w" in w for w in stripped_rest)
         ):
             index += 1
             continue
