@@ -22,6 +22,7 @@ from satyrn_evals.census import run_cli as run_census
 from satyrn_evals.errors import SatyrnError, UsageError
 from satyrn_evals.grade import grade
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, resolve_task
+from satyrn_evals.qualify import qualify
 from satyrn_evals.rescore import regrade_attempt, summarize_output
 from satyrn_evals.run import run
 from satyrn_evals.run_record import (
@@ -214,6 +215,13 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "cell-engine":
             print(export_engine(Path(args.engine_repo), args.commit))
             return 0
+        if args.command == "qualify":
+            failed = False
+            for task in args.tasks:
+                for check in qualify(resolve_task(task, tasks_root=Path(args.tasks_root))):
+                    print(check.line(task))
+                    failed = failed or not check.passed
+            return 1 if failed else 0
         if args.command == "grade":
             task_dir = resolve_task(args.task, tasks_root=Path(args.tasks_root))
             receipt = grade(task_dir, Path(args.patch), Path(args.receipt))
@@ -297,6 +305,16 @@ cell_engine_p = sub.add_parser(
 )
 cell_engine_p.add_argument("--engine-repo", required=True, help="the maintainer's engine checkout")
 cell_engine_p.add_argument("--commit", required=True, help="the engine commit the arm runs")
+
+qualify_p = sub.add_parser(
+    "qualify", help="offline qualification: fixtures both ways, a live harvest, known-good three times"
+)
+qualify_p.add_argument("tasks", nargs="+", help="task names")
+qualify_p.add_argument(
+    "--tasks-root",
+    default=str(DEFAULT_TASKS_ROOT),
+    help="task root (default: bundled tasks)",
+)
 
 capture_p = sub.add_parser(
     "capture", help="turn a fixing commit into a task (winnable by construction)"

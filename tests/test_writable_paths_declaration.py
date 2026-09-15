@@ -34,6 +34,8 @@ FLEET: dict[str, tuple[str, ...]] = {
         "templates/*",
         "tests/*",
     ),
+    "agentclinic-repair-depth-2": ("app.py", "models.py", "templates/*", "tests/*"),
+    "agentclinic-repair-depth-3": ("app.py", "models.py", "templates/*", "tests/*"),
     "format_number": ("solution.py",),
     "selfhost-docs-linter": ("tools/lint_docs.py", "tests/*"),
     "selfhost-guard-prefixes": ("tools/hooks/guard.py", "tests/*"),
