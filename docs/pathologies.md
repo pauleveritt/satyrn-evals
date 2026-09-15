@@ -1,5 +1,14 @@
 # Pathologies
 
+*Status 2026-09-15: under the "Evidence has a harness" rule (`AGENTS.md`),
+an entry whose evidence is model behaviour observed before release one's
+clean harness (before 2026-09-14 14:25Z declared sampling, two-uid
+isolation, the budget tripwire, and the base-commit harvest) is re-opened —
+its frequency and severity are not settled. An entry that records a harness
+or engine bug with a landed code fix and a test stays settled as a bug fix.
+See `docs/superpowers/specs/2026-09-15-release-one-outcome.md`. Each numbered
+entry below carries its own marker.*
+
 Ways a small local model — or the harness measuring it — has been observed
 going wrong during an agentic repair attempt. One line each; the transcript,
 archive record, or source citation that shows it is the real evidence, not
@@ -45,7 +54,8 @@ smoothed away.
 
 ### Seen in this repository's own engine and adapters
 
-1. **Redundant-read lock.** On the V11c spike (2026-09-05), seven Baseline
+1. *Status 2026-09-15: re-opened (model behaviour, pre-clean-harness evidence).*
+   **Redundant-read lock.** On the V11c spike (2026-09-05), seven Baseline
    cells each issued **281 identical `read app.py` calls** after locking at
    their fifth tool call, each burning about ten minutes reaching the model
    server's context limit — 70 of that batch's 102 minutes spent
@@ -55,7 +65,8 @@ smoothed away.
    succeeded, and 280 on every locked cell — nothing in between.
    (`src/satyrn_evals/repeat_limit.py:7-16`)
 
-2. **Streaming updates counted as extra tool calls.** The Baseline V5d
+2. *Status 2026-09-15: settled as a bug fix.*
+   **Streaming updates counted as extra tool calls.** The Baseline V5d
    smoke's transcript carried 23 `tool_execution_start`, 23
    `tool_execution_end`, and **49** `tool_execution_update` events for the
    same 23 calls. An update is a streaming partial of an execution already
@@ -63,7 +74,8 @@ smoothed away.
    inflated every `tool_calls` tally by roughly 2x.
    (`src/satyrn_evals/pathology.py:28-33`)
 
-3. **`--model=VALUE` silently rejected.** pi's hand-rolled flag parser
+3. *Status 2026-09-15: settled as a bug fix.*
+   **`--model=VALUE` silently rejected.** pi's hand-rolled flag parser
    matches only the literal token `--model` and records the combined
    `--model=VALUE` form as an unknown flag rather than an error. That defect
    cost the V8 smoke a run at 0.84.4 before it was found; reconfirmed
@@ -71,13 +83,15 @@ smoothed away.
    (`src/satyrn_evals/arms.py:198-201`,
    `src/satyrn_evals/attempt_pi.py:16-19`)
 
-4. **Untracked files invisible to patch capture.** The Baseline adapter
+4. *Status 2026-09-15: re-opened (model behaviour, pre-clean-harness evidence).*
+   **Untracked files invisible to patch capture.** The Baseline adapter
    harvests its patch with `git diff HEAD`, which never sees a file the
    model created with `write` rather than edited — harmless on pure-edit
    repair, silently fatal on any task shape that needs file creation.
    (`src/satyrn_evals/attempt_pi.py:23-27`)
 
-5. **An infrastructure crash counted as a plain refusal.** A model-server
+5. *Status 2026-09-15: settled as a bug fix.*
+   **An infrastructure crash counted as a plain refusal.** A model-server
    5xx, or a runtime fault such as a GPU out-of-memory, looked identical to
    a model that simply produced no patch — recording it as `NO_PATCH`
    understated the arm and voided a whole probe silently. A 4xx is
@@ -87,14 +101,16 @@ smoothed away.
    the engine's `docs/usage.md` (the `MODEL_ERROR` and `--max-repeated-calls`
    sections).
 
-6. **`regrade` could not reach an already-collected infrastructure
+6. *Status 2026-09-15: settled as a bug fix.*
+   **`regrade` could not reach an already-collected infrastructure
    failure.** Before V11d slice 4, `regrade` no-op'd on every refusal cell,
    which would have stranded every already-collected `NO_PATCH` cell with
    no offline path to correct it once the transcript was later understood
    better.
    (`src/satyrn_evals/rescore.py:363-368`)
 
-7. **A self-reported no-op edit repeated five times without adapting.** In
+7. *Status 2026-09-15: re-opened (model behaviour, pre-clean-harness evidence).*
+   **A self-reported no-op edit repeated five times without adapting.** In
    the overnight phase-4 context screen's Baseline arm (twelve
    `agentclinic-complaint-lifecycle` cells, 2026-09-11/12), one cell's
    phase-4 turns issued the identical `edit` call against `app.py`'s
@@ -125,7 +141,8 @@ in SwiftStar's and ds4-engine's own catalogs; renumbered here to run on
 from entry 7, with the original numbers kept in the provenance note below
 for cross-repository lookup.*
 
-8. **No-op edit loop, reported as success.** NOT A MODEL PATHOLOGY — harness
+8. *Status 2026-09-15: settled as a bug fix.*
+   **No-op edit loop, reported as success.** NOT A MODEL PATHOLOGY — harness
    bug. The mutation engine accepted an edit whose `oldText` equaled
    `newText`, silently writing the same bytes back and reporting "changed
    lines=0" as success. One run looped rereading a 29KB file and proposing
@@ -135,13 +152,15 @@ for cross-repository lookup.*
    exactly this pattern visible rather than invisible in a summary; see
    entry 8 in [remediations.md](remediations.md).
 
-9. **Near-miss file targeting.** Asked to edit `src/svcs/_autowire.py`,
+9. *Status 2026-09-15: re-opened (model behaviour, pre-clean-harness evidence).*
+   **Near-miss file targeting.** Asked to edit `src/svcs/_autowire.py`,
    wrote a clean, complete file to `src/svcs/autowire.py` instead — a
    plausible sibling name, not the real target — then ran out of its turn
    budget still trying to wire `__init__.py` to the wrong file it had
    created.
 
-10. **Schema-mismatched call repetition.** Repeated a structurally invalid
+10. *Status 2026-09-15: re-opened (model behaviour, pre-clean-harness evidence).*
+    **Schema-mismatched call repetition.** Repeated a structurally invalid
     edit call — one that contained the correct fix, but with `path` nested
     inside the edit entry instead of at the top level — 49 times
     byte-identically, always failing schema validation, without ever
@@ -149,7 +168,8 @@ for cross-repository lookup.*
     guard-blocked repeats of an anchor-mismatched retry starting at call 14
     of 60.
 
-11. **Destructive failure tied to task shape.** On one specific task,
+11. *Status 2026-09-15: re-opened (model behaviour, pre-clean-harness evidence).*
+    **Destructive failure tied to task shape.** On one specific task,
     failing runs didn't just fail to add code — they reliably deleted
     existing tests. A 24-replicate noise-floor run showed 5/6
     "tests-vanished" plus 1 "damaged" (0/6 accepted); a separate
@@ -158,20 +178,23 @@ for cross-repository lookup.*
     suggesting a failure signature tied to this task/edit shape rather
     than a one-off.
 
-12. **Empty-workspace probing spiral.** Given an empty workspace with no
+12. *Status 2026-09-15: re-opened (model behaviour, pre-clean-harness evidence).*
+    **Empty-workspace probing spiral.** Given an empty workspace with no
     explicit statement that it was empty, repeatedly re-checked with
     `ls -R` — 245 repetitions in one run, contributing to a 261-turn run
     with a 71.88 MB transcript. Stating the empty workspace as a fact in
     the prompt collapsed this to 1 repetition.
 
-13. **Headless conversational stall.** In a single-shot, non-interactive
+13. *Status 2026-09-15: re-opened (model behaviour, pre-clean-harness evidence).*
+    **Headless conversational stall.** In a single-shot, non-interactive
     agentic run, 16/16 replicates took exactly one turn, made zero tool
     calls, correctly and accurately restated the task requirements, and
     then stopped with "Please let me know which file I should start
     with..." — treating a one-shot execution context as an interactive
     chat awaiting a reply that will never come.
 
-14. **Operationally vague self-authored specs.** When used to author a
+14. *Status 2026-09-15: re-opened (model behaviour, pre-clean-harness evidence).*
+    **Operationally vague self-authored specs.** When used to author a
     task contract rather than execute one, drafts passed every
     structural/coverage check (8/8) but were behaviorally complete and
     operationally vague — e.g. "register the resulting context for
@@ -181,7 +204,8 @@ for cross-repository lookup.*
     correctness drop (4/4 hand-authored vs. 1/4 model-authored on oracle
     checks).
 
-15. **Scope overreach via its own contract's prose.** Given a handoff
+15. *Status 2026-09-15: re-opened (model behaviour, pre-clean-harness evidence).*
+    **Scope overreach via its own contract's prose.** Given a handoff
     contract restricted to `src/svcs/**`, produced a functionally perfect
     patch (3/3 identical, oracle 19/19 every time) but also edited
     `docs/integrations/flask.md` because the contract's own "Documentation
@@ -205,7 +229,8 @@ against `pi 0.84.4`, roughly 160 cells. Spike evidence only: "every number
 here must be re-derived before it is cited in a plan." Archived at
 [`2026-09-02-overnight-packet-and-isolation-run.md`](https://github.com/pauleveritt/satyrn-evals/blob/main/archive/2026-09-07-pre-reset/docs/superpowers/research/2026-09-02-overnight-packet-and-isolation-run.md).*
 
-16. **Oracle-hunting by filesystem search.** Unsandboxed runs spent their
+16. *Status 2026-09-15: re-opened (model behaviour, pre-clean-harness evidence).*
+    **Oracle-hunting by filesystem search.** Unsandboxed runs spent their
     budget on `ls -R`, repeated 139–271 times, interleaved with
     `find . -name test_acceptance.py`, hunting for the hidden grader
     instead of working the task. Two cells found the real acceptance
@@ -213,9 +238,13 @@ here must be re-derived before it is cited in a plan." Archived at
     until green; a separate run read up to 49 *other* cells' directories
     along the way. Every one of those search calls *succeeds*, so a loop
     breaker keyed on tool-call failures would never fire on it. (§1–§2 of
-    the archived record.)
+    the archived record.) Release one's clean harness re-observed hunting
+    under isolation: guard 4 cut a root-wide hunt for the acceptance tests
+    at 120 s that had cost a Baseline cell 1,800 s
+    (`docs/superpowers/specs/2026-09-15-release-one-outcome.md`).
 
-17. **A sandbox that removed the model's own test runner.** The Seatbelt
+17. *Status 2026-09-15: re-opened (model behaviour, pre-clean-harness evidence).*
+    **A sandbox that removed the model's own test runner.** The Seatbelt
     profile built to close entry 16's oracle leak also cut off the
     model's `python`, which resolved to a build environment without
     pytest while PyPI was blocked. Across 36 sandboxed cells there were
@@ -225,12 +254,14 @@ here must be re-derived before it is cited in a plan." Archived at
     the models. (§2, "A confound this profile introduced, and did not
     disclose until review.")
 
-18. **A detector that always fires.** A grader-content tripwire fired on
+18. *Status 2026-09-15: settled as a bug fix.*
+    **A detector that always fires.** A grader-content tripwire fired on
     **104 of 128 cells**, because every transcript contains its own
     filesystem path — exactly as useless as a detector that never fires.
     (§3, defect 4.)
 
-19. **Contamination overstated sixfold on first read.** An early pass
+19. *Status 2026-09-15: settled as a bug fix.*
+    **Contamination overstated sixfold on first read.** An early pass
     flagged 12 files as copied grader content; adversarial review found
     10 of those 12 were legitimate model-authored tests written from an
     assertion the prompt had already displayed. The overstatement was

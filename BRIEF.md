@@ -4,9 +4,14 @@
 
 Keep a small model on track, so a Python developer can use local AI and stay
 at the wheel. The developer's engineering is domain engineering — specs and
-tests — not agent engineering. Release one ships an Engine that beats bare Pi
-at three mechanical pathologies and an Eval that proves it; the design is
-`docs/superpowers/specs/2026-09-13-release-one-design.md`.
+tests — not agent engineering.
+
+Release one (a ceiling claim on Ornith 1.5 9B) concluded 2026-09-15 with a
+stated negative: `docs/superpowers/specs/2026-09-15-release-one-outcome.md`.
+Release two starts from the R0 constraints
+(`docs/superpowers/specs/2026-09-15-release-two-r0-constraints.md`). The
+release-one design, `docs/superpowers/specs/2026-09-13-release-one-design.md`,
+is evidence, not guidance.
 
 Satyrn Evals captures a task, invokes an attempt command, persists the patch
 and transcript, and grades the saved evidence offline. The engine seam is an

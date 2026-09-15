@@ -31,6 +31,10 @@ completion's end.
 k is the largest of 1, 2 or 3 whose total throughput is at least 1.5 times
 k = 1's (spec, "Concurrency, both arms").
 
+Status 2026-09-15: the 2026-09-15 probe's k = 1 total (36.5 tok/s) sat well
+below single-stream decode (55.9 tok/s), so its k = 3 needs re-measuring
+before reuse (`2026-09-15-release-one-outcome.md`, item 7).
+
     uv run python scripts/speed_probe.py run --model Ornith-1.5-9B-MLX-8bit --plan PLAN.json
     uv run python scripts/speed_probe.py analyze --plan PLAN.json --log ~/.omlx/logs/server.log
 """

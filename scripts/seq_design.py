@@ -5,6 +5,11 @@ one-sided Fisher test at n = 12 per arm with one futility look at 6, compared
 with a fixed n = 12 and with an early-win look that the design rejected, plus
 the held-out loss tripwire at n = 6. No model, network, or subprocess.
 
+Status 2026-09-15: these scenarios assume release one's four-then-three
+ceiling tasks and a stipulated 0.10 vs 0.60 effect, which release one's
+admission did not support (`2026-09-15-release-one-outcome.md`). Evidence,
+not a current design input.
+
     uv run python scripts/seq_design.py
 """
 

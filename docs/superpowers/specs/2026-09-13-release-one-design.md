@@ -1,11 +1,12 @@
 # Release one — design
 
 **Written 2026-09-13; rewritten 2026-09-14 after Phase 0 and three Ornith
-probes. Phase 0 is done under the first version (git history). This version
-authorizes Phases 1 and 2 and nothing that spends inference except the
-attended admission sittings named below.** Probe results cited here live on
-their probe branches in this repository and are evidence, not guidance.
-**Concluded 2026-09-15 with a stated negative:** `2026-09-15-release-one-outcome.md`.
+probes. Phase 0 is done under the first version (git history).** Probe
+results cited here live on their probe branches in this repository and are
+evidence, not guidance. **Concluded 2026-09-15 with a stated negative:**
+`2026-09-15-release-one-outcome.md` — this document is evidence for a named
+question, never guidance, and its authorization of Phases 1 and 2 no longer
+authorizes anything.
 
 ## North star, and the one claim release one makes
 

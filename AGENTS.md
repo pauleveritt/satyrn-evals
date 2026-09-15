@@ -1,10 +1,14 @@
 # Working in this repository
 
-Read `BRIEF.md`, `ROADMAP.md`, and the release-one design
-(`docs/superpowers/specs/2026-09-13-release-one-design.md`). Then read the
-plan for the current phase and nothing else. The tag
+Read `BRIEF.md`, `ROADMAP.md`, and
+`docs/superpowers/specs/2026-09-15-release-two-r0-constraints.md`. Then read
+the spec for the current stage (today,
+`docs/superpowers/specs/2026-09-15-release-two-finishing-counterfactual.md`,
+the knowledge-stage pre-registration) and nothing else. The release-one
+design (`docs/superpowers/specs/2026-09-13-release-one-design.md`) and its
+phase plans are evidence for a named question, never guidance. The tag
 `pre-release-one-2026-09-13` on `main` holds everything before this tree; it
-is evidence for a named question, never guidance.
+too is evidence for a named question, never guidance.
 
 **Unattended is for building; attended is for deciding and spending.** An
 agent executing a plan implements its tasks, commits at task boundaries, and
