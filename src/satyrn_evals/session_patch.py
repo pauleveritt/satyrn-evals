@@ -16,6 +16,8 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from satyrn_evals.workspace import GIT_SAFETY_CONFIG
+
 #: Runtime residue a model's own tool runs leave in a worktree. A harvest
 #: passes these so ``git add -N --all`` never sweeps them into a candidate;
 #: the session path passes nothing and is unchanged.
@@ -36,7 +38,7 @@ class PatchCapture:
 
 def _git(worktree: Path, env: dict[str, str], *args: str) -> bytes:
     result = subprocess.run(
-        ["git", *args],
+        ["git", *GIT_SAFETY_CONFIG, *args],
         cwd=worktree,
         env=env,
         capture_output=True,
@@ -87,7 +89,14 @@ def build_cumulative_patch(
         _git(worktree, env, "read-tree", base_commit)
         _git(worktree, env, "add", "-N", "--all", "--", ".", *exclude)
         patch_text = _git(
-            worktree, env, "diff", "--binary", "--full-index", base_commit
+            worktree,
+            env,
+            "diff",
+            "--binary",
+            "--full-index",
+            "--no-ext-diff",
+            "--no-textconv",
+            base_commit,
         ).decode("utf-8", "surrogateescape")
         status_z = _git(
             worktree, env, "status", "--porcelain", "--untracked-files=all", "-z"

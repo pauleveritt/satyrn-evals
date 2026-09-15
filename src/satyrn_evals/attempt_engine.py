@@ -48,6 +48,8 @@ from satyrn_evals.cell import (
     isolation_from,
     model_environment,
 )
+from satyrn_evals.cell_engine import EngineExportError, verify_export
+from satyrn_evals.workspace import GIT_SAFETY_CONFIG
 
 ENGINE_REPO_ENV = "SATYRN_ENGINE_REPO"
 RECEIPT_NAME = "engine-receipt.json"
@@ -164,6 +166,10 @@ def isolated(args: EngineArgs, environment: Mapping[str, str]) -> bool:
             f"under isolation the engine must be an export under {CELLS_ROOT} "
             f"(satyrn-evals cell-engine), not {args.engine_repo}"
         )
+    try:
+        verify_export(args.engine_repo)
+    except EngineExportError as exc:
+        raise AdapterError(f"engine export {args.engine_repo} is not safe to run: {exc}") from exc
     return True
 
 
@@ -184,7 +190,12 @@ def as_cell(argv: list[str], args: EngineArgs, environment: Mapping[str, str], w
 
 def checkout_candidate(commit: str, log: Path) -> int:
     """Check the candidate out into the Evals worktree; a failure is logged, never raised."""
-    checkout = subprocess.run(["git", "checkout", "-q", "--detach", commit], capture_output=True, text=True, check=False)
+    checkout = subprocess.run(
+        ["git", *GIT_SAFETY_CONFIG, "checkout", "-q", "--detach", commit],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
     if checkout.returncode != 0:
         log.write_text(f"git checkout {commit} exited {checkout.returncode}\n{checkout.stderr}", encoding="utf-8")
     return checkout.returncode

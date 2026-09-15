@@ -2,6 +2,7 @@
 
 import json
 import pwd
+import stat
 import subprocess
 from pathlib import Path
 
@@ -46,11 +47,35 @@ def test_a_leftover_cell_process_is_stale_and_an_os_agent_is_not() -> None:
     assert stale_cell_processes("  101 560 /usr/libexec/lsd\n", CELL_UID) == []
 
 
-class _Runner:
-    """Answers the preflight's commands from a script; records nothing spawns."""
+SENTINEL = "__satyrn_done__"
 
-    def __init__(self, *, sudo: int = 0, ps: str = "", readable: str = "", version: str = "0.85.1\n", hits: str = "") -> None:
+
+class _Runner:
+    """Answers the preflight's commands from a script; records nothing spawns.
+
+    Every as-cell probe's canned output carries the completion sentinel a
+    real cell wrapper's shell would echo, unless the probe is named in
+    ``omit_sentinel`` -- simulating a sudo/sh wrapper that failed silently
+    before the probe's own output could be trusted (F5/R13).
+    """
+
+    def __init__(
+        self,
+        *,
+        sudo: int = 0,
+        ps: str = "",
+        readable: str = "",
+        version: str = "0.85.1\n",
+        hits: str = "",
+        omit_sentinel: frozenset[str] = frozenset(),
+    ) -> None:
         self.sudo, self.ps, self.readable, self.version, self.hits = sudo, ps, readable, version, hits
+        self.omit_sentinel = omit_sentinel
+
+    def _sentineled(self, probe: str, out: str) -> str:
+        if probe in self.omit_sentinel:
+            return out
+        return out + SENTINEL + "\n"
 
     def __call__(self, argv: list[str], **kwargs: object) -> subprocess.CompletedProcess:
         text = kwargs.get("text", False)
@@ -59,12 +84,21 @@ class _Runner:
         elif "/usr/bin/true" in argv:
             return subprocess.CompletedProcess(argv, self.sudo, b"", b"sudo: a password is required")
         elif "pi" in argv and "--version" in argv:
-            out = self.version
+            out = self._sentineled("version", self.version)
         elif "/usr/bin/find" in argv:
-            out = self.hits
+            out = self._sentineled("hits", self.hits)
         else:
-            out = self.readable
+            out = self._sentineled("readable", self.readable)
         return subprocess.CompletedProcess(argv, 0, out if text else out.encode(), "")
+
+
+@pytest.fixture
+def cells_root(tmp_path: Path) -> Path:
+    """A hermetic, sticky, empty cells root: never the real machine's."""
+    root = tmp_path / "cells"
+    root.mkdir()
+    root.chmod(root.stat().st_mode | stat.S_ISVTX)
+    return root
 
 
 @pytest.fixture(autouse=True)
@@ -73,19 +107,25 @@ def _cell_user(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(pwd, "getpwnam", lambda name: type("P", (), {"pw_uid": CELL_UID})())
 
 
-def _preflight(runner: _Runner, hunt_root: str | None = "/") -> CellPreflight:
-    return preflight_cell(pinned_pi="0.85.1", protected=(REPO,), hunt_root=hunt_root, run=runner)
+def _preflight(
+    runner: _Runner, hunt_root: str | None = "/", *, cells_root: Path | None = None
+) -> CellPreflight:
+    kwargs: dict[str, object] = {}
+    if cells_root is not None:
+        kwargs["cells_root"] = cells_root
+    return preflight_cell(pinned_pi="0.85.1", protected=(REPO,), hunt_root=hunt_root, run=runner, **kwargs)
 
 
-def test_a_clean_cell_has_no_problems() -> None:
-    report = _preflight(_Runner(ps="  101 560 /usr/libexec/lsd\n"))
+def test_a_clean_cell_has_no_problems(cells_root: Path) -> None:
+    report = _preflight(_Runner(ps="  101 560 /usr/libexec/lsd\n"), cells_root=cells_root)
     assert report.problems == []
     assert report.checked["pi_version"] == "0.85.1"
 
 
-def test_each_cell_problem_is_named() -> None:
+def test_each_cell_problem_is_named(cells_root: Path) -> None:
     report = _preflight(
-        _Runner(ps="  103 560 /bin/bash -c sleep 9\n", readable=f"{REPO}\n", version="0.84.4\n", hits="/private/tmp/x/known-good.patch\n")
+        _Runner(ps="  103 560 /bin/bash -c sleep 9\n", readable=f"{REPO}\n", version="0.84.4\n", hits="/private/tmp/x/known-good.patch\n"),
+        cells_root=cells_root,
     )
     assert report.problems == [
         "a cell process is still running: 103 /bin/bash -c sleep 9",
@@ -95,9 +135,64 @@ def test_each_cell_problem_is_named() -> None:
     ]
 
 
-def test_skipping_the_hunt_runs_no_find() -> None:
-    report = _preflight(_Runner(hits="/private/tmp/x/known-good.patch\n"), hunt_root=None)
+def test_skipping_the_hunt_runs_no_find(cells_root: Path) -> None:
+    report = _preflight(_Runner(hits="/private/tmp/x/known-good.patch\n"), hunt_root=None, cells_root=cells_root)
     assert report.problems == [] and report.checked["hunt_hits"] == []
+
+
+# --- the cells root itself (F2/R11) -------------------------------------------
+
+
+def test_a_non_sticky_cells_root_is_a_problem(tmp_path: Path) -> None:
+    root = tmp_path / "cells"
+    root.mkdir()
+    report = _preflight(_Runner(ps="  101 560 /usr/libexec/lsd\n"), cells_root=root)
+    assert report.problems == [f"the cells root {root} lacks the sticky bit; fix: chmod +t {root}"]
+
+
+def test_an_unvouched_entry_in_the_cells_root_is_a_problem(cells_root: Path) -> None:
+    (cells_root / "engine-abcd").mkdir()  # vouched: maintainer-owned, engine-*
+    stray = cells_root / "leftover"
+    stray.mkdir()
+    report = _preflight(_Runner(ps="  101 560 /usr/libexec/lsd\n"), cells_root=cells_root)
+    assert report.problems == [f"unexpected entry in the cells root: {stray}"]
+
+
+# --- a missing sentinel names the wrapper failure, not a clean certificate (F5/R13) ---
+
+
+def test_a_wrapper_failure_on_the_readable_probe_is_named(cells_root: Path) -> None:
+    report = _preflight(
+        _Runner(ps="  101 560 /usr/libexec/lsd\n", omit_sentinel=frozenset({"readable"})),
+        cells_root=cells_root,
+    )
+    assert report.problems == [
+        "the readable-path probe did not complete (no sentinel; the cell wrapper may have failed)"
+    ]
+
+
+def test_a_wrapper_failure_on_the_pi_version_probe_is_named(cells_root: Path) -> None:
+    report = _preflight(
+        _Runner(ps="  101 560 /usr/libexec/lsd\n", omit_sentinel=frozenset({"version"})),
+        cells_root=cells_root,
+    )
+    assert report.problems == [
+        "the pi --version probe did not complete (no sentinel; the cell wrapper may have failed)"
+    ]
+
+
+def test_a_wrapper_failure_on_the_hunt_probe_is_named(cells_root: Path) -> None:
+    report = _preflight(
+        _Runner(ps="  101 560 /usr/libexec/lsd\n", omit_sentinel=frozenset({"hits"})),
+        cells_root=cells_root,
+    )
+    assert report.problems == ["the hunt probe did not complete (no sentinel; the cell wrapper may have failed)"]
+
+
+def test_a_completed_probe_with_no_output_is_silent(cells_root: Path) -> None:
+    """Success sibling: an empty-but-sentineled probe is a clean pass, not a problem."""
+    report = _preflight(_Runner(ps="  101 560 /usr/libexec/lsd\n"), cells_root=cells_root)
+    assert report.problems == []
 
 
 def test_a_cell_user_that_is_not_set_up_is_the_only_problem() -> None:

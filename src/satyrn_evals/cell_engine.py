@@ -13,6 +13,7 @@ written last, so a half-made export is never reused.
 
 import io
 import os
+import stat
 import subprocess
 import tarfile
 from pathlib import Path
@@ -32,8 +33,35 @@ def export_path(commit: str, root: Path = CELLS_ROOT) -> Path:
     return root / f"engine-{commit}"
 
 
+def verify_export(dest: Path) -> str:
+    """The commit this export holds, once it is confirmed safe to reuse or run (F2/R11).
+
+    A cell able to rename or remove entries under a non-sticky cells root
+    could plant its own directory with a matching marker; this refuses
+    anything the maintainer does not still exclusively control: owned by
+    the current uid, no group-write and no other-write bit, and a complete
+    marker. Raises ``EngineExportError`` naming which check failed.
+    """
+    try:
+        info = dest.stat()
+    except OSError as exc:
+        raise EngineExportError(f"cannot stat export {dest}: {exc}") from exc
+    if info.st_uid != os.getuid():
+        raise EngineExportError(f"export {dest} is not owned by the maintainer")
+    if info.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
+        raise EngineExportError(f"export {dest} is group- or other-writable")
+    marker = dest / MARKER
+    try:
+        sha = marker.read_text().strip()
+    except OSError as exc:
+        raise EngineExportError(f"export {dest} has no complete marker: {exc}") from exc
+    if not sha:
+        raise EngineExportError(f"export {dest} has an empty marker")
+    return sha
+
+
 def export_engine(engine_repo: Path, commit: str, *, root: Path = CELLS_ROOT, python: Path = CELL_PYTHON) -> Path:
-    """The export directory for ``commit``, made once; an existing complete export is reused."""
+    """The export directory for ``commit``, made once; an existing safe, complete export is reused."""
     resolved = subprocess.run(
         ["git", "-C", os.fspath(engine_repo), "rev-parse", "--verify", f"{commit}^{{commit}}"],
         capture_output=True, text=True, check=False,
@@ -42,10 +70,16 @@ def export_engine(engine_repo: Path, commit: str, *, root: Path = CELLS_ROOT, py
         raise EngineExportError(f"{commit} is not a commit in {engine_repo}: {resolved.stderr.strip()}")
     sha = resolved.stdout.strip()
     dest = export_path(sha, root)
-    if (dest / MARKER).is_file() and (dest / MARKER).read_text().strip() == sha:
-        return dest
     if dest.exists():
-        raise EngineExportError(f"{dest} exists without a complete export marker; remove it deliberately")
+        try:
+            existing_sha = verify_export(dest)
+        except EngineExportError as exc:
+            raise EngineExportError(
+                f"{dest} exists without a safe, complete export marker; remove it deliberately: {exc}"
+            ) from exc
+        if existing_sha != sha:
+            raise EngineExportError(f"{dest} exists without a complete export marker; remove it deliberately")
+        return dest
     archive = subprocess.run(["git", "-C", os.fspath(engine_repo), "archive", "--format=tar", sha], capture_output=True, check=False)
     if archive.returncode != 0:
         raise EngineExportError(f"git archive {sha} failed: {os.fsdecode(archive.stderr).strip()}")

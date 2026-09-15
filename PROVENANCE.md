@@ -1369,3 +1369,4 @@
 | tests/integration/test_qualify.py | created in release-one |
 | scripts/speed_probe.py | created in release-one |
 | tests/test_speed_probe.py | created in release-one |
+| tests/test_cell_engine.py | created in release-one |

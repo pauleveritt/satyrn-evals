@@ -115,3 +115,31 @@ def test_harvest_survives_a_commit_inside_the_worktree(tmp_path: Path) -> None:
     assert _git(repo, "diff", "HEAD").stdout == b""  # what the old harvest saw
     capture = build_cumulative_patch(repo, base)
     assert capture.changed_paths == ("committed.txt", "edited.txt", "loose.txt")
+
+
+def test_harvest_never_runs_repository_config_hooks_or_fsmonitor(tmp_path: Path) -> None:
+    """F1/R10: a cell that writes fsmonitor/hooks config into the shared
+    seed repository must not get the maintainer's harvest to run it."""
+    repo, base = _repo(tmp_path)
+    marker = tmp_path / "pwned"
+    fsmonitor_script = tmp_path / "fsmonitor.sh"
+    fsmonitor_script.write_text(f'#!/bin/sh\ntouch "{marker}"\nprintf "1\\n"\n')
+    fsmonitor_script.chmod(0o755)
+    hooks_dir = tmp_path / "evil-hooks"
+    hooks_dir.mkdir()
+    post_checkout = hooks_dir / "post-checkout"
+    post_checkout.write_text(f'#!/bin/sh\ntouch "{marker}"\n')
+    post_checkout.chmod(0o755)
+    _git(repo, "config", "core.fsmonitor", str(fsmonitor_script))
+    _git(repo, "config", "core.hooksPath", str(hooks_dir))
+    _mutate(repo)
+    capture = build_cumulative_patch(repo, base)
+    assert not marker.exists(), "harvest ran repository-config hooks/fsmonitor"
+    # success sibling: the harvest still reports the same changes
+    assert "edited v2" in capture.patch_text
+    assert capture.changed_paths == (
+        "edited.txt",
+        "gone.txt",
+        "mode.sh",
+        "untracked.txt",
+    )

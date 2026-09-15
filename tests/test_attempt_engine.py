@@ -30,6 +30,7 @@ from satyrn_evals.attempt_engine import (
     parse_args,
 )
 from satyrn_evals.cell import CELL_PARENT_ENV, ISOLATION_ENV
+from satyrn_evals.workspace import GIT_SAFETY_CONFIG
 
 ENGINE = Path("/opt/satyrn-engine")
 WORKTREE = Path("/w/worktree")
@@ -117,7 +118,7 @@ def test_main_derives_delivers_checks_out_the_candidate_and_harvests(seam: Path,
     monkeypatch.setattr(attempt_engine.subprocess, "run", run)
     assert main(["--model", "omlx/m"]) == 0
     assert [call[5] if call[0] != "git" else "git" for call in calls] == ["derive", "deliver", "git"]
-    assert calls[2] == ["git", "checkout", "-q", "--detach", COMMIT]
+    assert calls[2] == ["git", *GIT_SAFETY_CONFIG, "checkout", "-q", "--detach", COMMIT]
     assert json.loads((seam / RECEIPT_NAME).read_text())["candidate_commit"] == COMMIT
     assert (seam / "patch.diff").read_text() == f"harvested {BASE}\n"
 
@@ -150,11 +151,30 @@ def test_the_local_profile_is_not_isolated() -> None:
     assert isolated(_args(), {}) is False
 
 
+def _safe_export(tmp_path: Path, name: str = "engine-abc", sha: str = "abc") -> Path:
+    export = tmp_path / name
+    export.mkdir()
+    (export / ".satyrn-engine-export").write_text(f"{sha}\n")
+    export.chmod(0o750)
+    return export
+
+
 def test_an_isolated_engine_outside_the_cells_root_is_refused(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(attempt_engine, "CELLS_ROOT", tmp_path)
     with pytest.raises(AdapterError, match="must be an export under"):
         isolated(_args(Path("/Users/someone/satyrn-engine")), {ISOLATION_ENV: "isolated"})
-    assert isolated(_args(tmp_path / "engine-abc"), {ISOLATION_ENV: "isolated"}) is True
+    export = _safe_export(tmp_path)
+    assert isolated(_args(export), {ISOLATION_ENV: "isolated"}) is True
+
+
+def test_an_isolated_engine_without_a_safe_export_is_refused(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """F2/R11: a cell-plantable directory under the cells root is refused even
+    though it names a marker, once it is group-writable."""
+    monkeypatch.setattr(attempt_engine, "CELLS_ROOT", tmp_path)
+    export = _safe_export(tmp_path, name="engine-evil")
+    export.chmod(0o770)  # group-writable: exactly what a planted directory would be
+    with pytest.raises(AdapterError, match="not safe to run"):
+        isolated(_args(export), {ISOLATION_ENV: "isolated"})
 
 
 def test_an_engine_call_as_the_cell_carries_the_transcript_and_the_export_but_not_the_models_uv_environment() -> None:
@@ -184,6 +204,35 @@ def test_a_candidate_checkout_that_succeeds_writes_no_log(tmp_path: Path, monkey
     monkeypatch.setattr(attempt_engine.subprocess, "run", lambda argv, **kw: subprocess.CompletedProcess(argv, 0, "", ""))
     assert checkout_candidate(COMMIT, tmp_path / CHECKOUT_LOG_NAME) == 0
     assert not (tmp_path / CHECKOUT_LOG_NAME).exists()
+
+
+@pytest.mark.integration
+def test_checkout_candidate_never_runs_repository_config_hooks(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """F1/R10: a cell-writable repository config must not make the
+    maintainer's candidate checkout run a hook."""
+    repo = tmp_path / "wt"
+    repo.mkdir()
+    env = {**__import__("os").environ, "GIT_CONFIG_NOSYSTEM": "1"}
+
+    def git(*args: str) -> subprocess.CompletedProcess[bytes]:
+        return subprocess.run(["git", *args], cwd=repo, env=env, check=True, capture_output=True)
+
+    git("init", "-q")
+    (repo / "f.txt").write_text("v1\n")
+    git("add", "-A")
+    git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "base")
+    marker = tmp_path / "pwned"
+    hooks_dir = tmp_path / "evil-hooks"
+    hooks_dir.mkdir()
+    post_checkout = hooks_dir / "post-checkout"
+    post_checkout.write_text(f'#!/bin/sh\ntouch "{marker}"\n')
+    post_checkout.chmod(0o755)
+    git("config", "core.hooksPath", str(hooks_dir))
+    commit = git("rev-parse", "HEAD").stdout.decode().strip()
+    monkeypatch.chdir(repo)
+    monkeypatch.delenv("GIT_CONFIG_NOSYSTEM", raising=False)
+    assert checkout_candidate(commit, tmp_path / CHECKOUT_LOG_NAME) == 0
+    assert not marker.exists(), "checkout ran the repository's configured hook"
 
 
 def test_main_returns_the_checkout_failure_and_still_writes_the_patch(seam: Path, monkeypatch: pytest.MonkeyPatch) -> None:
