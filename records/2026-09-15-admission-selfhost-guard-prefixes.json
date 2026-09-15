@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "task": "selfhost-guard-prefixes",
+  "task_tree_sha256": "54930856f1ec4446ca6f37121191caa8d5230c9037d02acb8ed525729c79782b",
+  "arm": "baseline",
+  "model": "omlx/Ornith-1.5-9B-MLX-8bit",
+  "condition": "cold",
+  "n": 4,
+  "mode": "attended",
+  "max_minutes": 60,
+  "stop_rule": "established infrastructure failure only",
+  "decision_rule": "admission: ceiling when bare Pi passes at most 1 of 4 within budget and no passing cell read material outside its worktree; floor when it passes 4 of 4; a ceiling candidate passing 2 of 4 or more moves to the floor set",
+  "previous_result": "records/2026-09-15-admission-selfhost-run-record-gate.result.json",
+  "token_budget": 32000,
+  "turn_budget": 48,
+  "isolation": "isolated",
+  "purpose": "admission",
+  "k": 3,
+  "rung": "R1-plan",
+  "authority": "maintainer-requested rerun after the generator fix, 2026-09-15"
+}
