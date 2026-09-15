@@ -1367,3 +1367,5 @@
 | src/satyrn_evals/qualify_fake_pi.py | created in release-one |
 | tests/test_qualify.py | created in release-one |
 | tests/integration/test_qualify.py | created in release-one |
+| scripts/speed_probe.py | created in release-one |
+| tests/test_speed_probe.py | created in release-one |
