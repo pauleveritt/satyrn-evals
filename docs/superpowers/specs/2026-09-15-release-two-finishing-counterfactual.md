@@ -145,3 +145,26 @@ to finding another Engine-addressable class first.
 **Out of scope:** Engine code; new task cuts; the release-two design spec;
 a tested reconstruction module in `satyrn_evals` (deferred until an
 admission design needs it).
+
+## 7. Pre-run amendment (2026-09-15, before the decision phase ran)
+
+Recorded by the maintainer's decision after the analysis plan
+(`docs/superpowers/plans/2026-09-15-finishing-counterfactual.md`) was verified
+on debug cells only. No decision cell had been replayed or graded.
+
+1. **Section 5 gap.** When no budget-shaped task qualifies for **Go** or
+   **Verify**, but a budget-shaped task that is `insufficient` has net
+   rescues ≥ 1, the decision is **Verify on clean tasks**, not **Finishing is
+   not the lever**. **Not the lever** therefore requires that no budget-shaped
+   task, sufficient or not, has net rescues ≥ 1.
+2. **Section 6 grade location.** Grading inside the evals checkout lets its
+   pytest configuration reach the task's suite (every AgentClinic grade came
+   back `unavailable`), so grade receipts are written under
+   `~/satyrn-counterfactual-grades/`, and the script refuses a grade root with
+   any pytest configuration or `conftest.py` above it. Replay worktrees stay
+   under the script's directory, git-ignored. The counting rules are unchanged.
+3. **Disclosure.** This pre-registration was written after the release-one
+   review (`evidence/2026-09-15-release-one-outcome/fable-review.md`), which
+   reported hidden-suite pass-states for some decision cells (docs-linter,
+   run-record-gate). It did not measure own-green triggers, which are what
+   sections 3–5 count. The result page states this.
