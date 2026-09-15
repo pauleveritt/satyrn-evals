@@ -22,6 +22,7 @@ from integration.test_attempt import (
     _engine_repo,  # type: ignore[missing-import]  # pytest sibling resolution
 )
 from integration.test_isolated_arms import _cell_pi  # type: ignore[missing-import]
+from satyrn_evals.arms import ENGINE_SOURCES, ENGINE_TOOLS
 from satyrn_evals.cell import CELLS_ROOT
 from satyrn_evals.cell_engine import export_engine
 from satyrn_evals.cli import main
@@ -61,9 +62,10 @@ def _arm_file(tmp_path: Path, name: str, argv: list[str]) -> Path:
         "pins": {"pi": "0.85.1", "engine_commit": None, "digests": {}},
     }
     if name == "engine":
+        body["tools"] = list(ENGINE_TOOLS)
         body["pins"] = {
             "pi": "0.85.1", "engine_commit": "0" * 40,
-            "digests": {source: "0" * 64 for source in ("engine.ts", "mutator.ts", "runner.ts", "orchestrator.ts")},
+            "digests": {source: "0" * 64 for source in ENGINE_SOURCES},
         }
     path = tmp_path / f"{name}.json"
     path.write_text(json.dumps(body))

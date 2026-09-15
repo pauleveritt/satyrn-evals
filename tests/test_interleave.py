@@ -152,7 +152,7 @@ def test_arms_that_do_not_agree_on_the_model_are_refused(tmp_path: Path) -> None
     comparison; the sibling success is every other row in this file, which
     uses the two shipped arm files."""
     other = tmp_path / "engine.json"
-    data = dict(ENGINE_ARM_JSON)
+    data = json.loads((BASELINE.parent / "engine-ornith15-9b.json").read_text())
     data["model"] = "omlx/other-model"
     data["server_model"] = "other-model"
     other.write_text(json.dumps(data))

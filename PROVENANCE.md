@@ -1380,3 +1380,5 @@
 | tests/integration/test_launch_record.py | created in release-one |
 | docs/superpowers/plans/2026-09-15-generator-fix.md | created in release-one |
 | docs/superpowers/plans/2026-09-15-engine-arm-route-proof.md | created in release-one |
+| arms/engine-ornith15-9b.json | created in release-one |
+| tests/integration/test_engine_arm_pins.py | created in release-one |

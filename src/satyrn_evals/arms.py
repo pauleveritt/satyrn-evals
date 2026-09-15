@@ -11,9 +11,10 @@ before three concrete implementations need the same shape. There is no
 registry, no discovery, and no plugin point; a caller names a path.
 
 **The tool surface is a predeclared confound.** Baseline holds
-`read,bash,edit,write`; Engine holds `read,edit` and wraps its prompt with
-its own handoff builder (`satyrn-engine` `build_pi_command`, pinned at
-commit `75d4863`). Any comparison between the two is meaningful only as
+`read,bash,edit,write`; Engine holds `read,bash,edit,write,self_test` and
+wraps its prompt with its own handoff builder (`satyrn-engine`
+`build_pi_command`, pinned by the arm's `engine_commit`). Any comparison
+between the two is meaningful only as
 "the shipped Engine versus bare Pi as shipped" — a product-level
 comparison that supports no sentence about a mechanism.
 """
@@ -43,20 +44,32 @@ type ArmName = Literal["baseline", "baseline-compaction", "envelope", "engine"]
 #: capability.
 KNOWN_TOOLS: frozenset[str] = frozenset({"read", "bash", "edit", "write"})
 
-#: The Engine sources whose bytes the Engine arm pins.
+#: The Engine's tool surface for the contracts it runs. `satyrn-engine`
+#: `build_pi_command` passes pi `--tools read,bash,edit,write,self_test`
+#: whenever the contract declares `test_command` (engine Ruling 1:
+#: `runner.ts` registers `self_test`), and `derive` always declares one. The
+#: Engine argv never carries it (`build_argv`), so the arm file records it,
+#: and the loader holds that record to exactly this surface.
+ENGINE_TOOLS: tuple[str, ...] = ("read", "bash", "edit", "write", "self_test")
+
+#: The Engine sources whose bytes the Engine arm pins: every TypeScript file
+#: of `packages/engine` at the pinned commit.
 #:
-#: `engine.ts` and `mutator.ts` are the `--extension` files
-#: `satyrn-engine`'s `build_pi_command` has always handed pi. `runner.ts`
-#: joined them with engine E7, which hands it over as a third extension
-#: whenever the contract declares `test_command` -- a set that stopped at
-#: two would have left the model's new tool surface unpinned.
-#: `orchestrator.ts` is not an extension but is imported by both, so a
-#: digest set omitting it would pin the entry points and not the behaviour.
+#: `engine.ts`, `mutator.ts`, `scope.ts` and `bounds.ts` are the
+#: `--extension` files `build_pi_command` always hands pi, and `runner.ts`
+#: joins them whenever the contract declares `test_command`
+#: (`satyrn-engine` `attempt.py`, which also refuses to start without the
+#: first four). `orchestrator.ts` and `paths.ts` are not extensions but are
+#: imported by them, so a digest set omitting either would pin the entry
+#: points and not the behaviour.
 ENGINE_SOURCES: tuple[str, ...] = (
     "engine.ts",
     "mutator.ts",
+    "scope.ts",
+    "bounds.ts",
     "runner.ts",
     "orchestrator.ts",
+    "paths.ts",
 )
 
 _COMMIT_SHA = re.compile(r"\A[0-9a-f]{40}\Z")
@@ -120,7 +133,7 @@ def _load_pins(raw: object, arm: ArmName, source: Path) -> ArmPins:
     """The pin block, validated against what this arm can actually pin.
 
     Baseline pins pi alone; Engine additionally pins the commit and the
-    bytes of the two extension sources. A pin that cannot apply to the
+    bytes of every `ENGINE_SOURCES` file. A pin that cannot apply to the
     arm is refused rather than ignored: preflight would otherwise verify
     an engine checkout the Baseline arm never launches.
     """
@@ -173,7 +186,13 @@ def load_arm(path: Path) -> Arm:
         raise ArmError(f"{source}: an arm file must be a JSON object")
     arm_name = _arm_name(_require_str(data, "arm", source), source)
     tools = _require_list(data, "tools", source)
-    if unknown := sorted(set(tools) - KNOWN_TOOLS):
+    if arm_name == "engine":
+        if tuple(tools) != ENGINE_TOOLS:
+            raise ArmError(
+                f"{source}: the engine arm's tools must be {','.join(ENGINE_TOOLS)} "
+                f"(satyrn-engine build_pi_command for a derived contract), got {','.join(tools)}"
+            )
+    elif unknown := sorted(set(tools) - KNOWN_TOOLS):
         raise ArmError(f"{source}: unknown tool name(s) {', '.join(unknown)}")
     model = _require_str(data, "model", source)
     server_model = _require_str(data, "server_model", source)

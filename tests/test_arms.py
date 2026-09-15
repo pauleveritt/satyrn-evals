@@ -18,6 +18,8 @@ from typing import cast
 import pytest
 
 from satyrn_evals.arms import (
+    ENGINE_SOURCES,
+    ENGINE_TOOLS,
     Arm,
     ArmError,
     ArmName,
@@ -322,3 +324,65 @@ def test_baseline_compaction_builds_the_baseline_argv(tmp_path: Path) -> None:
     assert build_argv(load_arm(path)) == [
         "satyrn-evals-attempt-pi", "--model", "omlx/m", "--tools", "read,edit"
     ]
+
+
+# --- the committed Engine arm ----------------------------------------------
+
+ENGINE = ARMS_ROOT / "engine-ornith15-9b.json"
+ORNITH_BASELINE = ARMS_ROOT / "baseline-ornith15-9b.json"
+
+
+def test_the_engine_arm_file_loads_with_the_engines_derived_contract_tool_surface() -> None:
+    """Fixture: arms/engine-ornith15-9b.json. `satyrn-engine`
+    `build_pi_command` hands pi `read,bash,edit,write,self_test` whenever the
+    contract declares `test_command`, and `derive` always declares one."""
+    arm = load_arm(ENGINE)
+    assert arm.arm == "engine"
+    assert arm.tools == ENGINE_TOOLS == ("read", "bash", "edit", "write", "self_test")
+    assert arm.pins.engine_commit == "341d4c450317f63e6af8958d45606cb737a131af"
+    assert sorted(arm.pins.digests) == sorted(ENGINE_SOURCES)
+
+
+def test_the_engine_arm_pins_all_seven_engine_package_sources() -> None:
+    """The four always-loaded extensions, `runner.ts` (with `test_command`),
+    and the two modules they import (`orchestrator.ts`, `paths.ts`)."""
+    assert sorted(ENGINE_SOURCES) == [
+        "bounds.ts", "engine.ts", "mutator.ts", "orchestrator.ts", "paths.ts", "runner.ts", "scope.ts",
+    ]
+
+
+def test_the_engine_arm_runs_the_export_of_its_pinned_commit_on_the_baselines_model_and_settings() -> None:
+    engine = json.loads(ENGINE.read_text(encoding="utf-8"))
+    baseline = json.loads(ORNITH_BASELINE.read_text(encoding="utf-8"))
+    commit = engine["pins"]["engine_commit"]
+    assert engine["argv"] == ["satyrn-evals-attempt-engine", "--engine-repo", f"/Users/Shared/satyrn-cells/engine-{commit}"]
+    for key in ("model", "server_model", "inference", "settings_verified_by"):
+        assert engine[key] == baseline[key], key
+    assert engine["pins"]["pi"] == baseline["pins"]["pi"]
+    assert build_argv(load_arm(ENGINE)) == [*engine["argv"], "--model", "omlx/Ornith-1.5-9B-MLX-8bit"]
+
+
+def test_an_engine_arm_missing_a_source_digest_is_refused(tmp_path: Path) -> None:
+    engine = json.loads(ENGINE.read_text(encoding="utf-8"))
+    del engine["pins"]["digests"]["paths.ts"]
+    path = _write(tmp_path, ENGINE, pins=engine["pins"])
+    with pytest.raises(ArmError, match="missing paths.ts"):
+        load_arm(path)
+
+
+@pytest.mark.parametrize(
+    "tools",
+    [["read", "bash", "edit", "write"], ["read", "edit"], ["read", "bash", "edit", "write", "self_test", "grep"]],
+    ids=["no-self-test", "old-read-edit", "extra"],
+)
+def test_an_engine_arm_whose_tools_are_not_the_engines_surface_is_refused(tmp_path: Path, tools: list[str]) -> None:
+    path = _write(tmp_path, ENGINE, tools=tools)
+    with pytest.raises(ArmError, match="read,bash,edit,write,self_test"):
+        load_arm(path)
+
+
+def test_a_baseline_arm_naming_self_test_is_refused(tmp_path: Path) -> None:
+    """`self_test` exists only where the engine loads `runner.ts`; bare pi has no such tool."""
+    path = _write(tmp_path, ORNITH_BASELINE, tools=["read", "bash", "edit", "write", "self_test"])
+    with pytest.raises(ArmError, match="unknown tool name"):
+        load_arm(path)
