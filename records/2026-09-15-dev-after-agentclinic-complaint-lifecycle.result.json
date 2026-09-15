@@ -1,0 +1,145 @@
+{
+  "record": "records/2026-09-15-dev-after-agentclinic-complaint-lifecycle.json",
+  "record_sha256": "c19073556cfd52c17fd20ff22f7634a196fb781a89840ff734f8a32e36c25859",
+  "status": "complete",
+  "reason": null,
+  "night": "/Users/pauleveritt/satyrn-runs/2026-09-15-dev-after-agentclinic-complaint-lifecycle",
+  "task": "agentclinic-complaint-lifecycle",
+  "rung": null,
+  "k": 3,
+  "n": 2,
+  "purpose": "development",
+  "arms": {
+    "engine": {
+      "finished": 2,
+      "n": 2,
+      "code_counts": {
+        "BUDGET_EXCEEDED": 2
+      },
+      "passes": 0,
+      "summary": "/Users/pauleveritt/satyrn-runs/2026-09-15-dev-after-agentclinic-complaint-lifecycle/engine/summary.json",
+      "infrastructure": [],
+      "contamination": {
+        "graded": 0,
+        "flagged": 0,
+        "clean": 0,
+        "unmeasured": 0
+      }
+    }
+  },
+  "cells": [
+    {
+      "slot": 0,
+      "arm": "engine",
+      "attempt_dir": "agentclinic-complaint-lifecycle-20260915-190255-659410",
+      "code": "BUDGET_EXCEEDED",
+      "verdict": null,
+      "infrastructure": false
+    },
+    {
+      "slot": 1,
+      "arm": "engine",
+      "attempt_dir": "agentclinic-complaint-lifecycle-20260915-190255-711401",
+      "code": "BUDGET_EXCEEDED",
+      "verdict": null,
+      "infrastructure": false
+    }
+  ],
+  "replaced": [],
+  "sittings": [
+    {
+      "record": "records/2026-09-15-dev-after-agentclinic-complaint-lifecycle.json",
+      "started": "2026-09-15T19:02:55+00:00",
+      "k": 3,
+      "evals_head": "1b06857e796c8860fa0fa3c81302145ca19d1fa0",
+      "preflight": {
+        "cell_user": "satyrn-cell",
+        "cells_root": "/Users/Shared/satyrn-cells",
+        "tolerated": [],
+        "pi_version": "0.85.1",
+        "unreadable_checked": [
+          "/Users/pauleveritt/projects/pauleveritt/satyrn-evals",
+          "/Users/pauleveritt/projects/pauleveritt/satyrn-evals/src/satyrn_evals/tasks",
+          "/Users/pauleveritt",
+          "/Users/pauleveritt/satyrn-runs"
+        ],
+        "hunt_root": "/",
+        "hunt_names": [
+          "known-broken.patch",
+          "known-good.patch",
+          "satyrn_evals",
+          "test_acceptance.py",
+          "test_doc_caps.py",
+          "test_hook_guard.py",
+          "test_launch.py",
+          "test_phase1_home.py",
+          "test_phase2_board.py",
+          "test_phase3_add.py",
+          "test_phase4_resolve_reopen.py",
+          "test_review.py",
+          "test_run_record.py",
+          "test_speed_probe.py"
+        ],
+        "hunt_hits": [],
+        "stale_processes": []
+      },
+      "model_server": {
+        "Ornith-1.5-9B-MLX-8bit": {
+          "base_url": "http://127.0.0.1:8001"
+        }
+      },
+      "settings": {
+        "engine": {
+          "arm_sha256": "16e7bb6d055e4c246fc8b078adbe9dec64567292cf6574a80e8b911bc393dba5",
+          "omlx_entry": {
+            "enable_thinking": true,
+            "force_sampling": false,
+            "is_default": false,
+            "is_pinned": false,
+            "max_context_window": 262144,
+            "max_tokens": 32000,
+            "min_p": 0.0,
+            "preserve_thinking": true,
+            "reasoning_parser": "qwen_3",
+            "temperature": 0.6,
+            "thinking_budget_enabled": false,
+            "top_k": 20,
+            "top_p": 0.95,
+            "trust_remote_code": false,
+            "turboquant_kv_enabled": false
+          },
+          "omlx_entry_sha256": "80b75871337d7cc9987f75c4ff0b4c2f97684e19b4ae87af71cbd806ca237e1c",
+          "pi_entry": {
+            "contextWindow": 262144,
+            "cost": {
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "input": 0,
+              "output": 0
+            },
+            "id": "Ornith-1.5-9B-MLX-8bit",
+            "input": [
+              "text"
+            ],
+            "maxTokens": 32000,
+            "name": "Ornith 1.5 9B (MLX 8-bit local, served)",
+            "reasoning": true,
+            "samplingParams": {
+              "min_p": 0.0,
+              "presence_penalty": 0.0,
+              "repetition_penalty": 1.0,
+              "temperature": 0.6,
+              "top_k": 20,
+              "top_p": 0.95
+            }
+          },
+          "pi_entry_sha256": "0b24537b48ee98d6046a869592f6316040626601feb6ef03cdc1846795296366",
+          "pi_models": "satyrn-cell:/Users/satyrn-cell/.pi/agent/models.json"
+        }
+      },
+      "ended": "2026-09-15T19:29:19+00:00",
+      "status": "complete",
+      "reason": null
+    }
+  ]
+}
