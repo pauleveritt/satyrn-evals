@@ -1,0 +1,147 @@
+{
+  "version": 1,
+  "task": "agentclinic-repair-depth-3",
+  "rung": "R3",
+  "status": "justified",
+  "behaviors": [
+    {
+      "id": "preserve-page-and-board-behavior",
+      "requirement": "Keep the existing page layout, navigation, complaint-board content, and form behavior intact.",
+      "accessible_evidence": [
+        {"kind": "contract", "path": "manifest.json", "locator": "contracts.R3: keep every existing behavior intact"},
+        {"kind": "observable-base", "path": "base/templates/base.html", "locator": "doctype, shared navigation, and layout"},
+        {"kind": "observable-base", "path": "base/templates/complaints.html", "locator": "heading, cards, formatted timestamp, and complaint form"},
+        {"kind": "public-test", "path": "base/tests/test_app.py", "locator": "home, board, and posted-complaint cases"}
+      ],
+      "public_tests": [
+        "tests/test_app.py::test_home_returns_200_and_tagline",
+        "tests/test_app.py::test_complaints_returns_200_and_seed_complaint",
+        "tests/test_app.py::test_posted_complaint_appears_on_the_board"
+      ],
+      "hidden_checks": [
+        "test_acceptance.py::test_home_still_returns_200_and_tagline",
+        "test_acceptance.py::test_home_has_html5_doctype",
+        "test_acceptance.py::test_home_still_has_navigation_links",
+        "test_acceptance.py::test_complaints_board_still_lists_seed_complaint",
+        "test_acceptance.py::test_complaints_board_preserves_the_shared_layout",
+        "test_acceptance.py::test_complaints_board_still_has_its_heading",
+        "test_acceptance.py::test_complaints_board_still_renders_seed_complaint_details",
+        "test_acceptance.py::test_posted_complaint_appears_on_complaints_board",
+        "test_acceptance.py::test_complaints_board_renders_add_complaint_form"
+      ],
+      "assessment": "justified"
+    },
+    {
+      "id": "preserve-complaint-data-contract",
+      "requirement": "Keep the Complaint fields, independent default factory, and seeded complaint population intact.",
+      "accessible_evidence": [
+        {"kind": "contract", "path": "manifest.json", "locator": "contracts.R3: keep every existing behavior intact"},
+        {"kind": "observable-base", "path": "base/models.py", "locator": "Complaint fields, default factory, and four seed complaints"}
+      ],
+      "public_tests": [],
+      "hidden_checks": [
+        "test_acceptance.py::test_complaint_model_contract_is_preserved",
+        "test_acceptance.py::test_seed_complaint_count_is_preserved"
+      ],
+      "assessment": "justified"
+    },
+    {
+      "id": "html-language",
+      "requirement": "The shared HTML layout declares English with html lang=\"en\".",
+      "accessible_evidence": [
+        {"kind": "contract", "path": "manifest.json", "locator": "contracts.R3"},
+        {"kind": "observable-base", "path": "base/templates/base.html", "locator": "html element"}
+      ],
+      "public_tests": [],
+      "hidden_checks": [
+        "test_acceptance.py::test_home_html_element_declares_english_language",
+        "test_acceptance.py::test_complaints_board_preserves_the_shared_layout"
+      ],
+      "assessment": "justified"
+    },
+    {
+      "id": "timezone-aware-timestamp",
+      "requirement": "Each stored complaint timestamp is timezone-aware.",
+      "accessible_evidence": [
+        {"kind": "contract", "path": "manifest.json", "locator": "contracts.R3"},
+        {"kind": "observable-base", "path": "base/models.py", "locator": "Complaint.timestamp"}
+      ],
+      "public_tests": [],
+      "hidden_checks": [
+        "test_acceptance.py::test_complaint_model_contract_is_preserved"
+      ],
+      "assessment": "justified"
+    },
+    {
+      "id": "see-other-redirect",
+      "requirement": "Posting a complaint redirects to /complaints with 303 See Other.",
+      "accessible_evidence": [
+        {"kind": "contract", "path": "manifest.json", "locator": "contracts.R3"},
+        {"kind": "public-test", "path": "base/tests/test_app.py", "locator": "test_post_complaint_redirects_to_complaints"}
+      ],
+      "public_tests": [
+        "tests/test_app.py::test_post_complaint_redirects_to_complaints"
+      ],
+      "hidden_checks": [
+        "test_acceptance.py::test_post_complaint_redirects_to_complaints_board"
+      ],
+      "assessment": "justified"
+    }
+  ],
+  "witnesses": [
+    {
+      "id": "base",
+      "patch": null,
+      "public": {
+        "expected_executed_ids": [
+          "tests/test_app.py::test_home_returns_200_and_tagline",
+          "tests/test_app.py::test_complaints_returns_200_and_seed_complaint",
+          "tests/test_app.py::test_post_complaint_redirects_to_complaints",
+          "tests/test_app.py::test_posted_complaint_appears_on_the_board"
+        ],
+        "expected_nonpassing_ids": [
+          "tests/test_app.py::test_post_complaint_redirects_to_complaints"
+        ]
+      },
+      "hidden_expected_nonpassing_ids": [
+        "test_acceptance.py::test_home_html_element_declares_english_language",
+        "test_acceptance.py::test_complaints_board_preserves_the_shared_layout",
+        "test_acceptance.py::test_complaint_model_contract_is_preserved",
+        "test_acceptance.py::test_post_complaint_redirects_to_complaints_board"
+      ]
+    },
+    {
+      "id": "known-good",
+      "patch": "fixtures/known-good.patch",
+      "public": {
+        "expected_executed_ids": [
+          "tests/test_app.py::test_home_returns_200_and_tagline",
+          "tests/test_app.py::test_complaints_returns_200_and_seed_complaint",
+          "tests/test_app.py::test_post_complaint_redirects_to_complaints",
+          "tests/test_app.py::test_posted_complaint_appears_on_the_board"
+        ],
+        "expected_nonpassing_ids": []
+      },
+      "hidden_expected_nonpassing_ids": []
+    },
+    {
+      "id": "partial-no-303",
+      "patch": "fixtures/partial-no-303.patch",
+      "omits_behavior_ids": ["see-other-redirect"],
+      "public": {
+        "expected_executed_ids": [
+          "tests/test_app.py::test_home_returns_200_and_tagline",
+          "tests/test_app.py::test_complaints_returns_200_and_seed_complaint",
+          "tests/test_app.py::test_post_complaint_redirects_to_complaints",
+          "tests/test_app.py::test_posted_complaint_appears_on_the_board"
+        ],
+        "expected_nonpassing_ids": [
+          "tests/test_app.py::test_post_complaint_redirects_to_complaints"
+        ]
+      },
+      "hidden_expected_nonpassing_ids": [
+        "test_acceptance.py::test_post_complaint_redirects_to_complaints_board"
+      ]
+    }
+  ]
+}

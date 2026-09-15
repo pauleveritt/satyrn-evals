@@ -1,0 +1,7 @@
+[project]
+name = "calc"
+version = "0"
+requires-python = ">=3.14"
+
+[tool.satyrn]
+self_test = ["python", "-m", "pytest", "-q"]

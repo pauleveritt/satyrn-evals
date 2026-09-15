@@ -12,14 +12,19 @@ import pytest
 
 from satyrn_evals.cli import main
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
-from satyrn_evals.qualify import CEILING_CANDIDATES, FLOOR_CANDIDATES, qualify
+from satyrn_evals.qualify import (
+    CEILING_CANDIDATES,
+    FLOOR_CANDIDATES,
+    HELDOUT_TASKS,
+    qualify,
+)
 
 pytestmark = pytest.mark.integration
 
 FIXTURE_TASKS = Path(__file__).parent / "data" / "tasks"
 
 
-@pytest.mark.parametrize("name", [*CEILING_CANDIDATES, *FLOOR_CANDIDATES])
+@pytest.mark.parametrize("name", [*CEILING_CANDIDATES, *FLOOR_CANDIDATES, *HELDOUT_TASKS])
 def test_every_candidate_qualifies_offline(name: str) -> None:
     checks = qualify(DEFAULT_TASKS_ROOT / name)
     assert [check.name for check in checks] == ["known-good run 1", "known-good run 2", "known-good run 3", "known-broken", "r1-plan-prompt", "live-harvest"]

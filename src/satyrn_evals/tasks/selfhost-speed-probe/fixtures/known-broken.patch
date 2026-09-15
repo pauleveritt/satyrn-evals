@@ -1,0 +1,51 @@
+diff --git a/scripts/speed_probe.py b/scripts/speed_probe.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/speed_probe.py
+@@ -0,0 +1,46 @@
++"""known-broken fixture stub: importable, behaviorally incomplete."""
++
++CONTEXT_SIZES = ()
++CONCURRENCY = ()
++K_THRESHOLD = 0.0
++SIZE_TOLERANCE = 0.0
++
++
++def parse_line(line):
++    return None
++
++
++def completions_in(lines, model, start, end):
++    return []
++
++
++def nearest_size(prompt, sizes=CONTEXT_SIZES):
++    return None
++
++
++def decode_by_size(completions):
++    return {}
++
++
++def total_throughput(completions):
++    return 0.0
++
++
++def choose_k(throughput):
++    return 0
++
++
++def analyze(plan, lines):
++    return {}
++
++
++def filler(tokens, chars_per_token=4.0):
++    return ""
++
++
++def run(base_url, model, *, streams_seconds, max_tokens, opener=None):
++    return {}
++
++
++def main(argv=None):
++    return 0

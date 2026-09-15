@@ -1,0 +1,24 @@
+{
+  "name": "selfhost-speed-probe",
+  "base": "bea0b761b60a5a2110823eb2b96eb7822b844fe5",
+  "good": "ec98c44e1adf6f67dfab0ec7ff9966fed0ad17fb",
+  "files": [
+    "scripts/speed_probe.py",
+    "ROADMAP.md"
+  ],
+  "hidden": [
+    "tests/test_speed_probe.py"
+  ],
+  "plan": {
+    "path": "docs/superpowers/plans/2026-09-14-phase-2b-isolation-and-tasks.md",
+    "heading": "### Task 6: The probe tooling, the roadmap, the isolated preflight, and the maintainer checklist",
+    "commit": "ec5482fba5d2d5232a562a18215c6a48be8694fd"
+  },
+  "formats": "Every name, key and message below is matched literally by the acceptance suite, so match it exactly. CONTEXT_SIZES is (5000, 20000, 40000, 80000, 160000), CONCURRENCY is (1, 2, 3), K_THRESHOLD is 1.5 and SIZE_TOLERANCE is 0.25. oMLX writes one server-log line per completion when it ends, for example `2026-09-14 09:51:27,151 - omlx.server - INFO - [-] - Chat completion: model=Ornith-1.5-9B-MLX-8bit, 758 tokens in 30.62s (27.3 tok/s), prompt: 44644, finish_reason=stop, max_tokens=32000, request_max_tokens=32000`. parse_line returns a frozen Completion with fields `ended` (the leading `%Y-%m-%d %H:%M:%S,%f` stamp read as local time, as a POSIX timestamp float), `model` (str), `tokens` (int), `seconds` (float), `rate` (float) and `prompt` (int), plus a `started` property equal to ended - seconds; it returns None for any line that is not an `omlx.server - INFO` line carrying a stamp and that full `Chat completion: model=..., N tokens in Xs (R tok/s), prompt: P,` shape (blank lines, other loggers, and a bare `Chat completion:` fragment without the stamp are all None). completions_in(lines, model, start, end) keeps parsed completions of that model whose ended lies in [start, end], inclusive. nearest_size(prompt) returns the closest context size when |size - prompt| <= 0.25 * size, else None (21000 gives 20000, 121600 gives 160000, 60000 gives None). decode_by_size returns {size: median rate} over the completions whose prompt has a nearest size, keys in ascending size order. total_throughput returns the summed tokens divided by (latest ended - earliest started) and raises ValueError whose message contains `no completions` for an empty list. choose_k(throughput: dict[int, float]) returns the largest k in CONCURRENCY with throughput[k] >= 1.5 * throughput[1] (k = 1 always qualifies; a missing k does not) and raises ValueError containing `k = 1` when 1 is absent. A plan is `{\"model\": str, \"base_url\": str, \"context\": [{\"size\", \"start\", \"end\"}, ...], \"concurrency\": [{\"k\", \"start\", \"end\"}, ...]}` with POSIX-second windows. analyze(plan, lines) returns a dict with `model`, `decode_tok_s_by_prompt` (decode_by_size over every context phase's completions, keys as strings, values rounded to one decimal), `missing_sizes` (the CONTEXT_SIZES with no decode rate, as ints), `total_tok_s_by_k` (total_throughput per concurrency phase, keys the k as strings in ascending order, values rounded to one decimal) and `k` (choose_k over those throughputs). main(argv) takes the subcommands `run --model M --plan PATH [--base-url URL] [--stream-seconds S] [--max-tokens N]` and `analyze --plan PATH --log PATH`; analyze prints the report as JSON on stdout and returns 0, and returns 2 (message on stderr) when reading or analysis fails with OSError, ValueError or KeyError. filler(tokens) returns repeated English text of roughly 4 characters per token, never longer than tokens * 4 characters. run(base_url, model, *, streams_seconds, max_tokens, opener) sends one request per context size in order, then for each k in CONCURRENCY runs k parallel streams, each sending requests repeatedly until streams_seconds have passed, and records every phase's start and end with end > start; each request POSTs to `<base_url>/chat/completions` through opener(request, timeout=...) used as a context manager whose read() is called, and its JSON body has exactly the keys `model`, `messages`, `max_tokens` and `stream` (stream false).",
+  "broken": {
+    "scripts/speed_probe.py": "\"\"\"known-broken fixture stub: importable, behaviorally incomplete.\"\"\"\n\nCONTEXT_SIZES = ()\nCONCURRENCY = ()\nK_THRESHOLD = 0.0\nSIZE_TOLERANCE = 0.0\n\n\ndef parse_line(line):\n    return None\n\n\ndef completions_in(lines, model, start, end):\n    return []\n\n\ndef nearest_size(prompt, sizes=CONTEXT_SIZES):\n    return None\n\n\ndef decode_by_size(completions):\n    return {}\n\n\ndef total_throughput(completions):\n    return 0.0\n\n\ndef choose_k(throughput):\n    return 0\n\n\ndef analyze(plan, lines):\n    return {}\n\n\ndef filler(tokens, chars_per_token=4.0):\n    return \"\"\n\n\ndef run(base_url, model, *, streams_seconds, max_tokens, opener=None):\n    return {}\n\n\ndef main(argv=None):\n    return 0\n"
+  },
+  "oracle_env": {
+    "PYTHONPATH": "scripts"
+  }
+}
