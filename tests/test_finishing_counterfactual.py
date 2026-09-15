@@ -506,10 +506,17 @@ def test_is_read_only_bash_true_cases(command: str) -> None:
         "cd /tmp && ls",
         "ls $(python fix.py)",
         "tee f",
+        "sed -n 'w out.txt' f",
+        "find . -fls out.txt",
+        "uniq a.txt src/satyrn_evals/cli.py",
     ],
 )
 def test_is_read_only_bash_false_cases(command: str) -> None:
     assert not cf.is_read_only_bash(command, CWD)
+
+
+def test_is_read_only_bash_uniq_with_a_single_operand_is_still_true() -> None:
+    assert cf.is_read_only_bash("uniq a.txt", CWD)
 
 
 def test_a_reconstructed_pass_over_read_only_only_bash_history_is_a_rescue() -> None:
@@ -585,6 +592,55 @@ def test_unverified_bash_does_not_prevent_harm_on_an_actual_pass_cell() -> None:
     )
     assert reasons == []
     assert cf.change(True, cf.counterfactual_pass(True, TRIGGER, reasons, "fail")) == "harm"
+
+
+def test_replay_records_failed_replay_turns() -> None:
+    """Gate fix (Finding 4 follow-up): the ``Replay`` dataclass records the turns of
+    failed bash replays, independently of skipped_writer_turns."""
+    assert cf.Replay().failed_replay_turns == []
+    assert cf.Replay(failed_replay_turns=[3, 7]).failed_replay_turns == [3, 7]
+
+
+def test_a_failed_replay_turn_through_the_trigger_makes_a_would_be_rescue_unverified() -> None:
+    """Gate fix: a failed bash replay is unioned into the turns passed to
+    ``unmeasured_reasons`` as ``unverified_bash_turns`` (the way ``measure`` unions
+    ``Replay.failed_replay_turns``, filtered to turns at or before the trigger) --
+    never into ``skipped_writer_turns``, and it does not touch fidelity."""
+    failed_replay_turns = [3, 9]
+    unified = sorted(set() | {t for t in failed_replay_turns if t <= TRIGGER.turn})
+    assert unified == [3, 9]
+    reasons = cf.unmeasured_reasons(
+        fidelity_result="pass", harness_verdict="pass", final_verdict="pass", trigger=TRIGGER,
+        skipped_writer_turns=[], anchor_miss_turns=[], raised=None,
+        actual=False, trigger_verdict="pass", unverified_bash_turns=unified,
+    )
+    assert reasons and reasons[0].startswith("unverified-rescue")
+    counter = cf.counterfactual_pass(False, TRIGGER, reasons, "pass")
+    assert cf.change(False, counter) == "none"
+
+
+def test_a_failed_replay_turn_does_not_prevent_harm_on_an_actual_pass_cell() -> None:
+    unified = sorted({t for t in [3, 9] if t <= TRIGGER.turn})
+    reasons = cf.unmeasured_reasons(
+        fidelity_result="pass", harness_verdict="pass", final_verdict="pass", trigger=TRIGGER,
+        skipped_writer_turns=[], anchor_miss_turns=[], raised=None,
+        actual=True, trigger_verdict="fail", unverified_bash_turns=unified,
+    )
+    assert reasons == []
+    assert cf.change(True, cf.counterfactual_pass(True, TRIGGER, reasons, "fail")) == "harm"
+
+
+def test_a_failed_replay_turn_after_the_trigger_changes_nothing() -> None:
+    failed_replay_turns = [TRIGGER.turn + 5]
+    unified = sorted({t for t in failed_replay_turns if t <= TRIGGER.turn})
+    assert unified == []
+    reasons = cf.unmeasured_reasons(
+        fidelity_result="unverifiable", harness_verdict=None, final_verdict=None, trigger=TRIGGER,
+        skipped_writer_turns=[], anchor_miss_turns=[], raised=None,
+        actual=False, trigger_verdict="pass", unverified_bash_turns=unified,
+    )
+    assert reasons == []
+    assert cf.change(False, cf.counterfactual_pass(False, TRIGGER, reasons, "pass")) == "rescue"
 
 
 def test_rescue_harm_and_no_change() -> None:

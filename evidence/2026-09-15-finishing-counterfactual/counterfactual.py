@@ -562,7 +562,7 @@ def counts_as_skipped_write(returncode: int, was_original_error: bool) -> bool:
 
 # --- spec 7.4: conservative rescues --------------------------------------------
 
-_READ_ONLY_SIMPLE = frozenset({"cat", "ls", "pwd", "grep", "rg", "head", "tail", "wc", "uniq", "diff"})
+_READ_ONLY_SIMPLE = frozenset({"cat", "ls", "pwd", "grep", "rg", "head", "tail", "wc", "diff"})
 _READ_ONLY_NO_REDIRECT = frozenset({"echo", "printf"})
 _GIT_READ_ONLY = frozenset({"status", "diff", "log", "show"})
 _FIND_WRITE_FLAGS = frozenset({"-exec", "-execdir", "-ok", "-okdir", "-delete"})
@@ -589,12 +589,16 @@ def _strip_stderr_merge(rest: list[str]) -> tuple[bool, list[str]]:
 def is_read_only_bash(command: str, cwd: str | None) -> bool:
     """Spec 7.4: whether a bash command is provably read-only -- ``cat``, ``ls``,
     ``pwd``, ``echo``/``printf`` without redirection, ``grep``/``rg``, ``find`` without
-    a write action, ``head``, ``tail``, ``wc``, ``sort`` without ``-o``/``--output``,
-    ``uniq``, ``diff``, ``sed`` without ``-i``, ``git status``/``diff``/``log``/``show``
-    (no ``--output``), or a test run for which ``runs_pytest`` is true, joined by pipes,
-    ``&&``, ``||``, ``;``, and ``cd`` into the worktree, with at most a trailing
-    ``2>&1``. Any other redirection, or a ``$(...)``/backtick other than ``$(pwd)``,
-    makes it not read-only. Conservative: unsure means False."""
+    a write action (any ``-exec``/``-execdir``/``-ok``/``-okdir``/``-delete`` or any
+    ``-f``-prefixed action such as ``-fls``/``-fprint*``), ``head``, ``tail``, ``wc``,
+    ``sort`` without ``-o``/``--output``, ``uniq`` with at most one non-flag operand
+    (a second operand is uniq's output file), ``diff``, ``sed`` without ``-i`` and with
+    no non-flag operand containing the letter ``w`` (conservative against sed's ``w``
+    script command, which writes without ``-i``), ``git status``/``diff``/``log``/
+    ``show`` (no ``--output``), or a test run for which ``runs_pytest`` is true, joined
+    by pipes, ``&&``, ``||``, ``;``, and ``cd`` into the worktree, with at most a
+    trailing ``2>&1``. Any other redirection, or a ``$(...)``/backtick other than
+    ``$(pwd)``, makes it not read-only. Conservative: unsure means False."""
     remaining = command.replace("$(pwd)", "").replace("`pwd`", "")
     if "$(" in remaining or "`" in remaining:
         return False
@@ -624,14 +628,19 @@ def is_read_only_bash(command: str, cwd: str | None) -> bool:
         if program in _READ_ONLY_SIMPLE or program in _READ_ONLY_NO_REDIRECT:
             index += 1
             continue
-        if program == "find" and not any(w in _FIND_WRITE_FLAGS or w.startswith("-fprint") for w in stripped_rest):
+        if program == "uniq" and len([w for w in stripped_rest if not w.startswith("-")]) <= 1:
+            index += 1
+            continue
+        if program == "find" and not any(w in _FIND_WRITE_FLAGS or w.startswith("-f") for w in stripped_rest):
             index += 1
             continue
         if program == "sort" and not any(w == "-o" or w == "--output" or w.startswith("--output=") for w in stripped_rest):
             index += 1
             continue
-        if program == "sed" and not any(
-            re.fullmatch(r"-[a-zA-Z0-9]*i\S*", w) or w == "--in-place" or w.startswith("--in-place=") for w in stripped_rest
+        if (
+            program == "sed"
+            and not any(re.fullmatch(r"-[a-zA-Z0-9]*i\S*", w) or w == "--in-place" or w.startswith("--in-place=") for w in stripped_rest)
+            and not any("w" in w for w in stripped_rest if not w.startswith("-"))
         ):
             index += 1
             continue
@@ -794,6 +803,7 @@ class Replay:
     bash_touched: dict[int, tuple[str, ...]] = field(default_factory=dict)
     skipped_writer_turns: list[int] = field(default_factory=list)
     anchor_miss_turns: list[int] = field(default_factory=list)
+    failed_replay_turns: list[int] = field(default_factory=list)
     applied: dict[str, int] = field(default_factory=lambda: {"write": 0, "edit": 0, "bash": 0})
 
 
@@ -868,6 +878,12 @@ def replay(spec: CellSpec, steps: list[Step], cwd: str | None, source_paths: tup
                     after = _digests(work)
                     out.bash_touched[step.index] = tuple(sorted(p for p in before.keys() | after.keys() if before.get(p) != after.get(p)))
                     out.applied["bash"] += 1
+                    if done.returncode != 0:
+                        # Finding 4 keeps an errored-original + failing-replay out of
+                        # skipped_writer_turns and out of harm/fidelity, but the write's
+                        # true outcome is still unknown -- spec 7.4 must not silently
+                        # treat this step's command as verified.
+                        out.failed_replay_turns.append(step.turn)
                     if counts_as_skipped_write(done.returncode, step.is_error):
                         out.skipped_writer_turns.append(step.turn)
                 if plan.remainder and could_write_source(plan.remainder, source_paths, cwd):
@@ -922,6 +938,7 @@ def measure(spec: CellSpec, grade_root: Path) -> dict:
         steps = steps_of(events)
         full = replay(spec, steps, cwd, source_paths, None)
         skipped, misses = full.skipped_writer_turns, full.anchor_miss_turns
+        failed_replays = list(full.failed_replay_turns)
         row["applied"] = full.applied
         trigger = find_trigger(steps, source_edit_indices(steps, source_paths, cwd, full.bash_touched), cwd)
         if harness_verdict in GRADED:
@@ -930,8 +947,12 @@ def measure(spec: CellSpec, grade_root: Path) -> dict:
             at = replay(spec, steps, cwd, source_paths, trigger.turn)
             skipped = sorted(set(skipped) | set(at.skipped_writer_turns))
             misses = sorted(set(misses) | set(at.anchor_miss_turns))
+            failed_replays = sorted(set(failed_replays) | set(at.failed_replay_turns))
             trigger_verdict = grade(spec.task, at.patch, grade_root, f"{spec.attempt}-turn-{trigger.turn:02d}")
-            unverified = unverified_bash_turns(steps, cwd, trigger.turn)
+            # Finding 4 keeps a failed replay out of skipped_writer_turns/harm/fidelity
+            # when the original also errored, but its write's outcome is still unknown
+            # -- spec 7.4's gate must not treat that step's command as verified either.
+            unverified = sorted(set(unverified_bash_turns(steps, cwd, trigger.turn)) | {t for t in failed_replays if t <= trigger.turn})
     except Exception as exc:  # spec section 4: replay or grading raises -> unmeasured
         raised = f"{type(exc).__name__}: {exc}"[:200]
     fid = fidelity(harness_verdict, final_verdict)
