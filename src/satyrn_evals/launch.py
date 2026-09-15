@@ -4,9 +4,11 @@
 The gates are the CLI's; this module is what happens after them:
 
 - **Slots.** A record asks n cells per arm. Slot i runs arm
-  ``arms[i % len(arms)]``: strict alternation, so a night stopped at any point
-  leaves the arms at most one cell apart and every pair of concurrent cells at
-  k = 2 is one of each (Ruling 4).
+  ``arms[i % len(arms)]``: strict alternation in start order, so a night
+  stopped at any point leaves each arm's started cells at most one apart.
+  Concurrency is rolling: a free place is filled as soon as any cell exits,
+  so which arms are running together at any instant is not fixed by k
+  (Ruling 4).
 - **k at a time.** A slot starts when fewer than k run, no stop is pending,
   the drift probe is silent, and the cell's whole deadline still fits the
   record's wall clock. Otherwise nothing new starts and the running cells
@@ -24,12 +26,17 @@ The gates are the CLI's; this module is what happens after them:
   and SIGINT raises ``KeyboardInterrupt``: every running cell is sent SIGTERM,
   given ``grace`` seconds to tear its model down, then killed; the outcome says
   ``interrupted`` and the caller writes the ledger and exits (an interrupted
-  slot has no record and runs again on the next launch).
+  slot has no record and runs again on the next launch). Cells run in their
+  own sessions, so a second signal during that grace must not escape and
+  orphan them holding the GPU: the stopping phase runs under its own signal
+  guard and swallows a repeated ``SignalAbort``/``KeyboardInterrupt``,
+  simply continuing to wait out the grace before killing whatever still runs.
 
 Nothing here spawns: the caller passes ``spawn`` and ``drift``. The default
 tier drives the loop with fakes; ``launch_cell.popen_cell`` is the real spawn.
 """
 
+import contextlib
 import json
 import re
 import time
@@ -243,12 +250,20 @@ def _stop_running(
     sleep: Callable[[float], None],
     poll_interval: float,
 ) -> None:
-    """SIGTERM every running cell, wait up to ``grace`` for its teardown, then kill what is left."""
-    for _, process in running.values():
-        process.terminate()
-    stop = clock() + grace
-    while any(process.poll() is None for _, process in running.values()) and clock() < stop:
-        sleep(min(poll_interval, 0.1))
-    for _, process in running.values():
-        if process.poll() is None:
-            process.kill()
+    """SIGTERM every running cell, wait up to ``grace`` for its teardown, then kill what is left.
+
+    Runs under its own signal guard: a second signal during the grace (another Ctrl-C, a repeat
+    SIGTERM/SIGHUP) is swallowed here rather than left to escape ``launch_cells`` — cells run in
+    their own sessions, so an escape would orphan them holding the GPU with no ledger written.
+    """
+    with _abort_on_signals():
+        for _, process in running.values():
+            process.terminate()
+        stop = clock() + grace
+        while any(process.poll() is None for _, process in running.values()) and clock() < stop:
+            # a repeated SignalAbort/KeyboardInterrupt here must not escape: keep waiting out the grace
+            with contextlib.suppress(BaseException):
+                sleep(min(poll_interval, 0.1))
+        for _, process in running.values():
+            if process.poll() is None:
+                process.kill()

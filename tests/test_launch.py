@@ -234,6 +234,40 @@ def test_a_cell_that_ignores_sigterm_is_killed_after_the_grace(tmp_path: Path) -
     assert spawner.cells[0].signals == ["TERM", "KILL"]
 
 
+def test_a_second_signal_during_the_stop_grace_does_not_escape(tmp_path: Path) -> None:
+    """A repeat Ctrl-C/SIGTERM while waiting out the grace must not escape ``launch_cells``:
+    cells run in their own sessions, so an escape here would orphan a stubborn cell holding
+    the GPU with no ledger ever written. The loop keeps waiting out the grace, then kills."""
+    clock = Clock()
+    spawner = Spawner(tmp_path, clock, polls=1000)
+
+    class Stubborn(FakeCell):
+        def terminate(self) -> None:
+            self.signals.append("TERM")
+
+    def spawn(slot: Slot) -> FakeCell:
+        cell = Stubborn(tmp_path, slot, code="OK", polls=1000)
+        spawner.cells[slot.index] = cell
+        return cell
+
+    calls = {"n": 0}
+
+    def sleep(seconds: float) -> None:
+        calls["n"] += 1
+        if calls["n"] == 3:
+            raise KeyboardInterrupt
+        if calls["n"] == 5:
+            raise SignalAbort(signal.SIGTERM)
+        clock.sleep(seconds)
+
+    outcome = launch_cells(
+        night=tmp_path, arms=("baseline",), n=1, k=1, max_seconds=3600, cell_seconds=10, spawn=spawn,
+        drift=lambda: None, clock=clock, sleep=sleep, poll_interval=1.0, grace=0.3,
+    )
+    assert outcome.status is Status.INTERRUPTED
+    assert spawner.cells[0].signals == ["TERM", "KILL"]
+
+
 def test_the_ledger_keeps_every_sitting_and_refuses_another_record(tmp_path: Path) -> None:
     identity = {"record": "records/a.json", "record_sha256": "1" * 64}
     clock = Clock()
