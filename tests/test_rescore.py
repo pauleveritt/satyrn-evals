@@ -1028,6 +1028,43 @@ def test_evidence_says_when_a_cell_has_no_transcript_and_reads_a_timeline_when_p
     assert blocks["format_number-2"]["overlay_windows"] is None
 
 
+def _mutation_transcript(path: str) -> str:
+    """One turn whose single write lands on ``path``."""
+    return "\n".join([
+        '{"type": "session", "version": 3, "cwd": "/w"}',
+        '{"type": "turn_start"}',
+        json.dumps({"type": "message_end", "message": {
+            "role": "assistant", "usage": {"output": 100}, "content": []}}),
+        json.dumps({"type": "tool_execution_start", "toolCallId": "w1",
+                    "toolName": "write", "args": {"path": path, "content": "x\n"}}),
+        json.dumps({"type": "tool_execution_end", "toolCallId": "w1",
+                    "toolName": "write",
+                    "result": {"content": [{"type": "text", "text": ""}]}}),
+    ])
+
+
+def test_evidence_passes_the_manifests_source_paths_to_the_mutation_rule(
+    tmp_path: Path,
+) -> None:
+    """Both directions: a write inside ``manifest.source_paths`` makes
+    ``exploration_turns`` a number; a write outside it stays null. The
+    bundled format_number task declares ``source_paths: ["solution.py"]``."""
+    output, task_dir, manifest = _visible_setup(tmp_path)
+    inside = _pathology_cell(
+        output, "format_number-1",
+        transcript=_mutation_transcript("solution.py"),
+    )
+    outside = _pathology_cell(
+        output, "format_number-2",
+        transcript=_mutation_transcript("notes.txt"),
+    )
+    blocks = compute_evidence(
+        output, [inside, outside], task_dir=task_dir, manifest=manifest
+    )
+    assert blocks["format_number-1"]["exploration_turns"] == 0
+    assert blocks["format_number-2"]["exploration_turns"] is None
+
+
 def test_regrade_reverts_a_reclassification_the_rule_no_longer_supports(
     tmp_path: Path,
 ) -> None:

@@ -302,6 +302,7 @@ def compute_evidence(
             timeline=timeline,
             overlay=overlay,
             visible_texts=visible_texts or [],
+            source_paths=manifest.source_paths,
         )
         blocks[name] = {"transcript": True, **evidence.to_block()}
     return blocks

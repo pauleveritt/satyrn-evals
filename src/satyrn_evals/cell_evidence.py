@@ -48,6 +48,17 @@ The escape rules are lexical and stated so a reader can recompute them:
   "delimiter" is text like ``2))``) is treated as no heredoc at all: the
   text is kept and the newline that started it still ends the command like
   ``;``, so a real command after it is never dropped.
+- a **source mutation** is a ``write`` or ``edit`` whose ``tool_execution_end``
+  is not an error and whose worktree-relative path is inside the manifest's
+  ``source_paths`` and is not a test file (basename ``test_*.py`` or
+  ``*_test.py``, or any parent component ``tests``). This is the finishing
+  counterfactual's own rule, so the two instruments agree;
+- **exploration turns** are the ``turn_start`` events strictly before the turn
+  holding the first source mutation, and ``null`` when there is none;
+- the **biggest turn** is the turn with the most assistant output tokens, with
+  its share of the cell's total;
+- a **self stop** is an ``agent_end`` event: the loop ended on its own rather
+  than being torn down. Its turn and token counts are those at that event.
 """
 
 import json
@@ -105,6 +116,10 @@ class CellEvidence:
     unfinished_commands: int = 0
     longest_command_seconds: float | None = None
     overlay_windows: int | None = None
+    tool_span_seconds: float | None = None
+    exploration_turns: int | None = None
+    biggest_turn: dict[str, object] | None = None
+    self_stop: dict[str, int] | None = None
 
     def to_block(self) -> dict[str, object]:
         return {
@@ -126,6 +141,10 @@ class CellEvidence:
             "unfinished_commands": self.unfinished_commands,
             "longest_command_seconds": self.longest_command_seconds,
             "overlay_windows": self.overlay_windows,
+            "tool_span_seconds": self.tool_span_seconds,
+            "exploration_turns": self.exploration_turns,
+            "biggest_turn": self.biggest_turn,
+            "self_stop": self.self_stop,
         }
 
 
@@ -157,6 +176,34 @@ def outside(cwd: str | None, path: str) -> bool:
         return posixpath.isabs(path)
     candidate = path if posixpath.isabs(path) else posixpath.join(cwd, path)
     return not PurePosixPath(_canonical(candidate)).is_relative_to(_canonical(cwd))
+
+
+def _worktree_relative(path: str, cwd: str | None) -> str | None:
+    """A file tool's path as a worktree-relative POSIX path, or None if it leaves."""
+    if outside(cwd, path):
+        return None
+    if not posixpath.isabs(path):
+        return posixpath.normpath(path)
+    if cwd is None:
+        return None
+    return posixpath.relpath(_canonical(path), _canonical(cwd))
+
+
+def _in_source_paths(path: str, source_paths: Sequence[str]) -> bool:
+    candidate = PurePosixPath(path)
+    return any(
+        candidate == PurePosixPath(entry) or candidate.is_relative_to(PurePosixPath(entry))
+        for entry in source_paths
+    )
+
+
+def _is_test_path(path: str) -> bool:
+    """The finishing counterfactual's rule exactly (module docstring, Ruling 14)."""
+    parts = PurePosixPath(path).parts
+    if "tests" in parts[:-1]:
+        return True
+    name = parts[-1] if parts else ""
+    return (name.startswith("test_") and name.endswith(".py")) or name.endswith("_test.py")
 
 
 def _heredoc_word(command: str, index: int) -> tuple[str | None, int]:
@@ -419,13 +466,46 @@ def _result_text(event: dict) -> str:
     )
 
 
+def _track_mutation(
+    event: dict, turn: int, cwd: str | None, source_paths: Sequence[str], pending: dict[str, int]
+) -> int | None:
+    """The turn of the first landed source mutation, once its end event arrives.
+
+    Pi runs one tool call at a time, so a call's start and end bracket nothing
+    else; when they do not, this answers with the first mutation that *landed*,
+    which is what "mutation" means.
+    """
+    call_id = event.get("toolCallId")
+    if not isinstance(call_id, str):
+        return None
+    match event.get("type"):
+        case "tool_execution_start" if event.get("toolName") in ("write", "edit"):
+            args = event.get("args")
+            path = args.get("path") if isinstance(args, dict) else None
+            if isinstance(path, str):
+                relative = _worktree_relative(path, cwd)
+                if relative is not None and _in_source_paths(relative, source_paths) and not _is_test_path(relative):
+                    pending[call_id] = turn
+        case "tool_execution_end" if call_id in pending:
+            start_turn = pending.pop(call_id)
+            if not event.get("isError"):
+                return start_turn
+    return None
+
+
 def collect_evidence(
     transcript: str,
     *,
     timeline: str | None = None,
     overlay: OverlaySpec | None = None,
     visible_texts: Sequence[str] = (),
+    source_paths: Sequence[str] = (),
 ) -> CellEvidence:
+    """Every per-cell count this module can read from the transcript.
+
+    ``source_paths`` is the manifest's, so a mutation can be told from a
+    detour; empty means no path is a source path.
+    """
     events = _events(transcript)
     cwd = next(
         (e["cwd"] for e in events if e.get("type") == "session" and isinstance(e.get("cwd"), str) and e["cwd"]),
@@ -433,10 +513,32 @@ def collect_evidence(
     )
     usage = UsageCounter()
     first_pass: dict[str, object] | None = None
+    per_turn: dict[int, int] = {}
+    self_stop: dict[str, int] | None = None
+    mutation_turn: int | None = None
+    pending_mutations: dict[str, int] = {}
     for event in events:
+        before = usage.output_tokens
         usage.feed_event(event)
+        if usage.output_tokens != before:
+            per_turn[usage.turns] = per_turn.get(usage.turns, 0) + (usage.output_tokens - before)
         if first_pass is None and (route := _passing_route(event)) is not None:
             first_pass = {"turn": usage.turns, "output_tokens": usage.output_tokens, "route": route}
+        if self_stop is None and event.get("type") == "agent_end":
+            self_stop = {"turn": usage.turns, "output_tokens": usage.output_tokens}
+        if mutation_turn is None:
+            mutation_turn = _track_mutation(event, usage.turns, cwd, source_paths, pending_mutations)
+    total = usage.output_tokens
+    biggest_turn: dict[str, object] | None = None
+    if per_turn and total:
+        turn, tokens = max(per_turn.items(), key=lambda item: (item[1], -item[0]))
+        biggest_turn = {"turn": turn, "output_tokens": tokens, "share": round(tokens / total, 3)}
+    all_spans = read_timeline(timeline or "")
+    tool_span_seconds = None
+    if all_spans:
+        starts = [span.started for span in all_spans.values()]
+        ends = [span.ended if span.ended is not None else span.started for span in all_spans.values()]
+        tool_span_seconds = max(ends) - min(starts)
     starts = [e for e in events if e.get("type") == "tool_execution_start" and isinstance(e.get("toolName"), str)]
     commands = [
         e["args"]["command"]
@@ -460,7 +562,7 @@ def collect_evidence(
         for e in events
         if e.get("type") == "tool_execution_end" and e.get("toolName") == "bash" and _TIMED_OUT.search(_result_text(e))
     )
-    spans = [span for span in read_timeline(timeline or "").values() if span.tool_name == "bash"]
+    spans = [span for span in all_spans.values() if span.tool_name == "bash"]
     finished = [span.seconds for span in spans if span.seconds is not None]
     return CellEvidence(
         turns=usage.turns,
@@ -485,4 +587,8 @@ def collect_evidence(
             if overlay is None
             else len(scan_transcript(decoded_scan_text(transcript), overlay, visible_texts=visible_texts))
         ),
+        tool_span_seconds=tool_span_seconds,
+        exploration_turns=None if mutation_turn is None else mutation_turn - 1,
+        biggest_turn=biggest_turn,
+        self_stop=self_stop,
     )

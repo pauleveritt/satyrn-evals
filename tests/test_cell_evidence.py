@@ -145,6 +145,8 @@ def test_a_timed_out_cell_without_agent_end_still_yields_every_count() -> None:
         "guard_firings": {"command_bounded": 1}, "self_test_calls": 0, "bash_test_runs": 0, "length_stops": 0,
         "first_passing_self_test": None, "timeline": False, "commands_over_120s": 0,
         "unfinished_commands": 0, "longest_command_seconds": None, "overlay_windows": None,
+        "tool_span_seconds": None, "exploration_turns": None,
+        "biggest_turn": {"turn": 1, "output_tokens": 1500, "share": 1.0}, "self_stop": None,
     }
 
 
@@ -350,3 +352,111 @@ def test_two_length_cuts_inside_one_turn_count_twice() -> None:
     text = _transcript(_assistant(16000, stop="length"), _assistant(16000, stop="length"))
     block = collect_evidence(text).to_block()
     assert (block["length_stops"], block["turns"], block["output_tokens"]) == (2, 1, 32000)
+
+
+# --- Census task 7: the section 6 evidence fields ----------------------------
+
+SOURCES = ("src/satyrn_evals/run_record.py", "tools/lint_docs.py", "tests")
+
+
+def _write(call_id: str, path: str, *, error: bool = False) -> list[str]:
+    return [
+        _line({"type": "tool_execution_start", "toolCallId": call_id, "toolName": "write", "args": {"path": path, "content": "x\n"}}),
+        _line({"type": "tool_execution_end", "toolCallId": call_id, "toolName": "write",
+               "result": {"content": [{"type": "text", "text": ""}]}, "isError": error}),
+    ]
+
+
+def test_exploration_turns_counts_the_turns_before_the_first_landed_source_edit() -> None:
+    text = _transcript(
+        _assistant(100),
+        *_bash("b1", "ls"),
+        _line({"type": "turn_start"}),
+        _assistant(200),
+        *_bash("b2", "cat tools/lint_docs.py"),
+        _line({"type": "turn_start"}),
+        _assistant(300),
+        *_write("w1", "tools/lint_docs.py"),
+    )
+    assert collect_evidence(text, source_paths=SOURCES).to_block()["exploration_turns"] == 2
+
+
+def test_a_cell_that_never_mutates_a_source_file_records_null_not_its_turn_count() -> None:
+    """Ruling 14: 'explored for 40 turns then edited' and 'never edited' are
+    different rows; a number would merge them."""
+    text = _transcript(_assistant(100), *_bash("b1", "ls"))
+    assert collect_evidence(text, source_paths=SOURCES).to_block()["exploration_turns"] is None
+
+
+def test_a_test_file_edit_is_not_a_source_mutation() -> None:
+    text = _transcript(_assistant(100), *_write("w1", "tests/test_lint_docs.py"), _line({"type": "turn_start"}), *_write("w2", "tools/lint_docs.py"))
+    assert collect_evidence(text, source_paths=SOURCES).to_block()["exploration_turns"] == 1
+
+
+def test_an_edit_outside_source_paths_is_not_a_source_mutation() -> None:
+    text = _transcript(_assistant(100), *_write("w1", "pyproject.toml"))
+    assert collect_evidence(text, source_paths=SOURCES).to_block()["exploration_turns"] is None
+
+
+def test_a_failed_edit_is_not_a_source_mutation() -> None:
+    text = _transcript(_assistant(100), *_write("w1", "tools/lint_docs.py", error=True))
+    assert collect_evidence(text, source_paths=SOURCES).to_block()["exploration_turns"] is None
+
+
+def test_an_absolute_path_inside_the_worktree_is_a_source_mutation() -> None:
+    text = _transcript(_assistant(100), *_write("w1", f"{CWD}/tools/lint_docs.py"))
+    assert collect_evidence(text, source_paths=SOURCES).to_block()["exploration_turns"] == 0
+
+
+def test_with_no_source_paths_nothing_is_a_source_mutation() -> None:
+    text = _transcript(_assistant(100), *_write("w1", "tools/lint_docs.py"))
+    assert collect_evidence(text).to_block()["exploration_turns"] is None
+
+
+def test_the_biggest_turn_and_its_share() -> None:
+    text = _transcript(
+        _assistant(1000),
+        _line({"type": "turn_start"}),
+        _assistant(3000),
+        _line({"type": "turn_start"}),
+        _assistant(1000),
+    )
+    assert collect_evidence(text).to_block()["biggest_turn"] == {"turn": 2, "output_tokens": 3000, "share": 0.6}
+
+
+def test_a_transcript_with_no_assistant_tokens_has_no_biggest_turn() -> None:
+    assert collect_evidence(_transcript(*_bash("b1", "ls"))).to_block()["biggest_turn"] is None
+
+
+def test_self_stop_is_recorded_when_the_loop_ended_on_its_own() -> None:
+    text = _transcript(_assistant(1200), *_bash("b1", "ls"), _line({"type": "agent_end"}))
+    assert collect_evidence(text).to_block()["self_stop"] == {"turn": 1, "output_tokens": 1200}
+
+
+def test_a_cell_the_harness_cut_has_no_self_stop() -> None:
+    """Ruling 15: every BUDGET_EXCEEDED and COMMAND_TIMEOUT transcript lacks `agent_end`."""
+    text = _transcript(_assistant(48001), *_bash("b1", "ls"))
+    assert collect_evidence(text).to_block()["self_stop"] is None
+
+
+def test_tool_span_seconds_is_first_start_to_last_end() -> None:
+    timeline = "\n".join([
+        json.dumps({"at": 10.0, "event": "start", "toolCallId": "a", "toolName": "bash"}),
+        json.dumps({"at": 12.5, "event": "end", "toolCallId": "a", "toolName": "bash"}),
+        json.dumps({"at": 20.0, "event": "start", "toolCallId": "b", "toolName": "read"}),
+        json.dumps({"at": 31.0, "event": "end", "toolCallId": "b", "toolName": "read"}),
+    ])
+    assert collect_evidence(_transcript(), timeline=timeline).to_block()["tool_span_seconds"] == 21.0
+
+
+def test_an_unfinished_last_command_still_spans_to_its_start() -> None:
+    timeline = "\n".join([
+        json.dumps({"at": 10.0, "event": "start", "toolCallId": "a", "toolName": "bash"}),
+        json.dumps({"at": 12.5, "event": "end", "toolCallId": "a", "toolName": "bash"}),
+        json.dumps({"at": 40.0, "event": "start", "toolCallId": "b", "toolName": "bash"}),
+    ])
+    assert collect_evidence(_transcript(), timeline=timeline).to_block()["tool_span_seconds"] == 30.0
+
+
+def test_no_timeline_means_no_tool_span() -> None:
+    assert collect_evidence(_transcript()).to_block()["tool_span_seconds"] is None
