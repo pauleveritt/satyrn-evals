@@ -51,6 +51,11 @@ CELL_KILL_TIMEOUT_FLOOR = 2.0
 #: Where a BUDGET_EXCEEDED teardown leaves the worktree's cumulative diff
 #: (design section 3.2). Written beside the attempt's own artifacts.
 TRIPPED_PATCH_NAME = "tripped.diff"
+#: Ruling R-2: the teardown harvest is bounded. A wedged git (an index lock,
+#: a filesystem stall) must never hold the cell open past its deadline, so
+#: the cumulative-patch build gets this per-call ceiling. A timeout is a
+#: missing secondary, never a lost cell: `_harvest_tripped` swallows it.
+TRIPPED_HARVEST_TIMEOUT_S = 30.0
 
 _GIT_SAFETY_CONFIG = (
     "--no-replace-objects",
@@ -1101,7 +1106,11 @@ def _harvest_tripped(
         return
     try:
         capture = build_cumulative_patch(
-            state.worktree, state.base_sha, environment, exclude=RESIDUE_EXCLUDES
+            state.worktree,
+            state.base_sha,
+            environment,
+            exclude=RESIDUE_EXCLUDES,
+            timeout=TRIPPED_HARVEST_TIMEOUT_S,
         )
         if capture.patch_text.strip():
             destination.write_text(capture.patch_text, encoding="utf-8")
@@ -1226,6 +1235,12 @@ def _run_command(
                 if isinstance(tripped, BudgetTripwire) and command_exit is not None:
                     # Over budget in the lines written just before a normal
                     # exit: nothing to tear down, the cell is still a fail.
+                    # The worktree still holds the cell's last state, and a
+                    # cell that finished over budget is the one with the most
+                    # to say, so harvest it here too -- before release, exactly
+                    # as the teardown branch does.
+                    if tripped_patch is not None:
+                        _harvest_tripped(state, environment, tripped_patch)
                     state.process_cleanup_safe = True
                     pending = WorkspaceResult(
                         WorkspaceCode.BUDGET_EXCEEDED,

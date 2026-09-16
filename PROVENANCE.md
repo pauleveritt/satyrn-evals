@@ -4162,7 +4162,7 @@
 | evidence/2026-09-15-release-one-decision-ledger.md | created in release-one |
 | docs/superpowers/plans/2026-09-15-release-two-census.md | created in release-one |
 | tests/test_workspace_tripped_harvest.py | created in release-one |
-| tests/test_attempt_tripped_verdict.py | created in release-one |
+| tests/test_attempt_tripped_patch.py | created in release-one |
 | docs/superpowers/specs/2026-09-15-release-two-task-validity.md | created in release-one |
 | src/satyrn_evals/census_classify.py | created in release-one |
 | evidence/2026-09-16-census/classify.py | created in release-one |
@@ -4174,3 +4174,4 @@
 | records/2026-09-16-census-selfhost-docs-linter.json | created in release-one |
 | records/2026-09-16-census-selfhost-cell-loop.json | created in release-one |
 | records/2026-09-16-census-selfhost-speed-probe.json | created in release-one |
+| docs/superpowers/plans/2026-09-16-release-two-census-fix-wave.md | created in release-one |

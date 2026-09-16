@@ -77,10 +77,12 @@ class DeadlineProvenance:
 # expiry provenance only when that limit actually expires.
 _V12_FIELDS = frozenset({"attempt_timeout"})
 _V13_FIELDS = frozenset({"deadline"})
-# V14 records add the tripped-worktree secondary (design section 3.2). Written
-# only on a BUDGET_EXCEEDED record that has one, so every earlier record's
+# V14 records name the harvested tripped-worktree secondary (Ruling R-1).
+# Written only on a BUDGET_EXCEEDED record that has one; the verdict is a
+# day-after classifier output, never a run-record field. The field is additive
+# on whichever generation the record already is, so every earlier record's
 # field set -- and every committed result's cells -- still loads (Ruling 13).
-_V14_FIELDS = frozenset({"tripped_verdict", "tripped_patch_path"})
+_V14_FIELDS = frozenset({"tripped_patch_path"})
 
 
 class AttemptOutcome(StrEnum):
@@ -280,7 +282,6 @@ class AttemptRecord:
     attempt_dir: str | None = None
     deadline: DeadlineProvenance | None = None
     attempt_timeout: float | None = None
-    tripped_verdict: Verdict | None = None
     tripped_patch_path: str | None = None
     _legacy: bool = field(default=False, repr=False, compare=False, kw_only=True)
 
@@ -290,8 +291,6 @@ class AttemptRecord:
         policy = _ATTEMPT_POLICIES[self.code]
         if self.verdict is not None:
             object.__setattr__(self, "verdict", Verdict(self.verdict))
-        if self.tripped_verdict is not None:
-            object.__setattr__(self, "tripped_verdict", Verdict(self.tripped_verdict))
         if type(self.version) is not int or self.version != 1:
             raise ValueError("attempt record version must be 1")
         if not _nonempty_text(self.message) or not _nonempty_text(self.task):
@@ -401,13 +400,13 @@ class AttemptRecord:
             raise ValueError(f"{self.code} requires a verdict")
         if policy.verdict is _Presence.FORBIDDEN and self.verdict is not None:
             raise ValueError(f"{self.code} requires no verdict")
-        if self.tripped_verdict is not None and self.code is not AttemptCode.BUDGET_EXCEEDED:
-            raise ValueError(f"{self.code} cannot carry a tripped_verdict")
         if self.tripped_patch_path is not None:
-            if self.tripped_verdict is None:
-                raise ValueError("attempt record tripped_patch_path requires a tripped_verdict")
+            if self.code is not AttemptCode.BUDGET_EXCEEDED:
+                raise ValueError(f"{self.code} cannot carry a tripped_patch_path")
             if not _nonempty_text(self.tripped_patch_path):
-                raise ValueError("attempt record tripped_patch_path must be non-empty or null")
+                raise ValueError(
+                    "attempt record tripped_patch_path must be non-empty or null"
+                )
         if policy.receipt is _Presence.REQUIRED and self.receipt_path is None:
             raise ValueError(f"{self.code} requires a receipt path")
         if policy.receipt is _Presence.FORBIDDEN and self.receipt_path is not None:
@@ -571,9 +570,8 @@ def write_attempt_record(path: Path, record: AttemptRecord) -> None:
         # field set exactly. A null rung with a digest still writes both.
         for name in _V11_FIELDS:
             data.pop(name, None)
-    if data.get("tripped_verdict") is None:
-        for name in _V14_FIELDS:
-            data.pop(name, None)
+    if data.get("tripped_patch_path") is None:
+        data.pop("tripped_patch_path", None)
     if legacy:
         for name in _V4_FIELDS:
             data.pop(name)
@@ -605,19 +603,14 @@ def load_attempt_record(path: Path) -> AttemptRecord:
         v12_fields,
         v13_fields,
     )
-    # V14 is additive: the tripped fields ride on whichever generation the
-    # record already is (the brief's fixture is a V11-era record with no
-    # attempt_timeout), so every generation crossed with the tripped shapes
-    # is accepted, and a V14 record may omit tripped_patch_path when the
-    # verdict is unavailable with no patch.
+    # V14 is additive: `tripped_patch_path` rides on whichever generation the
+    # record already is (a tripped cell need not carry a whole-attempt
+    # deadline), so every generation crossed with the tripped shape is
+    # accepted. The removed `tripped_verdict` shape is not.
     if fields not in {
         generation | tripped
         for generation in generations
-        for tripped in (
-            frozenset(),
-            frozenset({"tripped_verdict"}),
-            _V14_FIELDS,
-        )
+        for tripped in (frozenset(), _V14_FIELDS)
     }:
         if missing := _LEGACY_FIELDS - fields:
             raise ValueError(f"attempt record missing a field: {sorted(missing)}")
@@ -678,7 +671,6 @@ def load_attempt_record(path: Path) -> AttemptRecord:
             attempt_dir=data.get("attempt_dir"),
             deadline=deadline,
             attempt_timeout=data.get("attempt_timeout"),
-            tripped_verdict=Verdict(data["tripped_verdict"]) if data.get("tripped_verdict") is not None else None,
             tripped_patch_path=data.get("tripped_patch_path"),
             _legacy=legacy,
         )

@@ -36,13 +36,16 @@ class PatchCapture:
     status_lines: tuple[str, ...]
 
 
-def _git(worktree: Path, env: dict[str, str], *args: str) -> bytes:
+def _git(
+    worktree: Path, env: dict[str, str], *args: str, timeout: float | None = None
+) -> bytes:
     result = subprocess.run(
         ["git", *GIT_SAFETY_CONFIG, *args],
         cwd=worktree,
         env=env,
         capture_output=True,
         check=True,
+        timeout=timeout,
     )
     return result.stdout
 
@@ -69,6 +72,7 @@ def build_cumulative_patch(
     environment: Mapping[str, str] | None = None,
     *,
     exclude: Sequence[str] = (),
+    timeout: float | None = None,
 ) -> PatchCapture:
     """Snapshot the whole tree as one cumulative patch from base_commit.
 
@@ -77,6 +81,10 @@ def build_cumulative_patch(
     object-directory redirect). It defaults to the raw process
     environment for direct use, mirroring the session's own default of
     None meaning the caller's environment.
+
+    ``timeout`` is a per-git-call ceiling in seconds; None keeps today's
+    unbounded behaviour for the session and adapter callers. A tripped
+    teardown passes a bound so a wedged git can never hold a cell open.
     """
     fd, index_path = tempfile.mkstemp(prefix="satyrn-session-index-")
     os.close(fd)
@@ -86,8 +94,8 @@ def build_cumulative_patch(
         "GIT_INDEX_FILE": index_path,
     }
     try:
-        _git(worktree, env, "read-tree", base_commit)
-        _git(worktree, env, "add", "-N", "--all", "--", ".", *exclude)
+        _git(worktree, env, "read-tree", base_commit, timeout=timeout)
+        _git(worktree, env, "add", "-N", "--all", "--", ".", *exclude, timeout=timeout)
         patch_text = _git(
             worktree,
             env,
@@ -97,9 +105,16 @@ def build_cumulative_patch(
             "--no-ext-diff",
             "--no-textconv",
             base_commit,
+            timeout=timeout,
         ).decode("utf-8", "surrogateescape")
         status_z = _git(
-            worktree, env, "status", "--porcelain", "--untracked-files=all", "-z"
+            worktree,
+            env,
+            "status",
+            "--porcelain",
+            "--untracked-files=all",
+            "-z",
+            timeout=timeout,
         )
     finally:
         Path(index_path).unlink(missing_ok=True)
