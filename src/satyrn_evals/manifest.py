@@ -1,6 +1,7 @@
 """Bundled task manifests: load, validate, resolve by name."""
 
 import json
+import re
 import stat
 from collections.abc import Iterator
 from dataclasses import dataclass, field
@@ -62,6 +63,12 @@ class TaskManifest:
     #: every file, while the generator strips ``PROVENANCE.md``; a model that
     #: follows the repository's conventions must not lose its verdict for it.
     ignored_paths: tuple[str, ...] = ()
+    #: The R0 §1.2 task-validity record, added after the cut: a solution
+    #: written from this prompt alone, by someone other than the task's author
+    #: and without the plan's code, was graded by the hidden suite.
+    #: ``{"by": str, "commit": 40-hex, "passed": bool}``; ``None`` means the
+    #: check has not run. A failed check is recorded, not omitted.
+    validity: dict | None = None
 
 
 def _validate_source_dirs(
@@ -93,6 +100,24 @@ def _validate_source_dirs(
                 f"source_dirs names {entry!r}, which is not in source_paths"
             )
     return declared
+
+
+_VALIDITY_KEYS = frozenset({"by", "commit", "passed"})
+_HEX40 = re.compile(r"\A[0-9a-f]{40}\Z")
+
+
+def _validate_validity(value: object) -> dict | None:
+    if value is None:
+        return None
+    if not isinstance(value, dict) or set(value) != _VALIDITY_KEYS:
+        raise ManifestError(f"validity must be an object with exactly {sorted(_VALIDITY_KEYS)}")
+    if not isinstance(value["by"], str) or not value["by"]:
+        raise ManifestError("validity.by must be a non-empty string")
+    if not isinstance(value["commit"], str) or not _HEX40.match(value["commit"]):
+        raise ManifestError("validity.commit must be 40 lowercase hex")
+    if type(value["passed"]) is not bool:
+        raise ManifestError("validity.passed must be a boolean")
+    return dict(value)
 
 
 def _validate_ignored_paths(
@@ -357,6 +382,7 @@ def load_manifest(task_dir: Path) -> TaskManifest:
     public_suite = _validate_public_suite(data.get("public_suite"), grader_overlay)
     source_dirs = _validate_source_dirs(data.get("source_dirs"), sources)
     ignored_paths = _validate_ignored_paths(data.get("ignored_paths"), sources)
+    validity = _validate_validity(data.get("validity"))
     visibility_raw = data.get("oracle_visibility", "visible")
     if visibility_raw not in ("visible", "hidden"):
         raise ManifestError(
@@ -389,6 +415,7 @@ def load_manifest(task_dir: Path) -> TaskManifest:
         public_suite=public_suite,
         source_dirs=source_dirs,
         ignored_paths=ignored_paths,
+        validity=validity,
     )
 
 

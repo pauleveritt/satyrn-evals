@@ -248,3 +248,29 @@ def test_recorded_edits_land_in_the_generator_block(tmp_path: Path, spec_body: d
     path.write_text(json.dumps(spec_body | {"prompt_edits": [{"old": "a", "new": "b", "reason": "r"}]}))
     body = manifest_body(load_spec(path), "b\n", ["tests/test_x.py::test_y"], "0" * 64)
     assert body["generator"]["prompt_edits"] == [{"old": "a", "new": "b", "reason": "r"}]
+
+
+def test_check_ignores_a_post_cut_validity_annotation(tmp_path: Path) -> None:
+    """A cut task annotated with `validity` still matches a fresh cut."""
+    from tools.cut_task import comparable
+
+    committed = tmp_path / "task"
+    (committed / "base").mkdir(parents=True)
+    (committed / "base" / "app.py").write_text("x = 1\n")
+    body = {"name": "t", "contract": "c"}
+    (committed / "manifest.json").write_text(json.dumps(body))
+    before = comparable(committed)
+    (committed / "manifest.json").write_text(json.dumps(body | {"validity": {"by": "s", "commit": "a" * 40, "passed": True}}))
+    assert comparable(committed) == before
+
+
+def test_check_still_sees_any_other_manifest_change(tmp_path: Path) -> None:
+    from tools.cut_task import comparable
+
+    committed = tmp_path / "task"
+    (committed / "base").mkdir(parents=True)
+    (committed / "base" / "app.py").write_text("x = 1\n")
+    (committed / "manifest.json").write_text(json.dumps({"name": "t", "contract": "c"}))
+    before = comparable(committed)
+    (committed / "manifest.json").write_text(json.dumps({"name": "t", "contract": "d"}))
+    assert comparable(committed) != before

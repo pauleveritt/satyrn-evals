@@ -392,7 +392,13 @@ def test_grader_overlay_refuses_file_parent(tmp_path: Path) -> None:
         load_manifest(task_dir)
 
 
-def _write_task(tmp_path: Path, *, visibility: str | None = None, overlay: bool = True) -> Path:
+def _write_task(
+    tmp_path: Path,
+    *,
+    visibility: str | None = None,
+    overlay: bool = True,
+    extra: dict | None = None,
+) -> Path:
     """Minimal hidden-oracle task dir; caller adds visibility/overlay as needed."""
     task = tmp_path / "task"
     (task / "base").mkdir(parents=True)
@@ -411,8 +417,15 @@ def _write_task(tmp_path: Path, *, visibility: str | None = None, overlay: bool 
     }
     if overlay:
         data["grader_overlay"] = "grader/overlay"
+        # An overlay is only legal alongside a hidden oracle (the ⇔ rule), so
+        # the default is hidden when the helper builds one; a caller naming a
+        # visibility still exercises the refusal it means to.
+        if visibility is None:
+            visibility = "hidden"
     if visibility is not None:
         data["oracle_visibility"] = visibility
+    if extra is not None:
+        data.update(extra)
     (task / "manifest.json").write_text(json.dumps(data))
     (task / "fixtures").mkdir()
     (task / "fixtures" / "kg.patch").write_text("")
@@ -692,3 +705,47 @@ def test_declared_ignored_paths_load_in_order(tmp_path: Path) -> None:
 def test_malformed_ignored_paths_are_refused(tmp_path: Path, ignored: object, message: str) -> None:
     with pytest.raises(ManifestError, match=message):
         load_manifest(_task_with_ignored(tmp_path, ignored))
+
+
+# --- The R0 §1.2 task-validity record, a post-cut annotation ---
+#
+# The record is written after the cut, from the cut prompt, so `cut_task.py
+# check` ignores it (its own tests live in `test_cut_task.py`). It is optional:
+# absent means the check has not run. A failed check is evidence and must load.
+
+VALID = {"by": "sonnet-subagent", "commit": "a" * 40, "passed": True}
+
+
+def test_a_manifest_without_validity_loads_with_none(tmp_path: Path) -> None:
+    task = _write_task(tmp_path)
+    assert load_manifest(task).validity is None
+
+
+def test_a_well_formed_validity_block_loads(tmp_path: Path) -> None:
+    task = _write_task(tmp_path, extra={"validity": VALID})
+    assert load_manifest(task).validity == VALID
+
+
+@pytest.mark.parametrize(
+    "block",
+    [
+        {"by": "x", "commit": "a" * 40},
+        {"by": "x", "commit": "a" * 40, "passed": True, "extra": 1},
+        {"by": "", "commit": "a" * 40, "passed": True},
+        {"by": "x", "commit": "A" * 40, "passed": True},
+        {"by": "x", "commit": "a" * 39, "passed": True},
+        {"by": "x", "commit": "a" * 40, "passed": "yes"},
+        [],
+    ],
+)
+def test_a_malformed_validity_block_is_refused(tmp_path: Path, block: object) -> None:
+    task = _write_task(tmp_path, extra={"validity": block})
+    with pytest.raises(ManifestError, match="validity"):
+        load_manifest(task)
+
+
+def test_a_failed_validity_block_still_loads(tmp_path: Path) -> None:
+    """A failed check is evidence and must be readable; refusing to record it
+    would make the only durable trace of a generator defect unwritable."""
+    task = _write_task(tmp_path, extra={"validity": VALID | {"passed": False}})
+    assert load_manifest(task).validity == VALID | {"passed": False}

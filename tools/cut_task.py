@@ -415,6 +415,20 @@ def cut(spec: TaskSpec, repo: Path, tasks_root: Path) -> Path:
     return dest
 
 
+#: Manifest keys a cut does not produce and `check` therefore ignores. The
+#: R0 §1.2 validity record is written after the cut, from the cut prompt.
+POST_CUT_MANIFEST_KEYS = ("validity",)
+
+
+def comparable(task_dir: Path) -> tuple[str, object]:
+    """A task tree's identity for `check`: every file but the manifest, plus the
+    manifest without its post-cut annotations."""
+    body = json.loads((task_dir / "manifest.json").read_text(encoding="utf-8"))
+    for key in POST_CUT_MANIFEST_KEYS:
+        body.pop(key, None)
+    return tree_digest(task_dir, exclude={"manifest.json"}), json.dumps(body, sort_keys=True)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="cut_task.py")
     parser.add_argument("action", choices=("cut", "check"))
@@ -429,11 +443,11 @@ def main(argv: list[str] | None = None) -> int:
                 print(cut(spec, args.repo, args.tasks_root))
                 continue
             with tempfile.TemporaryDirectory(prefix="satyrn-cut-check-") as scratch:
-                fresh = tree_digest(cut(spec, args.repo, Path(scratch)))
-            committed = args.tasks_root / spec.name
-            if not committed.is_dir() or tree_digest(committed) != fresh:
-                print(f"cut_task: {spec.name} differs from a fresh cut", file=sys.stderr)
-                return 1
+                fresh = cut(spec, args.repo, Path(scratch))
+                committed = args.tasks_root / spec.name
+                if not committed.is_dir() or comparable(committed) != comparable(fresh):
+                    print(f"cut_task: {spec.name} differs from a fresh cut", file=sys.stderr)
+                    return 1
             print(f"cut_task: {spec.name} matches a fresh cut")
     except CutError as error:
         print(f"cut_task: {error}", file=sys.stderr)
