@@ -4168,3 +4168,9 @@
 | evidence/2026-09-16-census/classify.py | created in release-one |
 | evidence/2026-09-16-census/.gitignore | created in release-one |
 | tests/test_census_classify.py | created in release-one |
+| scripts/census_night.sh | created in release-one |
+| records/2026-09-16-census-agentclinic-repair-depth-3.json | created in release-one |
+| records/2026-09-16-census-selfhost-run-record-gate.json | created in release-one |
+| records/2026-09-16-census-selfhost-docs-linter.json | created in release-one |
+| records/2026-09-16-census-selfhost-cell-loop.json | created in release-one |
+| records/2026-09-16-census-selfhost-speed-probe.json | created in release-one |

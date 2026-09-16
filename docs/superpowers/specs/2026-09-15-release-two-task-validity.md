@@ -153,3 +153,17 @@ path.write_text(json.dumps(body, indent=2, ensure_ascii=False) + "\n", encoding=
 print(task, body["validity"])
 PY
 ```
+
+## Carried forward
+
+1. **The Engine's `DELIVER_TIMEOUT_SECONDS` is 1800 and the record's backstop
+   is not wired to it** (Ruling 3). An Engine cell under a 3,000 s backstop is
+   stopped at 1,800 s inside `deliver` while a Baseline cell runs to 3,000 s.
+   Fix before the first Engine record of release two; it is an arm-parity
+   defect, not a census defect.
+2. **Section 3.1's Pi-loop semantics are declared, not measured** (Ruling 9).
+   The first census cell that shows a length-cut turn with tool calls ending a
+   session contradicts them and is a finding.
+3. **The census's `tripped_verdict` is a secondary with no denominator rule
+   yet.** Section 8 decides whether it enters the claim; until then it is
+   reported beside `verdict`, never instead of it.
