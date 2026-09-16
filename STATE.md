@@ -61,15 +61,16 @@ prompts:
 
 ## Current direction, decided 2026-09-15
 
-**Release two ships the Engine as a product, with honest before-and-after
-numbers and no ceiling claim.** A public release of `satyrn-engine` as a Pi
-package: install docs, a usage page, and a numbers page stating what was
-measured and what it does not show. The numbers rest on retained release-one
-evidence; no GPU night is planned. `ROADMAP.md` holds the phase rows.
-
-Open question at the point this page was written: whether the numbers page
-also carries a small paired demonstration (about 2 GPU hours) or retained
-evidence only.
+**A pathology census before any Engine work, then the claim shape.** The
+earlier same-day direction (ship the Engine as a product with no outcome
+claim) was withdrawn by the maintainer: a page saying the Engine does nothing
+good is not worth shipping. The census is one Baseline-only night on the
+fixed harness, five medium tasks at n = 6, 48,000 tokens and 72 turns, every
+cell classified by binding constraint the day after; the release-two claim
+(outcome within 32k, cost at equal outcome, or a numbered ceiling at 9B) is
+chosen from that table. Design:
+`docs/superpowers/specs/2026-09-15-release-two-census-design.md`.
+`ROADMAP.md` holds the phase rows.
 
 ## Rules that bind the work
 

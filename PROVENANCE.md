@@ -4130,6 +4130,7 @@
 | evidence/2026-09-15-release-one-outcome/fable-review.md | created in release-one |
 | docs/superpowers/specs/2026-09-15-release-two-r0-constraints.md | created in release-one |
 | docs/superpowers/specs/2026-09-15-release-two-finishing-counterfactual.md | created in release-one |
+| docs/superpowers/specs/2026-09-15-release-two-census-design.md | created in release-one |
 | src/satyrn_evals/tasks/KNOWN_DEFECTS.md | created in release-one |
 | docs/superpowers/plans/2026-09-15-finishing-counterfactual.md | created in release-one |
 | evidence/2026-09-15-finishing-counterfactual/counterfactual.py | created in release-one |
