@@ -45,18 +45,22 @@ def _git(repo: Path, *argv: str) -> None:
 
 
 def _frozen_record(
-    tmp_path: Path, name: str, *, arm: str, n: int, k: int, max_minutes: int = 60, model: str = "omlx/fixture"
+    tmp_path: Path, name: str, *, arm: str, n: int, k: int, max_minutes: int = 60, model: str = "omlx/fixture",
+    command_backstop_s: int | None = None,
 ) -> Path:
     repo = tmp_path / "records"
     if not (repo / ".git").exists():
         repo.mkdir()
         _git(repo, "init", "-q")
     path = repo / f"{name}.json"
-    assert main([
+    argv = [
         "record", "new", "--output", str(path), "--task", "calc-build", "--tasks-root", str(TASKS), "--arm", arm,
         "--rung", "contract", "--n", str(n), "--k", str(k), "--purpose", "development",
         "--max-minutes", str(max_minutes), "--model", model,
-    ]) == 0
+    ]
+    if command_backstop_s is not None:
+        argv += ["--command-backstop", str(command_backstop_s)]
+    assert main(argv) == 0
     _git(repo, "add", path.name)
     _git(repo, "commit", "-qm", name)
     return path
@@ -155,13 +159,14 @@ def test_a_night_the_wall_clock_stops_resumes_without_rerunning_a_finished_cell(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, cell_scratch: Path
 ) -> None:
     _cell_pi(cell_scratch, monkeypatch, "commit")
-    record = _frozen_record(tmp_path, "resume", arm="baseline", n=2, k=1, max_minutes=1)
+    record = _frozen_record(tmp_path, "resume", arm="baseline", n=2, k=1, max_minutes=6, command_backstop_s=60)
     arms, runs = [_baseline_arm(tmp_path)], tmp_path / "runs"
-    # A 59 s deadline leaves the one-minute record room for exactly one cell.
-    assert _launch(record, arms, runs, "--attempt-timeout", "59") == 4
+    # A 359 s deadline leaves the six-minute record room for exactly one cell: once the first
+    # cell has taken any time at all, the second 359 s cell no longer fits in the 360 s wall clock.
+    assert _launch(record, arms, runs, "--attempt-timeout", "359") == 4
     first = _result(record)
     assert first["status"] == "capped" and [c["slot"] for c in first["cells"]] == [0]
-    assert _launch(record, arms, runs, "--attempt-timeout", "59") == 0
+    assert _launch(record, arms, runs, "--attempt-timeout", "359") == 0
     second = _result(record)
     assert second["status"] == "complete" and [c["slot"] for c in second["cells"]] == [0, 1]
     assert second["cells"][0]["attempt_dir"] == first["cells"][0]["attempt_dir"]
