@@ -70,5 +70,10 @@
   "digests": {
     "task_tree": "87aeaa42d142f1b99cb51262f0f51bec2657fd2a7f0c7f3f8615fa0cf3327f0a",
     "prompt": "c30a17fa437b6b24858c5657bfd41c3945caceca96996ed31e9d66624965e080"
+  },
+  "validity": {
+    "by": "deepseek-v4-flash",
+    "commit": "df33336645a10a009e79ff7bdcf0db9e9628b34b",
+    "passed": true
   }
 }

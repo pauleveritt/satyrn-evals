@@ -91,5 +91,10 @@
   "digests": {
     "task_tree": "d2610cff5019cd6943e284c1ce4ad4932c6fcba2b89c9329e2614ce2109effb6",
     "prompt": "21ce94898daefdf9bbf9e84fa2bb80a29dd9417dc47d1a0976f3bbda42c7a9e6"
+  },
+  "validity": {
+    "by": "deepseek-v4-flash",
+    "commit": "df33336645a10a009e79ff7bdcf0db9e9628b34b",
+    "passed": true
   }
 }

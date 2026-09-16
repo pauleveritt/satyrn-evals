@@ -19,5 +19,12 @@
   },
   "oracle_env": {
     "PYTHONPATH": "src"
-  }
+  },
+  "prompt_edits": [
+    {
+      "old": "A cell writes its result to slot_path(night, slot), `<night>/slots/<NN>.json`;",
+      "new": "Before any cell starts, `launch_cells` creates `<night>/slots/` (with parents as needed). A result is a slot file at slot_path(night, slot), `<night>/slots/<NN>.json`;",
+      "reason": "R0 §1.2 validity run 2026-09-16: the prompt-only solution failed 17 of 22 hidden tests because the hidden fake cell writes slot_path(night, slot) without creating <night>/slots/, while the known-good launch_cells creates it; the prompt did not determine that structural choice"
+    }
+  ]
 }
