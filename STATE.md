@@ -66,22 +66,28 @@ for a reason the Engine cannot reach under identical prompts:
 - **The census is frozen, not measured.** Five Baseline records exist; no cell
   has run, so no failure class is counted at a denominator yet.
 
-## Current direction, decided 2026-09-15; census built and frozen 2026-09-16
+## Current direction, decided 2026-09-15; census night 1 ran 2026-09-16
 
 **A pathology census before any Engine work, then the claim shape.** The
 earlier "ship the Engine as a product with no outcome claim" direction was
 withdrawn: a page saying the Engine does nothing good is not worth shipping.
-The census is now **built and frozen**: five Baseline-only records, one per
-task, at 48,000 tokens / 72 turns / 3,000 s backstop, k = 3, n = 6, per-turn
-output cap 16,000, tripped worktrees harvested and graded offline as a
-declared secondary that is never a pass. All five tasks passed the R0 §1.2
-validity check (run on `deepseek-v4-flash`, the harness's only selectable
-model; ratified by the maintainer 2026-09-16 as a deliberate deviation from the
-design's Sonnet wording). **No census cell has run**; the
-night is the maintainer's to launch. The release-two claim (outcome within
-32k, cost at equal outcome, or a numbered ceiling at 9B) is chosen from the
-classified table once it exists (census design, section 8); `ROADMAP.md`
-holds the phase rows.
+Night 1 ran 30 Baseline cells (five tasks, n = 6, 48,000 tokens / 72 turns /
+3,000 s, k = 3, per-turn cap 16,000; results `records/2026-09-16-census-*`,
+classifier outputs `evidence/2026-09-16-census/<task>/`). Read at the
+pre-registered 32k/48 line: depth-3 at R2 is a floor task (6/6, so the
+release-one leg was a rung defect); run-record-gate and docs-linter are
+finishing-bound (9 of 12 cells held a hidden-suite pass inside the line and
+2 stopped; stopping at own-green rescues 5 of 12, harm 0 in 30 cells);
+cell-loop and speed-probe reached no pass state in any cell; five build
+cells ended on a runaway 16k turn with no tool call, the completion gate's
+trigger. Nine cells were wall-clock-cut on a shared machine; their 32k-line
+reading is complete, their self-stop is not. The eight class columns are
+still the reviewer's. **Night 2**
+(`docs/superpowers/specs/2026-09-17-release-two-census-night-2-design.md`):
+a third medium-build candidate at n = 6 plus nine replacement cells at a
+4,800 s backstop, Baseline only, on a quiet machine; then the census page,
+the R0 sitting and the Engine spec (finish-on-green, completion gate).
+`ROADMAP.md` holds the phase rows.
 
 ## Rules that bind the work
 
