@@ -320,3 +320,43 @@ def test_misleading_locus_known_broken_touches_only_the_board_template() -> None
     task_dir = resolve_task("agentclinic-repair-misleading-locus")
     patch = (task_dir / "fixtures" / "known-broken.patch").read_text()
     assert parse_patch_paths(patch) == ("templates/complaints.html",)
+
+
+#: Design section 4: R2 is R1 plus pytest's own explanation of the third
+#: failure, the line R1 strips (`tasks/KNOWN_DEFECTS.md`, depth-3).
+R2_EXPLANATION = "assert None is not None, where None = first.timestamp.tzinfo"
+
+
+def test_depth_3_ships_r2_and_keeps_r1() -> None:
+    manifest = load_manifest(resolve_task("agentclinic-repair-depth-3"))
+    assert set(manifest.contracts) == {"R0", "R1", "R1b", "R2", "R3"}
+
+
+def test_r2_is_r1_with_the_tzinfo_explanation_and_nothing_else() -> None:
+    """Ruling 4: R2 - R1 is one fact. If anything else differs, the information
+    diagnosis the census tests is no longer isolated."""
+    manifest = load_manifest(resolve_task("agentclinic-repair-depth-3"))
+    r1, r2 = manifest.contracts["R1"], manifest.contracts["R2"]
+    assert R2_EXPLANATION in r2
+    assert R2_EXPLANATION not in r1
+    assert r2.replace(", where None = first.timestamp.tzinfo", "", 1) == r1
+
+
+def test_r2_does_not_name_the_file_or_the_fix() -> None:
+    """The added fact is pytest's assertion text, not a location (section 4)."""
+    r2 = load_manifest(resolve_task("agentclinic-repair-depth-3")).contracts["R2"]
+    assert "models.py" not in r2
+    assert "timezone-aware" not in r2
+
+
+def test_the_default_contract_is_still_r3() -> None:
+    manifest = load_manifest(resolve_task("agentclinic-repair-depth-3"))
+    assert manifest.contract == manifest.contracts["R3"]
+
+
+def test_the_census_rung_map_names_five_tasks_that_exist() -> None:
+    from satyrn_evals.qualify import CENSUS_TASKS
+
+    assert len(CENSUS_TASKS) == 5
+    for task, rung in CENSUS_TASKS.items():
+        assert rung in load_manifest(resolve_task(task)).contracts, task

@@ -73,6 +73,17 @@ HELDOUT_TASKS: dict[str, str] = {
     "selfhost-cell-loop": "R1-plan",
     "selfhost-speed-probe": "R1-plan",
 }
+#: The census set and the rung each task runs at (design section 4). The three
+#: maps above name what release one's spec ran and are left as they are: they
+#: are cited as evidence of that campaign, and rewriting them would change the
+#: record of what was measured, not what will be.
+CENSUS_TASKS: dict[str, str] = {
+    "agentclinic-repair-depth-3": "R2",
+    "selfhost-run-record-gate": PLAN_RUNG,
+    "selfhost-docs-linter": PLAN_RUNG,
+    "selfhost-cell-loop": PLAN_RUNG,
+    "selfhost-speed-probe": PLAN_RUNG,
+}
 
 
 @dataclass(frozen=True, slots=True)
