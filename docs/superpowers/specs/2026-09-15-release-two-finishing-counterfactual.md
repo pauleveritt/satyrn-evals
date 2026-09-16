@@ -185,3 +185,20 @@ on debug cells only. No decision cell had been replayed or graded.
    commands, or `2>&1`. Otherwise the cell is unmeasured with reason
    `unverified-rescue`. Harm counting is unchanged. The replay's remaining
    limits are disclosed on the result page.
+
+## 8. Run 2 (recorded after the decision run)
+
+The header's clause applies: a bug found afterwards is fixed and re-run only
+with the bug and both results recorded beside each other. A deep review of
+run 1 (`evidence/2026-09-15-finishing-counterfactual/run-2/fable-review.md`)
+found that three pre-registered rules — plan Ruling 11's `write_text`
+heuristic, a BSD `sed -i` error counted as a skipped write, and 7.4's
+read-only list rejecting `2>/dev/null`, `od`, `xxd`, `python3 -c` — withheld
+the one real rescue and made 8 of 24 cells unmeasured. Run 1's outputs stand
+unedited; run 2 records the corrected reading beside them:
+**Verify on clean tasks** (section 5 as amended by 7.1), docs-linter net +1,
+0 harms, 0 unmeasured, fidelity 14 of 14. The class is still small (power
+0.26 at n = 12), so the maintainer's decision on 2026-09-15 was to build no
+finish-on-green Engine and to ship the Engine as a product with honest
+before-and-after numbers instead. Run 2's page:
+`evidence/2026-09-15-finishing-counterfactual/run-2/README.md`.

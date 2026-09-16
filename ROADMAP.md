@@ -42,7 +42,7 @@ settled, and what it leaves for that sitting:
 
 | # | Phase | Mode | Done when |
 |---|---|---|---|
-| R0 | Design sitting under `docs/superpowers/specs/2026-09-15-release-two-r0-constraints.md`: the claim, the workload, what counts as a ceiling task | attended | a spec the maintainer approves that meets those constraints. Knowledge stage: the finishing counterfactual decided **not-the-lever** (evidence/2026-09-15-finishing-counterfactual/README.md). |
+| R0 | Design sitting under `docs/superpowers/specs/2026-09-15-release-two-r0-constraints.md`: the claim, the workload, what counts as a ceiling task | attended | a spec the maintainer approves that meets those constraints. Knowledge stage: the finishing counterfactual ran `not-the-lever` and, corrected in run 2, **Verify** — a small, real finishing class (power 0.26) (evidence/2026-09-15-finishing-counterfactual/README.md and run-2/README.md). Maintainer's decision 2026-09-15: no ceiling claim; release two ships the Engine as a product with honest before-and-after numbers. |
 | R1 | Measurement validity: rung fix (assertion explanations), a qualification check that the prompt determines the hidden suite's structural choices, per-turn output cap, grade tripped worktrees as a declared secondary, re-measure k | overnight | fixture tests both directions; re-probe; every candidate re-qualified |
 | R2 | Engine parity and hygiene: multi-edit, prompt collapse, writable paths from `Files:`, finish-on-green nudge | overnight | replay and fixture tests; Engine and Baseline tool surfaces equivalent |
 | R3 | Workload: new ceiling candidates cut and admitted under isolation | attended | a ceiling set whose Baseline failures are budget- or finish-shaped, not information-bound |

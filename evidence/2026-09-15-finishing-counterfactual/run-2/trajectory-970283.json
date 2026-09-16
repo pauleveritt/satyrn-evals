@@ -1,0 +1,993 @@
+[
+ {
+  "task": "selfhost-docs-linter",
+  "group": "decision",
+  "attempt": "970283",
+  "code": "BUDGET_EXCEEDED",
+  "verdict": null,
+  "first_edit_turn": 10,
+  "turns": {
+   "10": {
+    "tokens": 14266,
+    "std": {
+     "digest": "acd03305294b",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_a_clean_tree_has_no_failures",
+      "test_doc_caps.py::test_a_spec_over_400_lines_fails_and_a_long_plan_does_not",
+      "test_doc_caps.py::test_an_unlisted_directory_under_docs_fails",
+      "test_doc_caps.py::test_gitkeep_does_not_count_toward_the_result_cap",
+      "test_doc_caps.py::test_result_at_exactly_120_lines_passes",
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_with_a_fence_and_under_cap_passes",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails",
+      "test_doc_caps.py::test_roadmap_at_exactly_150_lines_passes",
+      "test_doc_caps.py::test_roadmap_over_150_lines_fails",
+      "test_doc_caps.py::test_spec_at_exactly_400_lines_passes",
+      "test_doc_caps.py::test_the_skip_list_is_relative_to_root_not_absolute"
+     ],
+     "n_failed": 15
+    },
+    "ext": {
+     "digest": "acd03305294b",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_a_clean_tree_has_no_failures",
+      "test_doc_caps.py::test_a_spec_over_400_lines_fails_and_a_long_plan_does_not",
+      "test_doc_caps.py::test_an_unlisted_directory_under_docs_fails",
+      "test_doc_caps.py::test_gitkeep_does_not_count_toward_the_result_cap",
+      "test_doc_caps.py::test_result_at_exactly_120_lines_passes",
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_with_a_fence_and_under_cap_passes",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails",
+      "test_doc_caps.py::test_roadmap_at_exactly_150_lines_passes",
+      "test_doc_caps.py::test_roadmap_over_150_lines_fails",
+      "test_doc_caps.py::test_spec_at_exactly_400_lines_passes",
+      "test_doc_caps.py::test_the_skip_list_is_relative_to_root_not_absolute"
+     ],
+     "n_failed": 15
+    }
+   },
+   "11": {
+    "tokens": 14557,
+    "std": {
+     "digest": "6740d9273301",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_a_clean_tree_has_no_failures",
+      "test_doc_caps.py::test_a_spec_over_400_lines_fails_and_a_long_plan_does_not",
+      "test_doc_caps.py::test_an_unlisted_directory_under_docs_fails",
+      "test_doc_caps.py::test_gitkeep_does_not_count_toward_the_result_cap",
+      "test_doc_caps.py::test_result_at_exactly_120_lines_passes",
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_with_a_fence_and_under_cap_passes",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails",
+      "test_doc_caps.py::test_roadmap_at_exactly_150_lines_passes",
+      "test_doc_caps.py::test_roadmap_over_150_lines_fails",
+      "test_doc_caps.py::test_spec_at_exactly_400_lines_passes",
+      "test_doc_caps.py::test_the_skip_list_is_relative_to_root_not_absolute"
+     ],
+     "n_failed": 15
+    },
+    "ext": {
+     "digest": "6740d9273301",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_a_clean_tree_has_no_failures",
+      "test_doc_caps.py::test_a_spec_over_400_lines_fails_and_a_long_plan_does_not",
+      "test_doc_caps.py::test_an_unlisted_directory_under_docs_fails",
+      "test_doc_caps.py::test_gitkeep_does_not_count_toward_the_result_cap",
+      "test_doc_caps.py::test_result_at_exactly_120_lines_passes",
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_with_a_fence_and_under_cap_passes",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails",
+      "test_doc_caps.py::test_roadmap_at_exactly_150_lines_passes",
+      "test_doc_caps.py::test_roadmap_over_150_lines_fails",
+      "test_doc_caps.py::test_spec_at_exactly_400_lines_passes",
+      "test_doc_caps.py::test_the_skip_list_is_relative_to_root_not_absolute"
+     ],
+     "n_failed": 15
+    }
+   },
+   "12": {
+    "tokens": 15568,
+    "std": {
+     "digest": "d952ac3807d9",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_a_clean_tree_has_no_failures",
+      "test_doc_caps.py::test_a_spec_over_400_lines_fails_and_a_long_plan_does_not",
+      "test_doc_caps.py::test_an_unlisted_directory_under_docs_fails",
+      "test_doc_caps.py::test_gitkeep_does_not_count_toward_the_result_cap",
+      "test_doc_caps.py::test_result_at_exactly_120_lines_passes",
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_with_a_fence_and_under_cap_passes",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails",
+      "test_doc_caps.py::test_roadmap_at_exactly_150_lines_passes",
+      "test_doc_caps.py::test_roadmap_over_150_lines_fails",
+      "test_doc_caps.py::test_spec_at_exactly_400_lines_passes",
+      "test_doc_caps.py::test_the_skip_list_is_relative_to_root_not_absolute"
+     ],
+     "n_failed": 15
+    },
+    "ext": {
+     "digest": "d952ac3807d9",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_a_clean_tree_has_no_failures",
+      "test_doc_caps.py::test_a_spec_over_400_lines_fails_and_a_long_plan_does_not",
+      "test_doc_caps.py::test_an_unlisted_directory_under_docs_fails",
+      "test_doc_caps.py::test_gitkeep_does_not_count_toward_the_result_cap",
+      "test_doc_caps.py::test_result_at_exactly_120_lines_passes",
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_with_a_fence_and_under_cap_passes",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails",
+      "test_doc_caps.py::test_roadmap_at_exactly_150_lines_passes",
+      "test_doc_caps.py::test_roadmap_over_150_lines_fails",
+      "test_doc_caps.py::test_spec_at_exactly_400_lines_passes",
+      "test_doc_caps.py::test_the_skip_list_is_relative_to_root_not_absolute"
+     ],
+     "n_failed": 15
+    }
+   },
+   "13": {
+    "tokens": 15718,
+    "std": {
+     "digest": "d952ac3807d9",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_a_clean_tree_has_no_failures",
+      "test_doc_caps.py::test_a_spec_over_400_lines_fails_and_a_long_plan_does_not",
+      "test_doc_caps.py::test_an_unlisted_directory_under_docs_fails",
+      "test_doc_caps.py::test_gitkeep_does_not_count_toward_the_result_cap",
+      "test_doc_caps.py::test_result_at_exactly_120_lines_passes",
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_with_a_fence_and_under_cap_passes",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails",
+      "test_doc_caps.py::test_roadmap_at_exactly_150_lines_passes",
+      "test_doc_caps.py::test_roadmap_over_150_lines_fails",
+      "test_doc_caps.py::test_spec_at_exactly_400_lines_passes",
+      "test_doc_caps.py::test_the_skip_list_is_relative_to_root_not_absolute"
+     ],
+     "n_failed": 15
+    },
+    "ext": {
+     "digest": "d952ac3807d9",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_a_clean_tree_has_no_failures",
+      "test_doc_caps.py::test_a_spec_over_400_lines_fails_and_a_long_plan_does_not",
+      "test_doc_caps.py::test_an_unlisted_directory_under_docs_fails",
+      "test_doc_caps.py::test_gitkeep_does_not_count_toward_the_result_cap",
+      "test_doc_caps.py::test_result_at_exactly_120_lines_passes",
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_with_a_fence_and_under_cap_passes",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails",
+      "test_doc_caps.py::test_roadmap_at_exactly_150_lines_passes",
+      "test_doc_caps.py::test_roadmap_over_150_lines_fails",
+      "test_doc_caps.py::test_spec_at_exactly_400_lines_passes",
+      "test_doc_caps.py::test_the_skip_list_is_relative_to_root_not_absolute"
+     ],
+     "n_failed": 15
+    }
+   },
+   "14": {
+    "tokens": 16472,
+    "std": {
+     "digest": "e8ac7193de8d",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_an_unlisted_directory_under_docs_fails",
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 3
+    },
+    "ext": {
+     "digest": "e8ac7193de8d",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_an_unlisted_directory_under_docs_fails",
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 3
+    }
+   },
+   "15": {
+    "tokens": 16769,
+    "std": {
+     "digest": "e8ac7193de8d",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_an_unlisted_directory_under_docs_fails",
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 3
+    },
+    "ext": {
+     "digest": "e8ac7193de8d",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_an_unlisted_directory_under_docs_fails",
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 3
+    }
+   },
+   "16": {
+    "tokens": 17161,
+    "std": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    },
+    "ext": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    }
+   },
+   "17": {
+    "tokens": 17253,
+    "std": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    },
+    "ext": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    }
+   },
+   "18": {
+    "tokens": 17936,
+    "std": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    },
+    "ext": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    }
+   },
+   "19": {
+    "tokens": 18044,
+    "std": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    },
+    "ext": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    }
+   },
+   "20": {
+    "tokens": 18125,
+    "std": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    },
+    "ext": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    }
+   },
+   "21": {
+    "tokens": 18648,
+    "std": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    },
+    "ext": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    }
+   },
+   "22": {
+    "tokens": 18973,
+    "std": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    },
+    "ext": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    }
+   },
+   "23": {
+    "tokens": 19514,
+    "std": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    },
+    "ext": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    }
+   },
+   "24": {
+    "tokens": 19990,
+    "std": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    },
+    "ext": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    }
+   },
+   "25": {
+    "tokens": 20473,
+    "std": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    },
+    "ext": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    }
+   },
+   "26": {
+    "tokens": 20978,
+    "std": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    },
+    "ext": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    }
+   },
+   "27": {
+    "tokens": 21323,
+    "std": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    },
+    "ext": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    }
+   },
+   "28": {
+    "tokens": 21777,
+    "std": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    },
+    "ext": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    }
+   },
+   "29": {
+    "tokens": 22276,
+    "std": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    },
+    "ext": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    }
+   },
+   "30": {
+    "tokens": 22661,
+    "std": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    },
+    "ext": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    }
+   },
+   "31": {
+    "tokens": 22841,
+    "std": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    },
+    "ext": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    }
+   },
+   "32": {
+    "tokens": 23673,
+    "std": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    },
+    "ext": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    }
+   },
+   "33": {
+    "tokens": 24269,
+    "std": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    },
+    "ext": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    }
+   },
+   "34": {
+    "tokens": 24606,
+    "std": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    },
+    "ext": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    }
+   },
+   "35": {
+    "tokens": 24925,
+    "std": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    },
+    "ext": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    }
+   },
+   "36": {
+    "tokens": 25108,
+    "std": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    },
+    "ext": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    }
+   },
+   "37": {
+    "tokens": 26875,
+    "std": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    },
+    "ext": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    }
+   },
+   "38": {
+    "tokens": 27296,
+    "std": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    },
+    "ext": {
+     "digest": "2ccd88dceacb",
+     "verdict": "fail",
+     "reason": "",
+     "failed": [
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails"
+     ],
+     "n_failed": 2
+    }
+   },
+   "39": {
+    "tokens": 27773,
+    "std": {
+     "digest": "b7871cf96f7d",
+     "verdict": "pass",
+     "reason": "",
+     "failed": [],
+     "n_failed": 0
+    },
+    "ext": {
+     "digest": "b7871cf96f7d",
+     "verdict": "pass",
+     "reason": "",
+     "failed": [],
+     "n_failed": 0
+    }
+   },
+   "40": {
+    "tokens": 27892,
+    "std": {
+     "digest": "b7871cf96f7d",
+     "verdict": "pass",
+     "reason": "",
+     "failed": [],
+     "n_failed": 0
+    },
+    "ext": {
+     "digest": "b7871cf96f7d",
+     "verdict": "pass",
+     "reason": "",
+     "failed": [],
+     "n_failed": 0
+    }
+   },
+   "41": {
+    "tokens": 28479,
+    "std": {
+     "digest": "b7871cf96f7d",
+     "verdict": "pass",
+     "reason": "",
+     "failed": [],
+     "n_failed": 0
+    },
+    "ext": {
+     "digest": "b7871cf96f7d",
+     "verdict": "pass",
+     "reason": "",
+     "failed": [],
+     "n_failed": 0
+    }
+   },
+   "42": {
+    "tokens": 28719,
+    "std": {
+     "digest": "b7871cf96f7d",
+     "verdict": "pass",
+     "reason": "",
+     "failed": [],
+     "n_failed": 0
+    },
+    "ext": {
+     "digest": "b7871cf96f7d",
+     "verdict": "pass",
+     "reason": "",
+     "failed": [],
+     "n_failed": 0
+    }
+   },
+   "43": {
+    "tokens": 28808,
+    "std": {
+     "digest": "b7871cf96f7d",
+     "verdict": "pass",
+     "reason": "",
+     "failed": [],
+     "n_failed": 0
+    },
+    "ext": {
+     "digest": "b7871cf96f7d",
+     "verdict": "pass",
+     "reason": "",
+     "failed": [],
+     "n_failed": 0
+    }
+   },
+   "44": {
+    "tokens": 28917,
+    "std": {
+     "digest": "b7871cf96f7d",
+     "verdict": "pass",
+     "reason": "",
+     "failed": [],
+     "n_failed": 0
+    },
+    "ext": {
+     "digest": "b7871cf96f7d",
+     "verdict": "pass",
+     "reason": "",
+     "failed": [],
+     "n_failed": 0
+    }
+   },
+   "45": {
+    "tokens": 29156,
+    "std": {
+     "digest": "b7871cf96f7d",
+     "verdict": "pass",
+     "reason": "",
+     "failed": [],
+     "n_failed": 0
+    },
+    "ext": {
+     "digest": "41b7b6ff0c28",
+     "verdict": "pass",
+     "reason": "",
+     "failed": [],
+     "n_failed": 0
+    }
+   },
+   "46": {
+    "tokens": 29293,
+    "std": {
+     "digest": "b7871cf96f7d",
+     "verdict": "pass",
+     "reason": "",
+     "failed": [],
+     "n_failed": 0
+    },
+    "ext": {
+     "digest": "41b7b6ff0c28",
+     "verdict": "pass",
+     "reason": "",
+     "failed": [],
+     "n_failed": 0
+    }
+   },
+   "47": {
+    "tokens": 29673,
+    "std": {
+     "digest": "b7871cf96f7d",
+     "verdict": "pass",
+     "reason": "",
+     "failed": [],
+     "n_failed": 0
+    },
+    "ext": {
+     "digest": "41b7b6ff0c28",
+     "verdict": "pass",
+     "reason": "",
+     "failed": [],
+     "n_failed": 0
+    }
+   },
+   "48": {
+    "tokens": 30358,
+    "std": {
+     "digest": "b7871cf96f7d",
+     "verdict": "pass",
+     "reason": "",
+     "failed": [],
+     "n_failed": 0
+    },
+    "ext": {
+     "digest": "41b7b6ff0c28",
+     "verdict": "pass",
+     "reason": "",
+     "failed": [],
+     "n_failed": 0
+    }
+   }
+  },
+  "ext_applied": [
+   {
+    "turn": 28,
+    "seg": "uv run python",
+    "note": "rc=1 stdin>\", line 11, in <lambda>\n  File \"<stdin>\", line 11, in <lambda>\n  [Previous line repeated 995 more times]\nRecursionError: maximum recursion depth exceeded\n",
+    "changed": []
+   },
+   {
+    "turn": 35,
+    "seg": "uv run python",
+    "note": "rc=1 ck (most recent call last):\n  File \"<stdin>\", line 3, in <module>\nAttributeError: 'code' object has no attribute 'firstlineno'. Did you mean: 'co_firstlineno'?\n",
+    "changed": []
+   },
+   {
+    "turn": 37,
+    "seg": "python3 - <<",
+    "note": "rc=0 ",
+    "changed": [
+     "tools/lint_docs.py"
+    ]
+   },
+   {
+    "turn": 37,
+    "seg": "cp /private/tmp/claude-501/-Users-pauleveritt-projects-pauleveritt-satyrn-evals/",
+    "note": "rc=0 ",
+    "changed": [
+     "tools/lint_docs.py"
+    ]
+   },
+   {
+    "turn": 38,
+    "seg": "python3 - <<",
+    "note": "rc=0 ",
+    "changed": [
+     "tools/lint_docs.py"
+    ]
+   },
+   {
+    "turn": 38,
+    "seg": "cp /private/tmp/claude-501/-Users-pauleveritt-projects-pauleveritt-satyrn-evals/",
+    "note": "rc=0 ",
+    "changed": [
+     "tools/lint_docs.py"
+    ]
+   },
+   {
+    "turn": 45,
+    "seg": "python3 - <<",
+    "note": "rc=0 ",
+    "changed": [
+     "tests/test_lint_docs.py"
+    ]
+   },
+   {
+    "turn": 48,
+    "seg": "uv run python",
+    "note": "rc=1 leveritt-projects-pauleveritt-satyrn-evals/553f3cc9-dfd8-475d-89e0-2859bed390d7/scratchpad/fable-cf-review/evidence/work/tmp/tmp6_5h4x8n/docs/.venv/build/x.md'\n",
+    "changed": []
+   }
+  ]
+ }
+]
