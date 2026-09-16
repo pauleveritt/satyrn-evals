@@ -32,6 +32,11 @@ The escape rules are lexical and stated so a reader can recompute them:
   starts with the Engine's redirect sentence and holds that line; a
   ``self_test_enforced`` entry with ``exit_code`` 0. It records the turns and
   output tokens counted up to that event, and which route it took;
+- a **length stop** is one assistant ``message_end`` whose ``stopReason`` is
+  ``"length"``: the per-turn output cap cut that message. It is counted on the
+  same events the budget counter sums ``usage.output`` from, so the two can
+  never disagree about which messages were the model's; ``turn_end`` carries
+  the same field and is not counted.
 - an unquoted newline ends a simple command exactly like ``;``; a newline
   inside a quoted argument stays part of that argument's text.
 - a heredoc body (``<<WORD`` / ``<<-WORD``, ``WORD`` optionally quoted; not
@@ -93,6 +98,7 @@ class CellEvidence:
     guard_firings: dict[str, int] = field(default_factory=dict)
     self_test_calls: int = 0
     bash_test_runs: int = 0
+    length_stops: int = 0
     first_passing_self_test: dict[str, object] | None = None
     timeline: bool = False
     commands_over_120s: int = 0
@@ -113,6 +119,7 @@ class CellEvidence:
             "guard_firings": dict(sorted(self.guard_firings.items())),
             "self_test_calls": self.self_test_calls,
             "bash_test_runs": self.bash_test_runs,
+            "length_stops": self.length_stops,
             "first_passing_self_test": self.first_passing_self_test,
             "timeline": self.timeline,
             "commands_over_120s": self.commands_over_120s,
@@ -358,6 +365,18 @@ def _passing_route(event: dict) -> str | None:
     return None
 
 
+def _length_stop(event: dict) -> bool:
+    """One assistant ``message_end`` cut at the per-turn output cap (module docstring)."""
+    if event.get("type") != "message_end":
+        return False
+    message = event.get("message")
+    return (
+        isinstance(message, dict)
+        and message.get("role") == "assistant"
+        and message.get("stopReason") == "length"
+    )
+
+
 def root_search(command: str, cwd: str | None) -> bool:
     for segment in _segments(command):
         program, rest = _program(segment)
@@ -455,6 +474,7 @@ def collect_evidence(
         guard_firings=dict(guard_firings),
         self_test_calls=sum(1 for e in starts if e["toolName"] == "self_test"),
         bash_test_runs=sum(1 for command in commands if runs_pytest(command)),
+        length_stops=sum(1 for event in events if _length_stop(event)),
         first_passing_self_test=first_pass,
         timeline=timeline is not None,
         commands_over_120s=sum(1 for seconds in finished if seconds > LONG_COMMAND_SECONDS),

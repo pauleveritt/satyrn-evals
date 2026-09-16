@@ -52,3 +52,19 @@ def test_a_cell_within_both_budgets_never_trips() -> None:
 def test_a_budget_must_be_positive_integers(values: tuple[object, object]) -> None:
     with pytest.raises(ValueError, match="positive integer"):
         AttemptBudget(output_tokens=values[0], turns=values[1])  # type: ignore[arg-type]
+
+
+def test_a_length_cut_assistant_message_still_counts_its_output_tokens() -> None:
+    """Design section 3.1: the tripwire still sums `usage.output` under the cap."""
+    wire = BudgetTripwire(AttemptBudget(output_tokens=16000, turns=72))
+    cut = json.dumps({"type": "message_end", "message": {"role": "assistant", "stopReason": "length", "usage": {"output": 16000}}})
+    assert not wire.feed(cut)
+    assert wire.usage.output_tokens == 16000
+    assert wire.feed(json.dumps({"type": "message_end", "message": {"role": "assistant", "stopReason": "length", "usage": {"output": 1}}}))
+    assert wire.over == "output_tokens"
+
+
+def test_an_ordinary_turn_under_the_cap_does_not_trip() -> None:
+    wire = BudgetTripwire(AttemptBudget(output_tokens=16000, turns=72))
+    assert not wire.feed(json.dumps({"type": "message_end", "message": {"role": "assistant", "stopReason": "end_turn", "usage": {"output": 5999}}}))
+    assert wire.over is None

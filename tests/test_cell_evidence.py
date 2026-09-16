@@ -142,7 +142,7 @@ def test_a_timed_out_cell_without_agent_end_still_yields_every_count() -> None:
     assert block == {
         "turns": 1, "output_tokens": 1500, "tool_calls": 3, "root_searches": 1, "bash_outside_paths": 1,
         "file_tool_escapes": 1, "git_commits": 1, "tool_reported_timeouts": 0,
-        "guard_firings": {"command_bounded": 1}, "self_test_calls": 0, "bash_test_runs": 0,
+        "guard_firings": {"command_bounded": 1}, "self_test_calls": 0, "bash_test_runs": 0, "length_stops": 0,
         "first_passing_self_test": None, "timeline": False, "commands_over_120s": 0,
         "unfinished_commands": 0, "longest_command_seconds": None, "overlay_windows": None,
     }
@@ -227,8 +227,12 @@ def test_a_bash_command_that_never_runs_pytest_does_not_count(command: str) -> N
     assert not runs_pytest(command)
 
 
-def _assistant(tokens: int) -> str:
-    return _line({"type": "message_end", "message": {"role": "assistant", "usage": {"output": tokens}}})
+def _assistant(output: int, *, stop: str | None = None, content: list[dict] | None = None) -> str:
+    """One assistant `message_end`, optionally with the stop reason Pi recorded."""
+    message: dict = {"role": "assistant", "usage": {"output": output}, "content": content or []}
+    if stop is not None:
+        message["stopReason"] = stop
+    return _line({"type": "message_end", "message": message})
 
 
 def _end(call_id: str, tool: str, text: str) -> str:
@@ -290,3 +294,59 @@ def test_failing_runs_and_look_alike_text_are_not_a_passing_self_test() -> None:
     block = collect_evidence(text).to_block()
     assert block["first_passing_self_test"] is None
     assert block["self_test_calls"] == 1
+
+
+def test_a_length_cut_turn_that_carries_tool_calls_is_counted_and_the_cell_continues() -> None:
+    """Design section 3.1: the cap fails that turn's tool calls and the loop goes on.
+    The harness must count the cut and keep reading, not void the cell."""
+    text = _transcript(
+        _assistant(16000, stop="length", content=[{"type": "toolCall", "arguments": {"path": "app.py"}}]),
+        *_bash("b1", "uv run python -m pytest tests/ -q"),
+        _line({"type": "turn_start"}),
+        _assistant(900, stop="end_turn"),
+        *_bash("b2", "git status"),
+    )
+    block = collect_evidence(text).to_block()
+    assert block["length_stops"] == 1
+    assert (block["turns"], block["output_tokens"]) == (2, 16900)
+    assert (block["tool_calls"], block["bash_test_runs"]) == (2, 1)
+
+
+def test_a_length_cut_turn_with_no_tool_call_is_counted_the_same_way() -> None:
+    text = _transcript(_assistant(16000, stop="length"))
+    block = collect_evidence(text).to_block()
+    assert (block["length_stops"], block["turns"], block["output_tokens"]) == (1, 1, 16000)
+
+
+def test_a_turn_that_ended_on_its_own_is_not_a_length_stop() -> None:
+    text = _transcript(_assistant(5000, stop="end_turn"), *_bash("b1", "ls"))
+    assert collect_evidence(text).to_block()["length_stops"] == 0
+
+
+def test_an_assistant_message_with_no_stop_reason_is_not_a_length_stop() -> None:
+    assert collect_evidence(_transcript(_assistant(5000))).to_block()["length_stops"] == 0
+
+
+def test_a_turn_end_carrying_the_same_stop_reason_does_not_add_to_the_count() -> None:
+    """Ruling 1: `turn_end` also carries `stopReason` (`turn_ledger._classify`).
+    Counting both families would report 2 where the model was cut once."""
+    text = _transcript(
+        _assistant(16000, stop="length"),
+        _line({"type": "turn_end", "message": {"role": "assistant", "stopReason": "length"}}),
+    )
+    assert collect_evidence(text).to_block()["length_stops"] == 1
+
+
+def test_a_non_assistant_message_end_is_never_a_length_stop() -> None:
+    text = _transcript(
+        _line({"type": "message_end", "message": {"role": "user", "stopReason": "length", "usage": {"output": 10}}})
+    )
+    assert collect_evidence(text).to_block()["length_stops"] == 0
+
+
+def test_two_length_cuts_inside_one_turn_count_twice() -> None:
+    """A turn whose tool calls were failed and retried can be cut more than once;
+    a per-turn boolean would report 1 (Ruling 1)."""
+    text = _transcript(_assistant(16000, stop="length"), _assistant(16000, stop="length"))
+    block = collect_evidence(text).to_block()
+    assert (block["length_stops"], block["turns"], block["output_tokens"]) == (2, 1, 32000)
