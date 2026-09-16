@@ -1,0 +1,292 @@
+{
+ "evals_commit": "e606b24d8f0dbc8a2eb3aa19a0c7adffdba85ced",
+ "evals_dirty": false,
+ "command": "classify.py --night /Users/pauleveritt/satyrn-runs/2026-09-16-census-selfhost-speed-probe --record records/2026-09-16-census-selfhost-speed-probe.json",
+ "task": "selfhost-speed-probe",
+ "cells": [
+  {
+   "task": "selfhost-speed-probe",
+   "arm": "baseline",
+   "attempt": "529092",
+   "code": "COMMAND_TIMEOUT",
+   "verdict": null,
+   "tripped_verdict": null,
+   "turns": 65,
+   "tokens": 44948,
+   "length_stops": 0,
+   "exploration_turns": 22,
+   "biggest_turn": 8,
+   "biggest_tokens": 9462,
+   "biggest_share": 0.211,
+   "tool_span_seconds": 2967.4507332499925,
+   "whole_attempt_seconds": 3002.6796219348907,
+   "self_stop_turn": null,
+   "self_stop_tokens": null,
+   "pass_turn": null,
+   "pass_tokens": null,
+   "own_green_turn": null,
+   "post_pass_turns": null,
+   "post_pass_tokens": null,
+   "flags": {
+    "information": null,
+    "ambiguity": null,
+    "capability": true,
+    "budget": false,
+    "finishing": false,
+    "runaway": false,
+    "hunting": false,
+    "allowlist": false
+   },
+   "run1": {
+    "counterfactual": "not-pass",
+    "change": "none"
+   },
+   "run2": {
+    "counterfactual": "not-pass",
+    "change": "none"
+   },
+   "unmeasured": [],
+   "raised": null
+  },
+  {
+   "task": "selfhost-speed-probe",
+   "arm": "baseline",
+   "attempt": "691593",
+   "code": "NO_PATCH",
+   "verdict": null,
+   "tripped_verdict": null,
+   "turns": 5,
+   "tokens": 16764,
+   "length_stops": 1,
+   "exploration_turns": null,
+   "biggest_turn": 5,
+   "biggest_tokens": 16000,
+   "biggest_share": 0.954,
+   "tool_span_seconds": 45.357642957998905,
+   "whole_attempt_seconds": 868.8920295238495,
+   "self_stop_turn": 5,
+   "self_stop_tokens": 16764,
+   "pass_turn": null,
+   "pass_tokens": null,
+   "own_green_turn": null,
+   "post_pass_turns": null,
+   "post_pass_tokens": null,
+   "flags": {
+    "information": null,
+    "ambiguity": null,
+    "capability": true,
+    "budget": false,
+    "finishing": false,
+    "runaway": true,
+    "hunting": false,
+    "allowlist": false
+   },
+   "run1": {
+    "counterfactual": "not-pass",
+    "change": "none"
+   },
+   "run2": {
+    "counterfactual": "not-pass",
+    "change": "none"
+   },
+   "unmeasured": [],
+   "raised": null
+  },
+  {
+   "task": "selfhost-speed-probe",
+   "arm": "baseline",
+   "attempt": "941646",
+   "code": "COMMAND_TIMEOUT",
+   "verdict": null,
+   "tripped_verdict": null,
+   "turns": 42,
+   "tokens": 36293,
+   "length_stops": 0,
+   "exploration_turns": 10,
+   "biggest_turn": 6,
+   "biggest_tokens": 11621,
+   "biggest_share": 0.32,
+   "tool_span_seconds": 2426.7108997089963,
+   "whole_attempt_seconds": 3002.685943365097,
+   "self_stop_turn": null,
+   "self_stop_tokens": null,
+   "pass_turn": null,
+   "pass_tokens": null,
+   "own_green_turn": null,
+   "post_pass_turns": null,
+   "post_pass_tokens": null,
+   "flags": {
+    "information": null,
+    "ambiguity": null,
+    "capability": true,
+    "budget": false,
+    "finishing": false,
+    "runaway": false,
+    "hunting": false,
+    "allowlist": false
+   },
+   "run1": {
+    "counterfactual": "not-pass",
+    "change": "none"
+   },
+   "run2": {
+    "counterfactual": "not-pass",
+    "change": "none"
+   },
+   "unmeasured": [],
+   "raised": null
+  },
+  {
+   "task": "selfhost-speed-probe",
+   "arm": "baseline",
+   "attempt": "944467",
+   "code": "COMMAND_TIMEOUT",
+   "verdict": null,
+   "tripped_verdict": null,
+   "turns": 37,
+   "tokens": 35177,
+   "length_stops": 0,
+   "exploration_turns": 35,
+   "biggest_turn": 30,
+   "biggest_tokens": 9195,
+   "biggest_share": 0.261,
+   "tool_span_seconds": 2910.4066752920044,
+   "whole_attempt_seconds": 3002.738527774811,
+   "self_stop_turn": null,
+   "self_stop_tokens": null,
+   "pass_turn": null,
+   "pass_tokens": null,
+   "own_green_turn": null,
+   "post_pass_turns": null,
+   "post_pass_tokens": null,
+   "flags": {
+    "information": null,
+    "ambiguity": null,
+    "capability": true,
+    "budget": false,
+    "finishing": false,
+    "runaway": false,
+    "hunting": false,
+    "allowlist": false
+   },
+   "run1": {
+    "counterfactual": "not-pass",
+    "change": "none"
+   },
+   "run2": {
+    "counterfactual": "not-pass",
+    "change": "none"
+   },
+   "unmeasured": [],
+   "raised": null
+  },
+  {
+   "task": "selfhost-speed-probe",
+   "arm": "baseline",
+   "attempt": "123802",
+   "code": "BUDGET_EXCEEDED",
+   "verdict": null,
+   "tripped_verdict": "fail",
+   "turns": 48,
+   "tokens": 48025,
+   "length_stops": 0,
+   "exploration_turns": 20,
+   "biggest_turn": 7,
+   "biggest_tokens": 13222,
+   "biggest_share": 0.275,
+   "tool_span_seconds": 2369.5914475409954,
+   "whole_attempt_seconds": 2415.7813713550568,
+   "self_stop_turn": null,
+   "self_stop_tokens": null,
+   "pass_turn": null,
+   "pass_tokens": null,
+   "own_green_turn": null,
+   "post_pass_turns": null,
+   "post_pass_tokens": null,
+   "flags": {
+    "information": null,
+    "ambiguity": null,
+    "capability": true,
+    "budget": false,
+    "finishing": false,
+    "runaway": false,
+    "hunting": false,
+    "allowlist": false
+   },
+   "run1": {
+    "counterfactual": "not-pass",
+    "change": "none"
+   },
+   "run2": {
+    "counterfactual": "not-pass",
+    "change": "none"
+   },
+   "unmeasured": [],
+   "raised": null
+  },
+  {
+   "task": "selfhost-speed-probe",
+   "arm": "baseline",
+   "attempt": "524583",
+   "code": "NO_PATCH",
+   "verdict": null,
+   "tripped_verdict": null,
+   "turns": 6,
+   "tokens": 26639,
+   "length_stops": 1,
+   "exploration_turns": null,
+   "biggest_turn": 6,
+   "biggest_tokens": 16000,
+   "biggest_share": 0.601,
+   "tool_span_seconds": 693.4498495409935,
+   "whole_attempt_seconds": 1564.092450618744,
+   "self_stop_turn": 6,
+   "self_stop_tokens": 26639,
+   "pass_turn": null,
+   "pass_tokens": null,
+   "own_green_turn": null,
+   "post_pass_turns": null,
+   "post_pass_tokens": null,
+   "flags": {
+    "information": null,
+    "ambiguity": null,
+    "capability": true,
+    "budget": false,
+    "finishing": false,
+    "runaway": true,
+    "hunting": false,
+    "allowlist": false
+   },
+   "run1": {
+    "counterfactual": "not-pass",
+    "change": "none"
+   },
+   "run2": {
+    "counterfactual": "not-pass",
+    "change": "none"
+   },
+   "unmeasured": [],
+   "raised": null
+  }
+ ],
+ "tallies": [
+  {
+   "task": "selfhost-speed-probe",
+   "reading": "run1",
+   "cells": 6,
+   "rescues": 0,
+   "harms": 0,
+   "net": 0,
+   "unmeasured": []
+  },
+  {
+   "task": "selfhost-speed-probe",
+   "reading": "run2",
+   "cells": 6,
+   "rescues": 0,
+   "harms": 0,
+   "net": 0,
+   "unmeasured": []
+  }
+ ]
+}

@@ -1,0 +1,292 @@
+{
+ "evals_commit": "e606b24d8f0dbc8a2eb3aa19a0c7adffdba85ced",
+ "evals_dirty": false,
+ "command": "classify.py --night /Users/pauleveritt/satyrn-runs/2026-09-16-census-selfhost-docs-linter --record records/2026-09-16-census-selfhost-docs-linter.json",
+ "task": "selfhost-docs-linter",
+ "cells": [
+  {
+   "task": "selfhost-docs-linter",
+   "arm": "baseline",
+   "attempt": "312540",
+   "code": "OK",
+   "verdict": "fail",
+   "tripped_verdict": null,
+   "turns": 59,
+   "tokens": 21906,
+   "length_stops": 0,
+   "exploration_turns": 7,
+   "biggest_turn": 11,
+   "biggest_tokens": 3236,
+   "biggest_share": 0.148,
+   "tool_span_seconds": 1161.8539879169984,
+   "whole_attempt_seconds": 1212.2612211704254,
+   "self_stop_turn": 59,
+   "self_stop_tokens": 21906,
+   "pass_turn": null,
+   "pass_tokens": null,
+   "own_green_turn": 51,
+   "post_pass_turns": null,
+   "post_pass_tokens": null,
+   "flags": {
+    "information": null,
+    "ambiguity": null,
+    "capability": true,
+    "budget": false,
+    "finishing": false,
+    "runaway": false,
+    "hunting": false,
+    "allowlist": false
+   },
+   "run1": {
+    "counterfactual": "not-pass",
+    "change": "none"
+   },
+   "run2": {
+    "counterfactual": "not-pass",
+    "change": "none"
+   },
+   "unmeasured": [],
+   "raised": null
+  },
+  {
+   "task": "selfhost-docs-linter",
+   "arm": "baseline",
+   "attempt": "374751",
+   "code": "OK",
+   "verdict": "pass",
+   "tripped_verdict": null,
+   "turns": 52,
+   "tokens": 24059,
+   "length_stops": 0,
+   "exploration_turns": 6,
+   "biggest_turn": 7,
+   "biggest_tokens": 4954,
+   "biggest_share": 0.206,
+   "tool_span_seconds": 1271.317884707998,
+   "whole_attempt_seconds": 1338.5673568248749,
+   "self_stop_turn": 52,
+   "self_stop_tokens": 24059,
+   "pass_turn": 11,
+   "pass_tokens": 11676,
+   "own_green_turn": 21,
+   "post_pass_turns": 41,
+   "post_pass_tokens": 12383,
+   "flags": {
+    "information": null,
+    "ambiguity": null,
+    "capability": false,
+    "budget": false,
+    "finishing": false,
+    "runaway": false,
+    "hunting": false,
+    "allowlist": false
+   },
+   "run1": {
+    "counterfactual": "pass",
+    "change": "none"
+   },
+   "run2": {
+    "counterfactual": "pass",
+    "change": "none"
+   },
+   "unmeasured": [],
+   "raised": null
+  },
+  {
+   "task": "selfhost-docs-linter",
+   "arm": "baseline",
+   "attempt": "453263",
+   "code": "BUDGET_EXCEEDED",
+   "verdict": null,
+   "tripped_verdict": "pass",
+   "turns": 73,
+   "tokens": 36505,
+   "length_stops": 0,
+   "exploration_turns": 6,
+   "biggest_turn": 4,
+   "biggest_tokens": 5640,
+   "biggest_share": 0.154,
+   "tool_span_seconds": 2172.682334375,
+   "whole_attempt_seconds": 2182.3724002838135,
+   "self_stop_turn": null,
+   "self_stop_tokens": null,
+   "pass_turn": 46,
+   "pass_tokens": 27113,
+   "own_green_turn": 63,
+   "post_pass_turns": 27,
+   "post_pass_tokens": 9392,
+   "flags": {
+    "information": null,
+    "ambiguity": null,
+    "capability": false,
+    "budget": false,
+    "finishing": true,
+    "runaway": false,
+    "hunting": false,
+    "allowlist": false
+   },
+   "run1": {
+    "counterfactual": "not-pass",
+    "change": "none"
+   },
+   "run2": {
+    "counterfactual": "not-pass",
+    "change": "none"
+   },
+   "unmeasured": [],
+   "raised": null
+  },
+  {
+   "task": "selfhost-docs-linter",
+   "arm": "baseline",
+   "attempt": "906198",
+   "code": "OK",
+   "verdict": "pass",
+   "tripped_verdict": null,
+   "turns": 66,
+   "tokens": 38476,
+   "length_stops": 0,
+   "exploration_turns": 20,
+   "biggest_turn": 10,
+   "biggest_tokens": 3666,
+   "biggest_share": 0.095,
+   "tool_span_seconds": 2745.489188958003,
+   "whole_attempt_seconds": 2797.457440137863,
+   "self_stop_turn": 66,
+   "self_stop_tokens": 38476,
+   "pass_turn": 47,
+   "pass_tokens": 32481,
+   "own_green_turn": 52,
+   "post_pass_turns": 19,
+   "post_pass_tokens": 5995,
+   "flags": {
+    "information": null,
+    "ambiguity": null,
+    "capability": false,
+    "budget": false,
+    "finishing": false,
+    "runaway": false,
+    "hunting": false,
+    "allowlist": false
+   },
+   "run1": {
+    "counterfactual": "pass",
+    "change": "none"
+   },
+   "run2": {
+    "counterfactual": "pass",
+    "change": "none"
+   },
+   "unmeasured": [],
+   "raised": null
+  },
+  {
+   "task": "selfhost-docs-linter",
+   "arm": "baseline",
+   "attempt": "782306",
+   "code": "OK",
+   "verdict": "pass",
+   "tripped_verdict": null,
+   "turns": 40,
+   "tokens": 27509,
+   "length_stops": 0,
+   "exploration_turns": 11,
+   "biggest_turn": 8,
+   "biggest_tokens": 8996,
+   "biggest_share": 0.327,
+   "tool_span_seconds": 1943.8957063330017,
+   "whole_attempt_seconds": 2007.4781746864319,
+   "self_stop_turn": 40,
+   "self_stop_tokens": 27509,
+   "pass_turn": 17,
+   "pass_tokens": 20672,
+   "own_green_turn": 23,
+   "post_pass_turns": 23,
+   "post_pass_tokens": 6837,
+   "flags": {
+    "information": null,
+    "ambiguity": null,
+    "capability": false,
+    "budget": false,
+    "finishing": false,
+    "runaway": false,
+    "hunting": false,
+    "allowlist": false
+   },
+   "run1": {
+    "counterfactual": "pass",
+    "change": "none"
+   },
+   "run2": {
+    "counterfactual": "pass",
+    "change": "none"
+   },
+   "unmeasured": [],
+   "raised": null
+  },
+  {
+   "task": "selfhost-docs-linter",
+   "arm": "baseline",
+   "attempt": "845472",
+   "code": "OK",
+   "verdict": "pass",
+   "tripped_verdict": null,
+   "turns": 54,
+   "tokens": 38999,
+   "length_stops": 0,
+   "exploration_turns": 10,
+   "biggest_turn": 9,
+   "biggest_tokens": 8529,
+   "biggest_share": 0.219,
+   "tool_span_seconds": 2338.5273001250025,
+   "whole_attempt_seconds": 2374.831939458847,
+   "self_stop_turn": 54,
+   "self_stop_tokens": 38999,
+   "pass_turn": 14,
+   "pass_tokens": 22017,
+   "own_green_turn": 30,
+   "post_pass_turns": 40,
+   "post_pass_tokens": 16982,
+   "flags": {
+    "information": null,
+    "ambiguity": null,
+    "capability": false,
+    "budget": false,
+    "finishing": false,
+    "runaway": false,
+    "hunting": false,
+    "allowlist": false
+   },
+   "run1": {
+    "counterfactual": "pass",
+    "change": "none"
+   },
+   "run2": {
+    "counterfactual": "pass",
+    "change": "none"
+   },
+   "unmeasured": [],
+   "raised": null
+  }
+ ],
+ "tallies": [
+  {
+   "task": "selfhost-docs-linter",
+   "reading": "run1",
+   "cells": 6,
+   "rescues": 0,
+   "harms": 0,
+   "net": 0,
+   "unmeasured": []
+  },
+  {
+   "task": "selfhost-docs-linter",
+   "reading": "run2",
+   "cells": 6,
+   "rescues": 0,
+   "harms": 0,
+   "net": 0,
+   "unmeasured": []
+  }
+ ]
+}
