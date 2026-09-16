@@ -13,7 +13,10 @@ spec file under ``tools/task_specs/`` (spec, "The self-hosted generator"):
   ``fixtures/known-broken.patch`` replaces the spec's ``broken`` files with
   their stub text (a stub that imports and does nothing, or a no-op edit);
 - ``manifest.json`` carries the provenance shas, the task-tree digest (every
-  file beside the manifest) and the digest of the ``R1-plan`` prompt.
+  file beside the manifest) and the digest of the ``R1-plan`` prompt;
+- ``prompt_edits`` in the spec are applied to the cut prompt in order, each
+  ``old`` required exactly once, and recorded in the manifest's ``generator``
+  block; the plan document is never edited.
 
 The R1-plan prompt is the plan task's title, Files, Interfaces minus its
 Consumes lines, and the prose of every step with fenced code removed, plus
@@ -69,6 +72,10 @@ ORACLE = ("python", "-m", "pytest", "-p", "satyrn_evals.oracle_hook")
 PUBLIC_SUITE = ("uv", "run", "pytest", "-q")
 _SHA = re.compile(r"\A[0-9a-f]{40}\Z")
 _SPEC_KEYS = frozenset({"name", "base", "good", "files", "hidden", "plan", "formats", "broken", "oracle_env"})
+#: Optional in a spec, so every already-cut task re-cuts byte-identically
+#: (a required key would move every task tree's digest).
+_OPTIONAL_SPEC_KEYS = frozenset({"prompt_edits"})
+_EDIT_KEYS = frozenset({"old", "new", "reason"})
 
 
 class CutError(Exception):
@@ -83,6 +90,19 @@ class PlanAnchor:
 
 
 @dataclass(frozen=True, slots=True)
+class PromptEdit:
+    """One recorded patch to the cut prompt (design section 4).
+
+    The plan document is never edited; the prompt's provenance is the
+    historical plan plus this named patch, recorded in the manifest.
+    """
+
+    old: str
+    new: str
+    reason: str
+
+
+@dataclass(frozen=True, slots=True)
 class TaskSpec:
     name: str
     base: str
@@ -93,6 +113,7 @@ class TaskSpec:
     formats: str
     broken: dict[str, str]
     oracle_env: dict[str, str]
+    prompt_edits: tuple[PromptEdit, ...] = ()
 
 
 def _strings(value: object, field: str) -> tuple[str, ...]:
@@ -107,8 +128,10 @@ def load_spec(path: Path) -> TaskSpec:
         body = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
         raise CutError(f"spec {path}: {error}") from error
-    if not isinstance(body, dict) or set(body) != _SPEC_KEYS:
-        raise CutError(f"spec {path}: keys must be exactly {sorted(_SPEC_KEYS)}")
+    if not isinstance(body, dict) or not (_SPEC_KEYS <= set(body) <= _SPEC_KEYS | _OPTIONAL_SPEC_KEYS):
+        raise CutError(
+            f"spec {path}: keys must be exactly {sorted(_SPEC_KEYS)}, optionally with {sorted(_OPTIONAL_SPEC_KEYS)}"
+        )
     for field in ("base", "good"):
         if not isinstance(body[field], str) or not _SHA.match(body[field]):
             raise CutError(f"spec {path}: {field} must be a full 40-hex commit")
@@ -135,6 +158,21 @@ def load_spec(path: Path) -> TaskSpec:
         raise CutError(f"spec {path}: every hidden file must sit under a directory (the prompt names the directory)")
     if len({Path(h).name for h in hidden}) != len(hidden):
         raise CutError(f"spec {path}: hidden basenames must be distinct (the overlay is flattened)")
+    raw_edits = body.get("prompt_edits", [])
+    if not isinstance(raw_edits, list):
+        raise CutError(f"spec {path}: prompt_edits must be a list of {{old, new, reason}}")
+    edits: list[PromptEdit] = []
+    for index, item in enumerate(raw_edits, 1):
+        if not isinstance(item, dict) or set(item) != _EDIT_KEYS:
+            raise CutError(f"spec {path}: prompt_edits[{index}] must have exactly {sorted(_EDIT_KEYS)}")
+        if not all(isinstance(item[key], str) and item[key] for key in _EDIT_KEYS):
+            raise CutError(f"spec {path}: prompt_edits[{index}] fields must be non-empty strings")
+        if item["old"] in item["new"]:
+            raise CutError(
+                f"spec {path}: prompt_edits[{index}] new text must not contain its own old text "
+                "(qualification asks whether the old text is gone from the prompt)"
+            )
+        edits.append(PromptEdit(item["old"], item["new"], item["reason"]))
     return TaskSpec(
         name=body["name"],
         base=body["base"],
@@ -145,6 +183,7 @@ def load_spec(path: Path) -> TaskSpec:
         formats=body["formats"],
         broken=dict(body["broken"]),
         oracle_env=dict(body["oracle_env"]),
+        prompt_edits=tuple(edits),
     )
 
 
@@ -207,6 +246,22 @@ def hidden_directory(path: str) -> str:
     return f"{Path(path).parent.as_posix()}/"
 
 
+def apply_prompt_edits(prompt: str, edits: Sequence[PromptEdit]) -> str:
+    """Apply each edit in order; each ``old`` must occur exactly once when its turn comes.
+
+    Order matters and is part of the record: a later edit may anchor on text an
+    earlier one introduced, which is why the count is checked against the text
+    as it stands rather than against the original.
+    """
+    text = prompt
+    for index, edit in enumerate(edits, 1):
+        count = text.count(edit.old)
+        if count != 1:
+            raise CutError(f"prompt edit {index}: its old text occurs {count} times in the prompt, want 1")
+        text = text.replace(edit.old, edit.new, 1)
+    return text
+
+
 def broken_patch(base_texts: Mapping[str, str | None], broken: Mapping[str, str]) -> str:
     """A git-style patch replacing each broken file with its stub (new file when absent at BASE)."""
     chunks: list[str] = []
@@ -232,6 +287,17 @@ def manifest_body(
 ) -> dict[str, object]:
     """The manifest a cut task carries, in the bundled tasks' shape."""
     oracle = [*(["env", *(f"{k}={v}" for k, v in sorted(spec.oracle_env.items()))] if spec.oracle_env else []), *ORACLE]
+    generator: dict[str, object] = {
+        "tool": "tools/cut_task.py",
+        "rung": RUNG,
+        "files": list(spec.files),
+        "hidden": list(spec.hidden),
+        "plan": {"path": spec.plan.path, "heading": spec.plan.heading, "commit": spec.plan.commit},
+    }
+    if spec.prompt_edits:
+        generator["prompt_edits"] = [
+            {"old": edit.old, "new": edit.new, "reason": edit.reason} for edit in spec.prompt_edits
+        ]
     return {
         "name": spec.name,
         "contract": prompt,
@@ -245,13 +311,7 @@ def manifest_body(
         "grader_overlay": "overlay",
         "oracle_visibility": "hidden",
         "provenance": {"repo": REPO_URL, "base_sha": spec.base, "fix_sha": spec.good},
-        "generator": {
-            "tool": "tools/cut_task.py",
-            "rung": RUNG,
-            "files": list(spec.files),
-            "hidden": list(spec.hidden),
-            "plan": {"path": spec.plan.path, "heading": spec.plan.heading, "commit": spec.plan.commit},
-        },
+        "generator": generator,
         "digests": {"task_tree": task_tree, "prompt": contract_digest(prompt)},
     }
 
@@ -346,7 +406,10 @@ def cut(spec: TaskSpec, repo: Path, tasks_root: Path) -> Path:
     (dest / "fixtures" / "known-broken.patch").write_text(
         broken_patch({path: show(repo, spec.base, path) for path in spec.broken}, spec.broken)
     )
-    prompt = r1_plan_prompt(plan_section(read_plan(repo, spec.plan), spec.plan.heading), spec.hidden, spec.formats)
+    prompt = apply_prompt_edits(
+        r1_plan_prompt(plan_section(read_plan(repo, spec.plan), spec.plan.heading), spec.hidden, spec.formats),
+        spec.prompt_edits,
+    )
     body = manifest_body(spec, prompt, collect_ids(repo, spec), tree_digest(dest, exclude={"manifest.json"}))
     (dest / "manifest.json").write_text(json.dumps(body, indent=2, ensure_ascii=False) + "\n")
     return dest

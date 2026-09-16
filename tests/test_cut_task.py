@@ -10,6 +10,8 @@ from tools.cut_task import (
     IGNORED_PATHS,
     RUNG,
     CutError,
+    PromptEdit,
+    apply_prompt_edits,
     broken_patch,
     excluded,
     load_spec,
@@ -22,11 +24,6 @@ from tools.cut_task import (
 
 SPECS = Path(__file__).resolve().parent.parent / "tools" / "task_specs"
 SHA_A, SHA_B = "a" * 40, "b" * 40
-SPEC = {
-    "name": "t", "base": SHA_A, "good": SHA_B, "files": ["tools/x.py"], "hidden": ["tests/test_x.py"],
-    "plan": {"path": "docs/plan.md", "heading": "### Task 1: X", "commit": SHA_A},
-    "formats": "", "broken": {"tools/x.py": "def f():\n    return None\n"}, "oracle_env": {},
-}
 PLAN = """# Plan
 
 ### Chunk 1: The x tool
@@ -53,14 +50,24 @@ def test_f():
 """
 
 
-def _spec(tmp_path: Path, **over: object) -> Path:
+@pytest.fixture
+def spec_body() -> dict:
+    """A minimal valid spec dict; a test copies it and overlays one key."""
+    return {
+        "name": "t", "base": SHA_A, "good": SHA_B, "files": ["tools/x.py"], "hidden": ["tests/test_x.py"],
+        "plan": {"path": "docs/plan.md", "heading": "### Task 1: X", "commit": SHA_A},
+        "formats": "", "broken": {"tools/x.py": "def f():\n    return None\n"}, "oracle_env": {},
+    }
+
+
+def _spec(tmp_path: Path, spec_body: dict, **over: object) -> Path:
     path = tmp_path / "spec.json"
-    path.write_text(json.dumps({**SPEC, **over}))
+    path.write_text(json.dumps({**spec_body, **over}))
     return path
 
 
-def test_a_complete_spec_loads(tmp_path: Path) -> None:
-    spec = load_spec(_spec(tmp_path))
+def test_a_complete_spec_loads(tmp_path: Path, spec_body: dict) -> None:
+    spec = load_spec(_spec(tmp_path, spec_body))
     assert (spec.files, spec.hidden, spec.plan.heading) == (("tools/x.py",), ("tests/test_x.py",), "### Task 1: X")
 
 
@@ -76,9 +83,9 @@ def test_a_complete_spec_loads(tmp_path: Path) -> None:
         ({"plan": {"path": "p", "heading": "h"}}, "plan must be"),
     ],
 )
-def test_a_malformed_spec_is_refused(tmp_path: Path, over: dict[str, object], message: str) -> None:
+def test_a_malformed_spec_is_refused(tmp_path: Path, spec_body: dict, over: dict[str, object], message: str) -> None:
     with pytest.raises(CutError, match=message):
-        load_spec(_spec(tmp_path, **over))
+        load_spec(_spec(tmp_path, spec_body, **over))
 
 
 def test_every_committed_spec_loads() -> None:
@@ -159,8 +166,8 @@ def test_a_broken_stub_identical_to_base_is_refused() -> None:
         broken_patch({"tools/x.py": "a\n"}, {"tools/x.py": "a\n"})
 
 
-def test_the_manifest_pins_the_rung_the_provenance_and_both_digests(tmp_path: Path) -> None:
-    spec = load_spec(_spec(tmp_path, oracle_env={"PYTHONPATH": "src"}))
+def test_the_manifest_pins_the_rung_the_provenance_and_both_digests(tmp_path: Path, spec_body: dict) -> None:
+    spec = load_spec(_spec(tmp_path, spec_body, oracle_env={"PYTHONPATH": "src"}))
     body = manifest_body(spec, "prompt\n", ["test_x.py::test_f"], "d" * 64)
     assert body["contract"] == "prompt\n" and body["contracts"] == {RUNG: "prompt\n"}
     assert body["oracle"] == ["env", "PYTHONPATH=src", "python", "-m", "pytest", "-p", "satyrn_evals.oracle_hook"]
@@ -175,3 +182,69 @@ def test_collected_ids_stop_at_the_summary_and_none_is_refused() -> None:
         "test_x.py::test_f", "test_x.py::test_g[a]"]
     with pytest.raises(CutError, match="collected no tests"):
         parse_collected("\nno tests ran\n")
+
+
+EDITS = (
+    PromptEdit(old="Gate rules:", new="Validation rules enforced by load_run_record:", reason="r1"),
+    PromptEdit(old="enforced by load_run_record", new="enforced by load_run_record and re-checked by gate", reason="r2"),
+)
+
+
+def test_edits_apply_in_order_and_may_depend_on_an_earlier_one() -> None:
+    assert apply_prompt_edits("Gate rules: a\n", EDITS) == (
+        "Validation rules enforced by load_run_record and re-checked by gate: a\n"
+    )
+
+
+def test_an_old_string_that_is_absent_is_refused() -> None:
+    with pytest.raises(CutError, match="occurs 0 times"):
+        apply_prompt_edits("nothing here\n", EDITS[:1])
+
+
+def test_an_old_string_that_occurs_twice_is_refused() -> None:
+    with pytest.raises(CutError, match="occurs 2 times"):
+        apply_prompt_edits("Gate rules: a\nGate rules: b\n", EDITS[:1])
+
+
+def test_a_new_string_containing_its_own_old_string_is_refused_at_load(tmp_path: Path, spec_body: dict) -> None:
+    """Ruling 5: qualification decides `new` present / `old` absent; an edit
+    whose replacement re-introduces its own anchor makes that undecidable."""
+    body = spec_body | {"prompt_edits": [{"old": "Gate rules", "new": "Gate rules, restated", "reason": "r"}]}
+    path = tmp_path / "spec.json"
+    path.write_text(json.dumps(body))
+    with pytest.raises(CutError, match="must not contain its own old text"):
+        load_spec(path)
+
+
+@pytest.mark.parametrize(
+    "edit",
+    [
+        {"old": "", "new": "x", "reason": "r"},
+        {"old": "a", "new": "", "reason": "r"},
+        {"old": "a", "new": "b", "reason": ""},
+        {"old": "a", "new": "b"},
+        {"old": "a", "new": "b", "reason": "r", "extra": 1},
+    ],
+)
+def test_a_malformed_edit_is_refused_at_load(tmp_path: Path, spec_body: dict, edit: dict) -> None:
+    path = tmp_path / "spec.json"
+    path.write_text(json.dumps(spec_body | {"prompt_edits": [edit]}))
+    with pytest.raises(CutError, match="prompt_edits"):
+        load_spec(path)
+
+
+def test_a_spec_without_prompt_edits_still_loads_and_writes_no_manifest_key(tmp_path: Path, spec_body: dict) -> None:
+    """The compatibility direction: every already-cut task must re-cut byte-identically."""
+    path = tmp_path / "spec.json"
+    path.write_text(json.dumps(spec_body))
+    spec = load_spec(path)
+    assert spec.prompt_edits == ()
+    body = manifest_body(spec, "prompt\n", ["tests/test_x.py::test_y"], "0" * 64)
+    assert "prompt_edits" not in body["generator"]
+
+
+def test_recorded_edits_land_in_the_generator_block(tmp_path: Path, spec_body: dict) -> None:
+    path = tmp_path / "spec.json"
+    path.write_text(json.dumps(spec_body | {"prompt_edits": [{"old": "a", "new": "b", "reason": "r"}]}))
+    body = manifest_body(load_spec(path), "b\n", ["tests/test_x.py::test_y"], "0" * 64)
+    assert body["generator"]["prompt_edits"] == [{"old": "a", "new": "b", "reason": "r"}]

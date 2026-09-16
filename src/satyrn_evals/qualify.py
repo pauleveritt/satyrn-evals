@@ -163,6 +163,36 @@ def judge_prompt(contracts: dict[str, str], source_paths: tuple[str, ...], base:
     return Check("r1-plan-prompt", not unresolved, detail)
 
 
+def judge_prompt_edits(manifest_body: dict) -> Check:
+    """Every recorded prompt edit is the one the shipped prompt carries (Ruling 5).
+
+    Pure, and deliberately weaker than ``cut_task.py check``: the plan's history
+    is that command's business. The question here is only whether the manifest's
+    record of the patch matches the prompt it ships beside, so a reader can
+    trust ``generator.prompt_edits`` as provenance without a git checkout.
+    """
+    generator = manifest_body.get("generator")
+    edits = (generator or {}).get("prompt_edits") or []
+    if not edits:
+        return Check("prompt-edits", True, "no recorded prompt edits")
+    prompt = (manifest_body.get("contracts") or {}).get(PLAN_RUNG)
+    if not isinstance(prompt, str):
+        return Check("prompt-edits", False, f"{len(edits)} recorded edits but no {PLAN_RUNG} prompt")
+    problems: list[str] = []
+    for index, edit in enumerate(edits, 1):
+        if not isinstance(edit, dict) or not all(
+            isinstance(edit.get(key), str) and edit.get(key) for key in ("old", "new", "reason")
+        ):
+            problems.append(f"edit {index} is not {{old, new, reason}} of non-empty strings")
+            continue
+        if (count := prompt.count(edit["new"])) != 1:
+            problems.append(f"edit {index}: its new text occurs {count} times, want 1")
+        if edit["old"] in prompt:
+            problems.append(f"edit {index}: its old text is still in the prompt")
+    detail = "; ".join(problems) if problems else f"{len(edits)} recorded edits are in the prompt"
+    return Check("prompt-edits", not problems, detail)
+
+
 def convention_files_patch(paths: tuple[str, ...]) -> str:
     """New-file sections for ``paths``, as a model following the base's conventions writes them."""
     return "".join(
@@ -212,7 +242,9 @@ def qualify(task_dir: Path, *, scratch: Path | None = None) -> list[Check]:
             judge_fixture("known-broken", grade(task_dir, broken, root / "broken.json"), expect=Verdict.FAIL, expected_ids=expected)
         )
         checks.append(judge_prompt(manifest.contracts, manifest.source_paths, task_dir / "base"))
-        generated = "generator" in json.loads((task_dir / "manifest.json").read_text(encoding="utf-8"))
+        manifest_body = json.loads((task_dir / "manifest.json").read_text(encoding="utf-8"))
+        checks.append(judge_prompt_edits(manifest_body))
+        generated = "generator" in manifest_body
         extra = SELF_HOSTED_CONVENTION_FILES if generated else ()
         harvest = root / "harvest.patch"
         harvest.write_text(convention_files_patch(extra) + good.read_text(encoding="utf-8"), encoding="utf-8")

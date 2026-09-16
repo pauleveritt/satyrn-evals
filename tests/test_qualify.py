@@ -17,6 +17,7 @@ from satyrn_evals.qualify import (
     judge_fixture,
     judge_harvest,
     judge_prompt,
+    judge_prompt_edits,
     prompt_paths,
 )
 from satyrn_evals.qualify_fake_pi import committed_paths
@@ -144,3 +145,43 @@ def test_every_candidate_prompt_qualifies(name: str) -> None:
 def test_every_generated_candidate_ignores_the_convention_files_and_no_other_task_ignores_any(name: str) -> None:
     generated = "generator" in json.loads((DEFAULT_TASKS_ROOT / name / "manifest.json").read_text())
     assert load_manifest(DEFAULT_TASKS_ROOT / name).ignored_paths == (SELF_HOSTED_CONVENTION_FILES if generated else ())
+
+
+EDIT_PROMPT = "Validation rules enforced by load_run_record: mode is attended.\n"
+
+
+def _body(edits: list[dict] | None, prompt: str = EDIT_PROMPT) -> dict:
+    generator: dict = {"tool": "tools/cut_task.py", "rung": "R1-plan"}
+    if edits is not None:
+        generator["prompt_edits"] = edits
+    return {"generator": generator, "contracts": {"R1-plan": prompt}}
+
+
+def test_a_manifest_with_no_recorded_edits_passes() -> None:
+    assert judge_prompt_edits(_body(None)).passed
+
+
+def test_recorded_edits_that_are_in_the_prompt_pass() -> None:
+    check = judge_prompt_edits(_body([{"old": "Gate rules:", "new": "Validation rules enforced by load_run_record:", "reason": "r"}]))
+    assert check.passed, check.detail
+
+
+def test_an_edit_whose_old_text_is_still_in_the_prompt_fails() -> None:
+    check = judge_prompt_edits(_body([{"old": "mode is attended", "new": "Validation rules", "reason": "r"}]))
+    assert not check.passed and "old text is still" in check.detail
+
+
+def test_an_edit_whose_new_text_is_absent_fails() -> None:
+    check = judge_prompt_edits(_body([{"old": "Gate rules:", "new": "nowhere", "reason": "r"}]))
+    assert not check.passed and "occurs 0 times" in check.detail
+
+
+def test_an_edit_whose_new_text_occurs_twice_fails() -> None:
+    check = judge_prompt_edits(_body([{"old": "x", "new": "rules", "reason": "r"}], "rules and rules\n"))
+    assert not check.passed and "occurs 2 times" in check.detail
+
+
+def test_recorded_edits_with_no_plan_prompt_fail() -> None:
+    body = _body([{"old": "a", "new": "b", "reason": "r"}])
+    body["contracts"] = {}
+    assert not judge_prompt_edits(body).passed

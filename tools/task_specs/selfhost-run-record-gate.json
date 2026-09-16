@@ -20,5 +20,17 @@
   },
   "oracle_env": {
     "PYTHONPATH": "src"
-  }
+  },
+  "prompt_edits": [
+    {
+      "old": "`load_run_record(path: Path) -> RunRecord` (raises `RunRecordError`, a `UsageError` subclass from `errors.py`, naming the first missing or ill-typed field)",
+      "new": "`load_run_record(path: Path) -> RunRecord` (raises `RunRecordError`, which you define in `src/satyrn_evals/run_record.py` as a subclass of the existing `UsageError`, imported from `errors.py`; `errors.py` is already correct and is not one of the files you may change, so add nothing to it; the exception names the first missing or ill-typed field)",
+      "reason": "release-one admission: 5 of 9 cells put RunRecordError in errors.py, outside source_paths, and the patch was rejected (tasks/KNOWN_DEFECTS.md)"
+    },
+    {
+      "old": "Gate rules: `mode` is `attended` (n ≤ 8, `max_minutes` ≤ 60) or `batch` (n ≤ 12, `max_minutes` ≤ 720); `condition` is `cold` or `warm`; `task_tree_sha256` is 64 lowercase hex; `stop_rule` and `decision_rule` are non-empty; `previous_result` is `null` or a path — when a path, `previous_result_committed` must be `True` (the CLI computes it; the pure gate is told).",
+      "new": "Validation rules. `load_run_record` enforces these as it reads the file, raising `RunRecordError`: `condition` is `cold` or `warm`; `mode` is `attended` or `batch`; `task_tree_sha256` is 64 lowercase hex; `stop_rule` and `decision_rule` are non-empty. `gate` then enforces the cadence on an already-loaded record, raising `RunRecordError`: `attended` is n ≤ 8 and `max_minutes` ≤ 60, `batch` is n ≤ 12 and `max_minutes` ≤ 720; and when `previous_result` is a path, `previous_result_committed` must be `True` (the CLI computes it; the pure gate is told).",
+      "reason": "release-one admission: with errors.py allowed, 8 of 9 cells read every rule here as gate()'s and left load_run_record permissive, while the hidden suite asserts load_run_record refuses (tasks/KNOWN_DEFECTS.md)"
+    }
+  ]
 }
