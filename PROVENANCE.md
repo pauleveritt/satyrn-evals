@@ -4164,3 +4164,7 @@
 | tests/test_workspace_tripped_harvest.py | created in release-one |
 | tests/test_attempt_tripped_verdict.py | created in release-one |
 | docs/superpowers/specs/2026-09-15-release-two-task-validity.md | created in release-one |
+| src/satyrn_evals/census_classify.py | created in release-one |
+| evidence/2026-09-16-census/classify.py | created in release-one |
+| evidence/2026-09-16-census/.gitignore | created in release-one |
+| tests/test_census_classify.py | created in release-one |
