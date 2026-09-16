@@ -1,6 +1,6 @@
 # Working in this repository
 
-Read `BRIEF.md`, `ROADMAP.md`, and
+Read `STATE.md` (what exists, what is proven, what is decided), `BRIEF.md`, `ROADMAP.md`, and
 `docs/superpowers/specs/2026-09-15-release-two-r0-constraints.md`. Then read
 the spec for the current stage (today,
 `docs/superpowers/specs/2026-09-15-release-two-finishing-counterfactual.md`,

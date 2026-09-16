@@ -4157,3 +4157,5 @@
 | evidence/2026-09-15-finishing-counterfactual/run-2/triggers.md | created in release-one |
 | evidence/2026-09-15-finishing-counterfactual/run-2/triggers.py | created in release-one |
 | evidence/2026-09-15-finishing-counterfactual/run-2/.gitignore | created in release-one |
+| STATE.md | created in release-one |
+| evidence/2026-09-15-release-one-decision-ledger.md | created in release-one |
