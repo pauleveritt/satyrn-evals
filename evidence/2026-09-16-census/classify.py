@@ -42,7 +42,9 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from satyrn_evals import census_classify as cc
-from satyrn_evals.cell_evidence import collect_evidence
+from satyrn_evals.cell_evidence import HARNESS_CUT_CODES, collect_evidence
+from satyrn_evals.errors import PatchParseError
+from satyrn_evals.patch import drop_ignored, parse_patch_paths, within_source
 from satyrn_evals.session_patch import RESIDUE_EXCLUDES, build_cumulative_patch
 
 HERE = Path(__file__).resolve().parent
@@ -169,9 +171,14 @@ def _receipt_reason(cell: Cell, attempt: dict) -> str | None:
         return None
 
 
-def audit(cell: Cell, attempt: dict) -> dict:
+def audit(cell: Cell, attempt: dict, bash_touched: dict[int, tuple[str, ...]]) -> dict:
     """run-2/audit.py's row, for this cell, with the package's per-turn count and
-    the section 6 fields taken from `cell_evidence.collect_evidence`."""
+    the section 6 fields taken from `cell_evidence.collect_evidence`.
+
+    Ruling R-5b: the source-edit route is the replay's ``bash_touched`` map, the
+    same route the committed counterfactual's `measure` uses
+    (`counterfactual.py:953`), so the census's exploration turns and edits are
+    comparable with run 2's."""
     manifest = json.loads((cf.TASKS / cell.task / "manifest.json").read_text())
     sp = tuple(manifest["source_paths"])
     transcript = (cell.folder / "transcript.txt").read_text()
@@ -183,8 +190,10 @@ def audit(cell: Cell, attempt: dict) -> dict:
         transcript,
         timeline=timeline_path.read_text() if timeline_path.is_file() else None,
         source_paths=sp,
+        # A harness-cut code's ``agent_end`` is tear-down residue (Ruling R-3).
+        cut=attempt.get("code") in HARNESS_CUT_CODES,
     ).to_block()
-    edits = cf.source_edit_indices(steps, sp, cwd, {})
+    edits = cf.source_edit_indices(steps, sp, cwd, bash_touched)
     first = (
         None
         if not edits
@@ -251,7 +260,9 @@ def audit(cell: Cell, attempt: dict) -> dict:
         "attempt_dir": cell.attempt_dir,
         "code": attempt.get("code"),
         "verdict": attempt.get("verdict"),
-        "tripped_verdict": attempt.get("tripped_verdict"),
+        # The record no longer carries a tripped verdict (Ruling R-1); the
+        # driver grades the harvested patch offline and fills this in.
+        "tripped_verdict": None,
         "allowlist_reason": _receipt_reason(cell, attempt),
         "cwd": cwd,
         "first_source_edit": first,
@@ -452,21 +463,45 @@ def offline_fields(cell: Cell, audit_row: dict, traj: dict, steps: list, edits: 
     }
 
 
-def _allowlist_reason(traj: dict, final: dict | None) -> str | None:
-    """A non-source-path reason from any graded turn, or from the final grade.
+def _tripped_verdict(cell: Cell, grade_root: Path) -> str | None:
+    """Grade the harvested torn-down worktree offline (Ruling R-1).
 
-    Design section 7's allowlist class is "a passing state exists but a file
-    outside `source_paths` voids the patch"; a reconstructed grade that came
-    back `unavailable` for a non-source path is that evidence too, so every
-    graded turn is scanned, not only the pass state's (MINOR 5).
+    Task 1's harvest writes the conventional `<attempt_dir>/tripped.diff`, so
+    the file -- not the record field -- is the interface; a cell without one
+    (every non-`BUDGET_EXCEEDED` cell) has no tripped verdict. Cached by digest
+    through `_grade`.
     """
-    for turn in sorted(traj["turns"]):
-        reason = traj["turns"][turn].get("reason")
-        if reason and "non-source path" in reason:
-            return reason
-    if final is not None and "non-source path" in (final.get("reason") or ""):
-        return final["reason"]
-    return None
+    path = cell.folder / "tripped.diff"
+    if not path.is_file():
+        return None
+    return _grade(cell.task, path.read_text(), grade_root, f"{cell.attempt}-tripped")["verdict"]
+
+
+def _filtered_allowlist_reason(
+    cell: Cell, patch: str, source_paths: tuple[str, ...], grade_root: Path
+) -> str | None:
+    """A non-source path is allowlist evidence only when the filtered patch passes.
+
+    Ruling R-4: design section 7's allowlist class is "a passing state exists
+    but a file outside `source_paths` voids the patch". An unfiltered
+    "non-source path" reason is not that evidence, so the four false positives
+    are removed: the patch's non-source sections are dropped with the same
+    filter `ignored_paths` uses (`drop_ignored`), the remainder is graded, and
+    the reason is returned only when that filtered remainder grades `pass`.
+    """
+    try:
+        paths = parse_patch_paths(patch)
+    except PatchParseError:
+        return None
+    non_source = tuple(path for path in paths if not within_source(path, source_paths))
+    if not non_source:
+        return None
+    filtered, dropped = drop_ignored(patch, non_source)
+    if not filtered.strip():
+        return None
+    if _grade(cell.task, filtered, grade_root, f"{cell.attempt}-filtered")["verdict"] != "pass":
+        return None
+    return "filtered pass after removing non-source path(s): " + ", ".join(dropped)
 
 
 def counterfactual(
@@ -542,13 +577,21 @@ def _no_reading(audit_row: dict, raised: str | None = None) -> dict:
     }
 
 
-def row(cell: Cell, audit_row: dict, offline: dict, reading: dict, raised: str | None) -> dict:
+def row(
+    cell: Cell,
+    audit_row: dict,
+    offline: dict,
+    reading: dict,
+    raised: str | None,
+    exploration_turns: int | None,
+) -> dict:
     """Assemble one output row. The table shape is the driver's, not the package's."""
     evidence = audit_row["evidence"]
     facts = cc.Facts(
         code=audit_row["code"],
         verdict=audit_row["verdict"],
         tripped_verdict=audit_row["tripped_verdict"],
+        raised=raised,
         length_stops=evidence["length_stops"],
         root_searches=evidence["root_searches"],
         tool_reported_timeouts=evidence["tool_reported_timeouts"],
@@ -569,7 +612,7 @@ def row(cell: Cell, audit_row: dict, offline: dict, reading: dict, raised: str |
         "turns": evidence["turns"],
         "tokens": evidence["output_tokens"],
         "length_stops": evidence["length_stops"],
-        "exploration_turns": evidence["exploration_turns"],
+        "exploration_turns": exploration_turns,
         "biggest_turn": biggest.get("turn"),
         "biggest_tokens": biggest.get("output_tokens"),
         "biggest_share": biggest.get("share"),
@@ -599,9 +642,24 @@ def measure(cell: Cell, grade_root: Path) -> dict:
             attempt = {}
     except Exception as exc:  # an unreadable attempt is reported, not fatal
         raised = f"{type(exc).__name__}: {exc}"[:200]
+    # Ruling R-5b: replay once, before the audit, so the audit's source-edit
+    # route is the same bash_touched route the counterfactual uses.
+    context = None
     try:
-        audit_row = audit(cell, attempt)
+        manifest = json.loads((cf.TASKS / cell.task / "manifest.json").read_text())
+        sp = tuple(manifest["source_paths"])
+        transcript = (cell.folder / "transcript.txt").read_text()
+        events = cf.parse_events(transcript)
+        cwd = cf.session_cwd(events)
+        steps = cf.steps_of(events)
+        full = cf.replay(_spec_of(cell), steps, cwd, sp, None)
+        edits = cf.source_edit_indices(steps, sp, cwd, full.bash_touched)
+        context = (sp, cwd, steps, full, edits)
     except Exception as exc:  # a cell with no readable transcript is reported, not fatal
+        raised = raised or f"{type(exc).__name__}: {exc}"[:200]
+    try:
+        audit_row = audit(cell, attempt, {} if context is None else context[3].bash_touched)
+    except Exception as exc:
         raised = raised or f"{type(exc).__name__}: {exc}"[:200]
         audit_row = _empty_audit(cell, attempt)
     traj = {"first_edit_turn": None, "turns": {}}
@@ -613,40 +671,52 @@ def measure(cell: Cell, grade_root: Path) -> dict:
         "post_pass_tokens": None,
     }
     reading = _no_reading(audit_row, raised)
+    # The torn-down worktree is graded offline here, never in the cell path
+    # (Ruling R-1). A grade that fails is a swallowed measurement failure.
     try:
-        manifest = json.loads((cf.TASKS / cell.task / "manifest.json").read_text())
-        sp = tuple(manifest["source_paths"])
-        transcript = (cell.folder / "transcript.txt").read_text()
-        events = cf.parse_events(transcript)
-        cwd = cf.session_cwd(events)
-        steps = cf.steps_of(events)
-        full = cf.replay(_spec_of(cell), steps, cwd, sp, None)
-        edits = cf.source_edit_indices(steps, sp, cwd, full.bash_touched)
-        # Run 1 grades the full patch whenever the harness verdict is graded,
-        # even with no source edit; a no-edit cell's fidelity is that grade
-        # (FINDING 1).
-        final = None
-        if audit_row["verdict"] in cf.GRADED:
-            final = _grade(cell.task, full.patch, grade_root, f"{cell.attempt}-final")
-        traj = trajectory(cell, steps, cwd, edits, grade_root)
-        offline = offline_fields(cell, audit_row, traj, steps, edits, cwd)
-        if not audit_row["allowlist_reason"]:
-            audit_row["allowlist_reason"] = _allowlist_reason(traj, final)
-        reading = counterfactual(
-            cell,
-            audit_row,
-            traj,
-            steps,
-            edits,
-            cwd,
-            full,
-            None if final is None else final["verdict"],
-            raised,
-        )
+        audit_row["tripped_verdict"] = _tripped_verdict(cell, grade_root)
     except Exception as exc:
         raised = raised or f"{type(exc).__name__}: {exc}"[:200]
+        audit_row["tripped_verdict"] = None
         reading = _no_reading(audit_row, raised)
-    return row(cell, audit_row, offline, reading, raised)
+    exploration_turns = audit_row["evidence"]["exploration_turns"]
+    if context is not None:
+        sp, cwd, steps, full, edits = context
+        # Ruling R-5b: exploration turns follow the bash_touched source-edit
+        # route, not cell_evidence's write/edit-only rule, so they are
+        # comparable with run 2's.
+        exploration_turns = None if not edits else steps[edits[0]].turn - 1
+        try:
+            # Run 1 grades the full patch whenever the harness verdict is graded,
+            # even with no source edit; a no-edit cell's fidelity is that grade
+            # (FINDING 1).
+            final = None
+            if audit_row["verdict"] in cf.GRADED:
+                final = _grade(cell.task, full.patch, grade_root, f"{cell.attempt}-final")
+            traj = trajectory(cell, steps, cwd, edits, grade_root)
+            offline = offline_fields(cell, audit_row, traj, steps, edits, cwd)
+            # Ruling R-4: the allowlist reason comes from a filtered pass, never
+            # from an unfiltered "non-source path" reason.
+            audit_row["allowlist_reason"] = _filtered_allowlist_reason(cell, full.patch, sp, grade_root)
+            reading = counterfactual(
+                cell,
+                audit_row,
+                traj,
+                steps,
+                edits,
+                cwd,
+                full,
+                None if final is None else final["verdict"],
+                raised,
+            )
+        except Exception as exc:
+            raised = raised or f"{type(exc).__name__}: {exc}"[:200]
+            reading = _no_reading(audit_row, raised)
+    else:
+        # No replay means no filtered grade; a reason alone is not allowlist
+        # evidence (Ruling R-4).
+        audit_row["allowlist_reason"] = None
+    return row(cell, audit_row, offline, reading, raised, exploration_turns)
 
 
 def tallies(rows: list[dict]) -> list[dict]:
@@ -682,24 +752,32 @@ def _stamp_text(header: dict) -> str:
 
 
 def table(rows: list[dict], header: dict) -> str:
+    columns = [
+        "task", "attempt", "code", "verdict", "raised", "tripped", "turns", "tokens",
+        "length stops", "exploration turns", "biggest turn", "biggest share", "tool span s",
+        "whole-attempt s", "self-stop turn", "self-stop tokens", "pass turn", "pass tokens",
+        "own-green turn", "post-pass turns", "post-pass tokens",
+    ]
     lines = [
         f"<!-- {_stamp_text(header)} -->",
         "",
-        "| task | attempt | code | verdict | tripped | turns | tokens | length stops | exploration turns | biggest turn | biggest share | tool span s | whole-attempt s | self-stop turn | self-stop tokens | pass turn | pass tokens | own-green turn | post-pass turns | post-pass tokens |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "| " + " | ".join(columns) + " |",
+        "|" + "---|" * len(columns),
     ]
     for r in rows:
         biggest = "-" if r["biggest_turn"] is None else f"t{r['biggest_turn']}:{r['biggest_tokens']}"
         share = "-" if r["biggest_share"] is None else f"{r['biggest_share']:.0%}"
         span = "-" if r["tool_span_seconds"] is None else f"{r['tool_span_seconds']:.1f}"
         whole = "-" if r["whole_attempt_seconds"] is None else f"{r['whole_attempt_seconds']:.1f}"
-        lines.append(
-            f"| {r['task']} | {r['attempt']} | {_dash(r['code'])} | {_dash(r['verdict'])} | {_dash(r['tripped_verdict'])} "
-            f"| {r['turns']} | {r['tokens']} | {r['length_stops']} | {_dash(r['exploration_turns'])} "
-            f"| {biggest} | {share} | {span} | {whole} | {_dash(r['self_stop_turn'])} | {_dash(r['self_stop_tokens'])} "
-            f"| {_dash(r['pass_turn'])} | {_dash(r['pass_tokens'])} | {_dash(r['own_green_turn'])} "
-            f"| {_dash(r['post_pass_turns'])} | {_dash(r['post_pass_tokens'])} |"
-        )
+        values = [
+            r["task"], r["attempt"], _dash(r["code"]), _dash(r["verdict"]), _dash(r["raised"]),
+            _dash(r["tripped_verdict"]), str(r["turns"]), str(r["tokens"]), str(r["length_stops"]),
+            _dash(r["exploration_turns"]), biggest, share, span, whole,
+            _dash(r["self_stop_turn"]), _dash(r["self_stop_tokens"]), _dash(r["pass_turn"]),
+            _dash(r["pass_tokens"]), _dash(r["own_green_turn"]), _dash(r["post_pass_turns"]),
+            _dash(r["post_pass_tokens"]),
+        ]
+        lines.append("| " + " | ".join(values) + " |")
     return "\n".join(lines) + "\n"
 
 
@@ -720,7 +798,7 @@ def tally_table(rows: list[dict]) -> str:
 
 
 def classes(rows: list[dict], header: dict) -> str:
-    columns = ["task", "attempt", *cc.CLASSES, "primary", "cited turns"]
+    columns = ["task", "attempt", "raised", *cc.CLASSES, "primary", "cited turns"]
     lines = [
         f"<!-- {_stamp_text(header)} -->",
         "",
@@ -733,7 +811,7 @@ def classes(rows: list[dict], header: dict) -> str:
         "|" + "---|" * len(columns),
     ]
     for r in rows:
-        lines.append("| " + " | ".join([r["task"], r["attempt"], *([""] * len(cc.CLASSES)), "", ""]) + " |")
+        lines.append("| " + " | ".join([r["task"], r["attempt"], _dash(r["raised"]), *([""] * len(cc.CLASSES)), "", ""]) + " |")
     lines.append("")
     for r in rows:
         shown = ", ".join(f"{name}={r['flags'][name]}" for name in cc.CLASSES)

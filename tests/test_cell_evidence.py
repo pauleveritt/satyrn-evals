@@ -439,6 +439,21 @@ def test_a_cell_the_harness_cut_has_no_self_stop() -> None:
     assert collect_evidence(text).to_block()["self_stop"] is None
 
 
+def test_a_harness_cut_cell_with_an_agent_end_records_no_self_stop() -> None:
+    """Ruling R-3: a cut can leave an `agent_end` behind; `cut=True` is the
+    authority, so the tear-down residue is not a self-stop. Both directions:
+    the same transcript without the cut flag does record one."""
+    text = _transcript(_assistant(1200), *_bash("b1", "ls"), _line({"type": "agent_end"}))
+    assert collect_evidence(text, cut=True).to_block()["self_stop"] is None
+    assert collect_evidence(text, cut=False).to_block()["self_stop"] == {"turn": 1, "output_tokens": 1200}
+
+
+def test_a_non_cut_cell_with_no_agent_end_has_no_self_stop() -> None:
+    """The other direction: not cut is not enough; the loop must have ended."""
+    text = _transcript(_assistant(1200), *_bash("b1", "ls"))
+    assert collect_evidence(text, cut=False).to_block()["self_stop"] is None
+
+
 def test_tool_span_seconds_is_first_start_to_last_end() -> None:
     timeline = "\n".join([
         json.dumps({"at": 10.0, "event": "start", "toolCallId": "a", "toolName": "bash"}),

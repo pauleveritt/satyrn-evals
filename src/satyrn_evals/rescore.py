@@ -28,7 +28,7 @@ from satyrn_evals.attempt_record import (
     load_attempt_record,
     write_attempt_record,
 )
-from satyrn_evals.cell_evidence import collect_evidence
+from satyrn_evals.cell_evidence import HARNESS_CUT_CODES, collect_evidence
 from satyrn_evals.contamination import scan_transcript
 from satyrn_evals.errors import OverlayError, SatyrnError, UsageError
 from satyrn_evals.grade import grade
@@ -303,6 +303,9 @@ def compute_evidence(
             overlay=overlay,
             visible_texts=visible_texts or [],
             source_paths=manifest.source_paths,
+            # A harness-cut cell's ``agent_end`` is tear-down residue, not a
+            # self-stop (Ruling R-3).
+            cut=record.code in HARNESS_CUT_CODES,
         )
         blocks[name] = {"transcript": True, **evidence.to_block()}
     return blocks

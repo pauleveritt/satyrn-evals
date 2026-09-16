@@ -57,8 +57,13 @@ The escape rules are lexical and stated so a reader can recompute them:
   holding the first source mutation, and ``null`` when there is none;
 - the **biggest turn** is the turn with the most assistant output tokens, with
   its share of the cell's total;
-- a **self stop** is an ``agent_end`` event: the loop ended on its own rather
-  than being torn down. Its turn and token counts are those at that event.
+- a **self stop** is an ``agent_end`` event on a cell the harness did not cut:
+  the loop ended on its own rather than being torn down. A cell whose outcome
+  code is a harness cut (``HARNESS_CUT_CODES``: ``BUDGET_EXCEEDED``,
+  ``COMMAND_TIMEOUT``, ``REPEAT_LIMIT``, ``DEADLINE_EXCEEDED``) is never a
+  self-stop even when an ``agent_end`` is present, because the tear-down can
+  leave one behind (Ruling R-3). Its turn and token counts are those at that
+  event.
 """
 
 import json
@@ -78,6 +83,11 @@ from satyrn_evals.timeline import read_timeline
 
 #: The spec's per-command threshold: "commands over 120 s".
 LONG_COMMAND_SECONDS = 120.0
+#: The outcome codes that mean the harness stopped the cell, so an ``agent_end``
+#: in the transcript is tear-down residue, not a self-stop (Ruling R-3).
+HARNESS_CUT_CODES = frozenset(
+    {"BUDGET_EXCEEDED", "COMMAND_TIMEOUT", "REPEAT_LIMIT", "DEADLINE_EXCEEDED"}
+)
 _DEVICE_PATHS = frozenset({"/dev/null", "/dev/stdout", "/dev/stderr", "/dev/tty"})
 _SEARCH_PROGRAMS = frozenset({"find", "fd", "rg", "tree"})
 _DISK_SEARCH_PROGRAMS = frozenset({"locate", "mdfind"})
@@ -500,11 +510,14 @@ def collect_evidence(
     overlay: OverlaySpec | None = None,
     visible_texts: Sequence[str] = (),
     source_paths: Sequence[str] = (),
+    cut: bool = False,
 ) -> CellEvidence:
     """Every per-cell count this module can read from the transcript.
 
     ``source_paths`` is the manifest's, so a mutation can be told from a
-    detour; empty means no path is a source path.
+    detour; empty means no path is a source path. ``cut`` says the cell's
+    outcome code is a harness cut, so an ``agent_end`` is tear-down residue
+    and ``self_stop`` stays null (Ruling R-3).
     """
     events = _events(transcript)
     cwd = next(
@@ -524,7 +537,7 @@ def collect_evidence(
             per_turn[usage.turns] = per_turn.get(usage.turns, 0) + (usage.output_tokens - before)
         if first_pass is None and (route := _passing_route(event)) is not None:
             first_pass = {"turn": usage.turns, "output_tokens": usage.output_tokens, "route": route}
-        if self_stop is None and event.get("type") == "agent_end":
+        if self_stop is None and not cut and event.get("type") == "agent_end":
             self_stop = {"turn": usage.turns, "output_tokens": usage.output_tokens}
         if mutation_turn is None:
             mutation_turn = _track_mutation(event, usage.turns, cwd, source_paths, pending_mutations)

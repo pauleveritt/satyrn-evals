@@ -89,12 +89,16 @@ class Facts:
 
     `first_pass_*` come from the driver's turn-by-turn grading, not from the
     cell's own test runs: a pass state is the hidden suite's, an own-green is
-    the model's, and section 7 distinguishes them.
+    the model's, and section 7 distinguishes them. `tripped_verdict` is the
+    offline grade of the torn-down worktree; `raised` is a swallowed
+    measurement failure (an unreadable cell, a failed replay or grade), and
+    either one withholds the capability flag (Ruling R-5).
     """
 
     code: str | None
     verdict: str | None
     tripped_verdict: str | None
+    raised: str | None
     length_stops: int
     root_searches: int
     tool_reported_timeouts: int
@@ -109,10 +113,13 @@ def flags(facts: Facts) -> dict[str, bool | None]:
     passed = facts.code == "OK" and facts.verdict == "pass"
     reached = facts.first_pass_turn is not None and facts.first_pass_tokens is not None
     inside = reached and within_32k(facts.first_pass_tokens or 0, facts.first_pass_turn or 0)
+    # Ruling R-5 (extended): a swallowed measurement failure (``raised``) or a
+    # tripped worktree that graded pass is not capability evidence -- the cell
+    # either measured nothing or reached a pass the tear-down hid.
     return {
         "information": None,
         "ambiguity": None,
-        "capability": not passed and not reached,
+        "capability": not passed and not reached and not facts.raised and facts.tripped_verdict != "pass",
         "budget": not passed and reached and not inside,
         "finishing": not passed and bool(inside),
         "runaway": facts.length_stops > 0,

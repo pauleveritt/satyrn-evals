@@ -61,9 +61,9 @@ def test_within_32k_is_the_pre_registered_line(tokens: int, turn: int, expected:
 
 def _facts(**overrides: Any) -> Facts:
     base: dict[str, Any] = dict(
-        code="BUDGET_EXCEEDED", verdict=None, tripped_verdict=None, length_stops=0, root_searches=0,
-        tool_reported_timeouts=0, first_pass_turn=None, first_pass_tokens=None, self_stop_turn=None,
-        allowlist_reason=None,
+        code="BUDGET_EXCEEDED", verdict=None, tripped_verdict=None, raised=None, length_stops=0,
+        root_searches=0, tool_reported_timeouts=0, first_pass_turn=None, first_pass_tokens=None,
+        self_stop_turn=None, allowlist_reason=None,
     )
     return Facts(**(base | overrides))
 
@@ -80,6 +80,31 @@ def test_a_pass_state_outside_the_line_flags_budget_not_finishing() -> None:
 def test_no_pass_state_at_all_flags_capability() -> None:
     row = flags(_facts())
     assert (row["capability"], row["budget"], row["finishing"]) == (True, False, False)
+
+
+def test_a_tripped_worktree_that_graded_pass_is_not_capability() -> None:
+    """Ruling R-5: a pass state the tear-down hid is a finishing/budget case,
+    not evidence the cell lacked the capability."""
+    row = flags(_facts(tripped_verdict="pass"))
+    assert (row["capability"], row["budget"], row["finishing"]) == (False, False, False)
+
+
+def test_a_tripped_worktree_that_did_not_pass_still_flags_capability() -> None:
+    """The sibling: a tripped grade that is not a pass leaves capability on."""
+    assert flags(_facts(tripped_verdict="fail"))["capability"] is True
+    assert flags(_facts(tripped_verdict="unavailable"))["capability"] is True
+
+
+def test_a_swallowed_measurement_failure_is_not_capability() -> None:
+    """Ruling R-5: a cell that raised measured nothing, so it is not
+    capability evidence (the reviewer's class, not a count)."""
+    row = flags(_facts(raised="ValueError: no transcript"))
+    assert (row["capability"], row["budget"], row["finishing"]) == (False, False, False)
+
+
+def test_a_cell_without_a_raise_still_flags_capability() -> None:
+    """The sibling: no swallowed failure leaves the capability count intact."""
+    assert flags(_facts(raised=None))["capability"] is True
 
 
 def test_a_cell_that_passed_flags_none_of_the_three() -> None:
@@ -99,8 +124,13 @@ def test_a_root_search_or_a_bounded_command_flags_hunting() -> None:
 
 
 def test_a_non_source_path_reason_flags_allowlist() -> None:
-    assert flags(_facts(allowlist_reason="patch touches non-source path: pyproject.toml"))["allowlist"] is True
+    """Ruling R-4: the driver sets this reason only from a filtered grade that
+    passed, so the classifier's expression stays a plain substring test."""
+    assert flags(_facts(allowlist_reason="filtered pass after removing non-source path(s): pyproject.toml"))["allowlist"] is True
     assert flags(_facts(allowlist_reason="no patch"))["allowlist"] is False
+    # No filtered pass means no reason at all: the four unfiltered false
+    # positives must read False.
+    assert flags(_facts(allowlist_reason=None))["allowlist"] is False
 
 
 def test_information_and_ambiguity_are_never_flagged_mechanically() -> None:

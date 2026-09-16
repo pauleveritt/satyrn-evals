@@ -1065,6 +1065,43 @@ def test_evidence_passes_the_manifests_source_paths_to_the_mutation_rule(
     assert blocks["format_number-2"]["exploration_turns"] is None
 
 
+def _agent_end_transcript() -> str:
+    """One turn that ends on its own, with an ``agent_end`` in the stream."""
+    return "\n".join([
+        '{"type": "session", "version": 3, "cwd": "/w"}',
+        '{"type": "turn_start"}',
+        json.dumps({"type": "message_end", "message": {
+            "role": "assistant", "usage": {"output": 100}, "content": []}}),
+        json.dumps({"type": "tool_execution_start", "toolCallId": "b1",
+                    "toolName": "bash", "args": {"command": "ls"}}),
+        json.dumps({"type": "tool_execution_end", "toolCallId": "b1",
+                    "toolName": "bash",
+                    "result": {"content": [{"type": "text", "text": ""}]}}),
+        '{"type": "agent_end"}',
+    ])
+
+
+def test_evidence_nulls_self_stop_for_a_harness_cut_code(tmp_path: Path) -> None:
+    """Ruling R-3, wired through the record: a cut code's ``agent_end`` is
+    tear-down residue, so ``compute_evidence`` passes ``cut=True``. The same
+    transcript on an OK record keeps the self-stop (both directions)."""
+    output, task_dir, manifest = _visible_setup(tmp_path)
+    ok_name = "format_number-1"
+    ok = _pathology_cell(output, ok_name, transcript=_agent_end_transcript())
+    cut_name = "format_number-2"
+    cut = _pathology_cell(output, cut_name, transcript=_agent_end_transcript())
+    cut_rec = replace(
+        cut[1], outcome=AttemptOutcome.REFUSED, code=AttemptCode.BUDGET_EXCEEDED,
+        verdict=None, receipt_path=None,
+    )
+    write_attempt_record(output / cut_name / "attempt.json", cut_rec)
+    blocks = compute_evidence(
+        output, [ok, (cut_name, cut_rec, None)], task_dir=task_dir, manifest=manifest
+    )
+    assert blocks[ok_name]["self_stop"] == {"turn": 1, "output_tokens": 100}
+    assert blocks[cut_name]["self_stop"] is None
+
+
 def test_regrade_reverts_a_reclassification_the_rule_no_longer_supports(
     tmp_path: Path,
 ) -> None:
