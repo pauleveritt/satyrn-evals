@@ -4198,3 +4198,4 @@
 | evidence/2026-09-16-census/validity/selfhost-speed-probe/REPORT.md | created in release-one |
 | evidence/2026-09-16-census/validity/selfhost-speed-probe/receipt.json | created in release-one |
 | evidence/2026-09-16-census/validity/selfhost-speed-probe/solution.diff | created in release-one |
+| docs/superpowers/plans/2026-09-17-release-two-census-night-2.md | created in release-one |
