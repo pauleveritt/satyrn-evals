@@ -1081,10 +1081,13 @@ def _agent_end_transcript() -> str:
     ])
 
 
-def test_evidence_nulls_self_stop_for_a_harness_cut_code(tmp_path: Path) -> None:
-    """Ruling R-3, wired through the record: a cut code's ``agent_end`` is
-    tear-down residue, so ``compute_evidence`` passes ``cut=True``. The same
-    transcript on an OK record keeps the self-stop (both directions)."""
+def test_evidence_nulls_self_stop_only_for_a_cell_the_harness_cut(tmp_path: Path) -> None:
+    """Ruling R-3, wired through the record: a cell the harness stopped -- a
+    cut code with no command exit -- leaves an ``agent_end`` as tear-down
+    residue, so ``compute_evidence`` passes ``cut=True`` and ``self_stop`` is
+    null. A normal-exit over-budget cell (``command_exit`` is not None) was
+    not cut: its ``agent_end`` is a genuine self-stop and is recorded. The OK
+    cell is the control (both directions)."""
     output, task_dir, manifest = _visible_setup(tmp_path)
     ok_name = "format_number-1"
     ok = _pathology_cell(output, ok_name, transcript=_agent_end_transcript())
@@ -1092,14 +1095,24 @@ def test_evidence_nulls_self_stop_for_a_harness_cut_code(tmp_path: Path) -> None
     cut = _pathology_cell(output, cut_name, transcript=_agent_end_transcript())
     cut_rec = replace(
         cut[1], outcome=AttemptOutcome.REFUSED, code=AttemptCode.BUDGET_EXCEEDED,
-        verdict=None, receipt_path=None,
+        command_exit=None, verdict=None, receipt_path=None,
     )
     write_attempt_record(output / cut_name / "attempt.json", cut_rec)
+    normal_name = "format_number-3"
+    normal = _pathology_cell(output, normal_name, transcript=_agent_end_transcript())
+    normal_rec = replace(
+        normal[1], outcome=AttemptOutcome.REFUSED, code=AttemptCode.BUDGET_EXCEEDED,
+        command_exit=0, verdict=None, receipt_path=None,
+    )
+    write_attempt_record(output / normal_name / "attempt.json", normal_rec)
     blocks = compute_evidence(
-        output, [ok, (cut_name, cut_rec, None)], task_dir=task_dir, manifest=manifest
+        output,
+        [ok, (cut_name, cut_rec, None), (normal_name, normal_rec, None)],
+        task_dir=task_dir, manifest=manifest,
     )
     assert blocks[ok_name]["self_stop"] == {"turn": 1, "output_tokens": 100}
     assert blocks[cut_name]["self_stop"] is None
+    assert blocks[normal_name]["self_stop"] == {"turn": 1, "output_tokens": 100}
 
 
 def test_regrade_reverts_a_reclassification_the_rule_no_longer_supports(

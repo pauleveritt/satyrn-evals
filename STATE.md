@@ -11,7 +11,8 @@ stay at the wheel: the developer does domain engineering (specs and tests),
 not agent engineering. Two repositories, both on branch `release-one`:
 
 - **`satyrn-evals`** — the eval harness: tasks, isolated cells, launcher,
-  grading from retained evidence. Head `6460e5b` (the census build).
+  grading from retained evidence. Head `ff2436c` (the census build plus its
+  2026-09-16 fix wave).
 - **`satyrn-engine`** — the product: `/implement`, a derived contract, four
   guards, symbol preservation, carried tests, `self_test`, a receipt. Head
   `ea49666`; the last code commit is `8049d73`, unchanged by the census.

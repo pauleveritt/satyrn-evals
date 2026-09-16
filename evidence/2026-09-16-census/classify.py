@@ -177,8 +177,11 @@ def audit(cell: Cell, attempt: dict, bash_touched: dict[int, tuple[str, ...]]) -
         transcript,
         timeline=timeline_path.read_text() if timeline_path.is_file() else None,
         source_paths=sp,
-        # A harness-cut code's ``agent_end`` is tear-down residue (Ruling R-3).
-        cut=attempt.get("code") in HARNESS_CUT_CODES,
+        # A cell the harness stopped (a cut code with no command exit) leaves
+        # an ``agent_end`` as tear-down residue, not a self-stop (Ruling R-3).
+        # A normal-exit over-budget cell was not cut: its ``agent_end`` is a
+        # genuine self-stop.
+        cut=attempt.get("code") in HARNESS_CUT_CODES and attempt.get("command_exit") is None,
     ).to_block()
     edits = cf.source_edit_indices(steps, sp, cwd, bash_touched)
     first = (

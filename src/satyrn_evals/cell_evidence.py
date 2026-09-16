@@ -61,12 +61,14 @@ The escape rules are lexical and stated so a reader can recompute them:
 - the **biggest turn** is the turn with the most assistant output tokens, with
   its share of the cell's total;
 - a **self stop** is an ``agent_end`` event on a cell the harness did not cut:
-  the loop ended on its own rather than being torn down. A cell whose outcome
-  code is a harness cut (``HARNESS_CUT_CODES``: ``BUDGET_EXCEEDED``,
-  ``COMMAND_TIMEOUT``, ``REPEAT_LIMIT``, ``DEADLINE_EXCEEDED``) is never a
-  self-stop even when an ``agent_end`` is present, because the tear-down can
-  leave one behind (Ruling R-3). Its turn and token counts are those at that
-  event.
+  the loop ended on its own rather than being torn down. A cell the harness
+  stopped -- an outcome code in ``HARNESS_CUT_CODES`` (``BUDGET_EXCEEDED``,
+  ``COMMAND_TIMEOUT``, ``REPEAT_LIMIT``, ``DEADLINE_EXCEEDED``) with no command
+  exit -- is never a self-stop even when an ``agent_end`` is present, because
+  the tear-down can leave one behind (Ruling R-3). A cell that exited on its
+  own and was only over budget in the tail it wrote before exiting was not cut,
+  so its ``agent_end`` is a genuine self-stop. Its turn and token counts are
+  those at that event.
 """
 
 import json

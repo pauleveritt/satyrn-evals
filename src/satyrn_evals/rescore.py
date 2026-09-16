@@ -303,9 +303,11 @@ def compute_evidence(
             overlay=overlay,
             visible_texts=visible_texts or [],
             source_paths=manifest.source_paths,
-            # A harness-cut cell's ``agent_end`` is tear-down residue, not a
-            # self-stop (Ruling R-3).
-            cut=record.code in HARNESS_CUT_CODES,
+            # A cell the harness stopped (a cut code with no command exit)
+            # leaves an ``agent_end`` as tear-down residue, not a self-stop
+            # (Ruling R-3). A normal-exit over-budget cell was not cut, so
+            # its ``agent_end`` is a genuine self-stop.
+            cut=record.code in HARNESS_CUT_CODES and record.command_exit is None,
         )
         blocks[name] = {"transcript": True, **evidence.to_block()}
     return blocks

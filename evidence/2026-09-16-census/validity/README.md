@@ -10,13 +10,13 @@ re-validated amended prompt, filed under the canonical task name.
 
 ## Per task
 
-| task | verdict | counts | prompt read from | leak tells |
-|---|---|---|---|---|
-| agentclinic-repair-depth-3 | pass | 13/13 | `df33336` | clean |
-| selfhost-run-record-gate | pass | 20/20 | `df33336` | clean |
-| selfhost-docs-linter | pass | 15/15 | `df33336` | clean |
-| selfhost-cell-loop | pass | 22/22 (amended prompt) | `fc870ba` | clean |
-| selfhost-speed-probe | pass | 17/17 | `df33336` | clean |
+| task | verdict | counts | prompt read from | named leak tells | receipt `grader_content_in_patch` |
+|---|---|---|---|---|---|
+| agentclinic-repair-depth-3 | pass | 13/13 | `df33336` | clean | clean |
+| selfhost-run-record-gate | pass | 20/20 | `df33336` | clean | clean |
+| selfhost-docs-linter | pass | 15/15 | `df33336` | clean | clean |
+| selfhost-cell-loop | pass | 22/22 (amended prompt) | `fc870ba` | clean | flagged |
+| selfhost-speed-probe | pass | 17/17 | `df33336` | clean | flagged |
 
 Verdict and count are read from each task's `receipt.json`
 (`verdict` and the length of `evidence.executed_test_ids`).
@@ -33,11 +33,13 @@ record the same string.
 Checked each task's `solution.diff` and `REPORT.md` for any id in the task's
 `expected_test_ids`, and for the strings `overlay`, `known-good.patch`,
 `known-broken.patch`, `manifest.json`, or the task directory path. All five are
-clean.
+clean on that named check.
 
-For completeness: the receipts' own `contamination.grader_content_in_patch` field
-reads `flagged` for `selfhost-cell-loop` and `selfhost-speed-probe`. That is the
-receipt's separate overlay-content check, not the named leak-tell check above.
+The table's last column is the receipts' own separate
+`contamination.grader_content_in_patch` field, which reads `flagged` for
+`selfhost-cell-loop` and `selfhost-speed-probe` (the solver's own test file
+shares a block with the hidden overlay at the same path). That is the receipt's
+separate overlay-content check, not the named leak-tell check above.
 
 ## Source
 
