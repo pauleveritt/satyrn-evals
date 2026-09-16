@@ -98,14 +98,16 @@ holds the phase rows.
 ## Reading order for someone new
 
 1. This page, then `BRIEF.md` (goal and invariants) and `ROADMAP.md` (status).
-2. `2026-09-15-release-one-outcome.md` — what happened; then
-   `2026-09-15-release-two-r0-constraints.md` and the census design
-   (`2026-09-15-release-two-census-design.md`) — the rules for what comes next.
+2. `docs/superpowers/specs/2026-09-15-release-one-outcome.md` — what happened;
+   then `docs/superpowers/specs/2026-09-15-release-two-r0-constraints.md` and the
+   census design (`docs/superpowers/specs/2026-09-15-release-two-census-design.md`)
+   — the rules for what comes next.
 3. `evidence/2026-09-15-release-one-decision-ledger.md` — why each decision
    was made, dated, 2026-09-13 onward.
 4. `docs/lessons.md`, `docs/pathologies.md`, `docs/remediations.md` — the
    catalogue, with every entry marked re-opened or settled.
-5. The release-one design (`2026-09-13-release-one-design.md`) and the phase
+5. The release-one design
+   (`docs/superpowers/specs/2026-09-13-release-one-design.md`) and the phase
    plans under `docs/superpowers/plans/`: **evidence, not guidance.**
 
 ## Where the evidence lives
@@ -145,8 +147,8 @@ holds the phase rows.
 - **`tripped_verdict` has no denominator rule yet.** It is reported beside
   `verdict`, never instead of it, until section 8 decides.
 - **The release-two claim shape is undecided** until the classified table exists.
-- **Integration tier (not in `just gates`):** the tripped-harvest integration
-  tests pass, but 10 still fail (`test_qualify.py`, `test_launch_record.py`);
-  the qualify check list predates the census `prompt-edits` check.
+- **Integration tier (not in `just gates`):** 335 passed, 1 skipped, 0 failed
+  at `b624b84`; the census build's stale qualify expectations and launch-record
+  timing were restored in that commit.
 - **Local state not in git:** the `satyrn-cell` user and its sudoers rule, the
   engine export under `/Users/Shared/satyrn-cells/`, and `~/satyrn-runs`.
