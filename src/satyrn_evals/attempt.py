@@ -47,6 +47,7 @@ from satyrn_evals.timeline import TIMELINE_NAME
 from satyrn_evals.verdict import Verdict
 from satyrn_evals.workspace import (
     DEFAULT_TIMEOUT,
+    TRIPPED_PATCH_NAME,
     PreparedWorkspace,
     WorkspaceCode,
     WorkspacePrepareError,
@@ -66,6 +67,10 @@ BASE_SHA_ENV = "SATYRN_WORKSPACE_BASE_SHA"
 #: worktree where the cell user can write, and copied into the attempt
 #: directory as soon as the command returns.
 LIVE_TRANSCRIPT_NAME = "transcript.txt"
+
+#: The receipt the tripped secondary writes. Never `receipt.json`: that name is
+#: the delivered patch's, and `regrade` reads it as the cell's own verdict.
+TRIPPED_RECEIPT_NAME = "tripped-receipt.json"
 
 type SelectedContract = tuple[str | None, str]
 
@@ -395,6 +400,7 @@ def _attempt(
                         extra_environment=exported,
                         budget=budget,
                         timeline=attempt_dir / TIMELINE_NAME,
+                        tripped_patch=attempt_dir / TRIPPED_PATCH_NAME,
                     )
                 finally:
                     _collect_live_transcript(live_transcript, transcript_path)
@@ -1062,6 +1068,12 @@ def _finish_attempt(
     if code is not None:
         if deadline is not None:
             deadline.remaining(DeadlinePhase.PRESERVATION)
+        tripped_verdict: Verdict | None = None
+        tripped_name: str | None = None
+        if code is AttemptCode.BUDGET_EXCEEDED:
+            tripped_verdict, tripped_name = _grade_tripped(
+                task_dir, attempt_dir, attempt_dir / TRIPPED_PATCH_NAME, deadline=deadline
+            )
         message = (
             workspace.message
             if workspace.code is not WorkspaceCode.OK
@@ -1095,6 +1107,8 @@ def _finish_attempt(
             retained_path=workspace.retained_path,
             attempt_dir=attempt_dir.name,
             attempt_timeout=deadline.timeout if deadline is not None else None,
+            tripped_verdict=tripped_verdict,
+            tripped_patch_path=tripped_name,
         )
         write_attempt_record(attempt_dir / "attempt.json", record)
         return record
@@ -1150,6 +1164,44 @@ def _finish_attempt(
     if deadline is not None:
         deadline.remaining(DeadlinePhase.GRADING)
     return record
+
+
+def _grade_tripped(
+    task_dir: Path,
+    attempt_dir: Path,
+    patch_path: Path,
+    *,
+    deadline: AttemptDeadline | None,
+) -> tuple[Verdict, str | None]:
+    """The declared secondary (design section 3.2): what the torn-down worktree grades.
+
+    The same `grade` call the delivered patch takes, against the same task
+    directory and manifest, so the allowlist, `ignored_paths` and the hidden
+    suite bite identically -- a different path would answer a different
+    question. It is never a pass in the record's own sense: `verdict` stays
+    null and the attempt stays REFUSED (Ruling 2). A missing or empty tripped
+    patch is `unavailable`, exactly as the grader answers an empty delivered
+    patch, and so is a grader failure -- but the patch name is still recorded
+    then, because the evidence exists and can be regraded.
+    """
+    if not patch_path.is_file():
+        return Verdict.UNAVAILABLE, None
+    try:
+        text = patch_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return Verdict.UNAVAILABLE, TRIPPED_PATCH_NAME
+    if not text.strip():
+        return Verdict.UNAVAILABLE, None
+    receipt_path = attempt_dir / TRIPPED_RECEIPT_NAME
+    try:
+        receipt = (
+            grade(task_dir, patch_path, receipt_path, deadline=deadline)
+            if deadline is not None
+            else grade(task_dir, patch_path, receipt_path)
+        )
+    except SatyrnError:
+        return Verdict.UNAVAILABLE, TRIPPED_PATCH_NAME
+    return receipt.verdict, TRIPPED_PATCH_NAME
 
 
 def _workspace_refusal(workspace: WorkspaceResult) -> AttemptCode | None:

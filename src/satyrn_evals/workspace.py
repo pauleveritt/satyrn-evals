@@ -48,6 +48,9 @@ DEFAULT_TEARDOWN_GRACE = 0.25
 #: (the default is 0.25s) left ``max(remaining(), 0.05)`` at ~0.125s under a
 #: slow sudo, which reported CLEANUP_FAILED and retained the workspace.
 CELL_KILL_TIMEOUT_FLOOR = 2.0
+#: Where a BUDGET_EXCEEDED teardown leaves the worktree's cumulative diff
+#: (design section 3.2). Written beside the attempt's own artifacts.
+TRIPPED_PATCH_NAME = "tripped.diff"
 
 _GIT_SAFETY_CONFIG = (
     "--no-replace-objects",
@@ -1077,6 +1080,35 @@ def _wait_or_trip(
             handle.close()
 
 
+def _harvest_tripped(
+    state: _WorkspaceState, environment: Mapping[str, str], destination: Path
+) -> None:
+    """Write the worktree's cumulative diff against ``base_sha`` to ``destination``.
+
+    Preserve before judging (BRIEF invariant 1). This runs at the teardown, not
+    in ``_finish_attempt``, because a whole-attempt deadline can expire in
+    preservation or cleanup and return without ever reaching the finalizer --
+    the tripped evidence must already be on disk by then, so a later regrade
+    can read it. Any failure is swallowed: a missing tripped patch is a missing
+    secondary, never a lost cell, and the primary outcome must not change
+    because a secondary could not be taken.
+    """
+    # Imported here, not at module scope: `session_patch` imports
+    # `GIT_SAFETY_CONFIG` from this module, so a top-level import is a cycle.
+    from satyrn_evals.session_patch import RESIDUE_EXCLUDES, build_cumulative_patch
+
+    if state.base_sha is None:
+        return
+    try:
+        capture = build_cumulative_patch(
+            state.worktree, state.base_sha, environment, exclude=RESIDUE_EXCLUDES
+        )
+        if capture.patch_text.strip():
+            destination.write_text(capture.patch_text, encoding="utf-8")
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return
+
+
 def _run_command(
     command: Sequence[str],
     state: _WorkspaceState,
@@ -1089,6 +1121,7 @@ def _run_command(
     deadline: AttemptDeadline | None = None,
     budget: AttemptBudget | None = None,
     timeline: Path | None = None,
+    tripped_patch: Path | None = None,
 ) -> WorkspaceResult:
     outputs: list[BinaryIO] = []
     pending: WorkspaceResult | None = None
@@ -1205,6 +1238,8 @@ def _run_command(
                     # timeout branch does, and report it as its own code so
                     # a stopped cell is never mistaken for one that refused
                     # on its own. Artifacts already written are harvested.
+                    if isinstance(tripped, BudgetTripwire) and tripped_patch is not None:
+                        _harvest_tripped(state, environment, tripped_patch)
                     try:
                         safe, detail = _teardown(process, teardown_grace, state)
                     except BaseException as exc:
@@ -1781,6 +1816,7 @@ def run_prepared_command(
     extra_environment: Mapping[str, str] | None = None,
     budget: AttemptBudget | None = None,
     timeline: Path | None = None,
+    tripped_patch: Path | None = None,
 ) -> WorkspaceResult:
     """Run one command while leaving the prepared workspace leased."""
     _validate_command_limits(command, timeout, teardown_grace)
@@ -1795,6 +1831,7 @@ def run_prepared_command(
         deadline=deadline,
         budget=budget,
         timeline=timeline,
+        tripped_patch=tripped_patch,
     )
 
 
