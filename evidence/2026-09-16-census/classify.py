@@ -595,6 +595,8 @@ def measure(cell: Cell, grade_root: Path) -> dict:
     attempt: dict = {}
     try:
         attempt = json.loads((cell.folder / "attempt.json").read_text())
+        if not isinstance(attempt, dict):  # valid JSON that is not an object is reported, not fatal
+            attempt = {}
     except Exception as exc:  # an unreadable attempt is reported, not fatal
         raised = f"{type(exc).__name__}: {exc}"[:200]
     try:

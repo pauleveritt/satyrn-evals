@@ -29,6 +29,7 @@ from satyrn_evals.run_record import DEADLINE_MARGIN_S, DEFAULT_COMMAND_BACKSTOP_
 #: Defaults only. The value a cell actually runs under is the record's
 #: `command_backstop_s` (design section 3.3); these name what a record that
 #: does not say gets.
+#: Deprecated re-exports kept for importers that no longer exist; no readers.
 COMMAND_BACKSTOP = float(DEFAULT_COMMAND_BACKSTOP_S)
 ATTEMPT_DEADLINE = float(DEFAULT_COMMAND_BACKSTOP_S + DEADLINE_MARGIN_S)
 

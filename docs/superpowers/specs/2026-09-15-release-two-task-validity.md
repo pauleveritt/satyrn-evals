@@ -37,7 +37,9 @@ answer; copying only `base/` is the same artefact a census cell receives.
 
 ## The dispatch
 
-One Sonnet subagent per task, run blocking. It is given `PROMPT.txt`'s text
+One `deepseek-v4-flash` subagent per task, run blocking. The project's
+intended role for this check is Sonnet, but the harness could not select it,
+so `by` records the model that actually ran. It is given `PROMPT.txt`'s text
 and the tree path, and nothing else: no plan, no hidden test ids, no
 known-good patch, no qualification output. It writes a solution in the tree.
 It does not run the hidden suite — it has no access to one — and it may run
@@ -87,7 +89,7 @@ status.
 
 Write `validity` into the task's `manifest.json`:
 
-- `by` — the model that wrote the solution (for example `sonnet-4.6`).
+- `by` — the model that wrote the solution (for example `deepseek-v4-flash`).
 - `commit` — `git rev-parse HEAD` of the evals tree the prompt was read from.
 - `passed` — `receipt.verdict == "pass"`.
 
@@ -95,6 +97,10 @@ A failed check is recorded with `passed: false`; the task does not get a
 census record until it is fixed and re-checked. The block is a post-cut
 annotation, so `tools/cut_task.py check` ignores it and a re-cut still matches
 the committed tree.
+
+For all five tasks the recorded `validity.commit` is `df33336`, and the
+`selfhost-cell-loop` prompt edit landed in `fc870ba`; a re-derivation must
+apply that edit to reproduce the checked cell-loop prompt.
 
 ## Recompute
 
@@ -122,8 +128,8 @@ body = json.loads((Path("src/satyrn_evals/tasks") / task / "manifest.json").read
 out.write_text(body["contracts"][CENSUS_TASKS[task]])
 PY
 
-# 2. Dispatch one Sonnet subagent with PROMPT.txt and the tree path; wait for
-#    its report. It writes a solution in the tree.
+# 2. Dispatch one deepseek-v4-flash subagent with PROMPT.txt and the tree path;
+#    wait for its report. It writes a solution in the tree.
 
 # 3. Harvest, controller-side.
 git -C "$SCRATCH/validity/$T/tree" add -A
@@ -148,7 +154,7 @@ task, receipt = sys.argv[1], json.loads(Path(sys.argv[2]).read_text())
 commit = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
 path = Path("src/satyrn_evals/tasks") / task / "manifest.json"
 body = json.loads(path.read_text())
-body["validity"] = {"by": "sonnet-4.6", "commit": commit, "passed": receipt["verdict"] == "pass"}
+body["validity"] = {"by": "deepseek-v4-flash", "commit": commit, "passed": receipt["verdict"] == "pass"}
 path.write_text(json.dumps(body, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 print(task, body["validity"])
 PY
