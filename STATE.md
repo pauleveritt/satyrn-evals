@@ -75,8 +75,9 @@ The census is now **built and frozen**: five Baseline-only records, one per
 task, at 48,000 tokens / 72 turns / 3,000 s backstop, k = 3, n = 6, per-turn
 output cap 16,000, tripped worktrees harvested and graded offline as a
 declared secondary that is never a pass. All five tasks passed the R0 §1.2
-validity check (with the harness model limitation recorded: it ran
-`deepseek-v4-flash`, not the intended Sonnet). **No census cell has run**; the
+validity check (run on `deepseek-v4-flash`, the harness's only selectable
+model; ratified by the maintainer 2026-09-16 as a deliberate deviation from the
+design's Sonnet wording). **No census cell has run**; the
 night is the maintainer's to launch. The release-two claim (outcome within
 32k, cost at equal outcome, or a numbered ceiling at 9B) is chosen from the
 classified table once it exists (census design, section 8); `ROADMAP.md`

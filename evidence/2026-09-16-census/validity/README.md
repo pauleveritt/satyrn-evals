@@ -24,9 +24,10 @@ Verdict and count are read from each task's `receipt.json`
 ## Model
 
 `deepseek-v4-flash`. The harness has one configured agent model and no per-task
-selector, so the design's named Sonnet agent could not be selected. This check
-therefore awaits ratification by the named instrument. The manifests' `validity.by`
-record the same string.
+selector, so the design's named Sonnet agent could not be selected. The
+maintainer ratified this substitution on 2026-09-16 as the instrument for R0
+§1.2, as a deliberate deviation from the design's Sonnet wording. The manifests'
+`validity.by` record the same string.
 
 ## Leak tells
 

@@ -107,6 +107,8 @@ five tasks, including the two the release-one review called defective, so
 the fixes are proven rather than assumed. No model inference on the GPU:
 the agent is a cloud model working from text.
 
+**Amendment 2026-09-16.** The harness that executed this check exposes a single agent model and no per-task selector, so the check ran on `deepseek-v4-flash`, not the Sonnet named above. The maintainer ratified that substitution on 2026-09-16 as a deliberate deviation: `validity.by` records the model that actually ran, and the artefacts are preserved under `evidence/2026-09-16-census/validity/`. The Sonnet wording above states the intended role, not what executed.
+
 After the changes: re-cut the two edited tasks, `cut_task.py check` exit 0
 for all five, `satyrn-evals qualify` ok for all five, digests recorded in the
 census records. The floor tasks and `agentclinic-repair-depth-2` are not

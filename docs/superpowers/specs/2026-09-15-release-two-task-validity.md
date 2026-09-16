@@ -39,7 +39,7 @@ answer; copying only `base/` is the same artefact a census cell receives.
 
 One `deepseek-v4-flash` subagent per task, run blocking. The project's
 intended role for this check is Sonnet, but the harness could not select it,
-so `by` records the model that actually ran. It is given `PROMPT.txt`'s text
+so `by` records the model that actually ran. The maintainer ratified this substitution on 2026-09-16 as the instrument for R0 §1.2 (design amendment, section 4). It is given `PROMPT.txt`'s text
 and the tree path, and nothing else: no plan, no hidden test ids, no
 known-good patch, no qualification output. It writes a solution in the tree.
 It does not run the hidden suite — it has no access to one — and it may run
