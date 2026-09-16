@@ -51,8 +51,11 @@ The escape rules are lexical and stated so a reader can recompute them:
 - a **source mutation** is a ``write`` or ``edit`` whose ``tool_execution_end``
   is not an error and whose worktree-relative path is inside the manifest's
   ``source_paths`` and is not a test file (basename ``test_*.py`` or
-  ``*_test.py``, or any parent component ``tests``). This is the finishing
-  counterfactual's own rule, so the two instruments agree;
+  ``*_test.py``, or any parent component ``tests``). This is a write/edit-only
+  rule: the census classifier's own row derives ``exploration_turns`` from the
+  finishing counterfactual's ``bash_touched`` route instead (which also counts
+  a replayed bash write), so the two agree except when a replayed bash write is
+  the first source mutation (Ruling R-5b);
 - **exploration turns** are the ``turn_start`` events strictly before the turn
   holding the first source mutation, and ``null`` when there is none;
 - the **biggest turn** is the turn with the most assistant output tokens, with

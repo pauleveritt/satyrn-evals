@@ -158,19 +158,6 @@ def _spec_of(cell: Cell) -> cf.CellSpec:
     return cf.CellSpec(task=cell.task, run=cell.night, arm=cell.arm, attempt=cell.attempt, group=group)
 
 
-def _receipt_reason(cell: Cell, attempt: dict) -> str | None:
-    name = attempt.get("receipt_path")
-    if not isinstance(name, str):
-        return None
-    path = cell.folder / name
-    if not path.is_file():
-        return None
-    try:
-        return json.loads(path.read_text()).get("reason") or None
-    except (OSError, json.JSONDecodeError):
-        return None
-
-
 def audit(cell: Cell, attempt: dict, bash_touched: dict[int, tuple[str, ...]]) -> dict:
     """run-2/audit.py's row, for this cell, with the package's per-turn count and
     the section 6 fields taken from `cell_evidence.collect_evidence`.
@@ -260,10 +247,11 @@ def audit(cell: Cell, attempt: dict, bash_touched: dict[int, tuple[str, ...]]) -
         "attempt_dir": cell.attempt_dir,
         "code": attempt.get("code"),
         "verdict": attempt.get("verdict"),
-        # The record no longer carries a tripped verdict (Ruling R-1); the
-        # driver grades the harvested patch offline and fills this in.
+        # Both are the driver's to fill after the audit: the record no longer
+        # carries a tripped verdict (Ruling R-1), and the allowlist reason
+        # comes only from a filtered pass (Ruling R-4).
         "tripped_verdict": None,
-        "allowlist_reason": _receipt_reason(cell, attempt),
+        "allowlist_reason": None,
         "cwd": cwd,
         "first_source_edit": first,
         "all_edits": all_edits,
@@ -311,7 +299,8 @@ def _empty_audit(cell: Cell, attempt: dict) -> dict:
         "attempt_dir": cell.attempt_dir,
         "code": attempt.get("code"),
         "verdict": attempt.get("verdict"),
-        "tripped_verdict": attempt.get("tripped_verdict"),
+        # Consistent with `audit`: the driver fills both after the audit.
+        "tripped_verdict": None,
         "allowlist_reason": None,
         "cwd": None,
         "first_source_edit": None,
@@ -478,23 +467,32 @@ def _tripped_verdict(cell: Cell, grade_root: Path) -> str | None:
 
 
 def _filtered_allowlist_reason(
-    cell: Cell, patch: str, source_paths: tuple[str, ...], grade_root: Path
+    cell: Cell,
+    patch: str,
+    source_paths: tuple[str, ...],
+    ignored_paths: tuple[str, ...],
+    grade_root: Path,
 ) -> str | None:
-    """A non-source path is allowlist evidence only when the filtered patch passes.
+    """A voiding non-source path is allowlist evidence only when the filtered patch passes.
 
     Ruling R-4: design section 7's allowlist class is "a passing state exists
-    but a file outside `source_paths` voids the patch". An unfiltered
-    "non-source path" reason is not that evidence, so the four false positives
-    are removed: the patch's non-source sections are dropped with the same
-    filter `ignored_paths` uses (`drop_ignored`), the remainder is graded, and
-    the reason is returned only when that filtered remainder grades `pass`.
+    but a file outside `source_paths` voids the patch". The grader drops
+    ``manifest.ignored_paths`` before its allowlist check (`grade.py:164-168`),
+    so only a non-source path OUTSIDE ``ignored_paths`` voids the patch; a cell
+    whose only non-source files are ignored (both retained tasks ignore
+    ``PROVENANCE.md``) is not an allowlist case. For a genuinely voiding path,
+    the patch's non-source sections are dropped with the same filter
+    ``ignored_paths`` uses (`drop_ignored`), the remainder is graded, and the
+    reason is returned only when that remainder grades ``pass``.
     """
     try:
         paths = parse_patch_paths(patch)
     except PatchParseError:
         return None
     non_source = tuple(path for path in paths if not within_source(path, source_paths))
-    if not non_source:
+    ignored = set(ignored_paths)
+    voiding = tuple(path for path in non_source if path not in ignored)
+    if not voiding:
         return None
     filtered, dropped = drop_ignored(patch, non_source)
     if not filtered.strip():
@@ -645,20 +643,23 @@ def measure(cell: Cell, grade_root: Path) -> dict:
     # Ruling R-5b: replay once, before the audit, so the audit's source-edit
     # route is the same bash_touched route the counterfactual uses.
     context = None
+    bash_touched: dict[int, tuple[str, ...]] = {}
     try:
         manifest = json.loads((cf.TASKS / cell.task / "manifest.json").read_text())
         sp = tuple(manifest["source_paths"])
+        ignored = tuple(manifest.get("ignored_paths", ()))
         transcript = (cell.folder / "transcript.txt").read_text()
         events = cf.parse_events(transcript)
         cwd = cf.session_cwd(events)
         steps = cf.steps_of(events)
         full = cf.replay(_spec_of(cell), steps, cwd, sp, None)
         edits = cf.source_edit_indices(steps, sp, cwd, full.bash_touched)
-        context = (sp, cwd, steps, full, edits)
+        bash_touched = full.bash_touched
+        context = (sp, ignored, cwd, steps, full, edits)
     except Exception as exc:  # a cell with no readable transcript is reported, not fatal
         raised = raised or f"{type(exc).__name__}: {exc}"[:200]
     try:
-        audit_row = audit(cell, attempt, {} if context is None else context[3].bash_touched)
+        audit_row = audit(cell, attempt, bash_touched)
     except Exception as exc:
         raised = raised or f"{type(exc).__name__}: {exc}"[:200]
         audit_row = _empty_audit(cell, attempt)
@@ -681,7 +682,7 @@ def measure(cell: Cell, grade_root: Path) -> dict:
         reading = _no_reading(audit_row, raised)
     exploration_turns = audit_row["evidence"]["exploration_turns"]
     if context is not None:
-        sp, cwd, steps, full, edits = context
+        sp, ignored, cwd, steps, full, edits = context
         # Ruling R-5b: exploration turns follow the bash_touched source-edit
         # route, not cell_evidence's write/edit-only rule, so they are
         # comparable with run 2's.
@@ -695,9 +696,12 @@ def measure(cell: Cell, grade_root: Path) -> dict:
                 final = _grade(cell.task, full.patch, grade_root, f"{cell.attempt}-final")
             traj = trajectory(cell, steps, cwd, edits, grade_root)
             offline = offline_fields(cell, audit_row, traj, steps, edits, cwd)
-            # Ruling R-4: the allowlist reason comes from a filtered pass, never
-            # from an unfiltered "non-source path" reason.
-            audit_row["allowlist_reason"] = _filtered_allowlist_reason(cell, full.patch, sp, grade_root)
+            # Ruling R-4: the allowlist reason comes from a filtered pass over a
+            # genuinely voiding path (one outside ignored_paths), never from an
+            # unfiltered "non-source path" reason.
+            audit_row["allowlist_reason"] = _filtered_allowlist_reason(
+                cell, full.patch, sp, ignored, grade_root
+            )
             reading = counterfactual(
                 cell,
                 audit_row,

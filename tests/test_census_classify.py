@@ -6,7 +6,10 @@ What is computed is the *evidence* each class is argued from, and each flag has
 a firing row and a silent row.
 """
 
+import importlib.util
+import sys
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -20,6 +23,17 @@ from satyrn_evals.census_classify import (
     whole_attempt_seconds,
     within_32k,
 )
+
+# The night driver lives in a dated evidence directory (not an importable
+# package), so its allowlist decision is loaded by path as the finishing
+# counterfactual's tests load theirs. Loading it spawns nothing; the grade is
+# faked per test.
+_DRIVER_PATH = Path(__file__).resolve().parents[1] / "evidence" / "2026-09-16-census" / "classify.py"
+_DRIVER_SPEC = importlib.util.spec_from_file_location("census_classify_driver", _DRIVER_PATH)
+assert _DRIVER_SPEC is not None and _DRIVER_SPEC.loader is not None
+driver = importlib.util.module_from_spec(_DRIVER_SPEC)
+sys.modules["census_classify_driver"] = driver
+_DRIVER_SPEC.loader.exec_module(driver)
 
 
 def _assistant(output: int, *, stop: str | None = None) -> dict:
@@ -131,6 +145,60 @@ def test_a_non_source_path_reason_flags_allowlist() -> None:
     # No filtered pass means no reason at all: the four unfiltered false
     # positives must read False.
     assert flags(_facts(allowlist_reason=None))["allowlist"] is False
+
+
+def _diff(path: str) -> str:
+    return (
+        f"diff --git a/{path} b/{path}\n"
+        f"--- a/{path}\n"
+        f"+++ b/{path}\n"
+        "@@ -1 +1 @@\n"
+        "-x\n"
+        "+y\n"
+    )
+
+
+def _driver_cell(tmp_path: Path) -> Any:
+    return driver.Cell(
+        task="t", night="n", arm="baseline", attempt="000001",
+        attempt_dir="t-20260101-000000-000001", folder=tmp_path,
+    )
+
+
+def test_the_filtered_allowlist_grade_honours_ignored_paths(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Ruling R-4, plan ruling 3: the filter is the one `ignored_paths` uses.
+    A patch whose only non-source file is ignored is not an allowlist case; a
+    genuinely voiding non-source path is, when the filtered remainder passes."""
+    cell = _driver_cell(tmp_path)
+    source = _diff("tools/lint_docs.py")
+
+    def verdict(value: str):
+        def fake(task: str, patch: str, root: Path, name: str) -> dict:
+            return {"verdict": value, "reason": ""}
+
+        return fake
+
+    monkeypatch.setattr(driver, "_grade", verdict("pass"))
+    # `PROVENANCE.md` is in ignored_paths: the grader drops it before its
+    # allowlist check, so even though the filtered remainder passes there is
+    # no voiding path and no allowlist.
+    assert driver._filtered_allowlist_reason(
+        cell, source + _diff("PROVENANCE.md"), ("tools/lint_docs.py",), ("PROVENANCE.md",), tmp_path
+    ) is None
+    # `pyproject.toml` is outside ignored_paths: it voids, and the filtered
+    # pass is the evidence.
+    reason = driver._filtered_allowlist_reason(
+        cell, source + _diff("pyproject.toml"), ("tools/lint_docs.py",), ("PROVENANCE.md",), tmp_path
+    )
+    assert reason is not None and "non-source path" in reason
+    # The other direction on the grade: a voiding path whose filtered patch
+    # does not pass is not allowlist evidence.
+    monkeypatch.setattr(driver, "_grade", verdict("fail"))
+    assert driver._filtered_allowlist_reason(
+        cell, source + _diff("pyproject.toml"), ("tools/lint_docs.py",), ("PROVENANCE.md",), tmp_path
+    ) is None
 
 
 def test_information_and_ambiguity_are_never_flagged_mechanically() -> None:
