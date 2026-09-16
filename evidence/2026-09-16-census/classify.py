@@ -452,18 +452,44 @@ def offline_fields(cell: Cell, audit_row: dict, traj: dict, steps: list, edits: 
     }
 
 
-def _final_verdict(traj: dict) -> str | None:
-    keys = sorted(traj["turns"])
-    return None if not keys else traj["turns"][keys[-1]]["verdict"]
+def _allowlist_reason(traj: dict, final: dict | None) -> str | None:
+    """A non-source-path reason from any graded turn, or from the final grade.
+
+    Design section 7's allowlist class is "a passing state exists but a file
+    outside `source_paths` voids the patch"; a reconstructed grade that came
+    back `unavailable` for a non-source path is that evidence too, so every
+    graded turn is scanned, not only the pass state's (MINOR 5).
+    """
+    for turn in sorted(traj["turns"]):
+        reason = traj["turns"][turn].get("reason")
+        if reason and "non-source path" in reason:
+            return reason
+    if final is not None and "non-source path" in (final.get("reason") or ""):
+        return final["reason"]
+    return None
 
 
-def counterfactual(cell: Cell, audit_row: dict, traj: dict, steps: list, edits: list[int], cwd: str | None, full) -> dict:
+def counterfactual(
+    cell: Cell,
+    audit_row: dict,
+    traj: dict,
+    steps: list,
+    edits: list[int],
+    cwd: str | None,
+    full,
+    final_verdict: str | None,
+    raised: str | None,
+) -> dict:
     """The finish-on-green reading at the 32k line, twice: run 1's pre-registered
     rules (with `cf.unmeasured_reasons` recorded) and run 2's method (the graded
-    worktree at the end of the trigger turn)."""
+    worktree at the end of the trigger turn).
+
+    `final_verdict` is run 1's full-patch grade, taken whenever the harness
+    verdict is graded -- including a cell that landed no source edit, whose
+    empty patch run 1 still grades (FINDING 1). `raised` is folded into run 1's
+    unmeasured reasons exactly as run 1 folds it (MINOR 3)."""
     actual = audit_row["code"] == "OK" and audit_row["verdict"] == "pass"
     trigger = cf.find_trigger(steps, edits, cwd)
-    final_verdict = _final_verdict(traj)
     fidelity = cf.fidelity(audit_row["verdict"], final_verdict)
     trigger_verdict = None
     unverified: list[int] = []
@@ -480,7 +506,7 @@ def counterfactual(cell: Cell, audit_row: dict, traj: dict, steps: list, edits: 
         trigger=trigger,
         skipped_writer_turns=full.skipped_writer_turns,
         anchor_miss_turns=full.anchor_miss_turns,
-        raised=None,
+        raised=raised,
         actual=actual,
         trigger_verdict=trigger_verdict,
         unverified_bash_turns=unverified,
@@ -496,7 +522,7 @@ def counterfactual(cell: Cell, audit_row: dict, traj: dict, steps: list, edits: 
         "unmeasured": unmeasured,
         "run1": {"counterfactual": "pass" if run1 else "not-pass", "change": cf.change(actual, run1)},
         "run2": {"counterfactual": "pass" if run2 else "not-pass", "change": cf.change(actual, run2)},
-        "raised": None,
+        "raised": raised,
     }
 
 
@@ -565,19 +591,17 @@ def row(cell: Cell, audit_row: dict, offline: dict, reading: dict, raised: str |
 
 
 def measure(cell: Cell, grade_root: Path) -> dict:
-    attempt = json.loads((cell.folder / "attempt.json").read_text())
     raised = None
+    attempt: dict = {}
+    try:
+        attempt = json.loads((cell.folder / "attempt.json").read_text())
+    except Exception as exc:  # an unreadable attempt is reported, not fatal
+        raised = f"{type(exc).__name__}: {exc}"[:200]
     try:
         audit_row = audit(cell, attempt)
     except Exception as exc:  # a cell with no readable transcript is reported, not fatal
-        raised = f"{type(exc).__name__}: {exc}"[:200]
+        raised = raised or f"{type(exc).__name__}: {exc}"[:200]
         audit_row = _empty_audit(cell, attempt)
-    manifest = json.loads((cf.TASKS / cell.task / "manifest.json").read_text())
-    sp = tuple(manifest["source_paths"])
-    transcript = (cell.folder / "transcript.txt").read_text()
-    events = cf.parse_events(transcript)
-    cwd = cf.session_cwd(events)
-    steps = cf.steps_of(events)
     traj = {"first_edit_turn": None, "turns": {}}
     offline = {
         "pass_turn": None,
@@ -586,19 +610,39 @@ def measure(cell: Cell, grade_root: Path) -> dict:
         "post_pass_turns": None,
         "post_pass_tokens": None,
     }
-    reading = _no_reading(audit_row)
+    reading = _no_reading(audit_row, raised)
     try:
+        manifest = json.loads((cf.TASKS / cell.task / "manifest.json").read_text())
+        sp = tuple(manifest["source_paths"])
+        transcript = (cell.folder / "transcript.txt").read_text()
+        events = cf.parse_events(transcript)
+        cwd = cf.session_cwd(events)
+        steps = cf.steps_of(events)
         full = cf.replay(_spec_of(cell), steps, cwd, sp, None)
         edits = cf.source_edit_indices(steps, sp, cwd, full.bash_touched)
+        # Run 1 grades the full patch whenever the harness verdict is graded,
+        # even with no source edit; a no-edit cell's fidelity is that grade
+        # (FINDING 1).
+        final = None
+        if audit_row["verdict"] in cf.GRADED:
+            final = _grade(cell.task, full.patch, grade_root, f"{cell.attempt}-final")
         traj = trajectory(cell, steps, cwd, edits, grade_root)
         offline = offline_fields(cell, audit_row, traj, steps, edits, cwd)
-        if not audit_row["allowlist_reason"] and offline["pass_turn"] is not None:
-            reason = traj["turns"].get(offline["pass_turn"], {}).get("reason")
-            if reason and "non-source path" in reason:
-                audit_row["allowlist_reason"] = reason
-        reading = counterfactual(cell, audit_row, traj, steps, edits, cwd, full)
+        if not audit_row["allowlist_reason"]:
+            audit_row["allowlist_reason"] = _allowlist_reason(traj, final)
+        reading = counterfactual(
+            cell,
+            audit_row,
+            traj,
+            steps,
+            edits,
+            cwd,
+            full,
+            None if final is None else final["verdict"],
+            raised,
+        )
     except Exception as exc:
-        raised = f"{type(exc).__name__}: {exc}"[:200]
+        raised = raised or f"{type(exc).__name__}: {exc}"[:200]
         reading = _no_reading(audit_row, raised)
     return row(cell, audit_row, offline, reading, raised)
 
@@ -697,9 +741,12 @@ def classes(rows: list[dict], header: dict) -> str:
 
 def stamp(argv: list[str]) -> dict:
     commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=EVALS, capture_output=True, text=True).stdout.strip()
+    # The instrument loaded by path is watched too, as run 1 watches its own
+    # counterfactual.py (MINOR 4): a dirty instrument must not read as clean.
+    watched = ["src", "evidence/2026-09-16-census/classify.py", os.fspath(SCRIPT.relative_to(EVALS))]
     dirty = bool(
         subprocess.run(
-            ["git", "status", "--porcelain", "--", "src", "evidence/2026-09-16-census/classify.py"],
+            ["git", "status", "--porcelain", "--", *watched],
             cwd=EVALS,
             capture_output=True,
             text=True,
