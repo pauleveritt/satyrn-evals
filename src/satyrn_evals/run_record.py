@@ -36,6 +36,15 @@ ARM_ADAPTERS = {
 }
 
 CAPS: dict[str, tuple[int, int]] = {"attended": (8, 60), "batch": (12, 720)}
+#: The per-attempt-command wall-clock backstop, seconds. A record field since
+#: the 2026-09-16 census (design section 3.3); 1800 is the value every record
+#: written before it ran under, so it is the default an older record loads with.
+DEFAULT_COMMAND_BACKSTOP_S = 1800
+#: What the whole-attempt deadline adds on top of the command backstop: the
+#: preserve, grade and cleanup tail the DeadlinePhase ladder needs. It does not
+#: grow with the command budget, so the difference is kept, not the ratio
+#: (2100 - 1800 at the release-one setting).
+DEADLINE_MARGIN_S = 300
 #: Concurrency the spec allows ("Concurrency, both arms"): the largest of 1, 2 or 3 the probe admits.
 K_VALUES = (1, 2, 3)
 #: Arms a record interleaves are joined with this separator in its ``arm`` field (Ruling 3).
@@ -76,6 +85,8 @@ class RunRecord:
     purpose: Purpose
     # Phase 2c (Ruling 2): optional so earlier records load; ``record new`` always writes them.
     k: int = 1
+    # Design section 3.3: the command backstop is the record's, not a module constant.
+    command_backstop_s: int = DEFAULT_COMMAND_BACKSTOP_S
     rung: str | None = None
     authority: str | None = None
 
@@ -90,6 +101,7 @@ _REQUIRED: dict[str, type | tuple[type, ...]] = {
 
 _OPTIONAL: dict[str, type | tuple[type, ...]] = {
     "k": int, "rung": (str, type(None)), "authority": (str, type(None)),
+    "command_backstop_s": int,
 }
 _ARM_PART = re.compile(r"^[a-z][a-z-]*$")
 
@@ -134,6 +146,9 @@ def load_run_record(path: Path) -> RunRecord:
             raise RunRecordError(f"run record {path}: {field} has the wrong type")
     if body.get("k", 1) not in K_VALUES:
         raise RunRecordError(f"run record {path}: k must be 1, 2 or 3")
+    backstop = body.get("command_backstop_s", DEFAULT_COMMAND_BACKSTOP_S)
+    if backstop < 1:
+        raise RunRecordError(f"run record {path}: command_backstop_s must be a positive integer")
     fields = {k: body[k] for k in _REQUIRED} | {k: body[k] for k in _OPTIONAL if k in body}
     fields["isolation"] = Isolation(body["isolation"])
     return RunRecord(**fields)
@@ -147,6 +162,11 @@ def record_arms(record: RunRecord) -> tuple[str, ...]:
 def attempt_budget(record: RunRecord) -> AttemptBudget:
     """The budget every attempt under this record is held to."""
     return AttemptBudget(output_tokens=record.token_budget, turns=record.turn_budget)
+
+
+def attempt_deadline_s(record: RunRecord) -> float:
+    """The whole-attempt deadline this record's backstop implies (Ruling 11)."""
+    return float(record.command_backstop_s + DEADLINE_MARGIN_S)
 
 
 def gate(
@@ -164,6 +184,11 @@ def gate(
         raise RunRecordError(
             f"{record.mode} runs are capped at n<={max_n} and {max_minutes} minutes; "
             f"record asks n={record.n}, {record.max_minutes} minutes")
+    if record.command_backstop_s + DEADLINE_MARGIN_S > record.max_minutes * 60:
+        raise RunRecordError(
+            f"a {record.command_backstop_s} s backstop plus the {DEADLINE_MARGIN_S} s deadline margin "
+            f"leaves no room for one cell in {record.max_minutes} minutes"
+        )
     if record.previous_result is not None and previous_result_committed is not True:
         raise RunRecordError(f"previous_result {record.previous_result} is not committed")
     if record.purpose in DECIDING_PURPOSES and record.isolation is not Isolation.ISOLATED:
@@ -245,6 +270,7 @@ def new_record(
     authority: str | None,
     decision_rule: str | None,
     stop_rule: str = STOP_RULE,
+    command_backstop_s: int = DEFAULT_COMMAND_BACKSTOP_S,
 ) -> dict[str, object]:
     """A record body ``load_run_record`` and ``gate`` accept, with the tree digest and rung read from the task.
 
@@ -267,7 +293,7 @@ def new_record(
         "condition": "cold", "n": n, "mode": mode, "max_minutes": max_minutes, "stop_rule": stop_rule,
         "decision_rule": decision_rule, "previous_result": previous_result, "token_budget": token_budget,
         "turn_budget": turn_budget, "isolation": isolation, "purpose": purpose, "k": k, "rung": rung,
-        "authority": authority,
+        "authority": authority, "command_backstop_s": command_backstop_s,
     }
 
 

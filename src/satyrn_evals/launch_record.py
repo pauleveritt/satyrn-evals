@@ -66,11 +66,7 @@ from satyrn_evals.launch import (
     write_atomically,
     write_ledger,
 )
-from satyrn_evals.launch_cell import (
-    ATTEMPT_DEADLINE,
-    COMMAND_BACKSTOP,
-    popen_cell,
-)
+from satyrn_evals.launch_cell import popen_cell
 from satyrn_evals.manifest import load_manifest, resolve_task
 from satyrn_evals.model_server import model_server_base_url, model_server_problems
 from satyrn_evals.pi_models import read_pi_models
@@ -84,6 +80,7 @@ from satyrn_evals.run_record import (
     DECIDING_PURPOSES,
     RunRecord,
     RunRecordError,
+    attempt_deadline_s,
     check_invocation,
     gate,
     load_run_record,
@@ -299,8 +296,8 @@ def launch_record(
     *,
     tasks_root: Path,
     runs_root: Path = DEFAULT_RUNS_ROOT,
-    timeout: float = COMMAND_BACKSTOP,
-    attempt_timeout: float = ATTEMPT_DEADLINE,
+    timeout: float | None = None,
+    attempt_timeout: float | None = None,
     hunt: bool = True,
     settings: bool = True,
     grace: float = 60.0,
@@ -312,6 +309,10 @@ def launch_record(
     facts = facts or LaunchFacts()
     out, err = out or sys.stdout, err or sys.stderr
     record = load_run_record(record_path)
+    # The record is the source; a flag is an override, and an override is a
+    # seam a deciding record refuses (below), exactly as --no-hunt is.
+    backstop = float(record.command_backstop_s) if timeout is None else timeout
+    deadline_s = attempt_deadline_s(record) if attempt_timeout is None else attempt_timeout
     arms = _arms(record, arm_paths)
     task_dir = resolve_task(record.task, tasks_root=tasks_root)
     commands = {name: build_argv(arm) for name, (_, arm) in arms.items()}
@@ -322,8 +323,8 @@ def launch_record(
         seams = [
             name for name, used in (
                 ("--no-settings", not settings), ("--no-hunt", not hunt),
-                (f"--timeout {timeout:g}", timeout != COMMAND_BACKSTOP),
-                (f"--attempt-timeout {attempt_timeout:g}", attempt_timeout != ATTEMPT_DEADLINE),
+                (f"--timeout {backstop:g}", timeout is not None),
+                (f"--attempt-timeout {deadline_s:g}", attempt_timeout is not None),
                 (CELL_PATH_PREFIX_ENV, bool(os.environ.get(CELL_PATH_PREFIX_ENV))),
             ) if used
         ]
@@ -387,8 +388,8 @@ def launch_record(
     def spawn(slot: Slot) -> CellProcess:
         spec = {
             "slot": slot.index, "arm": slot.arm, "task": record.task, "tasks_root": os.fspath(tasks_root),
-            "output": os.fspath(night / slot.arm), "command": commands[slot.arm], "timeout": timeout,
-            "attempt_timeout": attempt_timeout, "rung": record.rung, "token_budget": record.token_budget,
+            "output": os.fspath(night / slot.arm), "command": commands[slot.arm], "timeout": backstop,
+            "attempt_timeout": deadline_s, "rung": record.rung, "token_budget": record.token_budget,
             "turn_budget": record.turn_budget, "isolation": record.isolation.value,
             "result": os.fspath(slot_path(night, slot)),
         }
@@ -402,7 +403,7 @@ def launch_record(
     }
     outcome: LaunchOutcome = launch_cells(
         night=night, arms=record_arms(record), n=record.n, k=record.k, max_seconds=record.max_minutes * 60,
-        cell_seconds=attempt_timeout, spawn=spawn, drift=drift, grace=grace, poll_interval=poll_interval,
+        cell_seconds=deadline_s, spawn=spawn, drift=drift, grace=grace, poll_interval=poll_interval,
     )
     write_ledger(night, identity=identity, sitting=sitting, outcome=outcome)
     ledger = json.loads((night / "launch.json").read_text(encoding="utf-8"))

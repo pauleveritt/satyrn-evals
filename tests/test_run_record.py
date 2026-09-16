@@ -9,9 +9,11 @@ from satyrn_evals.cli import main
 from satyrn_evals.errors import UsageError
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
 from satyrn_evals.run_record import (
+    DEFAULT_COMMAND_BACKSTOP_S,
     RunRecord,
     RunRecordError,
     attempt_budget,
+    attempt_deadline_s,
     check_invocation,
     command_arm,
     command_model,
@@ -309,3 +311,38 @@ def test_an_unfrozen_record_is_refused_and_a_frozen_one_passes(tmp_path: Path) -
     with pytest.raises(RunRecordError, match="not frozen"):
         gate(record, previous_result_committed=None, record_frozen=False)
     gate(record, previous_result_committed=None, record_frozen=True)
+
+
+# --- 3.3: the wall-clock backstop is a record field ---------------------------
+
+
+def test_a_record_without_the_field_keeps_the_default_backstop(tmp_path: Path) -> None:
+    """Every committed record predates the field and must still load."""
+    record = load_run_record(_write(tmp_path))
+    assert record.command_backstop_s == DEFAULT_COMMAND_BACKSTOP_S == 1800
+    assert attempt_deadline_s(record) == 2100.0
+
+
+def test_a_recorded_backstop_is_read_and_carries_the_deadline_margin(tmp_path: Path) -> None:
+    record = load_run_record(_write(tmp_path, command_backstop_s=3000, max_minutes=240, mode="batch", n=6))
+    assert record.command_backstop_s == 3000
+    assert attempt_deadline_s(record) == 3300.0
+
+
+@pytest.mark.parametrize("value", [0, -1, 1800.0, True, "1800"])
+def test_a_backstop_that_is_not_a_positive_integer_is_refused(tmp_path: Path, value: object) -> None:
+    with pytest.raises(RunRecordError, match="command_backstop_s"):
+        load_run_record(_write(tmp_path, command_backstop_s=value))
+
+
+def test_a_backstop_that_leaves_no_room_for_one_cell_is_gated(tmp_path: Path) -> None:
+    """Ruling 12: `max_minutes * 60` alone is vacuous -- the derived 300 s tail
+    must fit too, or the launcher caps with zero cells and the script loops."""
+    record = load_run_record(_write(tmp_path, command_backstop_s=3600, max_minutes=60))
+    with pytest.raises(RunRecordError, match="leaves no room"):
+        gate(record, previous_result_committed=None)
+
+
+def test_a_backstop_that_fits_passes_the_gate(tmp_path: Path) -> None:
+    record = load_run_record(_write(tmp_path, command_backstop_s=3000, max_minutes=240, mode="batch", n=6))
+    gate(record, previous_result_committed=None)

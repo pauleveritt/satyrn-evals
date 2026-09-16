@@ -21,7 +21,6 @@ from satyrn_evals.census import build_arg_parser as build_census_parser
 from satyrn_evals.census import run_cli as run_census
 from satyrn_evals.errors import SatyrnError, UsageError
 from satyrn_evals.grade import grade
-from satyrn_evals.launch_cell import ATTEMPT_DEADLINE, COMMAND_BACKSTOP
 from satyrn_evals.launch_record import (
     DEFAULT_RUNS_ROOT,
     launch_record,
@@ -32,6 +31,7 @@ from satyrn_evals.qualify import qualify
 from satyrn_evals.rescore import regrade_attempt, summarize_output
 from satyrn_evals.run import run
 from satyrn_evals.run_record import (
+    DEFAULT_COMMAND_BACKSTOP_S,
     K_VALUES,
     PURPOSES,
     RunRecordError,
@@ -325,7 +325,8 @@ def _record_new(args: argparse.Namespace) -> int:
     body = new_record(
         task=args.task, tasks_root=Path(args.tasks_root), arm=args.arm, model=args.model, n=args.n, k=args.k,
         rung=None if args.rung == "contract" else args.rung, purpose=args.purpose, isolation=args.isolation,
-        mode=args.mode, max_minutes=args.max_minutes, token_budget=args.token_budget,
+        mode=args.mode, max_minutes=args.max_minutes, command_backstop_s=args.command_backstop,
+        token_budget=args.token_budget,
         turn_budget=args.turn_budget, previous_result=args.previous_result, authority=args.authority,
         decision_rule=args.decision_rule,
     )
@@ -536,9 +537,13 @@ launch_p.add_argument("--arm", action="append", default=None, help="arm JSON, on
 launch_p.add_argument("--no-hunt", action="store_true", help="skip the root-anchored find (development records only)")
 launch_p.add_argument("--no-settings", action="store_true", help="skip preflight_settings (development records only)")
 launch_p.add_argument("--runs-root", default=str(DEFAULT_RUNS_ROOT), help="where the night directory lives")
-launch_p.add_argument("--timeout", type=positive_finite_timeout, default=COMMAND_BACKSTOP, help="command backstop, seconds")
 launch_p.add_argument(
-    "--attempt-timeout", type=positive_finite_timeout, default=ATTEMPT_DEADLINE, help="attempt deadline, seconds"
+    "--timeout", type=positive_finite_timeout, default=None,
+    help="override the record's command_backstop_s, seconds (development records only)",
+)
+launch_p.add_argument(
+    "--attempt-timeout", type=positive_finite_timeout, default=None,
+    help="override the record's attempt deadline, seconds (development records only)",
 )
 launch_p.add_argument(
     "--tasks-root", default=str(DEFAULT_TASKS_ROOT), help="task root (default: bundled tasks)"
@@ -561,6 +566,10 @@ record_new_p.add_argument("--isolation", default="isolated", choices=["isolated"
 record_new_p.add_argument("--model", default="omlx/Ornith-1.5-9B-MLX-8bit")
 record_new_p.add_argument("--mode", default="attended", choices=["attended", "batch"])
 record_new_p.add_argument("--max-minutes", type=positive_int, default=60)
+record_new_p.add_argument(
+    "--command-backstop", type=positive_int, default=DEFAULT_COMMAND_BACKSTOP_S,
+    help="per-attempt-command wall-clock backstop, seconds",
+)
 record_new_p.add_argument("--token-budget", type=positive_int, default=32000)
 record_new_p.add_argument("--turn-budget", type=positive_int, default=48)
 record_new_p.add_argument("--previous-result", default=None, help="the committed result this record follows")

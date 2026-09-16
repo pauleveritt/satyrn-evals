@@ -24,10 +24,13 @@ from satyrn_evals.cell import Isolation
 from satyrn_evals.errors import SatyrnError
 from satyrn_evals.launch import write_atomically
 from satyrn_evals.run import SignalAbort, _abort_on_signals
+from satyrn_evals.run_record import DEADLINE_MARGIN_S, DEFAULT_COMMAND_BACKSTOP_S
 
-#: The spec's backstop on this machine ("Budget, both arms"): per attempt command, and the attempt deadline.
-COMMAND_BACKSTOP = 1800.0
-ATTEMPT_DEADLINE = 2100.0
+#: Defaults only. The value a cell actually runs under is the record's
+#: `command_backstop_s` (design section 3.3); these name what a record that
+#: does not say gets.
+COMMAND_BACKSTOP = float(DEFAULT_COMMAND_BACKSTOP_S)
+ATTEMPT_DEADLINE = float(DEFAULT_COMMAND_BACKSTOP_S + DEADLINE_MARGIN_S)
 
 
 def slot_result(*, slot: int, arm: str, record: AttemptRecord) -> dict[str, object]:

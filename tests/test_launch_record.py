@@ -14,7 +14,7 @@ from satyrn_evals.errors import SatyrnError
 from satyrn_evals.launch import SLOTS_DIR, Slot, slot_path
 from satyrn_evals.launch_record import LaunchFacts, launch_record, model_server_checks
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
-from satyrn_evals.run_record import new_record, write_new_record
+from satyrn_evals.run_record import RunRecordError, new_record, write_new_record
 
 REPO = Path(__file__).resolve().parent.parent
 ARM = REPO / "arms" / "baseline-ornith15-9b.json"
@@ -435,3 +435,35 @@ def test_an_engine_export_problem_exits_1_and_runs_nothing(tmp_path: Path, capsy
     ) == 1
     assert "launch FAILED: engine: the engine export /x is not under" in capsys.readouterr().err
     assert not (tmp_path / "runs").exists()
+
+
+# --- 3.3: the cell's timeouts come from the record ----------------------------
+
+
+def test_the_cell_spec_takes_its_timeouts_from_the_record(tmp_path: Path) -> None:
+    _record(tmp_path, command_backstop_s=3000, max_minutes=240, mode="batch", n=6)
+    launch_record(
+        tmp_path / "records" / "depth-3.json", [ARM], tasks_root=DEFAULT_TASKS_ROOT,
+        runs_root=tmp_path / "runs", facts=_facts(),
+    )
+    spec = json.loads((tmp_path / "runs" / "depth-3" / SLOTS_DIR / "00.spec.json").read_text())
+    assert (spec["timeout"], spec["attempt_timeout"]) == (3000.0, 3300.0)
+
+
+def test_a_deciding_record_refuses_a_timeout_override(tmp_path: Path) -> None:
+    _record(tmp_path, command_backstop_s=3000, max_minutes=240, mode="batch", n=6, purpose="admission")
+    with pytest.raises(RunRecordError, match="--timeout"):
+        launch_record(
+            tmp_path / "records" / "depth-3.json", [ARM], tasks_root=DEFAULT_TASKS_ROOT,
+            runs_root=tmp_path / "runs", timeout=1800.0, facts=_facts(),
+        )
+
+
+def test_a_development_record_may_override_the_timeout(tmp_path: Path) -> None:
+    _record(tmp_path, purpose="development", isolation="local")
+    launch_record(
+        tmp_path / "records" / "depth-3.json", [ARM], tasks_root=DEFAULT_TASKS_ROOT,
+        runs_root=tmp_path / "runs", timeout=60.0, attempt_timeout=90.0, facts=_facts(),
+    )
+    spec = json.loads((tmp_path / "runs" / "depth-3" / SLOTS_DIR / "00.spec.json").read_text())
+    assert (spec["timeout"], spec["attempt_timeout"]) == (60.0, 90.0)

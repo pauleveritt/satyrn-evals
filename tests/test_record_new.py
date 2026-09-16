@@ -95,3 +95,18 @@ def test_the_default_contract_is_pinned_as_a_null_rung(tmp_path: Path) -> None:
 def test_a_record_that_follows_a_result_is_written_and_its_commit_is_left_to_launch(tmp_path: Path) -> None:
     assert main(_new(tmp_path, "--previous-result", "records/depth-3.result.json")) == 0
     assert load_run_record(tmp_path / "records" / "depth-3.json").previous_result == "records/depth-3.result.json"
+
+
+def test_record_new_defaults_the_backstop_and_writes_it(tmp_path: Path) -> None:
+    assert main(_new(tmp_path)) == 0
+    assert load_run_record(tmp_path / "records" / "depth-3.json").command_backstop_s == 1800
+
+
+def test_record_new_takes_a_backstop(tmp_path: Path) -> None:
+    assert main(_new(tmp_path, "--command-backstop", "3000", "--mode", "batch", "--max-minutes", "240")) == 0
+    assert load_run_record(tmp_path / "records" / "depth-3.json").command_backstop_s == 3000
+
+
+def test_record_new_refuses_a_backstop_that_does_not_fit_the_wall_clock(tmp_path: Path) -> None:
+    assert main(_new(tmp_path, "--command-backstop", "3600", "--max-minutes", "60")) == 2
+    assert not (tmp_path / "records" / "depth-3.json").exists()
