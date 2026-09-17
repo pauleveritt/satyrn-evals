@@ -867,6 +867,28 @@ def stamp(argv: list[str], night: Path) -> dict:
             "command": " ".join(["classify.py", *argv])}
 
 
+def _overwrite_refusal(out: Path, tasks: set[str], night: str) -> str | None:
+    """Ruling 11: refuse to let this night's cells silently overwrite another
+    night's committed folder. Three of night 2's four tasks share night 1's
+    names, and the default ``--out`` is night 1's directory.
+
+    Returns the refusal text for the first task whose existing ``cells.json``
+    names a different night, or ``None`` when every task is clear to write --
+    either its folder is fresh, or it already holds this same night's cells
+    (a deliberate re-classification).
+    """
+    for task in sorted(tasks):
+        existing = out / task / "cells.json"
+        if existing.is_file():
+            previous = json.loads(existing.read_text()).get("night")
+            if previous is not None and previous != night:
+                return (
+                    f"classify: {existing} holds {previous}, not {night}; "
+                    "pass --out for this night rather than overwriting another night's table"
+                )
+    return None
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="classify.py", description="Classify one census night against its record.")
     parser.add_argument("--night", type=Path, required=True, help="the night directory under ~/satyrn-runs")
@@ -902,20 +924,9 @@ def main(argv: list[str]) -> int:
             )
     finally:
         shutil.rmtree(cf.WORK, ignore_errors=True)
-    # Ruling 11: three of night 2's four tasks share night 1's names, and the
-    # default --out is night 1's directory, so an unguarded run would silently
-    # overwrite another night's table with this one's cells.
-    for task in sorted({r["task"] for r in rows}):
-        existing = args.out / task / "cells.json"
-        if existing.is_file():
-            previous = json.loads(existing.read_text()).get("night")
-            if previous is not None and previous != header["night"]:
-                print(
-                    f"classify: {existing} holds {previous}, not {header['night']}; "
-                    "pass --out for this night rather than overwriting another night's table",
-                    file=sys.stderr,
-                )
-                return 2
+    if (refusal := _overwrite_refusal(args.out, {r["task"] for r in rows}, header["night"])) is not None:
+        print(refusal, file=sys.stderr)
+        return 2
     for task in sorted({r["task"] for r in rows}):
         mine = [r for r in rows if r["task"] == task]
         folder = args.out / task

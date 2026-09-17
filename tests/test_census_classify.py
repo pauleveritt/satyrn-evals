@@ -7,6 +7,7 @@ a firing row and a silent row.
 """
 
 import importlib.util
+import json
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -275,3 +276,27 @@ def test_attempt_started_is_the_directorys_utc_stamp() -> None:
 
 def test_a_directory_name_without_a_stamp_has_no_start() -> None:
     assert attempt_started("not-a-stamp") is None
+
+
+def test_the_night_guard_refuses_a_folder_that_holds_another_nights_cells(tmp_path: Path) -> None:
+    """Ruling 11: the morning-after-night-2 classify commands must not silently
+    overwrite night 1's three same-named committed folders."""
+    task_dir = tmp_path / "selfhost-docs-linter"
+    task_dir.mkdir()
+    (task_dir / "cells.json").write_text(json.dumps({"night": "2026-09-16-census-selfhost-docs-linter"}))
+    refusal = driver._overwrite_refusal(tmp_path, {"selfhost-docs-linter"}, "2026-09-17-census-selfhost-docs-linter")
+    assert refusal is not None
+    assert "2026-09-16-census-selfhost-docs-linter" in refusal
+    assert "2026-09-17-census-selfhost-docs-linter" in refusal
+
+
+def test_the_night_guard_allows_the_same_night_or_a_fresh_folder(tmp_path: Path) -> None:
+    """The siblings: a deliberate re-classification of the same night, and a task
+    with no existing folder, both write."""
+    task_dir = tmp_path / "selfhost-docs-linter"
+    task_dir.mkdir()
+    (task_dir / "cells.json").write_text(json.dumps({"night": "2026-09-16-census-selfhost-docs-linter"}))
+    assert driver._overwrite_refusal(
+        tmp_path, {"selfhost-docs-linter"}, "2026-09-16-census-selfhost-docs-linter"
+    ) is None
+    assert driver._overwrite_refusal(tmp_path, {"a-fresh-task"}, "2026-09-17-census-a-fresh-task") is None
