@@ -8494,3 +8494,5 @@
 | evidence/2026-09-17-census-2/validity/selfhost-preflight-quiet/run-2/solution.diff | created in release-one |
 | tests/test_task_base_residue.py | created in release-one |
 | tests/test_validity_leak_forms.py | created in release-one |
+| evidence/2026-09-17-census-2/validity/selfhost-preflight-quiet/README.md | created in release-one |
+| evidence/2026-09-18-census-3/postreg.md | created in release-one |

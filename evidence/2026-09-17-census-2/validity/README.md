@@ -143,6 +143,21 @@ pointed back here rather than re-discovering the same "flagged, not
 contamination" finding from scratch. The record's own text above is fixed
 by the plan and is not being changed; this paragraph is the pointer.
 
+## Disclosed, not fixed: I2 and three parked literals
+
+A whole-path review of the hidden suite found four places where the
+suite is more lenient than the prompt's own prose — most notably I2, the
+`ps`-line "at most three fields" rule, which the suite cannot distinguish
+from a bare `split()`, with the consequence that a mutant built that way
+reports a 93.1%-cpu process as not busy. Closing any of these means
+editing the frozen heading, which would move `base` and orphan `good`, so
+the maintainer's ruling is to disclose and instrument them rather than fix
+them. The full writeup, including the re-measured 20-passed/20-passed
+comparison and the `busy_processes(...) -> []` consequence, is at
+`evidence/2026-09-17-census-2/validity/selfhost-preflight-quiet/README.md`.
+The pre-registered night-3 read that counts all four is
+`evidence/2026-09-18-census-3/postreg.md`.
+
 ## Leak tells
 
 **Which form of the id tell was checked.** The procedure's own tell (Ruling
