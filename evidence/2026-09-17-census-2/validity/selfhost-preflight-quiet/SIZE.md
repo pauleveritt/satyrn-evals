@@ -30,7 +30,10 @@ direction or an edge the spec names.
 Commands:
 
 ```bash
+cd "$EVALS"   # repository root, e.g. /Users/pauleveritt/projects/pauleveritt/satyrn-evals
 BASE=3f7a561931e4c4fabb79991756359d6d6c9c9aac
+SCRATCH="$HOME/satyrn-authored-task-scratch"   # do not use /tmp or /private/tmp
+mkdir -p "$SCRATCH"
 git worktree add --detach "$SCRATCH/base-preflight-quiet" "$BASE"
 ( cd "$SCRATCH/base-preflight-quiet" && uv sync -q && time uv run pytest -q -m "not integration" )
 git worktree remove --force "$SCRATCH/base-preflight-quiet"
@@ -42,18 +45,29 @@ average 7.46/6.97/6.52 and CPU usage 21.55% user / 13.1% sys / 65.42% idle
 — the machine was carrying other work (1070 processes, 6 running), not
 quiet. Because the first figure was not close to the 40 s line but was not
 trivially far from it either, the suite was run twice rather than once, and
-both figures are reported (not the best of the two):
+both figures are reported (not the best of the two). The target is wall
+clock, so wall clock (from `time`) leads; pytest's own internal suite time
+is kept alongside it:
 
-- Run 1: `2462 passed, 336 deselected in 32.16s` (wall clock per `time`:
-  32.768s total elapsed)
-- Run 2: `2462 passed, 336 deselected in 31.19s` (wall clock per `time`:
-  31.421s total elapsed)
+- Run 1: `time` wall clock **32.768 s** total elapsed (pytest's internal
+  figure: `2462 passed, 336 deselected in 32.16s`)
+- Run 2: `time` wall clock **31.421 s** total elapsed (pytest's internal
+  figure: `2462 passed, 336 deselected in 31.19s`)
 
-Both figures are under 40 s. The scratch worktree was removed with
-`git worktree remove --force` after each pass/fail determination; it was
-never one of the seven historical worktrees under `.claude/worktrees/` and
-is not left behind (`git worktree list` after removal shows only the main
-checkout and the seven historical worktrees).
+Contention inflates wall clock, never deflates it: at load average 7.46 on
+an 18-core machine the measured figure is a **ceiling**, not a best case. A
+quiet machine would run this suite no slower than what is reported here, so
+a passing figure taken under contention is a strictly stronger pass than
+the same figure would be on a quiet machine. Two decimal places on a
+contended run with a ~1.3 s spread between the two attempts claims more
+precision than the measurement has; read it honestly as **roughly 31-33 s,
+an upper bound, against the 40 s target** — comfortably clear of it.
+
+The scratch worktree was removed with `git worktree remove --force` after
+each pass/fail determination; it was never one of the seven historical
+worktrees under `.claude/worktrees/` and is not left behind (`git worktree
+list` after removal shows only the main checkout and the seven historical
+worktrees).
 
 **Pass.**
 
@@ -104,17 +118,52 @@ written from the spec before any implementation existed — the basis for
 
 **Pass.**
 
-## Tier placement
+## What these targets do and do not establish
 
-All three measured targets — 20 hidden tests (band 15–20), a public suite
-of 31–32 s (under 40 s), and a diff touching exactly one new module plus
-one new test module — place `selfhost-preflight-quiet` in the medium-build
-tier: the `selfhost-run-record-gate` size class described by the census's
-signed reading (`evidence/2026-09-16-census/README.md`,
-`evidence/2026-09-16-census/classes-summary.md`), not the large tier that
-`selfhost-cell-loop` and `selfhost-speed-probe` occupy. The signed reading
-calls run-record-gate and docs-linter "the medium tier" (finishing-bound,
-8 of 9 and 4 of 6 cells reaching a hidden-suite pass inside the pre-
-registered line) and cell-loop and speed-probe "the large tier" (0 of 18
-cells reaching any pass state at 9B, out of reach on this tier). This task
-is sized and measured to sit with the former, not the latter.
+`selfhost-preflight-quiet` **meets all three size targets pre-registered
+for it** in the approved design spec,
+`docs/superpowers/specs/2026-09-17-release-two-authored-task-design.md`
+section 2, "The task" ("Size targets, measured before admission": hidden
+tests 15-20; public suite under 40 s; the good commit's diff touches one
+new module and one new test module only), measured here on the census's
+own artefacts (`manifest.json`, `known-good.patch`, the good commit).
+
+That pre-registration is a band chosen **for this task alone**; it is not
+a description of, and does not discriminate, the census's existing
+medium/large split. `evidence/2026-09-16-census/README.md` and
+`evidence/2026-09-16-census/classes-summary.md` contain no hidden-test
+counts, module counts, or suite-second figures for any task — their
+medium/large split is an **outcome** class, built on pass states and
+finishing behaviour ("Medium builds are finishing-bound", README §"What
+the two nights say" point 2; "Large builds are out of reach at 9B", point
+3), not on size. And the three size figures do not separate the two
+outcome classes in the committed artefacts: measured the same way as
+above, across all six census tasks,
+
+| task | hidden tests | files in `known-good.patch` |
+|---|---|---|
+| agentclinic-repair-depth-3 | 13 | 3 (`app.py`, `models.py`, `templates/base.html`) |
+| selfhost-docs-linter | 15 | 1 (`tools/lint_docs.py`) |
+| selfhost-run-record-gate | 20 | 2 (`src/satyrn_evals/cli.py`, `run_record.py`) |
+| selfhost-speed-probe | 17 | 2 (`ROADMAP.md`, `scripts/speed_probe.py`) |
+| selfhost-cell-loop | 22 | 1 (`src/satyrn_evals/launch.py`) |
+| **selfhost-preflight-quiet** | **20** | **1 (`scripts/preflight_quiet.py`)** |
+
+`selfhost-run-record-gate` (medium, outcome-classed) has a two-module
+graded patch; `selfhost-cell-loop` (large, outcome-classed, carries no
+caveat in the signed reading) has a one-module patch and a hidden-test
+count above this task's; `selfhost-speed-probe`'s 17 hidden tests sit
+inside the 15-20 band despite `speed-probe` itself being dropped from the
+census's large-tier ceiling set for a named prompt defect (README,
+"Deviations, stated": cut prompt carries an attended checklist and a
+preflight a cell cannot run, "never claimed against"). No combination of
+the three targets, taken from this table, separates the medium tier from
+the large tier.
+
+Which tier `selfhost-preflight-quiet` actually belongs to is not decided
+here. Per design spec section 5, "What it decides": that is what the
+task's own admission night (night 3) decides, from its cells' finishing
+shape — a finishing shape puts the medium tier three wide; comfortable
+passes make it a floor task and the tier stays two wide; no pass state
+means the size class was misjudged and the task is re-scoped, not claimed
+against.
