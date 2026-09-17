@@ -43,6 +43,10 @@ def test_the_qualify_command_exits_zero_for_a_qualifying_task(capsys: pytest.Cap
     assert main(["qualify", "calc-build", "--tasks-root", str(FIXTURE_TASKS)]) == 0
     out = capsys.readouterr().out
     # Every check line is prefixed "qualify calc-build: "; a passing one also
-    # carries " ok: ". Comparing the two counts asserts every check passed
-    # without pinning how many checks `qualify` currently runs.
+    # carries " ok: ". Comparing the two counts asserts every check that ran
+    # passed, without pinning how many checks `qualify` currently runs; the
+    # second assertion guards against that equality being vacuously true
+    # (0 == 0) if no check lines were emitted at all, i.e. it asserts checks
+    # actually ran.
     assert out.count(" ok: ") == out.count("qualify calc-build: ")
+    assert out.count("qualify calc-build: ") > 0
