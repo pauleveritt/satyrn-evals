@@ -76,7 +76,7 @@ OTHER = (
     "(4000.0 tok/s), prompt: 10, finish_reason=stop, max_tokens=16000, request_max_tokens=16000"
 )
 LOG = [SLOW, FAST]
-LOG20 = [SLOW] * 10 + [FAST] * 10
+LOG20 = [SLOW] * 20
 MODEL = "Ornith-1.5-9B-MLX-8bit"
 
 
@@ -248,6 +248,7 @@ def test_the_cli_exits_one_and_names_every_problem_on_a_loud_machine(capsys) -> 
     assert body["problems"] == [
         "load 9.5 > 4.0 (8 cores)",
         "busy: /Applications/Xcode.app/Contents/MacOS/Xcode pid 977 at 41.7% cpu",
+        "decode 5.0 tok/s < 30.0 over last 20 completions",
     ]
     assert body["inputs"]["decode"]["completions"] == 20
 ```
