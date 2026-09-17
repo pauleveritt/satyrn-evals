@@ -8478,3 +8478,8 @@
 | src/satyrn_evals/tasks/selfhost-preflight-quiet/fixtures/known-good.patch | created in release-one |
 | src/satyrn_evals/tasks/selfhost-preflight-quiet/manifest.json | created in release-one |
 | src/satyrn_evals/tasks/selfhost-preflight-quiet/overlay/test_preflight_quiet.py | created in release-one |
+| evidence/2026-09-17-census-2/validity/README.md | created in release-one |
+| evidence/2026-09-17-census-2/validity/selfhost-preflight-quiet/PROMPT.txt | created in release-one |
+| evidence/2026-09-17-census-2/validity/selfhost-preflight-quiet/solution.diff | created in release-one |
+| evidence/2026-09-17-census-2/validity/selfhost-preflight-quiet/receipt.json | created in release-one |
+| evidence/2026-09-17-census-2/validity/selfhost-preflight-quiet/REPORT.md | created in release-one |
