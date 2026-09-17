@@ -29,10 +29,11 @@ live cell in 39. They stay as built and claim nothing.
 275888, 891860, 949626, 016509; docs-linter 374751, 453263, 845472
 (`evidence/2026-09-16-census/classes-summary.md`).
 
-**Mechanism.** When a `self_test` run through the Engine (explicit,
-redirected, or enforced) exits 0 and at least one source mutation has
-landed since the last green, the runner sends one steer message before the
-next turn:
+**Mechanism.** When a `self_test` run through the Engine inside a turn
+(explicit or redirected; not the completion gate's own run, which only
+happens when the model was already stopping; plan Ruling 3) exits 0 and at
+least one source mutation has landed since the last green, the runner
+sends one steer message before the next turn:
 
 > self_test passes on the current tree. If the requested change is complete,
 > stop now and report what you changed. Do not commit, add provenance rows,
@@ -122,8 +123,9 @@ an advisory refusal that asks the developer to split the request.
 **Predicate, ratified by the maintainer 2026-09-17 (the first draft's
 "one module in `Files:`" separates neither tier):** at most 2 non-test
 paths in `Files:` and at most 10 symbols in `Interfaces: Produces:`; on
-the bundled tasks the produced counts are 5, 2, 7, 1, 0 against 24 and 16
-for the two large-tier tasks. A developer can under-declare symbols, so it
+the bundled tasks the produced counts are 5, 2, 7, 1, 0 against 23 and 16
+for the two large-tier tasks (the first draft said 24; the mechanical
+count is 23). A developer can under-declare symbols, so it
 is a guide, stated as such. This is a product behaviour, not a claim,
 and it is disclosed on the numbers page as the boundary the census found.
 
