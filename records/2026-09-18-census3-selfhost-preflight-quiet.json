@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "task": "selfhost-preflight-quiet",
+  "task_tree_sha256": "1edcf796591ec22e9c19187744d43706f840e4fdc05dbe790f925c06cac86aa0",
+  "arm": "baseline",
+  "model": "omlx/Ornith-1.5-9B-MLX-8bit",
+  "condition": "cold",
+  "n": 6,
+  "mode": "batch",
+  "max_minutes": 240,
+  "stop_rule": "established infrastructure failure only",
+  "decision_rule": "none for outcomes: release-two admission is decided in section 8 of 2026-09-15-release-two-census-design.md from the classified table, not from a pass count",
+  "previous_result": "records/2026-09-17-census2-selfhost-speed-probe.result.json",
+  "token_budget": 48000,
+  "turn_budget": 72,
+  "isolation": "isolated",
+  "purpose": "admission",
+  "k": 3,
+  "rung": "R1-plan",
+  "authority": "maintainer-approved authored task, spec docs/superpowers/specs/2026-09-17-release-two-authored-task-design.md, approved 2026-09-17; the third medium-build census task, authored not cut -- heading by Opus from the spec, implementation by Sonnet, prompt-only validity by Sonnet -- reported beside the cut tasks and never pooled with them; re-cut under the maintainer's 2026-09-18 ruling after a whole-path review, then frozen by the maintainer's second 2026-09-18 ruling with four ungraded-literal gaps in the hidden suite disclosed and pre-registered for a post-hoc read in evidence/2026-09-18-census-3/postreg.md",
+  "command_backstop_s": 4800
+}

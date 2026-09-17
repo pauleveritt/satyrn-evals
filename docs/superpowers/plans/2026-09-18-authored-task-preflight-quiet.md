@@ -1679,7 +1679,9 @@ PYTHONPATH=scripts uv run python scripts/preflight_quiet.py --model Ornith-1.5-9
 
 Expected: `quiet=0` with an empty `problems` list, or a printed list naming exactly what is loud. A non-zero exit before a census night is advisory, not a gate — but it is the reason the task exists, and what it prints belongs in the night's ledger either way.
 
-**5. Start the night.**
+**5. The pre-registered post-hoc read is already committed — read it, do not run it yet.** `evidence/2026-09-18-census-3/postreg.md` was written and committed before Task 7's record existed, against the disclosed four ungraded-literal gaps in the hidden suite (I2/P1/P3/P4, `evidence/2026-09-17-census-2/validity/selfhost-preflight-quiet/README.md`). It is read in the morning, beside the classifier, over each retained cell's harvested patch — **never before the night**, because it has nothing to read until night 3's cells exist, and **never to change a verdict**: it is a disclosure-side read of the four parked literals, not a second grading pass.
+
+**6. Start the night.**
 
 ```bash
 sh scripts/census_night_3.sh 2>&1 | tee "$HOME/satyrn-census-night-3.log"
@@ -1687,7 +1689,7 @@ sh scripts/census_night_3.sh 2>&1 | tee "$HOME/satyrn-census-night-3.log"
 
 Expected: about three hours for six cells (two waves at k = 3, 5,100 s per cell of wall clock). The script commits the result when the record completes. A capped record resumes on the next launch of the same record; nothing restarts from zero and no cell is replaced. An `EXIT:` other than 0 means the launcher established an infrastructure failure — diagnose, repair, and re-run the script, which skips a task already `complete`.
 
-**6. In the morning: commit the result, then classify into night 3's own directory.**
+**7. In the morning: commit the result, then classify into night 3's own directory, and run the pre-registered read alongside it.**
 
 ```bash
 git status --porcelain -- records
@@ -1700,9 +1702,9 @@ uv run --project . python evidence/2026-09-16-census/classify.py \
   --grade-root "$HOME/satyrn-census-grades"; echo "classify=$?"
 ```
 
-Expected: `classify=0` and `evidence/2026-09-18-census-3/selfhost-preflight-quiet/{cells.json,table.md,classes.md}`. **`--out` is not optional**: the driver's `night` key refuses to overwrite another night's directory, and without it this would land in night 1's folder. The eight class columns in `classes.md` are empty: filling them is the attended review, argued from the reconstruction and cited by turn. Then the census page (`evidence/2026-09-16-census/README.md`, ≤ 120 lines) gains this task's rows with the line that it is **authored, not cut** — never pooled with the cut tasks — and the R0 sitting reads the three-wide medium tier.
+Expected: `classify=0` and `evidence/2026-09-18-census-3/selfhost-preflight-quiet/{cells.json,table.md,classes.md}`. **`--out` is not optional**: the driver's `night` key refuses to overwrite another night's directory, and without it this would land in night 1's folder. The eight class columns in `classes.md` are empty: filling them is the attended review, argued from the reconstruction and cited by turn. Beside the classifier, and only after it, read `evidence/2026-09-18-census-3/postreg.md` against the retained cells' harvested patches, per its own steps — advisory to the ledger, not a second verdict. Then the census page (`evidence/2026-09-16-census/README.md`, ≤ 120 lines) gains this task's rows with the line that it is **authored, not cut** — never pooled with the cut tasks — and the R0 sitting reads the three-wide medium tier.
 
-**7. What the night decides** (spec section 5). If the six cells show the finishing shape, the medium tier is three tasks wide and the R0 sitting sizes an outcome claim on it. If they pass comfortably, it is a floor task and the tier stays two wide. If they reach no pass state, the size class was misjudged and the task is re-scoped, not claimed against. Either way the census page reports it as authored.
+**8. What the night decides** (spec section 5). If the six cells show the finishing shape, the medium tier is three tasks wide and the R0 sitting sizes an outcome claim on it. If they pass comfortably, it is a floor task and the tier stays two wide. If they reach no pass state, the size class was misjudged and the task is re-scoped, not claimed against. Either way the census page reports it as authored.
 
 ---
 

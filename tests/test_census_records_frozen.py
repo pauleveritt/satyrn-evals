@@ -27,6 +27,9 @@ def _frozen(prefix: str) -> list[Path]:
 
 NIGHT1 = _frozen("2026-09-16-census-")
 NIGHT2 = _frozen("2026-09-17-census2-")
+NIGHT3 = _frozen("2026-09-18-census3-")
+AUTHORED_TASK = "selfhost-preflight-quiet"
+AUTHORED_SPEC = "docs/superpowers/specs/2026-09-17-release-two-authored-task-design.md"
 NIGHT1_TASKS = {
     "agentclinic-repair-depth-3", "selfhost-cell-loop", "selfhost-docs-linter",
     "selfhost-run-record-gate", "selfhost-speed-probe",
@@ -48,7 +51,9 @@ def _authority_has_id_triple(authority: str, task: str, ids: tuple[str, str, str
     return f"replacement for contended cells {', '.join(ids)} of 2026-09-16-census-{task};" in authority
 
 
-@pytest.mark.parametrize("record_path", NIGHT1 + NIGHT2, ids=[p.stem for p in NIGHT1 + NIGHT2])
+@pytest.mark.parametrize(
+    "record_path", NIGHT1 + NIGHT2 + NIGHT3, ids=[p.stem for p in NIGHT1 + NIGHT2 + NIGHT3]
+)
 def test_a_frozen_census_record_pins_the_current_task_tree(record_path: Path) -> None:
     record = json.loads(record_path.read_text())
     task_dir = DEFAULT_TASKS_ROOT / record["task"]
@@ -149,3 +154,61 @@ def test_the_resolving_check_would_catch_a_missing_spec_path() -> None:
     body = {"generator": {"authoring": {
         "spec": "docs/superpowers/specs/does-not-exist-2026-09-99.md", "roles": {"heading": "Opus"}}}}
     assert not _authoring_spec_resolves(body, ROOT)
+
+
+def test_night_three_is_the_one_authored_record() -> None:
+    """Authored-task design section 4: one Baseline admission record for the
+    third medium-build task, which is authored rather than cut."""
+    assert {json.loads(p.read_text())["task"] for p in NIGHT3} == {AUTHORED_TASK}
+
+
+@pytest.mark.parametrize("record_path", NIGHT3, ids=[p.stem for p in NIGHT3])
+def test_a_night_three_record_carries_the_designs_parameters(record_path: Path) -> None:
+    """Section 4: Baseline, admission, batch, isolated, n = 6, k = 3, 48,000 / 72,
+    a 4,800 s backstop, 240 minutes, chained from the night-2 speed-probe result."""
+    record = json.loads(record_path.read_text())
+    assert record["arm"] == "baseline"
+    assert record["purpose"] == "admission"
+    assert record["mode"] == "batch"
+    assert record["isolation"] == "isolated"
+    assert record["n"] == 6
+    assert record["k"] == 3
+    assert record["token_budget"] == 48_000
+    assert record["turn_budget"] == 72
+    assert record["command_backstop_s"] == 4_800
+    assert record["max_minutes"] == 240
+    assert record["command_backstop_s"] + 300 <= record["max_minutes"] * 60
+    assert record["previous_result"] == "records/2026-09-17-census2-selfhost-speed-probe.result.json"
+    assert record["rung"] == "R1-plan"
+    assert record["model"] == "omlx/Ornith-1.5-9B-MLX-8bit"
+    assert record["decision_rule"] == DECISION_RULE
+
+
+def test_the_night_three_record_names_the_authored_task_design_and_its_approval() -> None:
+    """The disclosure travels with the record, not only with the page: a reader of
+    the record alone learns the task was authored and under which approved spec,
+    and can find the pre-registered post-hoc read for the hidden suite's disclosed
+    gaps."""
+    record = json.loads((RECORDS / f"2026-09-18-census3-{AUTHORED_TASK}.json").read_text())
+    assert AUTHORED_SPEC in record["authority"]
+    assert "approved 2026-09-17" in record["authority"]
+    assert "authored not cut" in record["authority"]
+    assert "evidence/2026-09-18-census-3/postreg.md" in record["authority"]
+
+
+def test_the_authored_task_manifest_discloses_itself() -> None:
+    """Sibling of the record check, one layer down: the task tree says the same
+    thing the record says, inside the body `cut_task.py check` compares."""
+    body = json.loads((DEFAULT_TASKS_ROOT / AUTHORED_TASK / "manifest.json").read_text())
+    assert body["generator"]["authored"] is True
+    assert body["generator"]["authoring"]["spec"] == AUTHORED_SPEC
+    assert body["generator"]["authoring"]["roles"]
+    assert body["validity"]["passed"] is True
+
+
+def test_a_cut_census_task_carries_no_authored_disclosure() -> None:
+    """The refusal's sibling: the five cut tasks must not claim to be authored,
+    or the census page's authored/cut split would be meaningless."""
+    for task in NIGHT1_TASKS:
+        body = json.loads((DEFAULT_TASKS_ROOT / task / "manifest.json").read_text())
+        assert "authored" not in (body.get("generator") or {})
