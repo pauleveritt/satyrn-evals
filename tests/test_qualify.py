@@ -205,6 +205,20 @@ def test_a_cut_manifest_without_the_disclosure_passes_untouched() -> None:
     assert check.detail == "not an authored task"
 
 
+@pytest.mark.parametrize("generator", ["not a dict", ["authored", True]])
+def test_a_non_dict_generator_fails_instead_of_raising(generator: object) -> None:
+    """Finding 4: judge_authored must be total, like every other judge."""
+    check = qualify_module.judge_authored({"generator": generator})
+    assert not check.passed
+
+
+def test_a_well_formed_dict_generator_still_passes() -> None:
+    """The sibling to the totality fix: a normal dict generator is unaffected."""
+    body = {"generator": {"authored": True, "authoring": {
+        "spec": "docs/superpowers/specs/x.md", "roles": {"heading": "Opus"}}}}
+    assert qualify_module.judge_authored(body).passed
+
+
 @pytest.mark.parametrize(
     "generator",
     [
@@ -214,6 +228,9 @@ def test_a_cut_manifest_without_the_disclosure_passes_untouched() -> None:
         {"authored": True, "authoring": {"spec": "x", "roles": {}}},
         {"authored": True, "authoring": {"spec": "x", "roles": {"a": ""}}},
         {"authored": True, "authoring": "Opus"},
+        {"authored": True, "authoring": {"spec": "   ", "roles": {"a": "b"}}},
+        {"authored": True, "authoring": {"spec": "x", "roles": {" ": "b"}}},
+        {"authored": True, "authoring": {"spec": "x", "roles": {"a": "   "}}},
     ],
 )
 def test_a_malformed_disclosure_is_refused(generator: dict) -> None:

@@ -17,7 +17,8 @@ from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
 from satyrn_evals.qualify import CENSUS_TASKS
 from satyrn_evals.task_tree import tree_digest
 
-RECORDS = Path(__file__).resolve().parent.parent / "records"
+ROOT = Path(__file__).resolve().parent.parent
+RECORDS = ROOT / "records"
 
 
 def _frozen(prefix: str) -> list[Path]:
@@ -118,3 +119,33 @@ def test_a_replacement_authority_would_reject_a_transposed_id_triple(task: str) 
     wrong = tuple(reversed(REPLACEMENT_CELL_IDS[task]))
     assert wrong != REPLACEMENT_CELL_IDS[task]
     assert not _authority_has_id_triple(record["authority"], task, wrong)
+
+
+def _authoring_spec_resolves(manifest_body: dict, root: Path) -> bool:
+    """Whether an authored manifest's ``generator.authoring.spec`` names a file
+    that exists in the repository (design section 5: the disclosure must point
+    at something real, not a typo'd or later-deleted path)."""
+    generator = manifest_body.get("generator")
+    authoring = generator.get("authoring") if isinstance(generator, dict) else None
+    if not isinstance(authoring, dict):
+        return True
+    spec = authoring.get("spec")
+    return isinstance(spec, str) and (root / spec).is_file()
+
+
+def test_every_authored_census_tasks_disclosed_spec_resolves_to_a_real_file() -> None:
+    """Review finding 2: nothing else checks that ``authoring.spec`` names a file
+    that exists; a typo'd or later-deleted design-spec path would otherwise
+    qualify clean and point at nothing."""
+    for task in sorted(CENSUS_TASKS):
+        manifest_body = json.loads((DEFAULT_TASKS_ROOT / task / "manifest.json").read_text())
+        assert _authoring_spec_resolves(manifest_body, ROOT), (
+            f"{task}: generator.authoring.spec does not resolve to a file in the repository"
+        )
+
+
+def test_the_resolving_check_would_catch_a_missing_spec_path() -> None:
+    """Sibling of the check above: it actually bites on a spec path that is absent."""
+    body = {"generator": {"authoring": {
+        "spec": "docs/superpowers/specs/does-not-exist-2026-09-99.md", "roles": {"heading": "Opus"}}}}
+    assert not _authoring_spec_resolves(body, ROOT)

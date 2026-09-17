@@ -193,11 +193,11 @@ def load_spec(path: Path) -> TaskSpec:
     if raw_authored is not None:
         if not isinstance(raw_authored, dict) or set(raw_authored) != _AUTHORED_KEYS:
             raise CutError(f"spec {path}: authored must be {{spec, roles}}")
-        if not isinstance(raw_authored["spec"], str) or not raw_authored["spec"]:
+        if not isinstance(raw_authored["spec"], str) or not raw_authored["spec"].strip():
             raise CutError(f"spec {path}: authored.spec must be a non-empty path string")
         roles = raw_authored["roles"]
         if not isinstance(roles, dict) or not roles or not all(
-            isinstance(k, str) and k and isinstance(v, str) and v for k, v in roles.items()
+            isinstance(k, str) and k.strip() and isinstance(v, str) and v.strip() for k, v in roles.items()
         ):
             raise CutError(f"spec {path}: authored.roles must map non-empty strings to non-empty strings")
         authored = Authored(spec=raw_authored["spec"], roles=dict(roles))

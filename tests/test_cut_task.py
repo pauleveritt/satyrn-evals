@@ -289,6 +289,9 @@ def test_a_cut_spec_without_the_key_carries_no_disclosure(tmp_path: Path) -> Non
         {"spec": "docs/x.md"},
         {"spec": "docs/x.md", "roles": {"heading": "Opus"}, "extra": "no"},
         "yes",
+        {"spec": "   ", "roles": {"heading": "Opus"}},
+        {"spec": "docs/x.md", "roles": {" ": "Opus"}},
+        {"spec": "docs/x.md", "roles": {"heading": "   "}},
     ],
 )
 def test_a_malformed_authored_block_is_refused(tmp_path: Path, value: object) -> None:

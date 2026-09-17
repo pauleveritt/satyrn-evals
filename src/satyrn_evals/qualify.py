@@ -202,7 +202,11 @@ def judge_authored(manifest_body: dict) -> Check:
     spec and by which roles, because it is reported beside the cut tasks and
     never pooled with them.
     """
-    generator = manifest_body.get("generator") or {}
+    generator = manifest_body.get("generator")
+    if generator is None:
+        generator = {}
+    if not isinstance(generator, dict):
+        return Check("authored-disclosure", False, f"generator must be a dict, got {type(generator).__name__}")
     if "authored" not in generator:
         return Check("authored-disclosure", True, "not an authored task")
     if generator["authored"] is not True:
@@ -211,10 +215,10 @@ def judge_authored(manifest_body: dict) -> Check:
     if not isinstance(authoring, dict) or set(authoring) != {"spec", "roles"}:
         return Check("authored-disclosure", False, "authoring must be {spec, roles}")
     spec, roles = authoring["spec"], authoring["roles"]
-    if not isinstance(spec, str) or not spec:
+    if not isinstance(spec, str) or not spec.strip():
         return Check("authored-disclosure", False, "authoring.spec must be a non-empty path string")
     if not isinstance(roles, dict) or not roles or not all(
-        isinstance(key, str) and key and isinstance(value, str) and value for key, value in roles.items()
+        isinstance(key, str) and key.strip() and isinstance(value, str) and value.strip() for key, value in roles.items()
     ):
         return Check("authored-disclosure", False, "authoring.roles must map non-empty strings to non-empty strings")
     return Check("authored-disclosure", True, f"authored under {spec}, {len(roles)} roles")
