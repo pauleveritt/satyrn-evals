@@ -1,8 +1,9 @@
 {
- "evals_commit": "076b1b3102c220becfe7a5129dd3eeedeecde0e1",
+ "evals_commit": "f8c1ab89399d49e15a264e6ba79e067d2c2065cf",
  "evals_dirty": false,
  "night": "2026-09-16-census-selfhost-cell-loop",
  "command": "classify.py --night /Users/pauleveritt/satyrn-runs/2026-09-16-census-selfhost-cell-loop --record records/2026-09-16-census-selfhost-cell-loop.json --grade-root /Users/pauleveritt/satyrn-census-grades",
+ "tz_offset": "-0400",
  "task": "selfhost-cell-loop",
  "cells": [
   {
@@ -49,7 +50,12 @@
     "change": "none"
    },
    "unmeasured": [],
-   "raised": null
+   "raised": null,
+   "decode_tok_s": 13.03849912455719,
+   "decode_median_tok_s": 7.608253839216532,
+   "decode_completions": 48,
+   "decode_overlap": 3,
+   "decode_reason": null
   },
   {
    "task": "selfhost-cell-loop",
@@ -95,7 +101,12 @@
     "change": "none"
    },
    "unmeasured": [],
-   "raised": null
+   "raised": null,
+   "decode_tok_s": 12.868651143387288,
+   "decode_median_tok_s": 9.093048948276666,
+   "decode_completions": 84,
+   "decode_overlap": 5,
+   "decode_reason": null
   },
   {
    "task": "selfhost-cell-loop",
@@ -141,7 +152,12 @@
     "change": "none"
    },
    "unmeasured": [],
-   "raised": null
+   "raised": null,
+   "decode_tok_s": 12.868651143387288,
+   "decode_median_tok_s": 9.093048948276666,
+   "decode_completions": 84,
+   "decode_overlap": 5,
+   "decode_reason": null
   },
   {
    "task": "selfhost-cell-loop",
@@ -187,7 +203,12 @@
     "change": "none"
    },
    "unmeasured": [],
-   "raised": null
+   "raised": null,
+   "decode_tok_s": 12.909703962148415,
+   "decode_median_tok_s": 10.30008110300081,
+   "decode_completions": 25,
+   "decode_overlap": 3,
+   "decode_reason": null
   },
   {
    "task": "selfhost-cell-loop",
@@ -233,7 +254,12 @@
     "change": "none"
    },
    "unmeasured": [],
-   "raised": null
+   "raised": null,
+   "decode_tok_s": 17.678718435945097,
+   "decode_median_tok_s": 12.055974165769646,
+   "decode_completions": 55,
+   "decode_overlap": 4,
+   "decode_reason": null
   },
   {
    "task": "selfhost-cell-loop",
@@ -279,7 +305,12 @@
     "change": "none"
    },
    "unmeasured": [],
-   "raised": null
+   "raised": null,
+   "decode_tok_s": 16.51451468624015,
+   "decode_median_tok_s": 10.128096062763525,
+   "decode_completions": 30,
+   "decode_overlap": 2,
+   "decode_reason": null
   }
  ],
  "tallies": [

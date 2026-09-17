@@ -1,13 +1,13 @@
-<!-- evals 076b1b3102c220becfe7a5129dd3eeedeecde0e1; classify.py --night /Users/pauleveritt/satyrn-runs/2026-09-16-census-selfhost-run-record-gate --record records/2026-09-16-census-selfhost-run-record-gate.json --grade-root /Users/pauleveritt/satyrn-census-grades -->
+<!-- evals f8c1ab89399d49e15a264e6ba79e067d2c2065cf; classify.py --night /Users/pauleveritt/satyrn-runs/2026-09-16-census-selfhost-run-record-gate --record records/2026-09-16-census-selfhost-run-record-gate.json --grade-root /Users/pauleveritt/satyrn-census-grades -->
 
-| task | attempt | code | verdict | verdict@32k | raised | tripped | turns | tokens | length stops | exploration turns | biggest turn | biggest share | tool span s | whole-attempt s | self-stop turn | self-stop tokens | pass turn | pass tokens | own-green turn | post-pass turns | post-pass tokens |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| selfhost-run-record-gate | 470484 | COMMAND_TIMEOUT | - | not-pass | - | - | 51 | 30169 | 0 | 19 | t16:7956 | 26% | 2664.1 | 3000.9 | - | - | 29 | 18139 | 41 | 22 | 12030 |
-| selfhost-run-record-gate | 533788 | COMMAND_TIMEOUT | - | not-pass | - | - | 56 | 35950 | 0 | 18 | t10:13950 | 39% | 2969.8 | 3000.8 | - | - | 37 | 31112 | 44 | 19 | 4838 |
-| selfhost-run-record-gate | 609675 | COMMAND_TIMEOUT | - | not-pass | - | - | 58 | 36220 | 0 | 6 | t5:8155 | 22% | 2968.9 | 3000.9 | - | - | 16 | 13026 | 52 | 42 | 23194 |
-| selfhost-run-record-gate | 172690 | BUDGET_EXCEEDED | - | not-pass | - | pass | 65 | 48271 | 0 | 10 | t10:12930 | 27% | 2591.3 | 2627.9 | - | - | 52 | 39873 | - | 13 | 8398 |
-| selfhost-run-record-gate | 275888 | OK | pass | not-pass | - | - | 55 | 30444 | 0 | 9 | t9:8647 | 28% | 2070.6 | 2132.0 | 55 | 30444 | 16 | 13809 | 25 | 39 | 16635 |
-| selfhost-run-record-gate | 393760 | OK | pass | pass | - | - | 40 | 19556 | 0 | 5 | t19:3050 | 16% | 1476.8 | 1543.6 | 40 | 19556 | 16 | 9081 | 18 | 24 | 10475 |
+| task | attempt | code | verdict | verdict@32k | raised | tripped | turns | tokens | length stops | exploration turns | biggest turn | biggest share | tool span s | whole-attempt s | decode tok/s | decode n | self-stop turn | self-stop tokens | pass turn | pass tokens | own-green turn | post-pass turns | post-pass tokens |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| selfhost-run-record-gate | 470484 | COMMAND_TIMEOUT | - | not-pass | - | - | 51 | 30169 | 0 | 19 | t16:7956 | 26% | 2664.1 | 3000.9 | 12.2 | 163 | - | - | 29 | 18139 | 41 | 22 | 12030 |
+| selfhost-run-record-gate | 533788 | COMMAND_TIMEOUT | - | not-pass | - | - | 56 | 35950 | 0 | 18 | t10:13950 | 39% | 2969.8 | 3000.8 | 12.2 | 163 | - | - | 37 | 31112 | 44 | 19 | 4838 |
+| selfhost-run-record-gate | 609675 | COMMAND_TIMEOUT | - | not-pass | - | - | 58 | 36220 | 0 | 6 | t5:8155 | 22% | 2968.9 | 3000.9 | 12.2 | 163 | - | - | 16 | 13026 | 52 | 42 | 23194 |
+| selfhost-run-record-gate | 172690 | BUDGET_EXCEEDED | - | not-pass | - | pass | 65 | 48271 | 0 | 10 | t10:12930 | 27% | 2591.3 | 2627.9 | 16.5 | 160 | - | - | 52 | 39873 | - | 13 | 8398 |
+| selfhost-run-record-gate | 275888 | OK | pass | not-pass | - | - | 55 | 30444 | 0 | 9 | t9:8647 | 28% | 2070.6 | 2132.0 | 15.5 | 134 | 55 | 30444 | 16 | 13809 | 25 | 39 | 16635 |
+| selfhost-run-record-gate | 393760 | OK | pass | pass | - | - | 40 | 19556 | 0 | 5 | t19:3050 | 16% | 1476.8 | 1543.6 | 14.4 | 87 | 40 | 19556 | 16 | 9081 | 18 | 24 | 10475 |
 
 ## Per task (nothing pools across tasks)
 

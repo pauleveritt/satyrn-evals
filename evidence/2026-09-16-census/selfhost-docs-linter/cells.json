@@ -1,8 +1,9 @@
 {
- "evals_commit": "076b1b3102c220becfe7a5129dd3eeedeecde0e1",
+ "evals_commit": "f8c1ab89399d49e15a264e6ba79e067d2c2065cf",
  "evals_dirty": false,
  "night": "2026-09-16-census-selfhost-docs-linter",
  "command": "classify.py --night /Users/pauleveritt/satyrn-runs/2026-09-16-census-selfhost-docs-linter --record records/2026-09-16-census-selfhost-docs-linter.json --grade-root /Users/pauleveritt/satyrn-census-grades",
+ "tz_offset": "-0400",
  "task": "selfhost-docs-linter",
  "cells": [
   {
@@ -49,7 +50,12 @@
     "change": "none"
    },
    "unmeasured": [],
-   "raised": null
+   "raised": null,
+   "decode_tok_s": 19.20155336491273,
+   "decode_median_tok_s": 16.41588451369277,
+   "decode_completions": 148,
+   "decode_overlap": 3,
+   "decode_reason": null
   },
   {
    "task": "selfhost-docs-linter",
@@ -97,7 +103,12 @@
    "unmeasured": [
     "unverified-rescue: bash at turns 1, 4, 5, 6"
    ],
-   "raised": null
+   "raised": null,
+   "decode_tok_s": 18.759441185969226,
+   "decode_median_tok_s": 16.26769329085672,
+   "decode_completions": 158,
+   "decode_overlap": 4,
+   "decode_reason": null
   },
   {
    "task": "selfhost-docs-linter",
@@ -143,7 +154,12 @@
     "change": "none"
    },
    "unmeasured": [],
-   "raised": null
+   "raised": null,
+   "decode_tok_s": 17.443136699526075,
+   "decode_median_tok_s": 15.802943058221368,
+   "decode_completions": 203,
+   "decode_overlap": 5,
+   "decode_reason": null
   },
   {
    "task": "selfhost-docs-linter",
@@ -189,7 +205,12 @@
     "change": "none"
    },
    "unmeasured": [],
-   "raised": null
+   "raised": null,
+   "decode_tok_s": 14.662728983594656,
+   "decode_median_tok_s": 13.592233009708737,
+   "decode_completions": 165,
+   "decode_overlap": 5,
+   "decode_reason": null
   },
   {
    "task": "selfhost-docs-linter",
@@ -235,7 +256,12 @@
     "change": "none"
    },
    "unmeasured": [],
-   "raised": null
+   "raised": null,
+   "decode_tok_s": 14.213958589105156,
+   "decode_median_tok_s": 13.195859456635318,
+   "decode_completions": 114,
+   "decode_overlap": 4,
+   "decode_reason": null
   },
   {
    "task": "selfhost-docs-linter",
@@ -283,7 +309,12 @@
    "unmeasured": [
     "unverified-rescue: bash at turns 6, 7, 8, 9, 10, 13, 16, 17, 18, 20, 21, 22, 23, 24, 25, 28, 30"
    ],
-   "raised": null
+   "raised": null,
+   "decode_tok_s": 15.647550163810878,
+   "decode_median_tok_s": 14.549906843041772,
+   "decode_completions": 138,
+   "decode_overlap": 3,
+   "decode_reason": null
   }
  ],
  "tallies": [

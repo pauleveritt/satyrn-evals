@@ -1,8 +1,9 @@
 {
- "evals_commit": "076b1b3102c220becfe7a5129dd3eeedeecde0e1",
+ "evals_commit": "f8c1ab89399d49e15a264e6ba79e067d2c2065cf",
  "evals_dirty": false,
  "night": "2026-09-16-census-selfhost-speed-probe",
  "command": "classify.py --night /Users/pauleveritt/satyrn-runs/2026-09-16-census-selfhost-speed-probe --record records/2026-09-16-census-selfhost-speed-probe.json --grade-root /Users/pauleveritt/satyrn-census-grades",
+ "tz_offset": "-0400",
  "task": "selfhost-speed-probe",
  "cells": [
   {
@@ -49,7 +50,12 @@
     "change": "none"
    },
    "unmeasured": [],
-   "raised": null
+   "raised": null,
+   "decode_tok_s": 15.230153775592106,
+   "decode_median_tok_s": 12.741917639457432,
+   "decode_completions": 144,
+   "decode_overlap": 4,
+   "decode_reason": null
   },
   {
    "task": "selfhost-speed-probe",
@@ -95,7 +101,12 @@
     "change": "none"
    },
    "unmeasured": [],
-   "raised": null
+   "raised": null,
+   "decode_tok_s": 18.92916989881414,
+   "decode_median_tok_s": 12.8099173553719,
+   "decode_completions": 29,
+   "decode_overlap": 3,
+   "decode_reason": null
   },
   {
    "task": "selfhost-speed-probe",
@@ -141,7 +152,12 @@
     "change": "none"
    },
    "unmeasured": [],
-   "raised": null
+   "raised": null,
+   "decode_tok_s": 15.230153775592106,
+   "decode_median_tok_s": 12.741917639457432,
+   "decode_completions": 144,
+   "decode_overlap": 4,
+   "decode_reason": null
   },
   {
    "task": "selfhost-speed-probe",
@@ -187,7 +203,12 @@
     "change": "none"
    },
    "unmeasured": [],
-   "raised": null
+   "raised": null,
+   "decode_tok_s": 13.644678933135374,
+   "decode_median_tok_s": 12.56768953068592,
+   "decode_completions": 127,
+   "decode_overlap": 5,
+   "decode_reason": null
   },
   {
    "task": "selfhost-speed-probe",
@@ -233,7 +254,12 @@
     "change": "none"
    },
    "unmeasured": [],
-   "raised": null
+   "raised": null,
+   "decode_tok_s": 18.495179535088447,
+   "decode_median_tok_s": 21.15948682633203,
+   "decode_completions": 55,
+   "decode_overlap": 3,
+   "decode_reason": null
   },
   {
    "task": "selfhost-speed-probe",
@@ -279,7 +305,12 @@
     "change": "none"
    },
    "unmeasured": [],
-   "raised": null
+   "raised": null,
+   "decode_tok_s": 16.5795196360167,
+   "decode_median_tok_s": 12.826553940928825,
+   "decode_completions": 20,
+   "decode_overlap": 3,
+   "decode_reason": null
   }
  ],
  "tallies": [
