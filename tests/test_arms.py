@@ -339,7 +339,7 @@ def test_the_engine_arm_file_loads_with_the_engines_derived_contract_tool_surfac
     arm = load_arm(ENGINE)
     assert arm.arm == "engine"
     assert arm.tools == ENGINE_TOOLS == ("read", "bash", "edit", "write", "self_test")
-    assert arm.pins.engine_commit == "8049d739799c8b40978e0cbc3d76a1beb49e1bd1"
+    assert arm.pins.engine_commit == "0b496d886151c11bffeb7507475b599a7bbd483b"
     assert sorted(arm.pins.digests) == sorted(ENGINE_SOURCES)
 
 
@@ -360,6 +360,16 @@ def test_the_engine_arm_runs_the_export_of_its_pinned_commit_on_the_baselines_mo
         assert engine[key] == baseline[key], key
     assert engine["pins"]["pi"] == baseline["pins"]["pi"]
     assert build_argv(load_arm(ENGINE)) == [*engine["argv"], "--model", "omlx/Ornith-1.5-9B-MLX-8bit"]
+
+
+def test_the_engine_arms_export_path_and_pinned_commit_cannot_drift_apart() -> None:
+    """A re-pin edits `argv[2]`'s export path and `pins.engine_commit`
+    together. Nothing else enforces that they name the same commit -- a
+    re-pin that edits one and forgets the other is exactly the failure
+    this test exists to catch, pinning the invariant rather than only
+    today's literal shas."""
+    arm = load_arm(ENGINE)
+    assert Path(arm.argv[2]).name == f"engine-{arm.pins.engine_commit}"
 
 
 def test_an_engine_arm_missing_a_source_digest_is_refused(tmp_path: Path) -> None:
