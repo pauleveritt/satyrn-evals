@@ -8498,3 +8498,5 @@
 | evidence/2026-09-18-census-3/postreg.md | created in release-one |
 | scripts/census_night_3.sh | created in release-one |
 | records/2026-09-18-census3-selfhost-preflight-quiet.json | created in release-one |
+| evidence/2026-09-18-census-3/postreg_read.py | created in release-one |
+| tests/test_postreg_read.py | created in release-one |

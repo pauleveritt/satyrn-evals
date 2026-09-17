@@ -216,6 +216,16 @@ def load_spec(path: Path) -> TaskSpec:
     )
 
 
+def _evidence_validity_excluded(path: str) -> bool:
+    """``excluded()``'s final clause, factored out so it has exactly one body.
+
+    Both ``excluded()`` and ``excluded_evidence_validity_paths()`` call this,
+    so the two can never drift apart -- there is only one place the rule is
+    written.
+    """
+    return path.startswith("evidence/") and "validity" in path.split("/")
+
+
 def excluded(path: str, hidden: Iterable[str], name: str) -> bool:
     """Whether a BASE path stays out of ``base/``.
 
@@ -230,7 +240,7 @@ def excluded(path: str, hidden: Iterable[str], name: str) -> bool:
         return True
     if path.startswith(f"src/satyrn_evals/tasks/{name}/") or path == f"tools/task_specs/{name}.json":
         return True
-    return path.startswith("evidence/") and "validity" in path.split("/")
+    return _evidence_validity_excluded(path)
 
 
 def excluded_evidence_validity_paths(paths: Iterable[str]) -> tuple[str, ...]:
@@ -239,9 +249,11 @@ def excluded_evidence_validity_paths(paths: Iterable[str]) -> tuple[str, ...]:
     A pure helper so the ``cut`` CLI branch can report how many paths this
     one rule excluded (M5) without `cut()` itself gaining an output surface:
     `check` also calls `cut()`, into a temporary root, and its output must
-    not move because of a diagnostic meant for the `cut` action.
+    not move because of a diagnostic meant for the `cut` action. Calls
+    ``_evidence_validity_excluded`` -- the same function ``excluded()``'s
+    final clause calls -- so the count this reports cannot drift from it.
     """
-    return tuple(path for path in paths if path.startswith("evidence/") and "validity" in path.split("/"))
+    return tuple(path for path in paths if _evidence_validity_excluded(path))
 
 
 def residue_gitignore(existing: str | None) -> str | None:

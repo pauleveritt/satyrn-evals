@@ -77,24 +77,20 @@ frozen record this read is checked against is
 later commit in this same task, not this one). `evidence/2026-09-16-census/classify.py`
 shows the shape of how this repository reads a night — `cells()` from
 `launch.json` and the record, one harvested patch per finished slot,
-read-only on `~/satyrn-runs`. The read for this page is a short script, to
-be committed alongside the record, or — if not committed — this documented
-command, complete enough to run by hand once both exist:
+read-only on `~/satyrn-runs`. The read for this page is a committed
+script, `evidence/2026-09-18-census-3/postreg_read.py`, run once both the
+night and the record exist:
 
 ```bash
-uv run --project . python - <<'PY'
-import json, pathlib, re
-night = pathlib.Path.home() / "satyrn-runs" / "2026-09-18-census3-selfhost-preflight-quiet"
-record = pathlib.Path("records/2026-09-18-census3-selfhost-preflight-quiet.json")
-# uses satyrn_evals.session_patch.build_cumulative_patch per cell, as
-# evidence/2026-09-16-census/classify.py:cells() does, to get each
-# retained cell's harvested patch, then greps that patch's
-# scripts/preflight_quiet.py hunk for the four patterns above.
-PY
+uv run --project . python evidence/2026-09-18-census-3/postreg_read.py \
+  --night "$HOME/satyrn-runs/2026-09-18-census3-selfhost-preflight-quiet" \
+  --record records/2026-09-18-census3-selfhost-preflight-quiet.json
 ```
 
-No model, no network, no GPU step: the read is a source-text grep over
-already-harvested patches on disk.
+No model, no network, no GPU, no subprocess: the read is a source-text
+match over each cell's own already-harvested `patch.diff` or
+`tripped.diff` (named by that cell's `attempt.json`), never a rebuild with
+git and never a read of stdout or an exit status.
 
 ## Where night 3's classifier output lands
 

@@ -187,6 +187,24 @@ def test_evidence_validity_exclusions_is_empty_when_nothing_matches() -> None:
     assert excluded_evidence_validity_paths(["tools/x.py", "evidence/README.md", "evidence/x/validity.md"]) == ()
 
 
+def test_excluded_and_its_helper_agree_on_the_evidence_validity_clause() -> None:
+    """M4: `excluded()`'s final clause and `excluded_evidence_validity_paths()`
+    are now one function (`_evidence_validity_excluded`) called from both
+    sites, so they cannot drift -- pinned here over a set of paths chosen to
+    exercise the clause's edges: nested under `validity/`, a `validity.md`
+    file (no `validity` path segment), a sibling `invalidity/` directory
+    (substring but not a path segment), and a plain `evidence/` path."""
+    paths = (
+        "evidence/x/validity/y.diff",
+        "evidence/x/validity.md",
+        "evidence/x/invalidity/y",
+        "src/satyrn_evals/validity/z.py",
+        "evidence/x/README.md",
+    )
+    for path in paths:
+        assert excluded(path, [], "t") == (path in excluded_evidence_validity_paths(paths))
+
+
 def test_a_gitignore_that_ignores_all_residue_is_left_alone() -> None:
     assert residue_gitignore(".venv/\n__pycache__/\n.pytest_cache/\n.ruff_cache/\n") is None
 
