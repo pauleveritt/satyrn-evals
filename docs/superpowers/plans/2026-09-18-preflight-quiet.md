@@ -72,7 +72,7 @@ FAST = (
     "(90.0 tok/s), prompt: 5000, finish_reason=stop, max_tokens=16000, request_max_tokens=16000"
 )
 OTHER = (
-    STAMP + "Chat completion: model=Some-Other-7B, 4000 tokens in 1.00s "
+    STAMP + "Chat completion: model=Ornith-1.5-9B-MLX-8bit-draft, 4000 tokens in 1.00s "
     "(4000.0 tok/s), prompt: 10, finish_reason=stop, max_tokens=16000, request_max_tokens=16000"
 )
 LOG = [SLOW, FAST]
@@ -84,7 +84,7 @@ def test_load_problem_names_the_one_minute_load_over_the_ceiling() -> None:
 
 
 def test_load_problem_is_quiet_at_the_ceiling() -> None:
-    assert load_problem((4.0, 4.0, 2.0), 8, ceiling=0.5) is None
+    assert load_problem((4.0, 9.9, 9.9), 8, ceiling=0.5) is None
 
 
 def test_busy_processes_reads_a_ps_snapshot_in_order() -> None:
@@ -124,7 +124,9 @@ def test_busy_processes_skips_the_header_and_every_unparsable_line() -> None:
 def test_the_default_ignore_prefixes_cover_the_model_server_and_the_system_agents() -> None:
     snapshot = (
         "  PID  %CPU COMM\n"
-        "    1   0.4 /sbin/launchd\n"
+        "    1  55.0 /sbin/launchd\n"
+        "  201  61.0 /usr/libexec/logd\n"
+        "  301  49.0 /System/Library/CoreServices/Finder.app/Contents/MacOS/Finder\n"
         "  412  93.1 omlx-server\n"
         "  501  88.0 /Applications/oMLX.app/Contents/MacOS/oMLX\n"
         "  977  41.7 /Applications/Xcode.app/Contents/MacOS/Xcode\n"
@@ -167,7 +169,7 @@ def test_decode_rate_ignores_lines_that_are_not_completions() -> None:
         "2026-09-17 21:10:00,000 - omlx.server - INFO - [-] - Loaded model",
         "Chat completion: model=Ornith-1.5-9B-MLX-8bit, 5 tokens in 1.00s (5.0 tok/s), prompt: 1,",
     ]
-    rate = decode_rate([*noise, *LOG], model=MODEL, last=2)
+    rate = decode_rate([*LOG, *noise], model=MODEL, last=2)
     assert rate is not None
     assert rate.tokens == 1000
 
@@ -233,7 +235,7 @@ def test_the_cli_prints_the_certificate_and_exits_zero_on_a_quiet_machine(capsys
 
 def test_the_cli_exits_one_and_names_every_problem_on_a_loud_machine(capsys) -> None:
     code = main(
-        ["--model", MODEL, "--floor-tok-s", "40", "--last", "2"],
+        ["--model", MODEL, "--ceiling", "0.5", "--cpu-floor", "20", "--floor-tok-s", "40", "--last", "2"],
         loadavg=lambda: (9.5, 4.0, 2.0),
         cores=lambda: 8,
         read_ps=lambda: PS,
