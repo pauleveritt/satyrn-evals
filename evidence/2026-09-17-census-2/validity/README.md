@@ -25,13 +25,31 @@ task was authored rather than cut from a real commit. Its design is recorded
 in `docs/superpowers/specs/2026-09-17-release-two-authored-task-design.md`,
 and its heading document is
 `docs/superpowers/plans/2026-09-18-preflight-quiet.md`, written by the three
-roles the design assigns: an author who wrote the heading and the acceptance
-suite, a solver who worked the cut prompt blind, and a reviewer. The tree the
-solver received was verified to contain no `docs/superpowers/`, no
-`tests/test_preflight_quiet.py`, and no `selfhost-preflight-quiet` directory
-under `src/satyrn_evals/tasks/`. The heading document is excluded from
-`base/` by the generator's own `EXCLUDED_PREFIXES` in `tools/cut_task.py`,
-not by an instruction given to the solver.
+roles the design assigns and the task's own manifest records under
+`generator.authoring.roles`: `heading` (Opus, from the design spec, before
+any implementation existed — the heading is what carried the hidden test
+module in a fenced block), `implementation` (Sonnet, in a worktree under the
+ordinary loop, without editing the acceptance suite), and `validity`
+(recorded in the manifest's `validity` block — this check). The README and
+the manifest agree on who did what.
+
+The tree the solver received was verified to contain no
+`docs/superpowers/`, no `tests/test_preflight_quiet.py`, and no
+`selfhost-preflight-quiet` directory under `src/satyrn_evals/tasks/`. A
+reader can check the same three facts against the committed task tree
+(the solver's tree was a copy of
+`src/satyrn_evals/tasks/selfhost-preflight-quiet/base/`):
+
+```bash
+T=src/satyrn_evals/tasks/selfhost-preflight-quiet/base
+test -d "$T/docs/superpowers" && echo FOUND || echo absent
+test -f "$T/tests/test_preflight_quiet.py" && echo FOUND || echo absent
+test -d "$T/src/satyrn_evals/tasks/selfhost-preflight-quiet" && echo FOUND || echo absent
+```
+
+The heading document is excluded from `base/` by the generator's own
+`EXCLUDED_PREFIXES` in `tools/cut_task.py`, not by an instruction given to
+the solver.
 
 ## Leak tells
 
@@ -77,15 +95,22 @@ here. Two consequences follow, stated plainly rather than smoothed over:
 
 ## Confound to watch on the night
 
-The base tree ships functions named `decode_rate`
-(`src/satyrn_evals/census_decode.py:101`, signature `(completions, *, start,
-end) -> DecodeReading`) and `certificate` (`src/satyrn_evals/cell_preflight.py`),
-and a `Process` class in `scripts/preflight_processes.py`, all with different
-signatures from the ones this task's prompt asks for. The prompt fully
-determines the new signatures, so the contract is unambiguous, but a model
-that greps before it reads can produce a plausible wrong implementation.
-Unrecorded, that failure mode would read as task difficulty rather than as a
-naming collision. This solver did not trip it.
+The base tree carries two real symbol collisions a model could import and
+imitate: `decode_rate` (`src/satyrn_evals/census_decode.py:101`, signature
+`(completions, *, start, end) -> DecodeReading`) and a `Process` class
+(`scripts/preflight_processes.py:11`), both with different signatures from
+the ones this task's prompt asks for. `certificate` is not a third
+collision — there is no `certificate` function, class or variable anywhere
+in `base/`; the only occurrences, in `src/satyrn_evals/cell_preflight.py`
+at lines 45 and 177, are the prose words "would report a clean certificate"
+and "read as a silent, clean certificate", not a symbol. That is why the
+combined leak-tell grep hit it and why that grep has to be read per name
+rather than trusted as a symbol match. The prompt fully determines the new
+signatures for all three names, so the contract is unambiguous, but a model
+that greps before it reads can still produce a plausible wrong
+implementation against the two real collisions. Unrecorded, that failure
+mode would read as task difficulty rather than as a naming collision. This
+solver did not trip it.
 
 Also worth recording: the solver reported that the server-log path is the
 one fact the prompt never states, and that it recovered
@@ -94,13 +119,41 @@ one fact the prompt never states, and that it recovered
 text. It did not cost the check — the hidden suite never executes the real
 reader — but it belongs in the record.
 
+## Answer-leak channel into future base trees
+
+`tools/cut_task.py`'s `EXCLUDED_PREFIXES` (`docs/superpowers/plans/`,
+`docs/superpowers/specs/`, `.claude/`, `.github/`) does not exclude
+`evidence/`. The `solution.diff` this README commits — a full working
+solution — will therefore ship inside `base/` of any task cut at a commit at
+or after `083e5dd`. This does not affect this check: this task's `base/` is
+cut at `3f7a561`, which predates that commit, and it does not affect a
+night-3 cell for the same reason. The channel is also not new here — this
+task's own `base/` already carries all five night-1 `solution.diff` files,
+under `base/evidence/2026-09-16-census/validity/`. It will affect any future
+re-cut of this task at a later base, and any future authored task whose
+solver reads `base/evidence/`. The fix is the maintainer's: widening
+`EXCLUDED_PREFIXES` moves every existing task tree's digest and would
+re-issue every record that pins one.
+
 ## Source
 
 Copied from the retained run, not recomputed: `solution.diff`, `REPORT.md`,
 and `PROMPT.txt` from the scratch validity tree
 (`$HOME/satyrn-authored-task-scratch/validity/selfhost-preflight-quiet/`);
 `receipt.json` from `$HOME/satyrn-census-grades/validity/selfhost-preflight-quiet/`.
-No model run is reproducible offline.
+No model run is reproducible offline, but the grade itself can be
+re-verified from the artefacts preserved here, run from a directory with no
+`pyproject.toml`, `pytest.ini`, `.pytest.ini`, `tox.ini`, `setup.cfg` or
+`conftest.py` in it or above it:
+
+```bash
+UV_OFFLINE=1 uv run --project <evals> satyrn-evals grade selfhost-preflight-quiet \
+  solution.diff --receipt receipt.json
+```
+
+The preserved `receipt.json`'s `patch_digest` begins `700a2481465f060b…`; a
+reader can confirm the preserved `solution.diff` is the one that was graded
+by checking that a re-run reproduces that same digest.
 
 ## Cross-reference
 
