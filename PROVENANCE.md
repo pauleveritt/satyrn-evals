@@ -8484,3 +8484,11 @@
 | evidence/2026-09-17-census-2/validity/selfhost-preflight-quiet/receipt.json | created in release-one |
 | evidence/2026-09-17-census-2/validity/selfhost-preflight-quiet/REPORT.md | created in release-one |
 | evidence/2026-09-17-census-2/validity/selfhost-preflight-quiet/SIZE.md | created in release-one |
+| evidence/2026-09-17-census-2/validity/selfhost-preflight-quiet/run-1/PROMPT.txt | created in release-one |
+| evidence/2026-09-17-census-2/validity/selfhost-preflight-quiet/run-1/REPORT.md | created in release-one |
+| evidence/2026-09-17-census-2/validity/selfhost-preflight-quiet/run-1/receipt.json | created in release-one |
+| evidence/2026-09-17-census-2/validity/selfhost-preflight-quiet/run-1/solution.diff | created in release-one |
+| evidence/2026-09-17-census-2/validity/selfhost-preflight-quiet/run-2/PROMPT.txt | created in release-one |
+| evidence/2026-09-17-census-2/validity/selfhost-preflight-quiet/run-2/REPORT.md | created in release-one |
+| evidence/2026-09-17-census-2/validity/selfhost-preflight-quiet/run-2/receipt.json | created in release-one |
+| evidence/2026-09-17-census-2/validity/selfhost-preflight-quiet/run-2/solution.diff | created in release-one |

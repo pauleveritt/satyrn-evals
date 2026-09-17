@@ -50,18 +50,26 @@ round-2 solve was already run and graded against an interim base
 (`3cd88a6ce1e6987293dfa638337d8594535bffd3`), and it also returned
 `verdict: pass`, 20 of 20, `patch_digest` beginning `773b53b49f826b81…`. That
 run is superseded, not voided — it correctly certified a base tree that the
-night will not use. Its artefacts live at `$SCRATCH/validity-r2/` and are
-**not** committed; no `run-2a/` directory was created for them. If a reader
-later finds a passing receipt for this task with no home in this tree, this
-paragraph is its home.
+night will not use. Its artefacts are outside git and may be cleaned up:
+the solve tree and diff at
+`/Users/pauleveritt/satyrn-authored-task-scratch/validity-r2/selfhost-preflight-quiet/`
+(`PROMPT.txt`, `solution.diff`, `tree/`), and the receipt at
+`/Users/pauleveritt/satyrn-census-grades/validity-r2/selfhost-preflight-quiet/receipt.json`.
+No `run-2a/` directory was created for them. If a reader later finds a
+passing receipt for this task with no home in this tree, this paragraph is
+its home.
 
 ### Why `base` moved (finding R2-F1)
 
 At the interim base (`3cd88a6`), the repository's own `qualify.CENSUS_TASKS`
-and three golden tables (`test_agentclinic_manifests.py`,
-`test_census_records_frozen.py`, `test_cut_task.py`,
-`test_writable_paths_declaration.py`) already named
-`selfhost-preflight-quiet`, while the generator's own exclusions correctly
+already named `selfhost-preflight-quiet` — `tests/test_agentclinic_manifests.py`
+reaches it not by naming it textually but by iterating `CENSUS_TASKS`
+(`assert len(CENSUS_TASKS) == 6`, then a per-task loop) — and three golden
+tables named it textually: `tests/test_census_records_frozen.py`
+(`AUTHORED = {"selfhost-preflight-quiet"}`), `tests/test_cut_task.py`
+(a literal in its task-name list), and
+`tests/test_writable_paths_declaration.py` (a literal key in its path
+table). Meanwhile the generator's own exclusions correctly
 removed the task's own cut tree and cut spec from `base/` — so the cell's
 public suite inside `base/` named a task whose files did not exist there.
 Measured: **5 failed, 2487 passed**, and the failures named this task's own
@@ -107,20 +115,55 @@ test -f "$T/tests/test_preflight_quiet.py" && echo FOUND || echo absent
 test -d "$T/src/satyrn_evals/tasks/selfhost-preflight-quiet" && echo FOUND || echo absent
 ```
 
-The heading document is excluded from `base/` by the generator's own
-`EXCLUDED_PREFIXES` in `tools/cut_task.py`, not by an instruction given to
-the solver.
+Both the heading document (`docs/superpowers/plans/`) and the authored-task
+design spec (`docs/superpowers/specs/`) are excluded from `base/` by the
+same tuple, the generator's own `EXCLUDED_PREFIXES = ("docs/superpowers/plans/",
+"docs/superpowers/specs/", ".claude/", ".github/")` at `tools/cut_task.py:67`,
+not by an instruction given to the solver.
 
 ## Leak tells
 
 Checked each run's `solution.diff` and `REPORT.md` for any id in the task's
 `expected_test_ids`, and for the strings `overlay`, `known-good.patch`,
 `known-broken.patch`, `manifest.json`, `tasks/selfhost-preflight-quiet`, or
-`2026-09-18-preflight-quiet.md`. Both named tells are clean on both runs.
-Run-2's harvested diff (451 lines) touches
-`PROVENANCE.md`, `scripts/preflight_quiet.py` and
-`tests/test_preflight_quiet.py`; run-1's touched the same three paths
-against its own (since-superseded) heading.
+`2026-09-18-preflight-quiet.md`:
+
+```bash
+D=evidence/2026-09-17-census-2/validity/selfhost-preflight-quiet
+grep -no -E 'overlay|known-good\.patch|known-broken\.patch|manifest\.json|tasks/selfhost-preflight-quiet|2026-09-18-preflight-quiet\.md' \
+  "$D/run-2/solution.diff" "$D/run-1/solution.diff" "$D/run-1/REPORT.md"
+# (no output from any of the three -- clean)
+tail -n +10 "$D/run-2/REPORT.md" | grep -no -E 'overlay|known-good\.patch|known-broken\.patch|manifest\.json|tasks/selfhost-preflight-quiet|2026-09-18-preflight-quiet\.md'
+# (no output -- clean)
+```
+
+Both `solution.diff` files and `run-1/REPORT.md` are clean outright. For
+`run-2/REPORT.md`, the check is scoped to the solver's verbatim text —
+lines 11-57, everything after the `---` separator at line 10 — which is
+clean, as the command above shows (`tail -n +10` includes the separator
+line itself, which matches nothing). Lines 1-8 of `run-2/REPORT.md` are the
+**controller's own preamble**, not the solver's words: it records the run
+metadata and, in doing so, recites the off-limits list the solver was
+given, which itself names `overlay`, `manifest.json` and
+`2026-09-18-preflight-quiet.md`. Run against the whole file rather than the
+scoped range, the same grep does hit those three strings at lines 5-7 of
+the preamble:
+
+```bash
+grep -no -E 'overlay|known-good\.patch|known-broken\.patch|manifest\.json|tasks/selfhost-preflight-quiet|2026-09-18-preflight-quiet\.md' \
+  "$D/run-2/REPORT.md"
+# 5:overlay
+# 6:manifest.json
+# 7:2026-09-18-preflight-quiet.md
+```
+
+Disclosed here so a reader who greps the whole file is not left thinking a
+tell fired: it did not — the hits are the controller's recitation of the
+off-limits list, not the solver naming anything it was told not to touch.
+Both named tells are clean on both runs' actual solver output. Run-2's
+harvested diff (451 lines) touches `PROVENANCE.md`,
+`scripts/preflight_quiet.py` and `tests/test_preflight_quiet.py`; run-1's
+touched the same three paths against its own (since-superseded) heading.
 
 `grader_content_in_patch` is flagged on both runs, and this is a **known
 false positive on this task**, not contamination — record it that way
@@ -168,11 +211,17 @@ imitate: `decode_rate` (`src/satyrn_evals/census_decode.py:101`, signature
 (`scripts/preflight_processes.py:11`), both with different signatures from
 the ones this task's prompt asks for. `certificate` is **not** a third
 collision — there is no `certificate` function, class or variable anywhere
-in `base/`; the only occurrences, in `src/satyrn_evals/cell_preflight.py`,
-are the prose words "would report a clean certificate" and "read as a
-silent, clean certificate", not a symbol. That is why a combined leak-tell
-grep hits it and why that grep has to be read per name rather than trusted
-as a symbol match. The prompt fully determines the new signatures for all
+in `base/`; the occurrences in this task's own source and tests are the
+prose words "would report a clean certificate" and "read as a silent,
+clean certificate" at `src/satyrn_evals/cell_preflight.py:45,177`, plus a
+third prose occurrence, the same phrasing, at
+`tests/test_cell_preflight.py:186`. (The identical three lines also recur,
+unchanged, inside `base/src/satyrn_evals/tasks/selfhost-cell-loop/base/`
+— that task's own nested committed tree, itself part of this task's
+`base/` — which is why a naive recursive `grep -r certificate base/`
+returns six hits rather than three; none of the six is a symbol.) That is
+why a combined leak-tell grep hits it and why that grep has to be read per
+name rather than trusted as a symbol match. The prompt fully determines the new signatures for all
 three names, so the contract is unambiguous, but a model that greps before
 it reads can still produce a plausible wrong implementation against the two
 real collisions. Unrecorded, that failure mode would read as task difficulty
