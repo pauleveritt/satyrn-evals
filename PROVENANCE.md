@@ -4221,3 +4221,5 @@
 | docs/superpowers/plans/2026-09-18-authored-task-preflight-quiet.md | created in release-one |
 | docs/superpowers/plans/2026-09-17-release-two-engine.md | created in release-one |
 | docs/superpowers/plans/2026-09-18-preflight-quiet.md | created in release-one |
+| scripts/preflight_quiet.py | created in release-one |
+| tests/test_preflight_quiet.py | created in release-one |
