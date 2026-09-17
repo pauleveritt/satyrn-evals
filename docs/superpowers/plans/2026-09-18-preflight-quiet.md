@@ -127,13 +127,14 @@ def test_the_default_ignore_prefixes_cover_the_model_server_and_the_system_agent
         "    1  55.0 /sbin/launchd\n"
         "  201  61.0 /usr/libexec/logd\n"
         "  301  49.0 /System/Library/CoreServices/Finder.app/Contents/MacOS/Finder\n"
+        "  700  66.0 /Users/pauleveritt/opt/System/Library/helper\n"
         "  412  93.1 omlx-server\n"
         "  501  88.0 /Applications/oMLX.app/Contents/MacOS/oMLX\n"
         "  977  41.7 /Applications/Xcode.app/Contents/MacOS/Xcode\n"
         " 1201  77.0 /usr/sbin/cfprefsd\n"
     )
     busy = busy_processes(snapshot, cpu_floor=20.0, ignore_prefixes=IGNORE_PREFIXES)
-    assert [process.pid for process in busy] == [977]
+    assert [process.pid for process in busy] == [700, 977]
 
 
 def test_decode_rate_is_token_weighted_not_the_mean_of_the_rates() -> None:
