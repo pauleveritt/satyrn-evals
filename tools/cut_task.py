@@ -233,6 +233,17 @@ def excluded(path: str, hidden: Iterable[str], name: str) -> bool:
     return path.startswith("evidence/") and "validity" in path.split("/")
 
 
+def excluded_evidence_validity_paths(paths: Iterable[str]) -> tuple[str, ...]:
+    """BASE paths dropped by the ``evidence/**/validity/**`` exclusion alone.
+
+    A pure helper so the ``cut`` CLI branch can report how many paths this
+    one rule excluded (M5) without `cut()` itself gaining an output surface:
+    `check` also calls `cut()`, into a temporary root, and its output must
+    not move because of a diagnostic meant for the `cut` action.
+    """
+    return tuple(path for path in paths if path.startswith("evidence/") and "validity" in path.split("/"))
+
+
 def residue_gitignore(existing: str | None) -> str | None:
     """The ``.gitignore`` text with every residue pattern, or None when BASE's already has them."""
     lines = [] if existing is None else existing.splitlines()
@@ -484,7 +495,13 @@ def main(argv: list[str] | None = None) -> int:
         for spec_path in args.specs:
             spec = load_spec(spec_path)
             if args.action == "cut":
+                listing = _git(args.repo, "ls-tree", "-r", "--name-only", "-z", spec.base).decode("utf-8").split("\0")
+                dropped = excluded_evidence_validity_paths(path for path in listing if path)
                 print(cut(spec, args.repo, args.tasks_root))
+                print(
+                    f"cut_task: excluded {len(dropped)} evidence/**/validity/** path(s) from {spec.name}'s base",
+                    file=sys.stderr,
+                )
                 continue
             with tempfile.TemporaryDirectory(prefix="satyrn-cut-check-") as scratch:
                 fresh = cut(spec, args.repo, Path(scratch))

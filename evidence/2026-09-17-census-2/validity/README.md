@@ -121,7 +121,48 @@ same tuple, the generator's own `EXCLUDED_PREFIXES = ("docs/superpowers/plans/",
 "docs/superpowers/specs/", ".claude/", ".github/")` at `tools/cut_task.py:67`,
 not by an instruction given to the solver.
 
+**The third maintainer-ordered heading edit (undisclosed until now).** Beyond
+F1 and F2 above, the maintainer's re-cut also dropped one declared symbol,
+`Certificate.as_dict`, from the heading's `Interfaces: Produces:` line, so
+the task is not at exactly 10 produced symbols -- the Engine's medium-class
+predicate being at most 10. `Produces:` is now 9. This is deliberate, not an
+omission: `as_dict()` remains fully determined without a `Produces:` line of
+its own, by the Step 6 prose (which names the method and what it returns)
+and by the `formats` string the spec carries (which fixes its JSON shape).
+A night-3 reader who counts 9 rather than 10 and wonders whether a symbol
+went undocumented should read this paragraph as the answer.
+
+**Where this note must travel.** The `grader_content_in_patch` known-false-
+positive note above (the `block` hit on the canonical eight-name import
+list) is recorded under this task's `evidence/2026-09-17-census-2/`
+directory, but the census night this task will actually run in is night 3.
+This note must travel with the task to whoever reads night 3's receipts:
+the false positive will recur there too, under
+`evidence/2026-09-18-census-3/`, and that directory's own reader should be
+pointed back here rather than re-discovering the same "flagged, not
+contamination" finding from scratch. The record's own text above is fixed
+by the plan and is not being changed; this paragraph is the pointer.
+
 ## Leak tells
+
+**Which form of the id tell was checked.** The procedure's own tell (Ruling
+5) is "any id from the manifest's `expected_test_ids` appearing" in the
+run's `solution.diff` or `REPORT.md`, and an id has the full form
+`test_preflight_quiet.py::test_load_problem_names_the_one_minute_load_over_the_ceiling`
+-- module, `::`, function name. In that strict form both runs are **clean**
+against both the round-1 and round-2 id lists (which are in fact identical
+lists), confirmed below and pinned by `tests/test_validity_leak_forms.py`.
+
+A **looser** reading some readers might apply -- the bare test *function*
+name, without the `::` -- is not what the procedure defines as the tell,
+and disclosing it here rather than leaving a reader to find it unassisted:
+under that looser comparison, `run-1/solution.diff` has exactly **one**
+hit, `test_decode_rate_is_none_with_fewer_than_last_completions`; `run-2`
+has none, and neither `REPORT.md` has any. That one hit is convergent
+naming, not a leak -- the solver could not read the overlay, the strict
+tell (the actual procedure) is clean on it, and none of run-1's other test
+names collide. It is disclosed here, with the run and the name, so a reader
+who applies the looser reading is not left thinking a tell fired silently.
 
 Checked each run's `solution.diff` and `REPORT.md` for any id in the task's
 `expected_test_ids`, and for the strings `overlay`, `known-good.patch`,

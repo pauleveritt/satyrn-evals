@@ -8492,3 +8492,5 @@
 | evidence/2026-09-17-census-2/validity/selfhost-preflight-quiet/run-2/REPORT.md | created in release-one |
 | evidence/2026-09-17-census-2/validity/selfhost-preflight-quiet/run-2/receipt.json | created in release-one |
 | evidence/2026-09-17-census-2/validity/selfhost-preflight-quiet/run-2/solution.diff | created in release-one |
+| tests/test_task_base_residue.py | created in release-one |
+| tests/test_validity_leak_forms.py | created in release-one |

@@ -14,6 +14,7 @@ from tools.cut_task import (
     apply_prompt_edits,
     broken_patch,
     excluded,
+    excluded_evidence_validity_paths,
     load_spec,
     manifest_body,
     parse_collected,
@@ -105,8 +106,20 @@ def test_the_answer_bearing_paths_stay_out_of_the_base(path: str) -> None:
     assert excluded(path, ["tests/test_x.py"], "t")
 
 
-@pytest.mark.parametrize("path", ["docs/lessons.md", "tests/test_other.py", "tools/x.py", "docs/superpowers/research/r.md"])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "docs/lessons.md", "tests/test_other.py", "tools/x.py", "docs/superpowers/research/r.md",
+        "evidence/x/validity.md", "evidence/x/invalidity/y.diff",
+    ],
+)
 def test_everything_else_stays_in_the_base(path: str) -> None:
+    """The two evidence-shaped additions discriminate a path *segment* named
+    ``validity`` from a mere substring: ``validity.md`` and ``invalidity``
+    each contain the substring but neither has a ``validity`` segment, so
+    both must be kept (M1) -- the pre-existing negative case
+    (``evidence/2026-09-16-census/README.md``) lacked the substring
+    entirely and could not tell the two apart."""
     assert not excluded(path, ["tests/test_x.py"], "t")
 
 
@@ -150,6 +163,28 @@ def test_a_validity_path_outside_evidence_stays_in_the_base() -> None:
     """The exclusion is scoped to `evidence/`; a same-named directory
     elsewhere in the tree is not a validity record and carries no answer."""
     assert not excluded("src/satyrn_evals/validity/x.py", [], "t")
+
+
+def test_evidence_validity_exclusions_counts_only_matching_paths() -> None:
+    """M5: the ``cut`` CLI's diagnostic is backed by a pure helper, testable
+    without a git repository, so the count it reports cannot drift from
+    ``excluded()``'s own final clause."""
+    paths = [
+        "evidence/2026-09-16-census/validity/a/solution.diff",
+        "evidence/2026-09-16-census/validity/b/REPORT.md",
+        "evidence/2026-09-16-census/README.md",
+        "evidence/x/validity.md",
+        "src/satyrn_evals/validity/z.py",
+        "tools/x.py",
+    ]
+    assert excluded_evidence_validity_paths(paths) == (
+        "evidence/2026-09-16-census/validity/a/solution.diff",
+        "evidence/2026-09-16-census/validity/b/REPORT.md",
+    )
+
+
+def test_evidence_validity_exclusions_is_empty_when_nothing_matches() -> None:
+    assert excluded_evidence_validity_paths(["tools/x.py", "evidence/README.md", "evidence/x/validity.md"]) == ()
 
 
 def test_a_gitignore_that_ignores_all_residue_is_left_alone() -> None:
