@@ -4218,3 +4218,4 @@
 | evidence/2026-09-17-census-2/selfhost-speed-probe/table.md | created in release-one |
 | evidence/2026-09-16-census/classes-summary.md | created in release-one |
 | docs/superpowers/specs/2026-09-17-release-two-engine-design.md | created in release-one |
+| docs/superpowers/plans/2026-09-18-authored-task-preflight-quiet.md | created in release-one |
