@@ -104,6 +104,20 @@ def test_a_present_command_backstop_is_read_as_an_int() -> None:
     assert read_command_backstop({COMMAND_BACKSTOP_ENV: "4800"}) == 4800
 
 
+@pytest.mark.parametrize("value", ["0", "-5"])
+def test_a_non_positive_command_backstop_is_refused_naming_the_variable(value: str) -> None:
+    """run_record.py:149-151 already refuses a non-positive command_backstop_s; the
+    adapter's own guard must agree, or a bad record value reaches deliver_timeout and
+    floors to a 1-second deliver -- every deliver killed instantly, read as an Engine
+    defect rather than as the bad number it is."""
+    with pytest.raises(AdapterError, match=COMMAND_BACKSTOP_ENV):
+        read_command_backstop({COMMAND_BACKSTOP_ENV: value})
+
+
+def test_the_smallest_accepted_command_backstop_is_one() -> None:
+    assert read_command_backstop({COMMAND_BACKSTOP_ENV: "1"}) == 1
+
+
 def test_the_contract_path_is_read_from_derives_stderr_and_its_absence_refused() -> None:
     assert contract_path(f"warming\nsatyrn-engine: contract {CONTRACT}\n") == CONTRACT
     with pytest.raises(AdapterError, match="derive named no contract"):

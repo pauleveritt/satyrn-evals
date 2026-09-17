@@ -135,15 +135,21 @@ def deliver_argv(
 def read_command_backstop(environment: Mapping[str, str]) -> int:
     """The record's command backstop Evals exported, refusing anything else.
 
-    Absent or unparseable is an AdapterError, never a default: the only
-    plausible fallback is the old fixed 1800 s this task exists to remove
-    (plan dispatch ruling, Tasks 7/8).
+    Absent, unparseable, or non-positive is an AdapterError, never a default:
+    the only plausible fallback is the old fixed 1800 s this task exists to
+    remove (plan dispatch ruling, Tasks 7/8). Non-positive is refused so this
+    guard agrees with `run_record.py`'s own `command_backstop_s < 1` refusal
+    -- a record could not have frozen a non-positive value, so a cell that
+    reaches here with one is a wiring fault, not a legal 1-second attempt.
     """
     raw = environment.get(COMMAND_BACKSTOP_ENV, "")
     try:
-        return int(raw)
+        backstop = int(raw)
     except ValueError:
         raise AdapterError(f"{COMMAND_BACKSTOP_ENV} must name the command backstop in seconds, got {raw!r}") from None
+    if backstop < 1:
+        raise AdapterError(f"{COMMAND_BACKSTOP_ENV} must be a positive integer, got {backstop!r}")
+    return backstop
 
 
 def contract_path(stderr: str) -> Path:
