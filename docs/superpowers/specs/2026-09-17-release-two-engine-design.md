@@ -117,9 +117,14 @@ premise is not met today:
 ## 6. What the Engine refuses to attempt
 
 The large tier: 18 of 18 cells with no pass state. Derive measures the
-request against the medium class (one module named in `Files:`, one test
-module) and, above it, returns the contract with a refusal that asks the
-developer to split the request. This is a product behaviour, not a claim,
+request against the medium class and, above it, returns the contract with
+an advisory refusal that asks the developer to split the request.
+**Predicate, ratified by the maintainer 2026-09-17 (the first draft's
+"one module in `Files:`" separates neither tier):** at most 2 non-test
+paths in `Files:` and at most 10 symbols in `Interfaces: Produces:`; on
+the bundled tasks the produced counts are 5, 2, 7, 1, 0 against 24 and 16
+for the two large-tier tasks. A developer can under-declare symbols, so it
+is a guide, stated as such. This is a product behaviour, not a claim,
 and it is disclosed on the numbers page as the boundary the census found.
 
 ## 7. Measurement before the comparison
