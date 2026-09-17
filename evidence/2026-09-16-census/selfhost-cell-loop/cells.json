@@ -1,6 +1,6 @@
 {
- "evals_commit": "48545119add4c1f7c73aa86a8a20ff55c5d9ffdd",
- "evals_dirty": true,
+ "evals_commit": "076b1b3102c220becfe7a5129dd3eeedeecde0e1",
+ "evals_dirty": false,
  "night": "2026-09-16-census-selfhost-cell-loop",
  "command": "classify.py --night /Users/pauleveritt/satyrn-runs/2026-09-16-census-selfhost-cell-loop --record records/2026-09-16-census-selfhost-cell-loop.json --grade-root /Users/pauleveritt/satyrn-census-grades",
  "task": "selfhost-cell-loop",

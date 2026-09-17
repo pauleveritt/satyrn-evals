@@ -1,4 +1,4 @@
-<!-- evals 48545119add4c1f7c73aa86a8a20ff55c5d9ffdd (dirty); classify.py --night /Users/pauleveritt/satyrn-runs/2026-09-16-census-selfhost-cell-loop --record records/2026-09-16-census-selfhost-cell-loop.json --grade-root /Users/pauleveritt/satyrn-census-grades -->
+<!-- evals 076b1b3102c220becfe7a5129dd3eeedeecde0e1; classify.py --night /Users/pauleveritt/satyrn-runs/2026-09-16-census-selfhost-cell-loop --record records/2026-09-16-census-selfhost-cell-loop.json --grade-root /Users/pauleveritt/satyrn-census-grades -->
 
 | task | attempt | code | verdict | verdict@32k | raised | tripped | turns | tokens | length stops | exploration turns | biggest turn | biggest share | tool span s | whole-attempt s | self-stop turn | self-stop tokens | pass turn | pass tokens | own-green turn | post-pass turns | post-pass tokens |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
