@@ -212,3 +212,80 @@ def test_a_cut_census_task_carries_no_authored_disclosure() -> None:
     for task in NIGHT1_TASKS:
         body = json.loads((DEFAULT_TASKS_ROOT / task / "manifest.json").read_text())
         assert "authored" not in (body.get("generator") or {})
+
+
+# The three route-proof records (2026-09-17-release-two-engine.md, operator section;
+# progress.md, "The three route-proof records: issued, checked, and deliberately NOT
+# committed"). None of these exists in the tree today: the ledger explains why -- the
+# second and third cannot be gated until their predecessors' results exist, and the
+# first cannot be frozen ahead of the maintainer's sequencing decision against the
+# authored-task dispatch's own chain tail. This is a PRE-REGISTERED guard: it names the
+# frozen shape the plan fixes now, before the operator commits any of the three files,
+# so the shape cannot drift between the ledger and whatever eventually lands.
+ROUTE_PROOF_N = {
+    "records/2026-09-17-route-proof-engine-selfhost-run-record-gate.json": 2,
+    "records/2026-09-17-route-proof-engine-selfhost-docs-linter.json": 2,
+    "records/2026-09-17-route-proof-engine-selfhost-cell-loop.json": 3,
+}
+ROUTE_PROOF_AUTHORITY = (
+    "maintainer: route proof on the claim tasks, approved in "
+    "2026-09-17-release-two-engine-design.md section 7 on 2026-09-17; these cells are "
+    "read for behaviour only and are excluded from every comparison denominator"
+)
+ROUTE_PROOF_DECISION_RULE = (
+    "section 7 go criterion, behaviour only, no outcome: the steer fires in 3 of 4 "
+    "own-green cells and the model stops within three turns in 2 of those 3; a resume "
+    "produces a tool call in 2 of 3. Below that, the design returns to the maintainer."
+)
+
+
+def test_a_route_proof_record_would_carry_the_designs_parameters_when_frozen() -> None:
+    """PRE-REGISTRATION, not a pass: as of this commit none of the three route-proof
+    records exists (ledger: "issued, checked, and deliberately NOT committed" -- the
+    operator ran `record new` and `launch --preflight`/`--check` on all three, then
+    removed the files, leaving the tree clean, because the chain and the sequencing
+    decision are not this dispatch's to freeze). A reader must not mistake the
+    `pytest.skip` below for a pass: it means the guard has nothing to check yet, not
+    that the records are correct. The moment the operator commits any of the three,
+    this test binds on it and checks the whole frozen shape section 7 and Ruling 11
+    fix: task, rung, arm, n, k, purpose, isolation, mode, the budgets, the backstop
+    arithmetic, and the two exclusion markers (authority, decision_rule)."""
+    existing = [path for path in ROUTE_PROOF_N if (ROOT / path).is_file()]
+    if not existing:
+        pytest.skip(
+            "no route-proof record is committed yet (pre-registered guard; this is "
+            "not a pass -- see progress.md, 'issued, checked, and deliberately NOT "
+            "committed')"
+        )
+    for path in existing:
+        record = json.loads((ROOT / path).read_text())
+        task = Path(path).stem.removeprefix("2026-09-17-route-proof-engine-")
+        assert record["task"] == task
+        assert record["rung"] == "R1-plan"
+        assert record["arm"] == "engine"
+        assert record["n"] == ROUTE_PROOF_N[path]
+        assert record["k"] == 3
+        assert record["purpose"] == "route-proof"
+        assert record["isolation"] == "isolated"
+        assert record["mode"] == "batch"
+        assert record["max_minutes"] == 120
+        assert record["command_backstop_s"] == 4_800
+        assert record["command_backstop_s"] + 300 <= record["max_minutes"] * 60
+        assert record["token_budget"] == 48_000
+        assert record["turn_budget"] == 72
+        assert "2026-09-17-release-two-engine-design.md" in record["authority"]
+        assert "approved" in record["authority"] and "2026-09-17" in record["authority"]
+        assert "excluded from every comparison denominator" in record["authority"]
+        assert record["authority"] == ROUTE_PROOF_AUTHORITY
+        assert "section 7" in record["decision_rule"] or "§7" in record["decision_rule"]
+        assert "behaviour only" in record["decision_rule"] and "no outcome" in record["decision_rule"]
+        assert record["decision_rule"] == ROUTE_PROOF_DECISION_RULE
+
+
+def test_no_route_proof_record_exists_outside_the_three_named_paths() -> None:
+    """NOT conditional -- this is the half of the guard that is live today, and the
+    reason the guard above is not vacuous in the meantime: a fourth record, a
+    misnamed one, or a stray `route-proof` file is caught the moment it lands, before
+    any of the three expected records exists."""
+    found = {f"records/{p.name}" for p in RECORDS.glob("2026-09-17-route-proof-engine-*.json")}
+    assert found <= set(ROUTE_PROOF_N)
