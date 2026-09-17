@@ -4200,3 +4200,5 @@
 | evidence/2026-09-16-census/validity/selfhost-speed-probe/receipt.json | created in release-one |
 | evidence/2026-09-16-census/validity/selfhost-speed-probe/solution.diff | created in release-one |
 | docs/superpowers/plans/2026-09-17-release-two-census-night-2.md | created in release-one |
+| src/satyrn_evals/census_decode.py | created in release-one |
+| tests/test_census_decode.py | created in release-one |

@@ -29,6 +29,7 @@ evidence a class would be argued from.
 from __future__ import annotations
 
 import argparse
+import glob
 import hashlib
 import importlib.util
 import json
@@ -39,9 +40,11 @@ import subprocess
 import sys
 import tempfile
 from dataclasses import asdict, dataclass
+from datetime import datetime
 from pathlib import Path
 
 from satyrn_evals import census_classify as cc
+from satyrn_evals import census_decode as cd
 from satyrn_evals.cell_evidence import HARNESS_CUT_CODES, collect_evidence
 from satyrn_evals.errors import PatchParseError
 from satyrn_evals.patch import drop_ignored, parse_patch_paths, within_source
@@ -654,7 +657,53 @@ def row(
     }
 
 
-def measure(cell: Cell, grade_root: Path) -> dict:
+@dataclass(frozen=True, slots=True)
+class DecodeLog:
+    """The night's completions and every selected cell's span (Ruling 7)."""
+
+    completions: list
+    spans: list
+
+
+def cell_span(cell: Cell) -> tuple[float | None, float | None, str | None]:
+    """`[attempt directory stamp, mtime(attempt.json)]`, or a stated reason (Ruling 10)."""
+    started = cc.attempt_started(cell.attempt_dir)
+    if started is None:
+        return None, None, cd.NO_STAMP
+    try:
+        ended = (cell.folder / "attempt.json").stat().st_mtime
+    except OSError:
+        return None, None, cd.NO_ATTEMPT_JSON
+    return started, ended, None
+
+
+def load_decode_log(pattern: str, selected: list[Cell]) -> DecodeLog:
+    """Read-only over `~/.omlx/logs/`. Files are read in name order, which is
+    date order for oMLX's rotation, and the completions are not re-sorted: the
+    attribution is by instant, not by position."""
+    completions: list = []
+    for name in sorted(glob.glob(pattern)):
+        completions.extend(cd.parse_completions(Path(name).read_text(errors="replace")))
+    spans = [(s, e) for s, e, reason in map(cell_span, selected) if reason is None]
+    return DecodeLog(completions=completions, spans=spans)
+
+
+def decode_row(cell: Cell, log: DecodeLog) -> dict:
+    start, end, reason = cell_span(cell)
+    if reason is not None:
+        return {"decode_tok_s": None, "decode_median_tok_s": None, "decode_completions": 0,
+                "decode_overlap": None, "decode_reason": reason}
+    reading = cd.decode_rate(log.completions, start=start, end=end)
+    return {
+        "decode_tok_s": reading.tok_s,
+        "decode_median_tok_s": reading.median_tok_s,
+        "decode_completions": reading.completions,
+        "decode_overlap": cd.span_overlap(log.spans, start, end),
+        "decode_reason": reading.reason,
+    }
+
+
+def measure(cell: Cell, grade_root: Path, log: DecodeLog) -> dict:
     raised = None
     attempt: dict = {}
     try:
@@ -743,7 +792,7 @@ def measure(cell: Cell, grade_root: Path) -> dict:
         # No replay means no filtered grade; a reason alone is not allowlist
         # evidence (Ruling R-4).
         audit_row["allowlist_reason"] = None
-    return row(cell, audit_row, offline, reading, raised, exploration_turns)
+    return {**row(cell, audit_row, offline, reading, raised, exploration_turns), **decode_row(cell, log)}
 
 
 def tallies(rows: list[dict]) -> list[dict]:
@@ -784,8 +833,8 @@ def table(rows: list[dict], header: dict) -> str:
     columns = [
         "task", "attempt", "code", "verdict", "verdict@32k", "raised", "tripped", "turns", "tokens",
         "length stops", "exploration turns", "biggest turn", "biggest share", "tool span s",
-        "whole-attempt s", "self-stop turn", "self-stop tokens", "pass turn", "pass tokens",
-        "own-green turn", "post-pass turns", "post-pass tokens",
+        "whole-attempt s", "decode tok/s", "decode n", "self-stop turn", "self-stop tokens", "pass turn",
+        "pass tokens", "own-green turn", "post-pass turns", "post-pass tokens",
     ]
     lines = [
         f"<!-- {_stamp_text(header)} -->",
@@ -798,11 +847,12 @@ def table(rows: list[dict], header: dict) -> str:
         share = "-" if r["biggest_share"] is None else f"{r['biggest_share']:.0%}"
         span = "-" if r["tool_span_seconds"] is None else f"{r['tool_span_seconds']:.1f}"
         whole = "-" if r["whole_attempt_seconds"] is None else f"{r['whole_attempt_seconds']:.1f}"
+        decode = "-" if r["decode_tok_s"] is None else f"{r['decode_tok_s']:.1f}"
         verdict_at_line = "pass" if r["actual_32k"] else "not-pass"
         values = [
             r["task"], r["attempt"], _dash(r["code"]), _dash(r["verdict"]), verdict_at_line, _dash(r["raised"]),
             _dash(r["tripped_verdict"]), str(r["turns"]), str(r["tokens"]), str(r["length_stops"]),
-            _dash(r["exploration_turns"]), biggest, share, span, whole,
+            _dash(r["exploration_turns"]), biggest, share, span, whole, decode, str(r["decode_completions"]),
             _dash(r["self_stop_turn"]), _dash(r["self_stop_tokens"]), _dash(r["pass_turn"]),
             _dash(r["pass_tokens"]), _dash(r["own_green_turn"]), _dash(r["post_pass_turns"]),
             _dash(r["post_pass_tokens"]),
@@ -846,7 +896,11 @@ def classes(rows: list[dict], header: dict) -> str:
     lines.append("")
     for r in rows:
         shown = ", ".join(f"{name}={r['flags'][name]}" for name in cc.CLASSES)
-        lines.append(f"evidence: {r['task']} {r['attempt']} {shown} actual@32k={r['actual_32k']} actual@48k={r['actual_48k']}")
+        decode = "-" if r["decode_tok_s"] is None else f"{r['decode_tok_s']:.1f}"
+        lines.append(
+            f"evidence: {r['task']} {r['attempt']} {shown} actual@32k={r['actual_32k']} "
+            f"actual@48k={r['actual_48k']} decode_tok_s={decode} decode_overlap={_dash(r['decode_overlap'])}"
+        )
     return "\n".join(lines) + "\n"
 
 
@@ -864,7 +918,8 @@ def stamp(argv: list[str], night: Path) -> dict:
         ).stdout.strip()
     )
     return {"evals_commit": commit, "evals_dirty": dirty, "night": night.name,
-            "command": " ".join(["classify.py", *argv])}
+            "command": " ".join(["classify.py", *argv]),
+            "tz_offset": datetime.now().astimezone().strftime("%z")}
 
 
 def _overwrite_refusal(out: Path, tasks: set[str], night: str) -> str | None:
@@ -896,6 +951,11 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--out", type=Path, default=HERE, help="output base; <out>/<task>/ holds the three files")
     parser.add_argument("--grade-root", type=Path, default=DEFAULT_GRADE_ROOT, help="receipts and grader scratch; no Python project above it")
     parser.add_argument("--cell", action="append", default=[], help="one attempt suffix or attempt_dir (repeatable)")
+    parser.add_argument(
+        "--server-log",
+        default=str(Path.home() / ".omlx" / "logs" / "server.log*"),
+        help="glob for the oMLX server logs the decode rate is read from (read-only)",
+    )
     args = parser.parse_args(argv)
     try:
         selected = select(args.night, args.record, tuple(args.cell))
@@ -911,10 +971,13 @@ def main(argv: list[str]) -> int:
     cf.WORK = HERE / "work"
     shutil.rmtree(cf.WORK, ignore_errors=True)
     cf.WORK.mkdir(parents=True, exist_ok=True)
+    log = load_decode_log(args.server_log, selected)
+    if not log.completions and not glob.glob(args.server_log):
+        print(f"classify: no server log matched {args.server_log!r}; decode columns will be unmeasured", file=sys.stderr)
     rows = []
     try:
         for cell in selected:
-            measured = measure(cell, grade_root)
+            measured = measure(cell, grade_root, log)
             rows.append(measured)
             print(
                 f"{cell.task} {cell.attempt} {measured['code']} own-green={measured['own_green_turn']} "
