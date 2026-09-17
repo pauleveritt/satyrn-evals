@@ -31,6 +31,20 @@ NIGHT1_TASKS = {
     "selfhost-run-record-gate", "selfhost-speed-probe",
 }
 REPLACED = {"selfhost-run-record-gate", "selfhost-cell-loop", "selfhost-speed-probe"}
+REPLACEMENT_CELL_IDS = {
+    "selfhost-run-record-gate": ("470484", "533788", "609675"),
+    "selfhost-cell-loop": ("631530", "918779", "320931"),
+    "selfhost-speed-probe": ("529092", "941646", "944467"),
+}
+DECISION_RULE = (
+    "none for outcomes: release-two admission is decided in section 8 of "
+    "2026-09-15-release-two-census-design.md from the classified table, not "
+    "from a pass count"
+)
+
+
+def _authority_has_id_triple(authority: str, task: str, ids: tuple[str, str, str]) -> bool:
+    return f"replacement for contended cells {', '.join(ids)} of 2026-09-16-census-{task};" in authority
 
 
 @pytest.mark.parametrize("record_path", NIGHT1 + NIGHT2, ids=[p.stem for p in NIGHT1 + NIGHT2])
@@ -74,6 +88,9 @@ def test_a_night_two_record_carries_the_designs_parameters(record_path: Path) ->
     assert record["command_backstop_s"] + 300 <= record["max_minutes"] * 60
     assert record["previous_result"] == "records/2026-09-16-census-selfhost-speed-probe.result.json"
     assert record["n"] == 3
+    assert record["rung"] == "R1-plan"
+    assert record["model"] == "omlx/Ornith-1.5-9B-MLX-8bit"
+    assert record["decision_rule"] == DECISION_RULE
 
 
 @pytest.mark.parametrize("task", sorted(REPLACED))
@@ -86,3 +103,14 @@ def test_a_replacement_record_says_the_originals_stand_in_their_denominator(task
         "originals stand in their denominator and this record is reported beside "
         "them, never in their place"
     )
+    assert _authority_has_id_triple(record["authority"], task, REPLACEMENT_CELL_IDS[task])
+
+
+@pytest.mark.parametrize("task", sorted(REPLACED))
+def test_a_replacement_authority_would_reject_a_transposed_id_triple(task: str) -> None:
+    """Sibling of the pinned-id check above: a transposed or wrong triple must not
+    match, or the check above would be vacuous."""
+    record = json.loads((RECORDS / f"2026-09-17-census2-{task}.json").read_text())
+    wrong = tuple(reversed(REPLACEMENT_CELL_IDS[task]))
+    assert wrong != REPLACEMENT_CELL_IDS[task]
+    assert not _authority_has_id_triple(record["authority"], task, wrong)
