@@ -4202,3 +4202,7 @@
 | docs/superpowers/plans/2026-09-17-release-two-census-night-2.md | created in release-one |
 | src/satyrn_evals/census_decode.py | created in release-one |
 | tests/test_census_decode.py | created in release-one |
+| scripts/census_night_2.sh | created in release-one |
+| records/2026-09-17-census2-selfhost-run-record-gate.json | created in release-one |
+| records/2026-09-17-census2-selfhost-cell-loop.json | created in release-one |
+| records/2026-09-17-census2-selfhost-speed-probe.json | created in release-one |

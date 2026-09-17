@@ -1,11 +1,11 @@
-"""The five frozen census records still match the task trees they pin.
+"""The frozen census records still match the task trees they pin, and night 2's
+three records carry the parameters their design fixed.
 
 A record's ``task_tree_sha256`` is checked by the launcher at launch, which
-refuses on drift; this row catches the drift in the default tier instead,
-before a night is started. The 2026-09-16 fix wave moved
-``selfhost-cell-loop``'s digest (a ``validity.commit`` correction in its
-manifest) under a record frozen the day before, and nothing in the gates saw
-it. No model, network, or subprocess.
+refuses on drift; these rows catch the drift in the default tier instead, before
+a night is started. The 2026-09-16 fix wave moved ``selfhost-cell-loop``'s
+digest under a record frozen the day before and nothing in the gates saw it.
+No model, network, or subprocess.
 """
 
 import json
@@ -14,14 +14,26 @@ from pathlib import Path
 import pytest
 
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
+from satyrn_evals.qualify import CENSUS_TASKS
 from satyrn_evals.task_tree import tree_digest
 
 RECORDS = Path(__file__).resolve().parent.parent / "records"
-CENSUS = sorted(RECORDS.glob("2026-09-16-census-*.json"))
-CENSUS = [p for p in CENSUS if not p.name.endswith(".result.json")]
 
 
-@pytest.mark.parametrize("record_path", CENSUS, ids=[p.stem for p in CENSUS])
+def _frozen(prefix: str) -> list[Path]:
+    return sorted(p for p in RECORDS.glob(f"{prefix}*.json") if not p.name.endswith(".result.json"))
+
+
+NIGHT1 = _frozen("2026-09-16-census-")
+NIGHT2 = _frozen("2026-09-17-census2-")
+NIGHT1_TASKS = {
+    "agentclinic-repair-depth-3", "selfhost-cell-loop", "selfhost-docs-linter",
+    "selfhost-run-record-gate", "selfhost-speed-probe",
+}
+REPLACED = {"selfhost-run-record-gate", "selfhost-cell-loop", "selfhost-speed-probe"}
+
+
+@pytest.mark.parametrize("record_path", NIGHT1 + NIGHT2, ids=[p.stem for p in NIGHT1 + NIGHT2])
 def test_a_frozen_census_record_pins_the_current_task_tree(record_path: Path) -> None:
     record = json.loads(record_path.read_text())
     task_dir = DEFAULT_TASKS_ROOT / record["task"]
@@ -31,8 +43,46 @@ def test_a_frozen_census_record_pins_the_current_task_tree(record_path: Path) ->
     )
 
 
-def test_the_five_census_records_are_all_present() -> None:
-    assert [p.stem.removeprefix("2026-09-16-census-") for p in CENSUS] == sorted(
-        ["agentclinic-repair-depth-3", "selfhost-cell-loop", "selfhost-docs-linter",
-         "selfhost-run-record-gate", "selfhost-speed-probe"]
+def test_the_five_night_one_records_are_all_present() -> None:
+    assert {p.stem.removeprefix("2026-09-16-census-") for p in NIGHT1} == NIGHT1_TASKS
+
+
+def test_night_two_is_the_three_replacements_and_census_tasks_is_still_night_one() -> None:
+    """Amendment 2026-09-17 (design section 4): record 1, the third candidate, was
+    withdrawn -- Task 1 found no candidate and Task 2 was deferred to a separate,
+    later spec. Night 2 is the three replacement records only, and ``CENSUS_TASKS``
+    must still be night 1's five: a later cut of a sixth task cannot silently widen
+    this night's record set."""
+    assert set(CENSUS_TASKS) == NIGHT1_TASKS
+    assert {json.loads(p.read_text())["task"] for p in NIGHT2} == REPLACED
+
+
+@pytest.mark.parametrize("record_path", NIGHT2, ids=[p.stem for p in NIGHT2])
+def test_a_night_two_record_carries_the_designs_parameters(record_path: Path) -> None:
+    """Design section 4: Baseline, admission, batch, isolated, k = 3, 48,000 / 72,
+    a 4,800 s backstop, 240 minutes, chained from the night-1 speed-probe result."""
+    record = json.loads(record_path.read_text())
+    assert record["arm"] == "baseline"
+    assert record["purpose"] == "admission"
+    assert record["mode"] == "batch"
+    assert record["isolation"] == "isolated"
+    assert record["k"] == 3
+    assert record["token_budget"] == 48_000
+    assert record["turn_budget"] == 72
+    assert record["command_backstop_s"] == 4_800
+    assert record["max_minutes"] == 240
+    assert record["command_backstop_s"] + 300 <= record["max_minutes"] * 60
+    assert record["previous_result"] == "records/2026-09-16-census-selfhost-speed-probe.result.json"
+    assert record["n"] == 3
+
+
+@pytest.mark.parametrize("task", sorted(REPLACED))
+def test_a_replacement_record_says_the_originals_stand_in_their_denominator(task: str) -> None:
+    """Design section 4, verbatim: the caveat travels with the record, not only the page."""
+    record = json.loads((RECORDS / f"2026-09-17-census2-{task}.json").read_text())
+    assert record["authority"].startswith("replacement for contended cells ")
+    assert f"of 2026-09-16-census-{task};" in record["authority"]
+    assert record["authority"].endswith(
+        "originals stand in their denominator and this record is reported beside "
+        "them, never in their place"
     )
