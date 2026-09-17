@@ -25,7 +25,7 @@
 
 **Interfaces:**
 - Consumes: nothing; the module stands alone and imports only the standard library.
-- Produces: `load_problem(loadavg: tuple[float, float, float], cores: int, *, ceiling: float) -> str | None`; `busy_processes(ps_stdout: str, *, cpu_floor: float, ignore_prefixes: Sequence[str]) -> list[Process]`; `decode_rate(log_lines: Iterable[str], *, model: str, last: int) -> Rate | None`; `certificate(load: str | None, busy: Sequence[Process], rate: Rate | None, *, floor_tok_s: float, model: str, last: int) -> Certificate`; `main(argv: Sequence[str] | None = None, *, loadavg, cores, read_ps, read_log) -> int`; the frozen dataclasses `Process(pid: int, comm: str, cpu: float)`, `Rate(tok_s: float, completions: int, tokens: int, seconds: float)` and `Certificate(problems: tuple[str, ...], record: dict[str, object])` with `Certificate.as_dict()`; and the module constant `IGNORE_PREFIXES`.
+- Produces: `load_problem(loadavg: tuple[float, float, float], cores: int, *, ceiling: float) -> str | None`; `busy_processes(ps_stdout: str, *, cpu_floor: float, ignore_prefixes: Sequence[str]) -> list[Process]`; `decode_rate(log_lines: Iterable[str], *, model: str, last: int) -> Rate | None`; `certificate(load: str | None, busy: Sequence[Process], rate: Rate | None, *, floor_tok_s: float, model: str, last: int) -> Certificate`; `main(argv: Sequence[str] | None = None, *, loadavg: Callable[[], tuple[float, float, float]], cores: Callable[[], int], read_ps: Callable[[], str], read_log: Callable[[], Iterable[str]]) -> int`; the frozen dataclasses `Process(pid: int, comm: str, cpu: float)`, `Rate(tok_s: float, completions: int, tokens: int, seconds: float)` and `Certificate(problems: tuple[str, ...], record: dict[str, object])`; and the module constant `IGNORE_PREFIXES`.
 
 - [ ] **Step 1: Write the acceptance suite first, in full**
 
@@ -60,7 +60,7 @@ PS = """\
  1201   2.0 /usr/sbin/cfprefsd
 """
 
-QUIET_PS = "  PID  %CPU COMM\n    1   0.4 /sbin/launchd\n"
+QUIET_PS = "  PID  %CPU COMM\n    1   0.4 /sbin/launchd\n  310  30.0 /usr/bin/python3\n"
 
 STAMP = "2026-09-17 21:14:02,004 - omlx.server - INFO - [-] - "
 SLOW = (
@@ -76,6 +76,7 @@ OTHER = (
     "(4000.0 tok/s), prompt: 10, finish_reason=stop, max_tokens=16000, request_max_tokens=16000"
 )
 LOG = [SLOW, FAST]
+LOG20 = [SLOW] * 10 + [FAST] * 10
 MODEL = "Ornith-1.5-9B-MLX-8bit"
 
 
@@ -222,8 +223,8 @@ def test_certificate_says_when_there_are_too_few_completions() -> None:
 
 def test_the_cli_prints_the_certificate_and_exits_zero_on_a_quiet_machine(capsys) -> None:
     code = main(
-        ["--model", MODEL, "--floor-tok-s", "10", "--last", "2"],
-        loadavg=lambda: (1.0, 1.0, 1.0),
+        ["--model", MODEL, "--ceiling", "1.0", "--cpu-floor", "50", "--floor-tok-s", "10", "--last", "2"],
+        loadavg=lambda: (5.0, 1.0, 1.0),
         cores=lambda: 8,
         read_ps=lambda: QUIET_PS,
         read_log=lambda: LOG,
@@ -236,19 +237,19 @@ def test_the_cli_prints_the_certificate_and_exits_zero_on_a_quiet_machine(capsys
 
 def test_the_cli_exits_one_and_names_every_problem_on_a_loud_machine(capsys) -> None:
     code = main(
-        ["--model", MODEL, "--ceiling", "0.5", "--cpu-floor", "20", "--floor-tok-s", "40", "--last", "2"],
+        ["--model", MODEL],
         loadavg=lambda: (9.5, 4.0, 2.0),
         cores=lambda: 8,
         read_ps=lambda: PS,
-        read_log=lambda: LOG,
+        read_log=lambda: LOG20,
     )
     body = json.loads(capsys.readouterr().out)
     assert code == 1
     assert body["problems"] == [
         "load 9.5 > 4.0 (8 cores)",
         "busy: /Applications/Xcode.app/Contents/MacOS/Xcode pid 977 at 41.7% cpu",
-        "decode 33.3 tok/s < 40.0 over last 2 completions",
     ]
+    assert body["inputs"]["decode"]["completions"] == 20
 ```
 
 - [ ] **Step 2: Run the suite and watch every test fail**
