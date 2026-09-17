@@ -1,0 +1,80 @@
+{
+  "task": "selfhost-run-record-gate",
+  "patch_digest": "6ad0563637b52cc3870f3091b2b7e19e3419da7a7c2b664c08af99ae9d3a258f",
+  "verdict": "pass",
+  "reason": "",
+  "evidence": {
+    "executed_test_ids": [
+      "test_run_record.py::test_a_bad_digest_is_refused",
+      "test_run_record.py::test_a_complete_record_loads_and_passes_the_gate",
+      "test_run_record.py::test_a_missing_field_is_named",
+      "test_run_record.py::test_a_non_object_record_is_refused[5]",
+      "test_run_record.py::test_a_non_object_record_is_refused[null]",
+      "test_run_record.py::test_a_previous_result_must_be_committed",
+      "test_run_record.py::test_a_wrong_typed_field_is_refused",
+      "test_run_record.py::test_an_empty_rule_field_is_refused[decision_rule]",
+      "test_run_record.py::test_an_empty_rule_field_is_refused[stop_rule]",
+      "test_run_record.py::test_an_unknown_condition_is_refused",
+      "test_run_record.py::test_an_unknown_mode_is_refused",
+      "test_run_record.py::test_attended_caps_are_enforced[over0]",
+      "test_run_record.py::test_attended_caps_are_enforced[over1]",
+      "test_run_record.py::test_batch_allows_twelve_and_twelve_hours",
+      "test_run_record.py::test_batch_refuses_thirteen",
+      "test_run_record.py::test_launch_check_accepts_a_good_record",
+      "test_run_record.py::test_launch_without_check_is_a_usage_error",
+      "test_run_record.py::test_malformed_json_is_refused",
+      "test_run_record.py::test_run_record_error_is_a_usage_error",
+      "test_run_record.py::test_warm_condition_loads_and_passes_the_gate"
+    ],
+    "outcomes": {
+      "test_run_record.py::test_a_complete_record_loads_and_passes_the_gate": "passed",
+      "test_run_record.py::test_a_missing_field_is_named": "passed",
+      "test_run_record.py::test_run_record_error_is_a_usage_error": "passed",
+      "test_run_record.py::test_attended_caps_are_enforced[over0]": "passed",
+      "test_run_record.py::test_attended_caps_are_enforced[over1]": "passed",
+      "test_run_record.py::test_batch_allows_twelve_and_twelve_hours": "passed",
+      "test_run_record.py::test_batch_refuses_thirteen": "passed",
+      "test_run_record.py::test_a_bad_digest_is_refused": "passed",
+      "test_run_record.py::test_a_previous_result_must_be_committed": "passed",
+      "test_run_record.py::test_an_unknown_condition_is_refused": "passed",
+      "test_run_record.py::test_warm_condition_loads_and_passes_the_gate": "passed",
+      "test_run_record.py::test_a_non_object_record_is_refused[null]": "passed",
+      "test_run_record.py::test_a_non_object_record_is_refused[5]": "passed",
+      "test_run_record.py::test_malformed_json_is_refused": "passed",
+      "test_run_record.py::test_a_wrong_typed_field_is_refused": "passed",
+      "test_run_record.py::test_an_unknown_mode_is_refused": "passed",
+      "test_run_record.py::test_an_empty_rule_field_is_refused[stop_rule]": "passed",
+      "test_run_record.py::test_an_empty_rule_field_is_refused[decision_rule]": "passed",
+      "test_run_record.py::test_launch_without_check_is_a_usage_error": "passed",
+      "test_run_record.py::test_launch_check_accepts_a_good_record": "passed"
+    },
+    "counts": {
+      "passed": 20,
+      "failed": 0,
+      "error": 0,
+      "skipped": 0
+    }
+  },
+  "contamination": {
+    "visibility": "hidden",
+    "checks": [
+      {
+        "check": "grader_content_in_patch",
+        "outcome": "clean",
+        "evidence": []
+      }
+    ]
+  },
+  "resolved_versions": {
+    "coverage": "7.16.1",
+    "iniconfig": "2.3.0",
+    "packaging": "26.3",
+    "pluggy": "1.6.0",
+    "pygments": "2.21.0",
+    "pyrefly": "1.3.0",
+    "pytest": "9.1.1",
+    "pytest-cov": "7.1.0",
+    "pyyaml": "6.0.3",
+    "ruff": "0.16.7"
+  }
+}

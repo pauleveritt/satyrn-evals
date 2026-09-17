@@ -1,0 +1,21 @@
+{
+  "name": "selfhost-docs-linter",
+  "base": "73ec17217a38b9730c9d34d47c0a5163d9c421e7",
+  "good": "cc9ab53107a8862a84843b1c3030274503d53d0b",
+  "files": [
+    "tools/lint_docs.py"
+  ],
+  "hidden": [
+    "tests/test_doc_caps.py"
+  ],
+  "plan": {
+    "path": "docs/superpowers/plans/2026-09-13-phase-0-restart.md",
+    "heading": "### Task 7: The docs linter, rewritten to the release-one caps",
+    "commit": "73ec17217a38b9730c9d34d47c0a5163d9c421e7"
+  },
+  "formats": "check(root) returns a list of plain strings, one per failure, and its acceptance suite matches these literally, so match them exactly. Every path in a message is relative to root, using `/` as the separator. A line-count failure reads `<path>: <n> lines > <cap>` (`<cap>` is 150 for ROADMAP.md, 120 for a docs/results file, 400 for a spec) -- for example `ROADMAP.md: 151 lines > 150`. A docs/results file with no fenced code block reads `<path>: no fenced recompute block`. Too many files under docs/results/ reads `docs/results: <count> result files > 12`. A directory under docs/ that is not on the permitted list reads `docs/<name>: directory not permitted under docs/`. A line with trailing whitespace reads `<path>:<line number>: trailing whitespace` (1-indexed). A file whose last line is blank reads `<path>: blank line at EOF`. When both apply to the same file, list every trailing-whitespace line, in ascending line-number order, before that file's own blank-line-at-EOF entry. A clean tree returns an empty list, not a falsy placeholder. The trailing-whitespace / blank-EOF check also carries a small, fixed skip list of build/cache/vendor-style directory names (the kind a project's own tooling generates, never hand-authored prose) that never count as documents; whatever the skip list contains, membership must be decided from each file's path relative to the tree root, never from the absolute filesystem path -- a tree that happens to be checked out several directories deep must lint exactly as if it were checked out at the top level.",
+  "broken": {
+    "tools/lint_docs.py": "\"\"\"known-broken fixture stub: importable, behaviorally incomplete.\"\"\"\n\nimport sys\nfrom pathlib import Path\n\n\ndef check(root: Path) -> list[str]:\n    return None\n\n\ndef main() -> int:\n    return 0\n\n\nif __name__ == \"__main__\":\n    sys.exit(main())\n"
+  },
+  "oracle_env": {}
+}

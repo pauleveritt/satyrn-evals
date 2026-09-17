@@ -1,0 +1,843 @@
+diff --git a/src/satyrn_evals/launch.py b/src/satyrn_evals/launch.py
+new file mode 100644
+index 0000000..0167bed
+--- /dev/null
++++ b/src/satyrn_evals/launch.py
+@@ -0,0 +1,325 @@
++"""The cell loop: plan a night's slots, run them k at a time, keep the ledger.
++
++A *night* is one launch of the campaign's cells: a flat list of slots, each
++carrying the arm it runs.  The loop here owns scheduling and nothing else --
++it never starts a model, never grades, and never reads a transcript.  A
++``spawn`` callable turns a :class:`Slot` into a running cell process and the
++cell (Task 3) writes its own result file; the loop only decides *when* a slot
++may start and *whether* the night continues.
++
++Two rules keep the night honest.  First, a cell result is only as good as the
++workspace that produced it: a code in :data:`INFRASTRUCTURE_CODES` (or a
++deadline that expired outside the command phase) means the harness failed, not
++the model, so the first such result stops the night.  Model outcomes --
++``OK``, ``NO_PATCH``, ``COMMAND_TIMEOUT``, ``BUDGET_EXCEEDED``,
++``REPEAT_LIMIT`` -- never do.  Second, a night is resumable: a slot with a
++result file is finished and never runs again, except that a slot whose result
++was infrastructure is archived to ``<NN>.replaced-<M>.json`` and rerun.
++
++Signals are part of the contract, not an afterthought: ``run._abort_on_signals``
++turns SIGTERM/SIGHUP into :class:`run.SignalAbort`, and ``launch_cells`` catches
++that and ``KeyboardInterrupt`` anywhere in the loop, shuts the running cells
++down, and returns ``INTERRUPTED`` instead of re-raising.  A caller therefore
++never sees a half-run night as a crash; it sees a status it can record.
++"""
++
++import json
++import time
++from collections.abc import Callable
++from dataclasses import dataclass, field
++from datetime import UTC, datetime
++from enum import StrEnum
++from pathlib import Path
++from typing import Protocol
++
++from satyrn_evals.attempt_record import AttemptCode
++from satyrn_evals.errors import UsageError
++from satyrn_evals.run import SignalAbort, _abort_on_signals
++
++LEDGER_NAME = "launch.json"
++SLOTS_DIR = "slots"
++
++#: Codes that mean the harness, not the model, failed.  The first result with
++#: one of these stops the night.  ``DEADLINE_EXCEEDED`` is not here: it only
++#: counts when it expired outside the command phase, and
++#: :func:`infrastructure_reason` decides that case by case.
++INFRASTRUCTURE_CODES: frozenset[AttemptCode] = frozenset(
++    {
++        AttemptCode.WORKSPACE_FAILED,
++        AttemptCode.CLEANUP_FAILED,
++        AttemptCode.GRADE_FAILED,
++        AttemptCode.TRANSCRIPT_MISSING,
++        AttemptCode.TRANSCRIPT_EMPTY,
++        AttemptCode.MODEL_ERROR,
++        AttemptCode.PATCH_INVALID,
++    }
++)
++
++
++class Status(StrEnum):
++    """How a launch ended; the value is what the ledger stores."""
++
++    COMPLETE = "complete"
++    CAPPED = "capped"
++    INFRASTRUCTURE = "infrastructure"
++    INTERRUPTED = "interrupted"
++
++
++@dataclass(frozen=True, slots=True)
++class Slot:
++    """One cell to run: its index in the night and the arm it belongs to."""
++
++    index: int
++    arm: str
++
++    @property
++    def name(self) -> str:
++        return f"{self.index:02d}"
++
++
++class CellProcess(Protocol):
++    """The bit of a running cell the loop needs: poll, terminate, kill."""
++
++    def poll(self) -> int | None: ...
++
++    def terminate(self) -> None: ...
++
++    def kill(self) -> None: ...
++
++
++type Spawn = Callable[[Slot], CellProcess]
++type Drift = Callable[[], str | None]
++
++
++@dataclass(frozen=True, slots=True)
++class LaunchOutcome:
++    """What one launch produced: how it ended and the results it saw."""
++
++    status: Status
++    reason: str | None
++    finished: list[dict] = field(default_factory=list)
++    replaced: list[dict] = field(default_factory=list)
++
++
++def plan_slots(arms: list[str], n: int) -> list[Slot]:
++    """``n`` slots per arm, arms cycling: slot ``i`` runs ``arms[i % len(arms)]``."""
++    return [Slot(index, arms[index % len(arms)]) for index in range(n * len(arms))]
++
++
++def slot_path(night: Path, slot: Slot) -> Path:
++    """``<night>/slots/<NN>.json`` -- where a cell writes its result."""
++    return Path(night) / SLOTS_DIR / f"{slot.name}.json"
++
++
++def _slot_name(value: object) -> str:
++    return f"{value:02d}" if isinstance(value, int) else str(value)
++
++
++def infrastructure_reason(result: dict) -> str | None:
++    """The stop-the-night reason a result carries, or None if it is a model outcome.
++
++    Infrastructure codes always stop the night.  ``DEADLINE_EXCEEDED`` stops it
++    only when the deadline expired in grading or some other phase after the
++    command -- a command timeout is the model's, and is not infrastructure.
++    """
++    code = result.get("code")
++    label = f"slot {_slot_name(result.get('slot'))} ({result.get('arm')})"
++    if code in INFRASTRUCTURE_CODES:
++        return f"{label}: {code}: {result.get('message')}"
++    if code == AttemptCode.DEADLINE_EXCEEDED and result.get("deadline_phase") != "command":
++        return (
++            f"{label}: DEADLINE_EXCEEDED in {result.get('deadline_phase')}: "
++            f"{result.get('message')}"
++        )
++    return None
++
++
++def read_slots(night: Path) -> dict[int, dict]:
++    """The finished slots on disk, keyed by index; ``.replaced`` archives excluded."""
++    directory = Path(night) / SLOTS_DIR
++    if not directory.is_dir():
++        return {}
++    found: dict[int, dict] = {}
++    for path in directory.iterdir():
++        if not path.is_file() or path.suffix != ".json" or not path.stem.isdigit():
++            continue
++        found[int(path.stem)] = json.loads(path.read_text(encoding="utf-8"))
++    return {index: found[index] for index in sorted(found)}
++
++
++def _replace(night: Path, slot: Slot, result: dict, reason: str, number: int) -> dict:
++    """Archive a finished slot's result and describe the replacement.
++
++    ``number`` is the 1-based replacement counter for the launch: the first
++    replaced slot is archived as ``.replaced-1.json`` and the second as
++    ``.replaced-2.json``.
++    """
++    target = Path(night) / SLOTS_DIR / f"{slot.name}.replaced-{number}.json"
++    slot_path(night, slot).rename(target)
++    return {**result, "replaced_because": reason}
++
++
++def _shutdown(
++    running: dict[int, tuple[Slot, CellProcess]],
++    *,
++    grace: float,
++    clock: Callable[[], float],
++    sleep: Callable[[float], None],
++    poll_interval: float,
++) -> None:
++    """Terminate every running cell, poll out the grace window, then kill survivors.
++
++    A second signal while shutting down must not escape: ``launch_cells``
++    promises never to re-raise one, so a signal out of the grace loop just
++    ends the wait and the survivors are killed.
++    """
++    for _, process in running.values():
++        process.terminate()
++    deadline = clock() + grace
++    try:
++        while running and clock() < deadline:
++            for index in list(running):
++                if running[index][1].poll() is not None:
++                    del running[index]
++            if running:
++                sleep(poll_interval)
++    except (SignalAbort, KeyboardInterrupt):
++        pass
++    for _, process in running.values():
++        process.kill()
++
++
++def launch_cells(
++    *,
++    night: Path,
++    arms: list[str],
++    n: int,
++    k: int,
++    max_seconds: float,
++    cell_seconds: float,
++    spawn: Spawn,
++    drift: Drift,
++    grace: float = 60.0,
++    poll_interval: float = 1.0,
++    clock: Callable[[], float] = time.monotonic,
++    sleep: Callable[[float], None] = time.sleep,
++) -> LaunchOutcome:
++    """Run a night's pending slots ``k`` at a time; never raise for a signal.
++
++    A slot with a result file is finished.  A finished slot whose result is
++    infrastructure is archived as ``<NN>.replaced-<M>.json`` and rerun.  The
++    loop starts pending slots in index order, polls each tick, and returns a
++    :class:`LaunchOutcome` for a clean finish, a budget cap, an infrastructure
++    stop, or an interrupt.
++    """
++    night = Path(night)
++    (night / SLOTS_DIR).mkdir(parents=True, exist_ok=True)
++    planned = plan_slots(arms, n)
++    replaced: list[dict] = []
++    existing = read_slots(night)
++    for slot in planned:
++        result = existing.get(slot.index)
++        if result is None:
++            continue
++        reason = infrastructure_reason(result)
++        if reason is not None:
++            replaced.append(_replace(night, slot, result, reason, len(replaced) + 1))
++    pending = [slot for slot in planned if slot.index not in read_slots(night)]
++
++    finished: list[dict] = []
++    running: dict[int, tuple[Slot, CellProcess]] = {}
++    start = clock()
++    stop_reason: str | None = None
++    capped = False
++    try:
++        with _abort_on_signals():
++            while True:
++                while stop_reason is None and not capped and pending and len(running) < k:
++                    if (clock() - start) + cell_seconds > max_seconds:
++                        capped = True
++                        break
++                    answer = drift()
++                    if answer is not None:
++                        stop_reason = f"preflight drift: {answer}"
++                        break
++                    slot = pending.pop(0)
++                    running[slot.index] = (slot, spawn(slot))
++                if not running:
++                    if stop_reason is not None:
++                        return LaunchOutcome(Status.INFRASTRUCTURE, stop_reason, finished, replaced)
++                    if pending:
++                        reason = f"{len(pending)} slot(s) wait: not enough time before max_seconds"
++                        return LaunchOutcome(Status.CAPPED, reason, finished, replaced)
++                    return LaunchOutcome(Status.COMPLETE, None, finished, replaced)
++                sleep(poll_interval)
++                for index in list(running):
++                    slot, process = running[index]
++                    exit_code = process.poll()
++                    if exit_code is None:
++                        continue
++                    del running[index]
++                    result_file = slot_path(night, slot)
++                    if not result_file.is_file():
++                        if stop_reason is None:
++                            stop_reason = (
++                                f"slot {slot.name} ({slot.arm}): the cell process exited "
++                                f"{exit_code} without an attempt record"
++                            )
++                        continue
++                    result = json.loads(result_file.read_text(encoding="utf-8"))
++                    finished.append(result)
++                    reason = infrastructure_reason(result)
++                    if reason is not None and stop_reason is None:
++                        stop_reason = reason
++    except (SignalAbort, KeyboardInterrupt) as exc:
++        if running:
++            _shutdown(running, grace=grace, clock=clock, sleep=sleep, poll_interval=poll_interval)
++        return LaunchOutcome(
++            Status.INTERRUPTED,
++            f"interrupted: {type(exc).__name__}",
++            finished,
++            replaced,
++        )
++
++
++def write_ledger(night: Path, *, identity: dict, sitting: dict, outcome: LaunchOutcome) -> None:
++    """Append a sitting to ``<night>/launch.json`` and refresh the night's roll-up.
++
++    The first write seeds the file with the record's identity keys; every write
++    appends the sitting (with this outcome's status, reason, and an end time),
++    extends the replacements, and rewrites ``slots`` from every finished result
++    on disk in index order.
++    """
++    path = Path(night) / LEDGER_NAME
++    if path.is_file():
++        ledger = json.loads(path.read_text(encoding="utf-8"))
++    else:
++        ledger = {**identity, "sittings": [], "replaced": []}
++    ledger.setdefault("sittings", []).append(
++        {
++            **sitting,
++            "status": outcome.status.value,
++            "reason": outcome.reason,
++            "ended": datetime.now(UTC).isoformat(),
++        }
++    )
++    ledger.setdefault("replaced", []).extend(outcome.replaced)
++    ledger["status"] = outcome.status.value
++    ledger["reason"] = outcome.reason
++    slots = read_slots(night)
++    ledger["slots"] = [slots[index] for index in sorted(slots)]
++    path.write_text(json.dumps(ledger, indent=2) + "\n", encoding="utf-8")
++
++
++def check_night(night: Path, identity: dict) -> None:
++    """Refuse to add a sitting to a night recorded under a different identity."""
++    path = Path(night) / LEDGER_NAME
++    if not path.is_file():
++        return
++    ledger = json.loads(path.read_text(encoding="utf-8"))
++    for key, value in identity.items():
++        if ledger.get(key) != value:
++            raise UsageError(
++                f"launch ledger at {path} belongs to another record: {key} is "
++                f"{ledger.get(key)!r}, not {value!r}"
++            )
+diff --git a/tests/test_launch.py b/tests/test_launch.py
+new file mode 100644
+index 0000000..960f048
+--- /dev/null
++++ b/tests/test_launch.py
+@@ -0,0 +1,506 @@
++"""The cell loop's pure planning, its ledger, and its scheduling outcomes.
++
++Everything here is fake: a clock that is a counter, a sleep that records, and
++cell processes that write a result file and return an exit code.  No model,
++network, or subprocess is involved, so the default tier's tripwire stays shut.
++"""
++
++import json
++from pathlib import Path
++
++import pytest
++
++from satyrn_evals.attempt_record import AttemptCode
++from satyrn_evals.errors import UsageError
++from satyrn_evals.launch import (
++    INFRASTRUCTURE_CODES,
++    LEDGER_NAME,
++    SLOTS_DIR,
++    LaunchOutcome,
++    Slot,
++    Status,
++    check_night,
++    infrastructure_reason,
++    launch_cells,
++    plan_slots,
++    read_slots,
++    slot_path,
++    write_ledger,
++)
++
++
++class FakeCell:
++    """A cell process whose only job is to write (or not) and exit."""
++
++    def __init__(self, *, exit_code: int = 0, polls: int = 1, write=None, on_exit=None) -> None:
++        self.exit_code = exit_code
++        self.polls_to_exit = polls
++        self.write = write
++        self.on_exit = on_exit
++        self.polls = 0
++        self.terminated = 0
++        self.killed = 0
++        self._exited = False
++
++    def poll(self) -> int | None:
++        self.polls += 1
++        if self.polls < self.polls_to_exit:
++            return None
++        if not self._exited:
++            self._exited = True
++            if self.write is not None:
++                self.write()
++            if self.on_exit is not None:
++                self.on_exit()
++        return self.exit_code
++
++    def terminate(self) -> None:
++        self.terminated += 1
++
++    def kill(self) -> None:
++        self.killed += 1
++
++
++class Clock:
++    """A monotonic clock that is just a counter, so a test can pin elapsed time."""
++
++    def __init__(self, step: float = 0.0, start: float = 0.0) -> None:
++        self.value = start
++        self.step = step
++
++    def __call__(self) -> float:
++        self.value += self.step
++        return self.value
++
++
++def _spawn(night: Path, results: dict[int, dict], *, polls: int = 1, cells: list[FakeCell] | None = None):
++    def spawn(slot: Slot) -> FakeCell:
++        result = results.get(slot.index)
++
++        def write() -> None:
++            if result is not None:
++                slot_path(night, slot).write_text(json.dumps(result))
++
++        cell = FakeCell(polls=polls, write=write)
++        if cells is not None:
++            cells.append(cell)
++        return cell
++
++    return spawn
++
++
++def _no_drift() -> None:
++    return None
++
++
++def _result(slot: int, arm: str, code: str = "OK", message: str = "m", **extra) -> dict:
++    return {
++        "slot": slot,
++        "arm": arm,
++        "attempt_dir": f"a{slot}",
++        "code": code,
++        "verdict": None,
++        "message": message,
++        "command_exit": 0,
++        "deadline_phase": None,
++        **extra,
++    }
++
++
++def test_status_members_are_the_lowercase_words_the_ledger_stores() -> None:
++    assert Status.COMPLETE == "complete"
++    assert Status.CAPPED == "capped"
++    assert Status.INFRASTRUCTURE == "infrastructure"
++    assert Status.INTERRUPTED == "interrupted"
++
++
++def test_a_slot_name_is_its_index_in_two_digits() -> None:
++    assert Slot(3, "engine").name == "03"
++    assert Slot(12, "baseline").name == "12"
++
++
++def test_plan_slots_gives_each_arm_n_slots_and_cycles_arms() -> None:
++    slots = plan_slots(["baseline", "engine"], 2)
++    assert [(slot.index, slot.arm) for slot in slots] == [
++        (0, "baseline"),
++        (1, "engine"),
++        (2, "baseline"),
++        (3, "engine"),
++    ]
++
++
++def test_a_slot_path_is_night_slots_nn_json() -> None:
++    assert slot_path(Path("/n"), Slot(3, "engine")) == Path("/n") / "slots" / "03.json"
++
++
++def test_the_infrastructure_codes_are_exactly_the_harness_failures() -> None:
++    assert {
++        AttemptCode.WORKSPACE_FAILED,
++        AttemptCode.CLEANUP_FAILED,
++        AttemptCode.GRADE_FAILED,
++        AttemptCode.TRANSCRIPT_MISSING,
++        AttemptCode.TRANSCRIPT_EMPTY,
++        AttemptCode.MODEL_ERROR,
++        AttemptCode.PATCH_INVALID,
++    } == INFRASTRUCTURE_CODES
++    assert AttemptCode.COMMAND_TIMEOUT not in INFRASTRUCTURE_CODES
++    assert AttemptCode.BUDGET_EXCEEDED not in INFRASTRUCTURE_CODES
++
++
++def test_an_infrastructure_result_names_slot_arm_code_and_message() -> None:
++    result = _result(3, "engine", code="WORKSPACE_FAILED", message="no worktree")
++    assert infrastructure_reason(result) == "slot 03 (engine): WORKSPACE_FAILED: no worktree"
++
++
++def test_a_deadline_outside_the_command_phase_is_infrastructure() -> None:
++    result = _result(3, "engine", code="DEADLINE_EXCEEDED", message="m", deadline_phase="grading")
++    assert infrastructure_reason(result) == "slot 03 (engine): DEADLINE_EXCEEDED in grading: m"
++
++
++def test_a_deadline_in_the_command_phase_is_a_model_outcome() -> None:
++    result = _result(0, "engine", code="DEADLINE_EXCEEDED", message="m", deadline_phase="command")
++    assert infrastructure_reason(result) is None
++
++
++@pytest.mark.parametrize("code", ["OK", "NO_PATCH", "COMMAND_TIMEOUT", "BUDGET_EXCEEDED", "REPEAT_LIMIT"])
++def test_a_model_outcome_has_no_infrastructure_reason(code: str) -> None:
++    assert infrastructure_reason(_result(0, "engine", code=code)) is None
++
++
++def test_read_slots_reads_only_nn_json_and_keys_by_index(tmp_path: Path) -> None:
++    slots = tmp_path / SLOTS_DIR
++    slots.mkdir()
++    (slots / "00.json").write_text(json.dumps(_result(0, "engine")))
++    (slots / "01.json").write_text(json.dumps(_result(1, "engine")))
++    (slots / "01.replaced-1.json").write_text(json.dumps(_result(1, "engine")))
++    (slots / "notes.txt").write_text("x")
++    (slots / "02.json").mkdir()
++    assert set(read_slots(tmp_path)) == {0, 1}
++
++
++def test_read_slots_of_a_night_without_a_slots_directory_is_empty(tmp_path: Path) -> None:
++    assert read_slots(tmp_path) == {}
++
++
++def test_write_ledger_seeds_identity_and_appends_a_sitting(tmp_path: Path) -> None:
++    slots = tmp_path / SLOTS_DIR
++    slots.mkdir()
++    (slots / "00.json").write_text(json.dumps(_result(0, "engine")))
++    outcome = LaunchOutcome(Status.COMPLETE, None, [_result(0, "engine")], [])
++    write_ledger(tmp_path, identity={"record": "r1", "night": "n1"}, sitting={"started": "t0"}, outcome=outcome)
++    ledger = json.loads((tmp_path / LEDGER_NAME).read_text())
++    assert ledger["record"] == "r1"
++    assert ledger["night"] == "n1"
++    assert ledger["status"] == "complete"
++    assert ledger["reason"] is None
++    assert len(ledger["sittings"]) == 1
++    sitting = ledger["sittings"][0]
++    assert sitting["started"] == "t0"
++    assert sitting["status"] == "complete"
++    assert sitting["reason"] is None
++    assert "ended" in sitting
++    assert [entry["slot"] for entry in ledger["slots"]] == [0]
++
++
++def test_write_ledger_extends_replacements_and_keeps_the_identity(tmp_path: Path) -> None:
++    (tmp_path / SLOTS_DIR).mkdir()
++    first = LaunchOutcome(Status.COMPLETE, None, [], [])
++    write_ledger(tmp_path, identity={"record": "r1"}, sitting={"i": 1}, outcome=first)
++    replaced = {**_result(0, "engine"), "replaced_because": "slot 00 (engine): GRADE_FAILED: m"}
++    second = LaunchOutcome(Status.INFRASTRUCTURE, "stop", [], [replaced])
++    write_ledger(tmp_path, identity={"record": "r1"}, sitting={"i": 2}, outcome=second)
++    ledger = json.loads((tmp_path / LEDGER_NAME).read_text())
++    assert ledger["record"] == "r1"
++    assert [sitting["i"] for sitting in ledger["sittings"]] == [1, 2]
++    assert ledger["status"] == "infrastructure"
++    assert ledger["reason"] == "stop"
++    assert ledger["replaced"] == [replaced]
++
++
++def test_check_night_is_silent_without_a_ledger(tmp_path: Path) -> None:
++    check_night(tmp_path, {"record": "r1"})
++
++
++def test_check_night_accepts_a_matching_identity(tmp_path: Path) -> None:
++    write_ledger(tmp_path, identity={"record": "r1"}, sitting={}, outcome=LaunchOutcome(Status.COMPLETE, None))
++    check_night(tmp_path, {"record": "r1"})
++
++
++def test_check_night_refuses_another_record(tmp_path: Path) -> None:
++    write_ledger(tmp_path, identity={"record": "r1"}, sitting={}, outcome=LaunchOutcome(Status.COMPLETE, None))
++    with pytest.raises(UsageError, match="belongs to another record"):
++        check_night(tmp_path, {"record": "r2"})
++
++
++def test_launch_creates_the_slots_directory_before_any_cell(tmp_path: Path) -> None:
++    night = tmp_path / "n1"
++    launch_cells(
++        night=night,
++        arms=["engine"],
++        n=0,
++        k=1,
++        max_seconds=100.0,
++        cell_seconds=1.0,
++        spawn=_spawn(night, {}),
++        drift=_no_drift,
++        clock=Clock(),
++        sleep=lambda _: None,
++    )
++    assert (night / SLOTS_DIR).is_dir()
++
++
++def test_a_clean_night_completes_with_no_reason(tmp_path: Path) -> None:
++    night = tmp_path / "n1"
++    results = {index: _result(index, "engine") for index in range(2)}
++    outcome = launch_cells(
++        night=night,
++        arms=["engine"],
++        n=2,
++        k=1,
++        max_seconds=100.0,
++        cell_seconds=1.0,
++        spawn=_spawn(night, results),
++        drift=_no_drift,
++        clock=Clock(),
++        sleep=lambda _: None,
++    )
++    assert outcome.status is Status.COMPLETE
++    assert outcome.reason is None
++    assert [entry["slot"] for entry in outcome.finished] == [0, 1]
++
++
++def test_a_finished_slot_never_runs_again(tmp_path: Path) -> None:
++    night = tmp_path / "n1"
++    slots = night / SLOTS_DIR
++    slots.mkdir(parents=True)
++    (slots / "00.json").write_text(json.dumps(_result(0, "engine")))
++    spawned: list[int] = []
++
++    def spawn(slot: Slot) -> FakeCell:
++        spawned.append(slot.index)
++        return FakeCell()
++
++    outcome = launch_cells(
++        night=night,
++        arms=["engine"],
++        n=1,
++        k=1,
++        max_seconds=100.0,
++        cell_seconds=1.0,
++        spawn=spawn,
++        drift=_no_drift,
++        clock=Clock(),
++        sleep=lambda _: None,
++    )
++    assert spawned == []
++    assert outcome.status is Status.COMPLETE
++    assert outcome.finished == []
++
++
++def test_an_infrastructure_slot_is_archived_and_rerun(tmp_path: Path) -> None:
++    night = tmp_path / "n1"
++    slots = night / SLOTS_DIR
++    slots.mkdir(parents=True)
++    (slots / "00.json").write_text(json.dumps(_result(0, "engine", code="WORKSPACE_FAILED")))
++    outcome = launch_cells(
++        night=night,
++        arms=["engine"],
++        n=1,
++        k=1,
++        max_seconds=100.0,
++        cell_seconds=1.0,
++        spawn=_spawn(night, {0: _result(0, "engine")}),
++        drift=_no_drift,
++        clock=Clock(),
++        sleep=lambda _: None,
++    )
++    assert (slots / "00.replaced-1.json").is_file()
++    assert len(outcome.replaced) == 1
++    assert outcome.replaced[0]["replaced_because"] == "slot 00 (engine): WORKSPACE_FAILED: m"
++    assert outcome.status is Status.COMPLETE
++    assert [entry["slot"] for entry in outcome.finished] == [0]
++
++
++def test_the_loop_runs_at_most_k_cells_at_once(tmp_path: Path) -> None:
++    night = tmp_path / "n1"
++    live = {"now": 0, "peak": 0}
++
++    def spawn(slot: Slot) -> FakeCell:
++        live["now"] += 1
++        live["peak"] = max(live["peak"], live["now"])
++
++        def write() -> None:
++            slot_path(night, slot).write_text(json.dumps(_result(slot.index, "engine")))
++
++        return FakeCell(polls=2, write=write, on_exit=lambda: live.__setitem__("now", live["now"] - 1))
++
++    outcome = launch_cells(
++        night=night,
++        arms=["engine"],
++        n=4,
++        k=2,
++        max_seconds=100.0,
++        cell_seconds=1.0,
++        spawn=spawn,
++        drift=_no_drift,
++        clock=Clock(),
++        sleep=lambda _: None,
++    )
++    assert live["peak"] == 2
++    assert outcome.status is Status.COMPLETE
++
++
++def test_a_slot_past_the_wall_clock_budget_is_capped(tmp_path: Path) -> None:
++    night = tmp_path / "n1"
++    outcome = launch_cells(
++        night=night,
++        arms=["engine"],
++        n=3,
++        k=3,
++        max_seconds=5.0,
++        cell_seconds=10.0,
++        spawn=_spawn(night, {}),
++        drift=_no_drift,
++        clock=Clock(),
++        sleep=lambda _: None,
++    )
++    assert outcome.status is Status.CAPPED
++    assert "3 slot(s) wait" in (outcome.reason or "")
++
++
++def test_drift_before_a_spawn_stops_the_night_as_infrastructure(tmp_path: Path) -> None:
++    night = tmp_path / "n1"
++    outcome = launch_cells(
++        night=night,
++        arms=["engine"],
++        n=2,
++        k=1,
++        max_seconds=100.0,
++        cell_seconds=1.0,
++        spawn=_spawn(night, {}),
++        drift=lambda: "preflight changed",
++        clock=Clock(),
++        sleep=lambda _: None,
++    )
++    assert outcome.status is Status.INFRASTRUCTURE
++    assert outcome.reason == "preflight drift: preflight changed"
++
++
++def test_the_first_infrastructure_result_stops_the_night(tmp_path: Path) -> None:
++    night = tmp_path / "n1"
++    spawned: list[int] = []
++
++    def spawn(slot: Slot) -> FakeCell:
++        spawned.append(slot.index)
++        code = "GRADE_FAILED" if slot.index == 0 else "OK"
++        return FakeCell(write=lambda: slot_path(night, slot).write_text(json.dumps(_result(slot.index, "engine", code=code))))
++
++    outcome = launch_cells(
++        night=night,
++        arms=["engine"],
++        n=3,
++        k=1,
++        max_seconds=100.0,
++        cell_seconds=1.0,
++        spawn=spawn,
++        drift=_no_drift,
++        clock=Clock(),
++        sleep=lambda _: None,
++    )
++    assert outcome.status is Status.INFRASTRUCTURE
++    assert outcome.reason == "slot 00 (engine): GRADE_FAILED: m"
++    assert spawned == [0]
++    assert [entry["slot"] for entry in outcome.finished] == [0]
++
++
++def test_a_model_outcome_never_stops_the_night(tmp_path: Path) -> None:
++    night = tmp_path / "n1"
++    results = {
++        0: _result(0, "engine", code="COMMAND_TIMEOUT"),
++        1: _result(1, "engine", code="NO_PATCH"),
++    }
++    outcome = launch_cells(
++        night=night,
++        arms=["engine"],
++        n=2,
++        k=1,
++        max_seconds=100.0,
++        cell_seconds=1.0,
++        spawn=_spawn(night, results),
++        drift=_no_drift,
++        clock=Clock(),
++        sleep=lambda _: None,
++    )
++    assert outcome.status is Status.COMPLETE
++    assert [entry["slot"] for entry in outcome.finished] == [0, 1]
++
++
++def test_a_cell_that_exits_without_a_record_stops_the_night(tmp_path: Path) -> None:
++    night = tmp_path / "n1"
++    outcome = launch_cells(
++        night=night,
++        arms=["engine"],
++        n=1,
++        k=1,
++        max_seconds=100.0,
++        cell_seconds=1.0,
++        spawn=_spawn(night, {}),
++        drift=_no_drift,
++        clock=Clock(),
++        sleep=lambda _: None,
++    )
++    assert outcome.status is Status.INFRASTRUCTURE
++    assert outcome.reason == "slot 00 (engine): the cell process exited 0 without an attempt record"
++
++
++def test_an_interrupt_terminates_cells_and_returns_interrupted(tmp_path: Path) -> None:
++    night = tmp_path / "n1"
++    cells: list[FakeCell] = []
++
++    def sleep(_: float) -> None:
++        raise KeyboardInterrupt
++
++    outcome = launch_cells(
++        night=night,
++        arms=["engine"],
++        n=2,
++        k=2,
++        max_seconds=100.0,
++        cell_seconds=1.0,
++        spawn=_spawn(night, {}, cells=cells),
++        drift=_no_drift,
++        clock=Clock(),
++        sleep=sleep,
++    )
++    assert outcome.status is Status.INTERRUPTED
++    assert "KeyboardInterrupt" in (outcome.reason or "")
++    assert all(cell.terminated == 1 for cell in cells)
++
++
++def test_an_interrupt_kills_cells_that_outlast_the_grace(tmp_path: Path) -> None:
++    night = tmp_path / "n1"
++    cells: list[FakeCell] = []
++
++    def spawn(slot: Slot) -> FakeCell:
++        cell = FakeCell(polls=10_000)
++        cells.append(cell)
++        return cell
++
++    def sleep(_: float) -> None:
++        raise KeyboardInterrupt
++
++    outcome = launch_cells(
++        night=night,
++        arms=["engine"],
++        n=1,
++        k=1,
++        max_seconds=100.0,
++        cell_seconds=1.0,
++        spawn=spawn,
++        drift=_no_drift,
++        grace=1.0,
++        clock=Clock(step=1.0),
++        sleep=sleep,
++    )
++    assert outcome.status is Status.INTERRUPTED
++    assert cells[0].killed == 1

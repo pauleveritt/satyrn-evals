@@ -61,13 +61,17 @@ def test_the_five_night_one_records_are_all_present() -> None:
     assert {p.stem.removeprefix("2026-09-16-census-") for p in NIGHT1} == NIGHT1_TASKS
 
 
-def test_night_two_is_the_three_replacements_and_census_tasks_is_still_night_one() -> None:
-    """Amendment 2026-09-17 (design section 4): record 1, the third candidate, was
-    withdrawn -- Task 1 found no candidate and Task 2 was deferred to a separate,
-    later spec. Night 2 is the three replacement records only, and ``CENSUS_TASKS``
-    must still be night 1's five: a later cut of a sixth task cannot silently widen
-    this night's record set."""
-    assert set(CENSUS_TASKS) == NIGHT1_TASKS
+AUTHORED = {"selfhost-preflight-quiet"}
+
+
+def test_night_two_is_the_three_replacements_and_the_census_set_gains_only_the_authored_task() -> None:
+    """Amendment 2026-09-17 (night-2 design section 4): record 1, the third
+    candidate, was withdrawn and Task 2 deferred to a separate spec. Night 2 is
+    the three replacement records only. The authored task
+    (2026-09-17-release-two-authored-task-design.md) is that deferred third
+    build task; it joins CENSUS_TASKS and gets its own night-3 record, and it
+    must not widen night 2's record set."""
+    assert set(CENSUS_TASKS) == NIGHT1_TASKS | AUTHORED
     assert {json.loads(p.read_text())["task"] for p in NIGHT2} == REPLACED
 
 

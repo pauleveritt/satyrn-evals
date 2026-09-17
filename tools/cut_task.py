@@ -74,8 +74,9 @@ _SHA = re.compile(r"\A[0-9a-f]{40}\Z")
 _SPEC_KEYS = frozenset({"name", "base", "good", "files", "hidden", "plan", "formats", "broken", "oracle_env"})
 #: Optional in a spec, so every already-cut task re-cuts byte-identically
 #: (a required key would move every task tree's digest).
-_OPTIONAL_SPEC_KEYS = frozenset({"prompt_edits"})
+_OPTIONAL_SPEC_KEYS = frozenset({"prompt_edits", "authored"})
 _EDIT_KEYS = frozenset({"old", "new", "reason"})
+_AUTHORED_KEYS = frozenset({"spec", "roles"})
 
 
 class CutError(Exception):
@@ -103,6 +104,19 @@ class PromptEdit:
 
 
 @dataclass(frozen=True, slots=True)
+class Authored:
+    """The disclosure an authored task carries (design section 5).
+
+    A task written for the census rather than cut from a historical plan is
+    never pooled with the cut ones, so the manifest says so where
+    ``cut_task.py check`` can see it.
+    """
+
+    spec: str
+    roles: dict[str, str]
+
+
+@dataclass(frozen=True, slots=True)
 class TaskSpec:
     name: str
     base: str
@@ -114,6 +128,7 @@ class TaskSpec:
     broken: dict[str, str]
     oracle_env: dict[str, str]
     prompt_edits: tuple[PromptEdit, ...] = ()
+    authored: Authored | None = None
 
 
 def _strings(value: object, field: str) -> tuple[str, ...]:
@@ -173,6 +188,19 @@ def load_spec(path: Path) -> TaskSpec:
                 "(qualification asks whether the old text is gone from the prompt)"
             )
         edits.append(PromptEdit(item["old"], item["new"], item["reason"]))
+    raw_authored = body.get("authored")
+    authored: Authored | None = None
+    if raw_authored is not None:
+        if not isinstance(raw_authored, dict) or set(raw_authored) != _AUTHORED_KEYS:
+            raise CutError(f"spec {path}: authored must be {{spec, roles}}")
+        if not isinstance(raw_authored["spec"], str) or not raw_authored["spec"]:
+            raise CutError(f"spec {path}: authored.spec must be a non-empty path string")
+        roles = raw_authored["roles"]
+        if not isinstance(roles, dict) or not roles or not all(
+            isinstance(k, str) and k and isinstance(v, str) and v for k, v in roles.items()
+        ):
+            raise CutError(f"spec {path}: authored.roles must map non-empty strings to non-empty strings")
+        authored = Authored(spec=raw_authored["spec"], roles=dict(roles))
     return TaskSpec(
         name=body["name"],
         base=body["base"],
@@ -184,6 +212,7 @@ def load_spec(path: Path) -> TaskSpec:
         broken=dict(body["broken"]),
         oracle_env=dict(body["oracle_env"]),
         prompt_edits=tuple(edits),
+        authored=authored,
     )
 
 
@@ -298,6 +327,9 @@ def manifest_body(
         generator["prompt_edits"] = [
             {"old": edit.old, "new": edit.new, "reason": edit.reason} for edit in spec.prompt_edits
         ]
+    if spec.authored is not None:
+        generator["authored"] = True
+        generator["authoring"] = {"spec": spec.authored.spec, "roles": dict(spec.authored.roles)}
     return {
         "name": spec.name,
         "contract": prompt,

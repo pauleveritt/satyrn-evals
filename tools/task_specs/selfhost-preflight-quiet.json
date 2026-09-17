@@ -1,0 +1,31 @@
+{
+  "name": "selfhost-preflight-quiet",
+  "base": "3f7a561931e4c4fabb79991756359d6d6c9c9aac",
+  "good": "d3a97ec64833f1e9b9682211e50342d2d71b705c",
+  "files": [
+    "scripts/preflight_quiet.py"
+  ],
+  "hidden": [
+    "tests/test_preflight_quiet.py"
+  ],
+  "plan": {
+    "path": "docs/superpowers/plans/2026-09-18-preflight-quiet.md",
+    "heading": "### Task 1: The machine-quiet preflight",
+    "commit": "3f7a561931e4c4fabb79991756359d6d6c9c9aac"
+  },
+  "formats": "Every name, key, default and message below is matched literally by the acceptance suite, so match it exactly. The module is scripts/preflight_quiet.py and the suite imports load_problem, busy_processes, decode_rate, certificate, main, Process, Rate and IGNORE_PREFIXES from preflight_quiet with scripts on the path. Process is a frozen dataclass with fields pid (int), comm (str) and cpu (float); Rate is frozen with tok_s (float), completions (int), tokens (int) and seconds (float); Certificate is frozen with problems (a tuple of strings, empty when the machine is quiet) and record (a dict), and its as_dict() returns {\"problems\": [...], \"inputs\": {...}} where inputs has exactly the keys load (the load message or null), busy (a list of {\"pid\", \"comm\", \"cpu\"} objects in snapshot order), decode (null, or exactly {\"tok_s\", \"completions\", \"tokens\", \"seconds\"}), floor_tok_s, model and last. as_dict()[\"inputs\"][\"decode\"] carries the unrounded tok_s, tokens and seconds -- the rounding to one decimal place below is for the certificate's messages only, never for this record. load_problem((one, five, fifteen), cores, ceiling=C) returns None when one <= C * cores and otherwise the message `load <one> > <C * cores> (<cores> cores)` with both numbers to one decimal place and the core count as a bare integer, for example `load 9.5 > 4.0 (8 cores)`. busy_processes parses `ps -axo pid,pcpu,comm` output: each line is split into at most three fields and skipped unless they are an integer pid, a float cpu and a command, which disposes of the header and of malformed lines; a process is busy when its cpu is strictly greater than cpu_floor and its command starts with none of ignore_prefixes; the busy processes come back in the order they appear. decode_rate parses oMLX server-log lines of the shape `2026-09-17 21:14:02,004 - omlx.server - INFO - [-] - Chat completion: model=M, 900 tokens in 10.00s (90.0 tok/s), prompt: 5000, finish_reason=stop, max_tokens=16000, request_max_tokens=16000`; a line without that timestamped omlx.server - INFO prefix or without that whole completion shape is not a completion. It keeps the completions whose model is exactly model, returns None when there are fewer than last of them, and otherwise returns a Rate over the last `last` of them whose tokens and seconds are the sums and whose tok_s is sum(tokens) / sum(seconds) -- token-weighted, never the mean of the per-completion rates. certificate(load, busy, rate, *, floor_tok_s, model, last) returns the problems in this order: the load message when it is not None; then one `busy: <comm> pid <pid> at <cpu>% cpu` per busy process, the cpu to one decimal place; then, when rate is None, `decode: fewer than <last> completions for <model>`, and otherwise, only when rate.tok_s is strictly less than floor_tok_s, `decode <rate.tok_s> tok/s < <floor_tok_s> over last <rate.completions> completions` with both numbers to one decimal place -- here `<rate.completions>` is `last` itself, the size of the window, never a count of completion lines seen in the log. A rate exactly at the floor is quiet, a load exactly at the ceiling is quiet, and a process exactly at the cpu floor is quiet. main(argv=None, *, loadavg, cores, read_ps, read_log) parses --model ID (required), --ceiling F (default 0.5), --cpu-floor F (default 20.0), --floor-tok-s F (default 30.0) and --last N (default 20); it takes the load average, the core count, the ps snapshot and the log lines from those four keyword-only callables, whose defaults read the real machine, so the suite drives it without a subprocess; it passes IGNORE_PREFIXES, the tuple (\"/sbin/\", \"/usr/sbin/\", \"/usr/libexec/\", \"/System/\", \"/usr/local/bin/omlx-\", \"omlx-\", \"/Applications/oMLX.app/\"), as the ignore list; it prints as_dict() as JSON on stdout -- exactly one JSON document there and nothing else -- and it returns 0 when problems is empty and 1 when it is not.",
+  "broken": {
+    "scripts/preflight_quiet.py": "\"\"\"known-broken fixture stub: importable, behaviorally incomplete.\"\"\"\n\nfrom dataclasses import dataclass\n\nDEFAULT_CEILING = 0.0\nDEFAULT_CPU_FLOOR = 0.0\nDEFAULT_FLOOR_TOK_S = 0.0\nDEFAULT_LAST = 0\nIGNORE_PREFIXES: tuple[str, ...] = ()\n\n\n@dataclass(frozen=True, slots=True)\nclass Process:\n    pid: int = 0\n    comm: str = \"\"\n    cpu: float = 0.0\n\n\n@dataclass(frozen=True, slots=True)\nclass Rate:\n    tok_s: float = 0.0\n    completions: int = 0\n    tokens: int = 0\n    seconds: float = 0.0\n\n\n@dataclass(frozen=True, slots=True)\nclass Certificate:\n    problems: tuple[str, ...] = ()\n    record: dict = None\n\n    def as_dict(self):\n        return {}\n\n\ndef load_problem(loadavg, cores, *, ceiling):\n    return None\n\n\ndef busy_processes(ps_stdout, *, cpu_floor, ignore_prefixes):\n    return []\n\n\ndef decode_rate(log_lines, *, model, last):\n    return None\n\n\ndef certificate(load, busy, rate, *, floor_tok_s, model, last):\n    return Certificate()\n\n\ndef main(argv=None, **kwargs):\n    return 0\n"
+  },
+  "oracle_env": {
+    "PYTHONPATH": "scripts"
+  },
+  "authored": {
+    "spec": "docs/superpowers/specs/2026-09-17-release-two-authored-task-design.md",
+    "roles": {
+      "heading": "Opus, from the design spec, before any implementation existed",
+      "implementation": "Sonnet, in a worktree under the ordinary loop, without editing the acceptance suite",
+      "validity": "recorded in the manifest's validity block"
+    }
+  }
+}

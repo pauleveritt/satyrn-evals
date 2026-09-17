@@ -43,6 +43,7 @@ FLEET: dict[str, tuple[str, ...]] = {
     "selfhost-run-record-gate": ("src/satyrn_evals/run_record.py", "src/satyrn_evals/cli.py", "tests/*"),
     "selfhost-cell-loop": ("src/satyrn_evals/launch.py", "tests/*"),
     "selfhost-speed-probe": ("scripts/speed_probe.py", "ROADMAP.md", "tests/*"),
+    "selfhost-preflight-quiet": ("scripts/preflight_quiet.py", "tests/*"),
 }
 
 

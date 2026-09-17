@@ -1,0 +1,222 @@
+diff --git a/ROADMAP.md b/ROADMAP.md
+index ff65f7854e59c4e97b52ce78274a4c7402fd6772..777cf9fef04792ef5d4e77a2aa88179b2926ff07 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -13,7 +13,8 @@ more. Nothing else is claimed.
+ | 0 | Restart: tags, orphan trees, the import with provenance, gates green, launcher gate, docs caps, review script, hooks | overnight | both trees build; default tiers green; `just gates` enforces the caps; `PROVENANCE.md` names every file's source | done 2026-09-14 |
+ | 1 | Engine `/implement` v1: derived contract, guards 1–4 and symbol preservation, carried tests, compact results, receipt | overnight, fake-first | every component has replay or fixture tests both directions; a fake model completes `/implement` end to end; 120/300 frozen against measured suite durations | done 2026-09-14 — evals e0f25df, engine 46d4514 |
+ | 2a | Eval core: harvest, token and turn tripwire, census extensions, hygiene | overnight | harness items 1, 3, 4, 5 have fixture tests both directions; the Engine arm runs against a fake | done 2026-09-14 — docs/superpowers/plans/2026-09-14-phase-2a-eval-core.md |
+-| 2b | Isolation and tasks: two-uid isolation, generator and R1-plan, candidates qualified, context-speed and concurrency probe, warm prefix recorded | overnight, plus attended isolation setup, probe and recording | the eval runs both arms against a fake under isolation with the budget tripwire; every candidate passes offline qualification; k measured; settings provenance verified by preflight | not started |
++| 2b | Isolation and tasks: two-uid isolation, generator and R1-plan, candidates qualified, context-speed and concurrency probe | overnight, plus attended isolation setup and probe | the eval runs both arms against a fake under isolation with the budget tripwire; every candidate passes offline qualification; k measured; settings provenance verified by preflight | built 2026-09-15 — docs/superpowers/plans/2026-09-14-phase-2b-isolation-and-tasks.md; k and the first isolated Pi turn are the attended checklist in its Task 6 |
++| 2c | Launcher loop and warm prefix: `launch RECORD` runs n cells at k with arms interleaved under the record's profile; the warm prefix recorded and replayed byte-identically | overnight, plus attended recording | a fake completes a k = 2 interleaved record under isolation through the launcher; a recorded prefix replays byte-identically against a fake | not started; lands before Phase 3 |
+ | 3 | Admission and route proof: Baseline admission cells; one Engine cell per ceiling task | attended | ceiling and floor sets fixed; guards fire where retained evidence says they should; receipts read | not started |
+ | 4 | Comparison: campaign record, held-out cut, seven batch nights | unattended batch, frozen in daylight | one result page per task and one against the rule | not started |
+ | 5 | Decide and ship, or stop | attended | release one published, or a stated negative | not started |
+diff --git a/scripts/speed_probe.py b/scripts/speed_probe.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..770ea2c997e6d58cfbfc48dae092ad6d80867a45
+--- /dev/null
++++ b/scripts/speed_probe.py
+@@ -0,0 +1,202 @@
++#!/usr/bin/env python3
++"""The context-speed and concurrency probe: requests to oMLX, numbers from its log.
++
++Instrument for the attended probe (spec, "The model"): decode tok/s at prompt
++sizes near 5k, 20k, 40k, 80k and 160k tokens, and total output tok/s with 1,
++2 and 3 concurrent streams. No task outcome; no Pi. Two steps:
++
++``run`` sends the requests and writes a plan: for each phase, its wall-clock
++window. It uses the server's own sampling settings (it sends only the model,
++the messages and ``max_tokens``), so the numbers are for the served
++configuration ``preflight_settings`` verified.
++
++``analyze`` reads the server log -- one line per completion, written when it
++ends (format confirmed against ``~/.omlx/logs/server.log`` on 2026-09-14)::
++
++    2026-09-14 09:51:27,151 - omlx.server - INFO - [-] - Chat completion:
++    model=Ornith-1.5-9B-MLX-8bit, 758 tokens in 30.62s (27.3 tok/s),
++    prompt: 44644, finish_reason=stop, max_tokens=32000, request_max_tokens=32000
++
++(one physical line). The reported rate is decode-only: the seconds include
++prefill, the rate does not. A completion belongs to the phase whose window
++holds its end time. For a concurrency phase, total throughput is the phase's
++output tokens over the span from its first completion's start (end minus
++seconds) to its last completion's end.
++
++k is the largest of 1, 2 or 3 whose total throughput is at least 1.5 times
++k = 1's (spec, "Concurrency, both arms").
++
++    uv run python scripts/speed_probe.py run --model Ornith-1.5-9B-MLX-8bit --plan PLAN.json
++    uv run python scripts/speed_probe.py analyze --plan PLAN.json --log ~/.omlx/logs/server.log
++"""
++
++import argparse
++import json
++import re
++import statistics
++import sys
++import threading
++import time
++import urllib.request
++from collections.abc import Callable, Sequence
++from dataclasses import dataclass
++from datetime import datetime
++from pathlib import Path
++
++CONTEXT_SIZES = (5_000, 20_000, 40_000, 80_000, 160_000)
++CONCURRENCY = (1, 2, 3)
++K_THRESHOLD = 1.5
++#: A context completion counts for the nearest size within this fraction.
++SIZE_TOLERANCE = 0.25
++DEFAULT_BASE_URL = "http://127.0.0.1:8001/v1"
++_LINE = re.compile(
++    r"^(?P<at>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) - omlx\.server - INFO - .*Chat completion: "
++    r"model=(?P<model>[^,]+), (?P<tokens>\d+) tokens in (?P<seconds>[\d.]+)s \((?P<rate>[\d.]+) tok/s\), "
++    r"prompt: (?P<prompt>\d+),"
++)
++_FILLER = "The quick brown fox jumps over the lazy dog while the probe counts tokens. "
++
++
++@dataclass(frozen=True, slots=True)
++class Completion:
++    ended: float
++    model: str
++    tokens: int
++    seconds: float
++    rate: float
++    prompt: int
++
++    @property
++    def started(self) -> float:
++        return self.ended - self.seconds
++
++
++def parse_line(line: str) -> Completion | None:
++    """One completion from one log line; None for every other line."""
++    if (match := _LINE.match(line)) is None:
++        return None
++    ended = datetime.strptime(match["at"], "%Y-%m-%d %H:%M:%S,%f").timestamp()
++    return Completion(ended, match["model"], int(match["tokens"]), float(match["seconds"]), float(match["rate"]), int(match["prompt"]))
++
++
++def completions_in(lines: Sequence[str], model: str, start: float, end: float) -> list[Completion]:
++    parsed = (parse_line(line) for line in lines)
++    return [c for c in parsed if c is not None and c.model == model and start <= c.ended <= end]
++
++
++def nearest_size(prompt: int, sizes: Sequence[int] = CONTEXT_SIZES) -> int | None:
++    size = min(sizes, key=lambda s: abs(s - prompt))
++    return size if abs(size - prompt) <= SIZE_TOLERANCE * size else None
++
++
++def decode_by_size(completions: Sequence[Completion]) -> dict[int, float]:
++    """Median decode tok/s per context size, from the completions near each size."""
++    rates: dict[int, list[float]] = {}
++    for completion in completions:
++        if (size := nearest_size(completion.prompt)) is not None:
++            rates.setdefault(size, []).append(completion.rate)
++    return {size: statistics.median(values) for size, values in sorted(rates.items())}
++
++
++def total_throughput(completions: Sequence[Completion]) -> float:
++    """Output tokens over the span from the first start to the last end."""
++    if not completions:
++        raise ValueError("no completions in the phase")
++    span = max(c.ended for c in completions) - min(c.started for c in completions)
++    if span <= 0:
++        raise ValueError("the phase spans no time")
++    return sum(c.tokens for c in completions) / span
++
++
++def choose_k(throughput: dict[int, float]) -> int:
++    """The largest k in 1, 2, 3 with total throughput >= 1.5 x k=1's."""
++    if 1 not in throughput:
++        raise ValueError("k = 1 was not measured")
++    return max(k for k in CONCURRENCY if k == 1 or throughput.get(k, 0.0) >= K_THRESHOLD * throughput[1])
++
++
++def analyze(plan: dict, lines: Sequence[str]) -> dict:
++    model = plan["model"]
++    context = [c for phase in plan["context"] for c in completions_in(lines, model, phase["start"], phase["end"])]
++    throughput = {
++        int(phase["k"]): total_throughput(completions_in(lines, model, phase["start"], phase["end"]))
++        for phase in plan["concurrency"]
++    }
++    decode = decode_by_size(context)
++    return {
++        "model": model,
++        "decode_tok_s_by_prompt": {str(size): round(rate, 1) for size, rate in decode.items()},
++        "missing_sizes": [size for size in CONTEXT_SIZES if size not in decode],
++        "total_tok_s_by_k": {str(k): round(value, 1) for k, value in sorted(throughput.items())},
++        "k": choose_k(throughput),
++    }
++
++
++# --- the requests (attended; inference) ---------------------------------------
++
++
++def filler(tokens: int, chars_per_token: float = 4.0) -> str:
++    count = max(1, int(tokens * chars_per_token / len(_FILLER)))
++    return _FILLER * count
++
++
++def request(base_url: str, model: str, prompt: str, max_tokens: int, opener: Callable = urllib.request.urlopen) -> None:
++    body = json.dumps({"model": model, "messages": [{"role": "user", "content": prompt + "\nSummarize the text above in one sentence."}], "max_tokens": max_tokens, "stream": False}).encode()
++    call = urllib.request.Request(f"{base_url}/chat/completions", data=body, headers={"Content-Type": "application/json", "Authorization": "Bearer local"})
++    with opener(call, timeout=3600) as response:
++        response.read()
++
++
++def _stream(base_url: str, model: str, stop: float, max_tokens: int, opener: Callable) -> None:
++    while time.time() < stop:
++        request(base_url, model, filler(CONTEXT_SIZES[0]), max_tokens, opener)
++
++
++def run(base_url: str, model: str, *, streams_seconds: float, max_tokens: int, opener: Callable = urllib.request.urlopen) -> dict:
++    plan: dict = {"model": model, "base_url": base_url, "context": [], "concurrency": []}
++    for size in CONTEXT_SIZES:
++        start = time.time()
++        request(base_url, model, filler(size), max_tokens, opener)
++        plan["context"].append({"size": size, "start": start, "end": time.time() + 1})
++    for k in CONCURRENCY:
++        start = time.time()
++        stop = start + streams_seconds
++
++        threads = [threading.Thread(target=_stream, args=(base_url, model, stop, max_tokens, opener)) for _ in range(k)]
++        for thread in threads:
++            thread.start()
++        for thread in threads:
++            thread.join()
++        plan["concurrency"].append({"k": k, "start": start, "end": time.time() + 1})
++    return plan
++
++
++def main(argv: list[str] | None = None) -> int:
++    parser = argparse.ArgumentParser(prog="speed_probe.py")
++    sub = parser.add_subparsers(dest="action", required=True)
++    run_p = sub.add_parser("run")
++    run_p.add_argument("--model", required=True)
++    run_p.add_argument("--plan", type=Path, required=True)
++    run_p.add_argument("--base-url", default=DEFAULT_BASE_URL)
++    run_p.add_argument("--stream-seconds", type=float, default=180.0)
++    run_p.add_argument("--max-tokens", type=int, default=512)
++    analyze_p = sub.add_parser("analyze")
++    analyze_p.add_argument("--plan", type=Path, required=True)
++    analyze_p.add_argument("--log", type=Path, required=True)
++    args = parser.parse_args(argv)
++    if args.action == "run":
++        plan = run(args.base_url, args.model, streams_seconds=args.stream_seconds, max_tokens=args.max_tokens)
++        args.plan.write_text(json.dumps(plan, indent=2) + "\n")
++        print(args.plan)
++        return 0
++    try:
++        report = analyze(json.loads(args.plan.read_text()), args.log.read_text(encoding="utf-8").splitlines())
++    except (OSError, ValueError, KeyError) as exc:
++        print(f"speed_probe: {exc}", file=sys.stderr)
++        return 2
++    print(json.dumps(report, indent=2))
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())

@@ -1,0 +1,33 @@
+{
+  "arm": "baseline",
+  "settings_verified_by": "scripts/preflight_settings.py",
+  "argv": [
+    "satyrn-evals-attempt-pi"
+  ],
+  "tools": [
+    "read",
+    "bash",
+    "edit",
+    "write"
+  ],
+  "model": "omlx/Ornith-1.5-9B-MLX-8bit",
+  "server_model": "Ornith-1.5-9B-MLX-8bit",
+  "pins": {
+    "pi": "0.85.1",
+    "engine_commit": null,
+    "digests": {}
+  },
+  "inference": {
+    "context_window": 262144,
+    "max_tokens": 16000,
+    "compaction_enabled": true,
+    "compaction_reserve_tokens": 16384,
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "top_k": 20,
+    "min_p": 0.0,
+    "presence_penalty": 0.0,
+    "repetition_penalty": 1.0,
+    "declares_reasoning": true
+  }
+}

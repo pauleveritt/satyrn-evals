@@ -1,0 +1,79 @@
+{
+  "name": "selfhost-docs-linter",
+  "contract": "Task 7: The docs linter, rewritten to the release-one caps\n\nFiles:\n- Create: `tools/lint_docs.py` (new, not imported), `tests/`\n\nInterfaces:\n- Produces: `lint_docs.check(root: Path) -> list[str]`; `just lint-docs` exits 1 on any failure.\n\nRules: `ROADMAP.md` ≤ 150 lines; every `docs/results/*.md` ≤ 120 lines and contains at least one fenced code block (a line starting with three backticks or four spaces followed by a command is not enough — require the backtick fence); at most 12 files in `docs/results/` (`.gitkeep` excluded); `docs/superpowers/specs/*.md` and `docs/superpowers/plans/*.md` ≤ 400 lines... no — plans are long by nature; cap specs at 400 and leave plans uncapped; the only directories permitted under `docs/` are `superpowers`, `superpowers/specs`, `superpowers/plans`, `results`, `reviews`; trailing whitespace and a blank last line fail in every `*.md` under the root and `docs/`.\n\nStep 1: Write the failing tests\n\nStep 2: Run to verify failure\n\nRun: `uv run pytest tests/ -q` → FAIL, `No module named 'tools.lint_docs'`\n\nStep 3: Write the linter\n\nStep 4: Run the tests, then the real tree\n\n`uv run pytest tests/ -q` → 9 passed. Then `just lint-docs; echo \"EXIT: $?\"` → must be 0 on the actual tree. If the spec exceeds 400 lines, that is a real finding: report the count and stop (do not raise the cap).\n\nStep 5: Record and commit\n\nMessage formats the acceptance suite asserts, match them exactly: check(root) returns a list of plain strings, one per failure, and its acceptance suite matches these literally, so match them exactly. Every path in a message is relative to root, using `/` as the separator. A line-count failure reads `<path>: <n> lines > <cap>` (`<cap>` is 150 for ROADMAP.md, 120 for a docs/results file, 400 for a spec) -- for example `ROADMAP.md: 151 lines > 150`. A docs/results file with no fenced code block reads `<path>: no fenced recompute block`. Too many files under docs/results/ reads `docs/results: <count> result files > 12`. A directory under docs/ that is not on the permitted list reads `docs/<name>: directory not permitted under docs/`. A line with trailing whitespace reads `<path>:<line number>: trailing whitespace` (1-indexed). A file whose last line is blank reads `<path>: blank line at EOF`. When both apply to the same file, list every trailing-whitespace line, in ascending line-number order, before that file's own blank-line-at-EOF entry. A clean tree returns an empty list, not a falsy placeholder. The trailing-whitespace / blank-EOF check also carries a small, fixed skip list of build/cache/vendor-style directory names (the kind a project's own tooling generates, never hand-authored prose) that never count as documents; whatever the skip list contains, membership must be decided from each file's path relative to the tree root, never from the absolute filesystem path -- a tree that happens to be checked out several directories deep must lint exactly as if it were checked out at the top level.\n",
+  "contracts": {
+    "R1-plan": "Task 7: The docs linter, rewritten to the release-one caps\n\nFiles:\n- Create: `tools/lint_docs.py` (new, not imported), `tests/`\n\nInterfaces:\n- Produces: `lint_docs.check(root: Path) -> list[str]`; `just lint-docs` exits 1 on any failure.\n\nRules: `ROADMAP.md` ≤ 150 lines; every `docs/results/*.md` ≤ 120 lines and contains at least one fenced code block (a line starting with three backticks or four spaces followed by a command is not enough — require the backtick fence); at most 12 files in `docs/results/` (`.gitkeep` excluded); `docs/superpowers/specs/*.md` and `docs/superpowers/plans/*.md` ≤ 400 lines... no — plans are long by nature; cap specs at 400 and leave plans uncapped; the only directories permitted under `docs/` are `superpowers`, `superpowers/specs`, `superpowers/plans`, `results`, `reviews`; trailing whitespace and a blank last line fail in every `*.md` under the root and `docs/`.\n\nStep 1: Write the failing tests\n\nStep 2: Run to verify failure\n\nRun: `uv run pytest tests/ -q` → FAIL, `No module named 'tools.lint_docs'`\n\nStep 3: Write the linter\n\nStep 4: Run the tests, then the real tree\n\n`uv run pytest tests/ -q` → 9 passed. Then `just lint-docs; echo \"EXIT: $?\"` → must be 0 on the actual tree. If the spec exceeds 400 lines, that is a real finding: report the count and stop (do not raise the cap).\n\nStep 5: Record and commit\n\nMessage formats the acceptance suite asserts, match them exactly: check(root) returns a list of plain strings, one per failure, and its acceptance suite matches these literally, so match them exactly. Every path in a message is relative to root, using `/` as the separator. A line-count failure reads `<path>: <n> lines > <cap>` (`<cap>` is 150 for ROADMAP.md, 120 for a docs/results file, 400 for a spec) -- for example `ROADMAP.md: 151 lines > 150`. A docs/results file with no fenced code block reads `<path>: no fenced recompute block`. Too many files under docs/results/ reads `docs/results: <count> result files > 12`. A directory under docs/ that is not on the permitted list reads `docs/<name>: directory not permitted under docs/`. A line with trailing whitespace reads `<path>:<line number>: trailing whitespace` (1-indexed). A file whose last line is blank reads `<path>: blank line at EOF`. When both apply to the same file, list every trailing-whitespace line, in ascending line-number order, before that file's own blank-line-at-EOF entry. A clean tree returns an empty list, not a falsy placeholder. The trailing-whitespace / blank-EOF check also carries a small, fixed skip list of build/cache/vendor-style directory names (the kind a project's own tooling generates, never hand-authored prose) that never count as documents; whatever the skip list contains, membership must be decided from each file's path relative to the tree root, never from the absolute filesystem path -- a tree that happens to be checked out several directories deep must lint exactly as if it were checked out at the top level.\n"
+  },
+  "oracle": [
+    "python",
+    "-m",
+    "pytest",
+    "-p",
+    "satyrn_evals.oracle_hook"
+  ],
+  "expected_test_ids": [
+    "test_doc_caps.py::test_a_clean_tree_has_no_failures",
+    "test_doc_caps.py::test_roadmap_over_150_lines_fails",
+    "test_doc_caps.py::test_result_over_120_lines_fails",
+    "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails",
+    "test_doc_caps.py::test_result_with_a_fence_and_under_cap_passes",
+    "test_doc_caps.py::test_thirteen_results_fail",
+    "test_doc_caps.py::test_a_spec_over_400_lines_fails_and_a_long_plan_does_not",
+    "test_doc_caps.py::test_an_unlisted_directory_under_docs_fails",
+    "test_doc_caps.py::test_trailing_whitespace_and_blank_last_line_fail",
+    "test_doc_caps.py::test_the_skip_list_is_relative_to_root_not_absolute",
+    "test_doc_caps.py::test_gitkeep_does_not_count_toward_the_result_cap",
+    "test_doc_caps.py::test_roadmap_at_exactly_150_lines_passes",
+    "test_doc_caps.py::test_result_at_exactly_120_lines_passes",
+    "test_doc_caps.py::test_spec_at_exactly_400_lines_passes",
+    "test_doc_caps.py::test_twelve_results_passes"
+  ],
+  "source_paths": [
+    "tools/lint_docs.py",
+    "tests"
+  ],
+  "ignored_paths": [
+    "PROVENANCE.md"
+  ],
+  "public_suite": [
+    "uv",
+    "run",
+    "pytest",
+    "-q"
+  ],
+  "fixtures": {
+    "known_good": "fixtures/known-good.patch",
+    "known_broken": "fixtures/known-broken.patch"
+  },
+  "grader_overlay": "overlay",
+  "oracle_visibility": "hidden",
+  "provenance": {
+    "repo": "https://github.com/pauleveritt/satyrn-evals.git",
+    "base_sha": "73ec17217a38b9730c9d34d47c0a5163d9c421e7",
+    "fix_sha": "cc9ab53107a8862a84843b1c3030274503d53d0b"
+  },
+  "generator": {
+    "tool": "tools/cut_task.py",
+    "rung": "R1-plan",
+    "files": [
+      "tools/lint_docs.py"
+    ],
+    "hidden": [
+      "tests/test_doc_caps.py"
+    ],
+    "plan": {
+      "path": "docs/superpowers/plans/2026-09-13-phase-0-restart.md",
+      "heading": "### Task 7: The docs linter, rewritten to the release-one caps",
+      "commit": "73ec17217a38b9730c9d34d47c0a5163d9c421e7"
+    }
+  },
+  "digests": {
+    "task_tree": "87aeaa42d142f1b99cb51262f0f51bec2657fd2a7f0c7f3f8615fa0cf3327f0a",
+    "prompt": "c30a17fa437b6b24858c5657bfd41c3945caceca96996ed31e9d66624965e080"
+  },
+  "validity": {
+    "by": "deepseek-v4-flash",
+    "commit": "df33336645a10a009e79ff7bdcf0db9e9628b34b",
+    "passed": true
+  }
+}

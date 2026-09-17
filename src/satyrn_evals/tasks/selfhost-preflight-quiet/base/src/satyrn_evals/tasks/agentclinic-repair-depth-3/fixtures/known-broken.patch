@@ -1,0 +1,24 @@
+diff --git a/app.py b/app.py
+index b5c1157..04f8497 100644
+--- a/app.py
++++ b/app.py
+@@ -28,7 +28,7 @@ async def add_complaint(
+     text: Annotated[str, Form()],
+ ):
+     complaints.append(Complaint(agent_name=agent_name, text=text))
+-    return RedirectResponse("/complaints")
++    return RedirectResponse("/complaints", status_code=303)
+ 
+ 
+ if __name__ == "__main__":
+diff --git a/templates/base.html b/templates/base.html
+index 8fa8034..04e6e3e 100644
+--- a/templates/base.html
++++ b/templates/base.html
+@@ -1,5 +1,5 @@
+ <!DOCTYPE html>
+-<html>
++<html lang="en">
+ <head>
+     <meta charset="utf-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1">

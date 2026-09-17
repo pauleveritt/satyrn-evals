@@ -1,0 +1,12 @@
+evals 07e11428426ab77bfefc812a3c84ae145560b81b
+counterfactual.py --phase decision
+
+agentclinic-repair-depth-3 (budget-shaped): rescues 0, harms 0, net 0, unmeasured 0
+selfhost-run-record-gate (budget-shaped): rescues 0, harms 0, net 0, unmeasured 2, insufficient
+selfhost-docs-linter (budget-shaped): rescues 0, harms 0, net 0, unmeasured 1
+selfhost-guard-prefixes (floor): rescues 0, harms 0, net 0, unmeasured 3, insufficient
+selfhost-review-script (floor): rescues 0, harms 0, net 0, unmeasured 2, insufficient
+agentclinic-repair-depth-2 (floor): rescues 0, harms 0, net 0, unmeasured 0
+
+decision: not-the-lever
+qualifying budget-shaped tasks none; floor harm cells 0; insufficient floor tasks ['selfhost-guard-prefixes', 'selfhost-review-script']

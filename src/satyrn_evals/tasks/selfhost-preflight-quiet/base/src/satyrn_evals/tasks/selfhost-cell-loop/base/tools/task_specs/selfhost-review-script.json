@@ -1,0 +1,21 @@
+{
+  "name": "selfhost-review-script",
+  "base": "b253c993539c9bca3cb5103bbd5ac159350ae9d3",
+  "good": "fdd21615ab15c0337ee9e5c421b764d892e8dfe1",
+  "files": [
+    "tools/review.py"
+  ],
+  "hidden": [
+    "tests/test_review.py"
+  ],
+  "plan": {
+    "path": "docs/superpowers/plans/2026-09-13-phase-0-restart.md",
+    "heading": "### Task 9: The review script's pure core",
+    "commit": "73ec17217a38b9730c9d34d47c0a5163d9c421e7"
+  },
+  "formats": "provider_and_model raises ValueError when the spec has no slash, and the message contains the exact phrase `provider/model`. build_prompt(diff, range_label) returns text that contains range_label, the diff verbatim, and the exact words `Accept` and `itemized`. refuse_if_exists raises FileExistsError only when the path exists. review_path replaces every `/` in the model spec with `-`.",
+  "broken": {
+    "tools/review.py": "\"\"\"known-broken fixture stub: importable, behaviorally incomplete.\"\"\"\n\nfrom pathlib import Path\n\n\ndef review_path(root: Path, commit_range: str, model: str) -> Path:\n    return root\n\n\ndef refuse_if_exists(path: Path) -> None:\n    return None\n\n\ndef provider_and_model(spec: str) -> tuple[str, str]:\n    return (\"\", \"\")\n\n\ndef build_prompt(diff: str, range_label: str) -> str:\n    return \"\"\n"
+  },
+  "oracle_env": {}
+}

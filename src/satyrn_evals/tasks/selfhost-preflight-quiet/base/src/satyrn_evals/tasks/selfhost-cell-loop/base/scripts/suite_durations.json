@@ -1,0 +1,225 @@
+{
+  "version": 1,
+  "machine": "the maintainer's batch machine; seconds never compare across machines",
+  "recompute": "uv run python scripts/suite_durations.py --write",
+  "margin": 2.0,
+  "frozen": {
+    "default_seconds": 120,
+    "clamp_seconds": 300,
+    "runner_seconds": 120
+  },
+  "longest_public_seconds": 32.4,
+  "fit_failures": [],
+  "tasks": {
+    "agentclinic-repair-misleading-locus": {
+      "task": "agentclinic-repair-misleading-locus",
+      "branch": "release-one",
+      "commit": "0df4a5a7196f3940bdc31c79276b337f812e5e4a",
+      "public_suite": [
+        "uv",
+        "run",
+        "python",
+        "-m",
+        "pytest",
+        "tests/"
+      ],
+      "public_seconds": [
+        1.2,
+        1.2,
+        1.1
+      ],
+      "public_exits": [
+        0,
+        0,
+        0
+      ],
+      "grade_seconds": [
+        1.5,
+        1.4,
+        1.4
+      ],
+      "grade_verdicts": [
+        "pass",
+        "pass",
+        "pass"
+      ]
+    },
+    "agentclinic-complaint-lifecycle": {
+      "task": "agentclinic-complaint-lifecycle",
+      "branch": "release-one",
+      "commit": "0df4a5a7196f3940bdc31c79276b337f812e5e4a",
+      "public_suite": null,
+      "public_seconds": [],
+      "public_exits": [],
+      "grade_seconds": [
+        1.5,
+        1.6,
+        1.6
+      ],
+      "grade_verdicts": [
+        "pass",
+        "pass",
+        "pass"
+      ]
+    },
+    "agentclinic-repair-depth-2": {
+      "task": "agentclinic-repair-depth-2",
+      "branch": "worktree-ornith-ceiling-probe",
+      "commit": "4f0ee53c79bab42da4ad3db8d43ec929521010c3",
+      "public_suite": [
+        "uv",
+        "run",
+        "python",
+        "-m",
+        "pytest",
+        "tests/"
+      ],
+      "public_seconds": [
+        1.2,
+        1.2,
+        1.2
+      ],
+      "public_exits": [
+        0,
+        0,
+        0
+      ],
+      "grade_seconds": [
+        1.5,
+        1.5,
+        1.5
+      ],
+      "grade_verdicts": [
+        "pass",
+        "pass",
+        "pass"
+      ]
+    },
+    "agentclinic-repair-depth-3": {
+      "task": "agentclinic-repair-depth-3",
+      "branch": "worktree-ornith-ceiling-probe",
+      "commit": "4f0ee53c79bab42da4ad3db8d43ec929521010c3",
+      "public_suite": [
+        "uv",
+        "run",
+        "python",
+        "-m",
+        "pytest",
+        "tests/"
+      ],
+      "public_seconds": [
+        1.2,
+        1.2,
+        1.2
+      ],
+      "public_exits": [
+        0,
+        0,
+        0
+      ],
+      "grade_seconds": [
+        1.4,
+        1.5,
+        1.5
+      ],
+      "grade_verdicts": [
+        "pass",
+        "pass",
+        "pass"
+      ]
+    },
+    "selfhost-docs-linter": {
+      "task": "selfhost-docs-linter",
+      "branch": "worktree-selfhost-headroom-probe",
+      "commit": "635c12b2986eab703b0f83f76713e1cd588eb447",
+      "public_suite": [
+        "uv",
+        "run",
+        "pytest",
+        "-q"
+      ],
+      "public_seconds": [
+        31.4,
+        31.2,
+        31.2
+      ],
+      "public_exits": [
+        0,
+        0,
+        0
+      ],
+      "grade_seconds": [
+        1.3,
+        1.3,
+        1.3
+      ],
+      "grade_verdicts": [
+        "pass",
+        "pass",
+        "pass"
+      ]
+    },
+    "selfhost-guard-prefixes": {
+      "task": "selfhost-guard-prefixes",
+      "branch": "worktree-selfhost-headroom-probe",
+      "commit": "635c12b2986eab703b0f83f76713e1cd588eb447",
+      "public_suite": [
+        "uv",
+        "run",
+        "pytest",
+        "-q"
+      ],
+      "public_seconds": [
+        30.9,
+        30.8,
+        31.1
+      ],
+      "public_exits": [
+        0,
+        0,
+        0
+      ],
+      "grade_seconds": [
+        1.2,
+        1.3,
+        1.4
+      ],
+      "grade_verdicts": [
+        "pass",
+        "pass",
+        "pass"
+      ]
+    },
+    "selfhost-run-record-gate": {
+      "task": "selfhost-run-record-gate",
+      "branch": "worktree-selfhost-headroom-probe",
+      "commit": "635c12b2986eab703b0f83f76713e1cd588eb447",
+      "public_suite": [
+        "uv",
+        "run",
+        "pytest",
+        "-q"
+      ],
+      "public_seconds": [
+        31.8,
+        31.6,
+        32.4
+      ],
+      "public_exits": [
+        0,
+        0,
+        0
+      ],
+      "grade_seconds": [
+        2.0,
+        1.8,
+        1.9
+      ],
+      "grade_verdicts": [
+        "pass",
+        "pass",
+        "pass"
+      ]
+    }
+  }
+}

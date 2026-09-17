@@ -1,0 +1,142 @@
+{
+  "name": "selfhost-guard-prefixes",
+  "contract": "Fix wave: guard wrapper prefixes before pi\n\nFiles:\n- Modify: `tools/hooks/guard.py`\n\nInterfaces:\n- Produces: `decide(tool_name: str, tool_input: dict) -> str | None` (signature unchanged; only the pi-lead regex changes)\n\n`_PI_LEAD = ^[\\s(]*pi\\b` lets `uv run pi -p hi`, `env K=1 pi -p hi`, `time pi -p hi`, `timeout 60 pi -p hi`, `sudo pi -p hi`, `nohup pi -p hi`, `$(pi -p hi)` and `` `pi -p hi` `` through. `uv run` is this repository's habitual prefix. Widen the lead to accept an optional run of known wrapper tokens before `pi`: `uv run`, `env` (with optional `K=V` assignments), `time`, `timeout <arg>`, `sudo`, `nohup`, and an opening `$(` or backtick. Keep `ls pi -p`, `grep -rn pi docs`, `echo pi`, `pip install -p x`, `pipx -p` allowed. Do not touch the write-protection rules.\n",
+  "contracts": {
+    "R1-plan": "Fix wave: guard wrapper prefixes before pi\n\nFiles:\n- Modify: `tools/hooks/guard.py`\n\nInterfaces:\n- Produces: `decide(tool_name: str, tool_input: dict) -> str | None` (signature unchanged; only the pi-lead regex changes)\n\n`_PI_LEAD = ^[\\s(]*pi\\b` lets `uv run pi -p hi`, `env K=1 pi -p hi`, `time pi -p hi`, `timeout 60 pi -p hi`, `sudo pi -p hi`, `nohup pi -p hi`, `$(pi -p hi)` and `` `pi -p hi` `` through. `uv run` is this repository's habitual prefix. Widen the lead to accept an optional run of known wrapper tokens before `pi`: `uv run`, `env` (with optional `K=V` assignments), `time`, `timeout <arg>`, `sudo`, `nohup`, and an opening `$(` or backtick. Keep `ls pi -p`, `grep -rn pi docs`, `echo pi`, `pip install -p x`, `pipx -p` allowed. Do not touch the write-protection rules.\n"
+  },
+  "oracle": [
+    "python",
+    "-m",
+    "pytest",
+    "-p",
+    "satyrn_evals.oracle_hook"
+  ],
+  "expected_test_ids": [
+    "test_hook_guard.py::test_blocked_bash_commands[pi -p --provider zai --model glm-5.3 'review this']",
+    "test_hook_guard.py::test_blocked_bash_commands[cd x && pi --print 'hi']",
+    "test_hook_guard.py::test_blocked_bash_commands[uv run satyrn-evals run agentclinic-repair-misleading-locus --n 1 -- satyrn-evals-attempt-pi]",
+    "test_hook_guard.py::test_blocked_bash_commands[uv run satyrn-evals session agentclinic-complaint-lifecycle -- satyrn-evals-session-pi]",
+    "test_hook_guard.py::test_blocked_bash_commands[echo x > docs/results/2026-09-14-probe.md]",
+    "test_hook_guard.py::test_blocked_bash_commands[tee docs/reviews/a..b-zai.md < /tmp/x]",
+    "test_hook_guard.py::test_allowed_bash_commands[uv run python tools/review.py 8633149..9f1c2d3 zai/glm-5.3]",
+    "test_hook_guard.py::test_allowed_bash_commands[uv run satyrn-evals launch --check /tmp/rec.json]",
+    "test_hook_guard.py::test_allowed_bash_commands[uv run pytest -q]",
+    "test_hook_guard.py::test_allowed_bash_commands[git commit -m 'x']",
+    "test_hook_guard.py::test_allowed_bash_commands[cat docs/results/2026-09-14-probe.md]",
+    "test_hook_guard.py::test_allowed_bash_commands[pip install x]",
+    "test_hook_guard.py::test_direct_writes_to_results_and_reviews_are_blocked[Write]",
+    "test_hook_guard.py::test_direct_writes_to_results_and_reviews_are_blocked[Edit]",
+    "test_hook_guard.py::test_direct_writes_to_results_and_reviews_are_blocked[MultiEdit]",
+    "test_hook_guard.py::test_direct_writes_elsewhere_are_allowed",
+    "test_hook_guard.py::test_unknown_tools_are_allowed",
+    "test_hook_guard.py::test_pi_print_with_reordered_or_intervening_flags_is_blocked[pi -p hi]",
+    "test_hook_guard.py::test_pi_print_with_reordered_or_intervening_flags_is_blocked[pi --print hi]",
+    "test_hook_guard.py::test_pi_print_with_reordered_or_intervening_flags_is_blocked[pi -p --provider zai]",
+    "test_hook_guard.py::test_pi_print_with_reordered_or_intervening_flags_is_blocked[pi -q -p hi]",
+    "test_hook_guard.py::test_pi_print_with_reordered_or_intervening_flags_is_blocked[pi --provider zai -p hi]",
+    "test_hook_guard.py::test_pi_lookalike_commands_are_allowed[pip install x]",
+    "test_hook_guard.py::test_pi_lookalike_commands_are_allowed[pipx -p]",
+    "test_hook_guard.py::test_pi_lookalike_commands_are_allowed[mypi -p]",
+    "test_hook_guard.py::test_pi_lookalike_commands_are_allowed[api -p]",
+    "test_hook_guard.py::test_quoted_direct_run_token_in_commit_message_is_allowed",
+    "test_hook_guard.py::test_direct_run_at_a_command_boundary_is_still_blocked[satyrn-evals run foo]",
+    "test_hook_guard.py::test_direct_run_at_a_command_boundary_is_still_blocked[foo && satyrn-evals run foo]",
+    "test_hook_guard.py::test_writing_that_targets_the_protected_path_is_blocked[echo x > docs/results/a.md]",
+    "test_hook_guard.py::test_writing_that_targets_the_protected_path_is_blocked[printf x >> docs/reviews/b.md]",
+    "test_hook_guard.py::test_reading_or_redirecting_elsewhere_is_allowed[cat docs/results/x.md]",
+    "test_hook_guard.py::test_reading_or_redirecting_elsewhere_is_allowed[cat docs/results/x.md 2>&1]",
+    "test_hook_guard.py::test_reading_or_redirecting_elsewhere_is_allowed[head -5 docs/results/x.md > /tmp/out]",
+    "test_hook_guard.py::test_reading_or_redirecting_elsewhere_is_allowed[diff docs/results/a.md docs/results/b.md > /tmp/d]",
+    "test_hook_guard.py::test_reading_or_redirecting_elsewhere_is_allowed[grep -n foo docs/results/x.md]",
+    "test_hook_guard.py::test_reading_or_redirecting_elsewhere_is_allowed[wc -l docs/results/*.md]",
+    "test_hook_guard.py::test_blocked_command_message_identifies_the_rule[pi -p hi-tools/review.py]",
+    "test_hook_guard.py::test_blocked_command_message_identifies_the_rule[pi --print hi-tools/review.py]",
+    "test_hook_guard.py::test_blocked_command_message_identifies_the_rule[pi -p --provider zai-tools/review.py]",
+    "test_hook_guard.py::test_blocked_command_message_identifies_the_rule[pi -q -p hi-tools/review.py]",
+    "test_hook_guard.py::test_blocked_command_message_identifies_the_rule[pi --provider zai -p hi-tools/review.py]",
+    "test_hook_guard.py::test_blocked_command_message_identifies_the_rule[satyrn-evals run foo-satyrn-evals launch]",
+    "test_hook_guard.py::test_blocked_command_message_identifies_the_rule[foo && satyrn-evals run foo-satyrn-evals launch]",
+    "test_hook_guard.py::test_blocked_command_message_identifies_the_rule[uv run satyrn-evals session agentclinic-complaint-lifecycle -- satyrn-evals-session-pi-satyrn-evals launch]",
+    "test_hook_guard.py::test_blocked_command_message_identifies_the_rule[echo x > docs/results/a.md-docs/results and docs/reviews]",
+    "test_hook_guard.py::test_blocked_command_message_identifies_the_rule[printf x >> docs/reviews/b.md-docs/results and docs/reviews]",
+    "test_hook_guard.py::test_blocked_command_message_identifies_the_rule[tee docs/reviews/a..b-zai.md < /tmp/x-docs/results and docs/reviews]",
+    "test_hook_guard.py::test_blocked_write_message_identifies_the_rule[Write]",
+    "test_hook_guard.py::test_blocked_write_message_identifies_the_rule[Edit]",
+    "test_hook_guard.py::test_blocked_write_message_identifies_the_rule[MultiEdit]",
+    "test_hook_guard.py::test_write_token_with_path_as_destination_is_blocked[cp /tmp/x docs/results/a.md]",
+    "test_hook_guard.py::test_write_token_with_path_as_destination_is_blocked[mv /tmp/x docs/results/a.md]",
+    "test_hook_guard.py::test_write_token_with_path_as_destination_is_blocked[cp /tmp/x docs/reviews/a.md]",
+    "test_hook_guard.py::test_write_token_with_path_as_destination_is_blocked[tee -a docs/results/a.md < /tmp/x]",
+    "test_hook_guard.py::test_write_token_with_path_as_destination_is_blocked[touch -m docs/results/a.md]",
+    "test_hook_guard.py::test_write_token_with_path_as_source_is_still_blocked_deliberately[cp docs/results/a.md /tmp/]",
+    "test_hook_guard.py::test_write_token_with_path_as_source_is_still_blocked_deliberately[mv docs/reviews/a.md /tmp/]",
+    "test_hook_guard.py::test_redirect_to_protected_path_spelled_other_than_bare_is_blocked[echo x > ./docs/results/a.md]",
+    "test_hook_guard.py::test_redirect_to_protected_path_spelled_other_than_bare_is_blocked[echo x > /repo/docs/results/a.md]",
+    "test_hook_guard.py::test_redirect_to_protected_path_spelled_other_than_bare_is_blocked[echo x > $PWD/docs/results/a.md]",
+    "test_hook_guard.py::test_redirect_to_protected_path_spelled_other_than_bare_is_blocked[echo x > \"docs/results/a.md\"]",
+    "test_hook_guard.py::test_redirect_to_protected_path_spelled_other_than_bare_is_blocked[cat /tmp/x >| docs/results/a.md]",
+    "test_hook_guard.py::test_pi_as_argument_or_unrelated_line_is_allowed[pi --version\\nmkdir -p /tmp/x]",
+    "test_hook_guard.py::test_pi_as_argument_or_unrelated_line_is_allowed[echo pi\\nmkdir -p /tmp/x]",
+    "test_hook_guard.py::test_pi_as_argument_or_unrelated_line_is_allowed[grep -rn pi docs\\nls -p]",
+    "test_hook_guard.py::test_pi_as_argument_or_unrelated_line_is_allowed[ls pi -p]",
+    "test_hook_guard.py::test_pi_as_argument_or_unrelated_line_is_allowed[mkdir -p pi]",
+    "test_hook_guard.py::test_pi_as_argument_or_unrelated_line_is_allowed[find . -name pi -print]",
+    "test_hook_guard.py::test_pi_as_argument_or_unrelated_line_is_allowed[pi foo | grep -p]",
+    "test_hook_guard.py::test_pi_print_behind_a_wrapper_prefix_is_blocked[uv run pi -p hi]",
+    "test_hook_guard.py::test_pi_print_behind_a_wrapper_prefix_is_blocked[env K=1 pi -p hi]",
+    "test_hook_guard.py::test_pi_print_behind_a_wrapper_prefix_is_blocked[time pi -p hi]",
+    "test_hook_guard.py::test_pi_print_behind_a_wrapper_prefix_is_blocked[timeout 60 pi -p hi]",
+    "test_hook_guard.py::test_pi_print_behind_a_wrapper_prefix_is_blocked[sudo pi -p hi]",
+    "test_hook_guard.py::test_pi_print_behind_a_wrapper_prefix_is_blocked[nohup pi -p hi]",
+    "test_hook_guard.py::test_pi_print_behind_a_wrapper_prefix_is_blocked[$(pi -p hi)]",
+    "test_hook_guard.py::test_pi_print_behind_a_wrapper_prefix_is_blocked[`pi -p hi`]",
+    "test_hook_guard.py::test_pi_lookalikes_behind_wrapper_shaped_text_are_still_allowed[ls pi -p]",
+    "test_hook_guard.py::test_pi_lookalikes_behind_wrapper_shaped_text_are_still_allowed[grep -rn pi docs]",
+    "test_hook_guard.py::test_pi_lookalikes_behind_wrapper_shaped_text_are_still_allowed[echo pi]",
+    "test_hook_guard.py::test_pi_lookalikes_behind_wrapper_shaped_text_are_still_allowed[pip install -p x]",
+    "test_hook_guard.py::test_pi_lookalikes_behind_wrapper_shaped_text_are_still_allowed[pipx -p]"
+  ],
+  "source_paths": [
+    "tools/hooks/guard.py",
+    "tests"
+  ],
+  "ignored_paths": [
+    "PROVENANCE.md"
+  ],
+  "public_suite": [
+    "uv",
+    "run",
+    "pytest",
+    "-q"
+  ],
+  "fixtures": {
+    "known_good": "fixtures/known-good.patch",
+    "known_broken": "fixtures/known-broken.patch"
+  },
+  "grader_overlay": "overlay",
+  "oracle_visibility": "hidden",
+  "provenance": {
+    "repo": "https://github.com/pauleveritt/satyrn-evals.git",
+    "base_sha": "3e996a1437485c394f4032c18dc75eb0934a0c9d",
+    "fix_sha": "4a5474320590ef4b9db5b26f48f175965e58743e"
+  },
+  "generator": {
+    "tool": "tools/cut_task.py",
+    "rung": "R1-plan",
+    "files": [
+      "tools/hooks/guard.py"
+    ],
+    "hidden": [
+      "tests/test_hook_guard.py"
+    ],
+    "plan": {
+      "path": "tools/task_specs/selfhost-guard-prefixes.plan.md",
+      "heading": "### Fix wave: guard wrapper prefixes before pi",
+      "commit": null
+    }
+  },
+  "digests": {
+    "task_tree": "83016636452e18cf8d5ad2daf4b02a883797626bc72b724465eb11019ca758ae",
+    "prompt": "717ba5aacf15ad16aa7ff715e3da84dc2385b5007de876cb20164b5b1470d15b"
+  }
+}

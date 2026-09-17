@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "task": "agentclinic-complaint-lifecycle",
+  "task_tree_sha256": "b9dd8d0e555066416920414cfaa2490fe1b5934f33fcb91c3650aeae6ebf2719",
+  "arm": "engine",
+  "model": "omlx/Ornith-1.5-9B-MLX-8bit",
+  "condition": "cold",
+  "n": 2,
+  "mode": "attended",
+  "max_minutes": 60,
+  "stop_rule": "established infrastructure failure only",
+  "decision_rule": "none: Phase 3b development measurement (after), outside the claim",
+  "previous_result": null,
+  "token_budget": 32000,
+  "turn_budget": 48,
+  "isolation": "isolated",
+  "purpose": "development",
+  "k": 3,
+  "rung": null,
+  "authority": "maintainer: Phase 3b remediation iteration, GPU granted, 2026-09-15"
+}

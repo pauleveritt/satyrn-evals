@@ -1,0 +1,5 @@
+# Vendored unified-diff fixtures: their single-space lines are structural patch
+# syntax (blank CONTEXT markers), not accidental trailing whitespace. Stripping
+# them corrupts what the patch applies, so they are exempt from git diff --check.
+# Ordinary source and documentation files are not exempt and must stay clean.
+src/satyrn_evals/tasks/**/fixtures/*.patch whitespace=-trailing-space,-blank-at-eof
