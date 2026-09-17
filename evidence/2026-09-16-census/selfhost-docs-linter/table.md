@@ -1,17 +1,17 @@
-<!-- evals e606b24d8f0dbc8a2eb3aa19a0c7adffdba85ced; classify.py --night /Users/pauleveritt/satyrn-runs/2026-09-16-census-selfhost-docs-linter --record records/2026-09-16-census-selfhost-docs-linter.json -->
+<!-- evals 48545119add4c1f7c73aa86a8a20ff55c5d9ffdd (dirty); classify.py --night /Users/pauleveritt/satyrn-runs/2026-09-16-census-selfhost-docs-linter --record records/2026-09-16-census-selfhost-docs-linter.json --grade-root /Users/pauleveritt/satyrn-census-grades -->
 
-| task | attempt | code | verdict | raised | tripped | turns | tokens | length stops | exploration turns | biggest turn | biggest share | tool span s | whole-attempt s | self-stop turn | self-stop tokens | pass turn | pass tokens | own-green turn | post-pass turns | post-pass tokens |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| selfhost-docs-linter | 312540 | OK | fail | - | - | 59 | 21906 | 0 | 7 | t11:3236 | 15% | 1161.9 | 1212.3 | 59 | 21906 | - | - | 51 | - | - |
-| selfhost-docs-linter | 374751 | OK | pass | - | - | 52 | 24059 | 0 | 6 | t7:4954 | 21% | 1271.3 | 1338.6 | 52 | 24059 | 11 | 11676 | 21 | 41 | 12383 |
-| selfhost-docs-linter | 453263 | BUDGET_EXCEEDED | - | - | pass | 73 | 36505 | 0 | 6 | t4:5640 | 15% | 2172.7 | 2182.4 | - | - | 46 | 27113 | 63 | 27 | 9392 |
-| selfhost-docs-linter | 906198 | OK | pass | - | - | 66 | 38476 | 0 | 20 | t10:3666 | 10% | 2745.5 | 2797.5 | 66 | 38476 | 47 | 32481 | 52 | 19 | 5995 |
-| selfhost-docs-linter | 782306 | OK | pass | - | - | 40 | 27509 | 0 | 11 | t8:8996 | 33% | 1943.9 | 2007.5 | 40 | 27509 | 17 | 20672 | 23 | 23 | 6837 |
-| selfhost-docs-linter | 845472 | OK | pass | - | - | 54 | 38999 | 0 | 10 | t9:8529 | 22% | 2338.5 | 2374.8 | 54 | 38999 | 14 | 22017 | 30 | 40 | 16982 |
+| task | attempt | code | verdict | verdict@32k | raised | tripped | turns | tokens | length stops | exploration turns | biggest turn | biggest share | tool span s | whole-attempt s | self-stop turn | self-stop tokens | pass turn | pass tokens | own-green turn | post-pass turns | post-pass tokens |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| selfhost-docs-linter | 312540 | OK | fail | not-pass | - | - | 59 | 21906 | 0 | 7 | t11:3236 | 15% | 1161.9 | 1212.3 | 59 | 21906 | - | - | 51 | - | - |
+| selfhost-docs-linter | 374751 | OK | pass | not-pass | - | - | 52 | 24059 | 0 | 6 | t7:4954 | 21% | 1271.3 | 1338.6 | 52 | 24059 | 11 | 11676 | 21 | 41 | 12383 |
+| selfhost-docs-linter | 453263 | BUDGET_EXCEEDED | - | not-pass | - | pass | 73 | 36505 | 0 | 6 | t4:5640 | 15% | 2172.7 | 2182.4 | - | - | 46 | 27113 | 63 | 27 | 9392 |
+| selfhost-docs-linter | 906198 | OK | pass | not-pass | - | - | 66 | 38476 | 0 | 20 | t10:3666 | 10% | 2745.5 | 2797.5 | 66 | 38476 | 47 | 32481 | 52 | 19 | 5995 |
+| selfhost-docs-linter | 782306 | OK | pass | pass | - | - | 40 | 27509 | 0 | 11 | t8:8996 | 33% | 1943.9 | 2007.5 | 40 | 27509 | 17 | 20672 | 23 | 23 | 6837 |
+| selfhost-docs-linter | 845472 | OK | pass | not-pass | - | - | 54 | 38999 | 0 | 10 | t9:8529 | 22% | 2338.5 | 2374.8 | 54 | 38999 | 14 | 22017 | 30 | 40 | 16982 |
 
 ## Per task (nothing pools across tasks)
 
-| task | reading | cells | rescues | harms | net | unmeasured cells |
-|---|---|---|---|---|---|---|
-| selfhost-docs-linter | run1 | 6 | 0 | 0 | 0 | - |
-| selfhost-docs-linter | run2 | 6 | 0 | 0 | 0 | - |
+| task | reading | cells | actual pass @32k | actual pass @48k | rescues | harms | net | unmeasured cells |
+|---|---|---|---|---|---|---|---|---|
+| selfhost-docs-linter | run1 | 6 | 1 | 4 | 0 | 0 | 0 | 374751, 845472 |
+| selfhost-docs-linter | run2 | 6 | 1 | 4 | 2 | 0 | 2 | - |

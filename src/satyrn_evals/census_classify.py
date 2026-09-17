@@ -83,6 +83,23 @@ def within_32k(output_tokens: int, turn: int) -> bool:
     return output_tokens <= TOKEN_LINE and turn <= TURN_LINE
 
 
+def actual_at_line(*, verdict: str | None, output_tokens: int, turns: int) -> bool:
+    """The harness verdict read at the pre-registered line, not at the record's budget.
+
+    Night 1 compared own-green triggers at 32,000 tokens / 48 turns against the
+    verdict at the record's 48,000-token budget, so a cell that only reached its
+    pass *between* the two lines counted as no rescue (night-2 design section
+    3.2). A pass is a pass at the line only if the cell's own spend stayed
+    inside it.
+
+    ``verdict`` is the delivered patch's. A torn-down cell's verdict is ``None``
+    by the census's own rule, so its ``tripped_verdict`` -- a 48k teardown state
+    -- can never make it actual at the line (Ruling 3), and ``code`` adds
+    nothing because only an ``OK`` cell carries a graded verdict (Ruling 4).
+    """
+    return verdict == "pass" and within_32k(output_tokens, turns)
+
+
 @dataclass(frozen=True, slots=True)
 class Facts:
     """What one cell offers the classifier, all of it already recorded.
@@ -97,6 +114,10 @@ class Facts:
 
     code: str | None
     verdict: str | None
+    #: Ruling 5: the line reading -- whether this cell's own outcome passed at
+    #: the pre-registered 32k/48 line, distinct from `verdict`/`code`'s 48k
+    #: reading. The classes read this, not the budget.
+    passed_at_line: bool
     tripped_verdict: str | None
     raised: str | None
     length_stops: int
@@ -110,7 +131,9 @@ class Facts:
 
 def flags(facts: Facts) -> dict[str, bool | None]:
     """One entry per class: True/False where a record decides it, None where only a reviewer can."""
-    passed = facts.code == "OK" and facts.verdict == "pass"
+    # Ruling 5: the classes read the same line the tally reads. `verdict` and
+    # `code` stay on Facts as the 48k reading, printed in their own columns.
+    passed = facts.passed_at_line
     reached = facts.first_pass_turn is not None and facts.first_pass_tokens is not None
     inside = reached and within_32k(facts.first_pass_tokens or 0, facts.first_pass_turn or 0)
     # Ruling R-5 (extended): a swallowed measurement failure (``raised``) or a
@@ -128,15 +151,21 @@ def flags(facts: Facts) -> dict[str, bool | None]:
     }
 
 
+def attempt_started(attempt_dir: str) -> float | None:
+    """The attempt directory's microsecond UTC stamp, as epoch seconds."""
+    match = _STAMP.search(attempt_dir)
+    if match is None:
+        return None
+    started = datetime.strptime(match.group(1), "%Y%m%d-%H%M%S-%f").replace(tzinfo=UTC)
+    return started.timestamp()
+
+
 def whole_attempt_seconds(attempt_dir: str, record_mtime: float) -> float | None:
-    """Ruling 8: the directory's microsecond UTC stamp to `attempt.json`'s mtime.
+    """Ruling 8: the directory's stamp to `attempt.json`'s mtime.
 
     No new harness clock. `timeline.jsonl` is monotonic and holds only tool
     events, so it gives the tool span and never the whole attempt; these two
     stamps already exist and bracket setup, command, preservation and grading.
     """
-    match = _STAMP.search(attempt_dir)
-    if match is None:
-        return None
-    started = datetime.strptime(match.group(1), "%Y%m%d-%H%M%S-%f").replace(tzinfo=UTC)
-    return record_mtime - started.timestamp()
+    started = attempt_started(attempt_dir)
+    return None if started is None else record_mtime - started

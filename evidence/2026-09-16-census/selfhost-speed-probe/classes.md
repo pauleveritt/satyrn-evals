@@ -1,4 +1,4 @@
-<!-- evals e606b24d8f0dbc8a2eb3aa19a0c7adffdba85ced; classify.py --night /Users/pauleveritt/satyrn-runs/2026-09-16-census-selfhost-speed-probe --record records/2026-09-16-census-selfhost-speed-probe.json -->
+<!-- evals 48545119add4c1f7c73aa86a8a20ff55c5d9ffdd (dirty); classify.py --night /Users/pauleveritt/satyrn-runs/2026-09-16-census-selfhost-speed-probe --record records/2026-09-16-census-selfhost-speed-probe.json --grade-root /Users/pauleveritt/satyrn-census-grades -->
 
 The eight class columns are empty on purpose: a reviewer fills them, by turn, from the reconstruction (design section 7). `primary` and `cited turns` are the reviewer's too. The mechanical evidence each class would be argued from is printed beneath.
 
@@ -11,9 +11,9 @@ The eight class columns are empty on purpose: a reviewer fills them, by turn, fr
 | selfhost-speed-probe | 123802 | - |  |  |  |  |  |  |  |  |  |  |
 | selfhost-speed-probe | 524583 | - |  |  |  |  |  |  |  |  |  |  |
 
-evidence: selfhost-speed-probe 529092 information=None, ambiguity=None, capability=True, budget=False, finishing=False, runaway=False, hunting=False, allowlist=False
-evidence: selfhost-speed-probe 691593 information=None, ambiguity=None, capability=True, budget=False, finishing=False, runaway=True, hunting=False, allowlist=False
-evidence: selfhost-speed-probe 941646 information=None, ambiguity=None, capability=True, budget=False, finishing=False, runaway=False, hunting=False, allowlist=False
-evidence: selfhost-speed-probe 944467 information=None, ambiguity=None, capability=True, budget=False, finishing=False, runaway=False, hunting=False, allowlist=False
-evidence: selfhost-speed-probe 123802 information=None, ambiguity=None, capability=True, budget=False, finishing=False, runaway=False, hunting=False, allowlist=False
-evidence: selfhost-speed-probe 524583 information=None, ambiguity=None, capability=True, budget=False, finishing=False, runaway=True, hunting=False, allowlist=False
+evidence: selfhost-speed-probe 529092 information=None, ambiguity=None, capability=True, budget=False, finishing=False, runaway=False, hunting=False, allowlist=False actual@32k=False actual@48k=False
+evidence: selfhost-speed-probe 691593 information=None, ambiguity=None, capability=True, budget=False, finishing=False, runaway=True, hunting=False, allowlist=False actual@32k=False actual@48k=False
+evidence: selfhost-speed-probe 941646 information=None, ambiguity=None, capability=True, budget=False, finishing=False, runaway=False, hunting=False, allowlist=False actual@32k=False actual@48k=False
+evidence: selfhost-speed-probe 944467 information=None, ambiguity=None, capability=True, budget=False, finishing=False, runaway=False, hunting=False, allowlist=False actual@32k=False actual@48k=False
+evidence: selfhost-speed-probe 123802 information=None, ambiguity=None, capability=True, budget=False, finishing=False, runaway=False, hunting=False, allowlist=False actual@32k=False actual@48k=False
+evidence: selfhost-speed-probe 524583 information=None, ambiguity=None, capability=True, budget=False, finishing=False, runaway=True, hunting=False, allowlist=False actual@32k=False actual@48k=False

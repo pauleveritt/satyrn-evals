@@ -524,7 +524,17 @@ def counterfactual(
     verdict is graded -- including a cell that landed no source edit, whose
     empty patch run 1 still grades (FINDING 1). `raised` is folded into run 1's
     unmeasured reasons exactly as run 1 folds it (MINOR 3)."""
-    actual = audit_row["code"] == "OK" and audit_row["verdict"] == "pass"
+    # Design section 3.2: the counterfactual is read at the pre-registered line.
+    # The record's 48,000-token budget stays as a second column, never as the
+    # comparison (Ruling 3). Feeding the line reading to `cf.unmeasured_reasons`
+    # moves run 1's unmeasured list, which is correct: run 1 withholds an
+    # unverified rescue, and more cells are now not-actual (Ruling 19).
+    actual_48k = audit_row["code"] == "OK" and audit_row["verdict"] == "pass"
+    actual = cc.actual_at_line(
+        verdict=audit_row["verdict"],
+        output_tokens=audit_row["evidence"]["output_tokens"],
+        turns=audit_row["evidence"]["turns"],
+    )
     trigger = cf.find_trigger(steps, edits, cwd)
     fidelity = cf.fidelity(audit_row["verdict"], final_verdict)
     trigger_verdict = None
@@ -551,6 +561,7 @@ def counterfactual(
     run2 = (trigger_verdict == "pass") if (trigger is not None and trigger.within_budget) else actual
     return {
         "actual": actual,
+        "actual_48k": actual_48k,
         "trigger": asdict(trigger) if trigger is not None else None,
         "trigger_verdict": trigger_verdict,
         "final_verdict": final_verdict,
@@ -563,10 +574,16 @@ def counterfactual(
 
 
 def _no_reading(audit_row: dict, raised: str | None = None) -> dict:
-    actual = audit_row["code"] == "OK" and audit_row["verdict"] == "pass"
+    actual_48k = audit_row["code"] == "OK" and audit_row["verdict"] == "pass"
+    actual = cc.actual_at_line(
+        verdict=audit_row["verdict"],
+        output_tokens=audit_row["evidence"]["output_tokens"],
+        turns=audit_row["evidence"]["turns"],
+    )
     value = "pass" if actual else "not-pass"
     return {
         "actual": actual,
+        "actual_48k": actual_48k,
         "trigger": None,
         "trigger_verdict": None,
         "final_verdict": None,
@@ -591,6 +608,7 @@ def row(
     facts = cc.Facts(
         code=audit_row["code"],
         verdict=audit_row["verdict"],
+        passed_at_line=bool(reading["actual"]),
         tripped_verdict=audit_row["tripped_verdict"],
         raised=raised,
         length_stops=evidence["length_stops"],
@@ -609,6 +627,8 @@ def row(
         "attempt": cell.attempt,
         "code": audit_row["code"],
         "verdict": audit_row["verdict"],
+        "actual_32k": reading["actual"],
+        "actual_48k": reading["actual_48k"],
         "tripped_verdict": audit_row["tripped_verdict"],
         "turns": evidence["turns"],
         "tokens": evidence["output_tokens"],
@@ -738,6 +758,8 @@ def tallies(rows: list[dict]) -> list[dict]:
                     "task": task,
                     "reading": reading,
                     "cells": len(mine),
+                    "actual_32k": sum(1 for r in mine if r["actual_32k"]),
+                    "actual_48k": sum(1 for r in mine if r["actual_48k"]),
                     "rescues": changes.count("rescue"),
                     "harms": changes.count("harm"),
                     "net": changes.count("rescue") - changes.count("harm"),
@@ -760,7 +782,7 @@ def _stamp_text(header: dict) -> str:
 
 def table(rows: list[dict], header: dict) -> str:
     columns = [
-        "task", "attempt", "code", "verdict", "raised", "tripped", "turns", "tokens",
+        "task", "attempt", "code", "verdict", "verdict@32k", "raised", "tripped", "turns", "tokens",
         "length stops", "exploration turns", "biggest turn", "biggest share", "tool span s",
         "whole-attempt s", "self-stop turn", "self-stop tokens", "pass turn", "pass tokens",
         "own-green turn", "post-pass turns", "post-pass tokens",
@@ -776,8 +798,9 @@ def table(rows: list[dict], header: dict) -> str:
         share = "-" if r["biggest_share"] is None else f"{r['biggest_share']:.0%}"
         span = "-" if r["tool_span_seconds"] is None else f"{r['tool_span_seconds']:.1f}"
         whole = "-" if r["whole_attempt_seconds"] is None else f"{r['whole_attempt_seconds']:.1f}"
+        verdict_at_line = "pass" if r["actual_32k"] else "not-pass"
         values = [
-            r["task"], r["attempt"], _dash(r["code"]), _dash(r["verdict"]), _dash(r["raised"]),
+            r["task"], r["attempt"], _dash(r["code"]), _dash(r["verdict"]), verdict_at_line, _dash(r["raised"]),
             _dash(r["tripped_verdict"]), str(r["turns"]), str(r["tokens"]), str(r["length_stops"]),
             _dash(r["exploration_turns"]), biggest, share, span, whole,
             _dash(r["self_stop_turn"]), _dash(r["self_stop_tokens"]), _dash(r["pass_turn"]),
@@ -793,13 +816,14 @@ def tally_table(rows: list[dict]) -> str:
         "",
         "## Per task (nothing pools across tasks)",
         "",
-        "| task | reading | cells | rescues | harms | net | unmeasured cells |",
-        "|---|---|---|---|---|---|---|",
+        "| task | reading | cells | actual pass @32k | actual pass @48k | rescues | harms | net | unmeasured cells |",
+        "|---|---|---|---|---|---|---|---|---|",
     ]
     for t in tallies(rows):
         unmeasured = ", ".join(t["unmeasured"]) if t["unmeasured"] else "-"
         lines.append(
-            f"| {t['task']} | {t['reading']} | {t['cells']} | {t['rescues']} | {t['harms']} | {t['net']} | {unmeasured} |"
+            f"| {t['task']} | {t['reading']} | {t['cells']} | {t['actual_32k']} | {t['actual_48k']} | "
+            f"{t['rescues']} | {t['harms']} | {t['net']} | {unmeasured} |"
         )
     return "\n".join(lines) + "\n"
 
@@ -822,11 +846,11 @@ def classes(rows: list[dict], header: dict) -> str:
     lines.append("")
     for r in rows:
         shown = ", ".join(f"{name}={r['flags'][name]}" for name in cc.CLASSES)
-        lines.append(f"evidence: {r['task']} {r['attempt']} {shown}")
+        lines.append(f"evidence: {r['task']} {r['attempt']} {shown} actual@32k={r['actual_32k']} actual@48k={r['actual_48k']}")
     return "\n".join(lines) + "\n"
 
 
-def stamp(argv: list[str]) -> dict:
+def stamp(argv: list[str], night: Path) -> dict:
     commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=EVALS, capture_output=True, text=True).stdout.strip()
     # The instrument loaded by path is watched too, as run 1 watches its own
     # counterfactual.py (MINOR 4): a dirty instrument must not read as clean.
@@ -839,7 +863,8 @@ def stamp(argv: list[str]) -> dict:
             text=True,
         ).stdout.strip()
     )
-    return {"evals_commit": commit, "evals_dirty": dirty, "command": " ".join(["classify.py", *argv])}
+    return {"evals_commit": commit, "evals_dirty": dirty, "night": night.name,
+            "command": " ".join(["classify.py", *argv])}
 
 
 def main(argv: list[str]) -> int:
@@ -860,7 +885,7 @@ def main(argv: list[str]) -> int:
         print(f"classify: --grade-root sits under {markers[0]}; pytest would read it while grading", file=sys.stderr)
         return 2
     grade_root.mkdir(parents=True, exist_ok=True)
-    header = stamp(argv)
+    header = stamp(argv, args.night)
     cf.WORK = HERE / "work"
     shutil.rmtree(cf.WORK, ignore_errors=True)
     cf.WORK.mkdir(parents=True, exist_ok=True)
@@ -877,6 +902,20 @@ def main(argv: list[str]) -> int:
             )
     finally:
         shutil.rmtree(cf.WORK, ignore_errors=True)
+    # Ruling 11: three of night 2's four tasks share night 1's names, and the
+    # default --out is night 1's directory, so an unguarded run would silently
+    # overwrite another night's table with this one's cells.
+    for task in sorted({r["task"] for r in rows}):
+        existing = args.out / task / "cells.json"
+        if existing.is_file():
+            previous = json.loads(existing.read_text()).get("night")
+            if previous is not None and previous != header["night"]:
+                print(
+                    f"classify: {existing} holds {previous}, not {header['night']}; "
+                    "pass --out for this night rather than overwriting another night's table",
+                    file=sys.stderr,
+                )
+                return 2
     for task in sorted({r["task"] for r in rows}):
         mine = [r for r in rows if r["task"] == task]
         folder = args.out / task

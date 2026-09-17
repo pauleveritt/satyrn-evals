@@ -18,6 +18,8 @@ from satyrn_evals.census_classify import (
     CLASSES,
     Facts,
     TurnRow,
+    actual_at_line,
+    attempt_started,
     flags,
     per_turn,
     whole_attempt_seconds,
@@ -75,9 +77,9 @@ def test_within_32k_is_the_pre_registered_line(tokens: int, turn: int, expected:
 
 def _facts(**overrides: Any) -> Facts:
     base: dict[str, Any] = dict(
-        code="BUDGET_EXCEEDED", verdict=None, tripped_verdict=None, raised=None, length_stops=0,
-        root_searches=0, tool_reported_timeouts=0, first_pass_turn=None, first_pass_tokens=None,
-        self_stop_turn=None, allowlist_reason=None,
+        code="BUDGET_EXCEEDED", verdict=None, passed_at_line=False, tripped_verdict=None, raised=None,
+        length_stops=0, root_searches=0, tool_reported_timeouts=0, first_pass_turn=None,
+        first_pass_tokens=None, self_stop_turn=None, allowlist_reason=None,
     )
     return Facts(**(base | overrides))
 
@@ -122,7 +124,10 @@ def test_a_cell_without_a_raise_still_flags_capability() -> None:
 
 
 def test_a_cell_that_passed_flags_none_of_the_three() -> None:
-    row = flags(_facts(code="OK", verdict="pass", first_pass_turn=8, first_pass_tokens=6000, self_stop_turn=9))
+    row = flags(_facts(
+        code="OK", verdict="pass", passed_at_line=True,
+        first_pass_turn=8, first_pass_tokens=6000, self_stop_turn=9,
+    ))
     assert not any(row[name] for name in ("capability", "budget", "finishing"))
 
 
@@ -216,3 +221,57 @@ def test_whole_attempt_seconds_comes_from_the_directory_stamp_and_the_record_mti
 
 def test_a_directory_name_without_a_stamp_has_no_whole_attempt_seconds() -> None:
     assert whole_attempt_seconds("not-a-stamp", 1_000_000.0) is None
+
+
+def test_a_pass_inside_the_line_is_actual_at_the_line() -> None:
+    assert actual_at_line(verdict="pass", output_tokens=19_556, turns=40) is True
+
+
+def test_a_pass_whose_turns_left_the_line_is_not_actual_at_the_line() -> None:
+    """Night 1's run-record-gate 275888: OK/pass at turn 55 with 30,444 tokens."""
+    assert actual_at_line(verdict="pass", output_tokens=30_444, turns=55) is False
+
+
+def test_a_pass_whose_tokens_left_the_line_is_not_actual_at_the_line() -> None:
+    """Night 1's docs-linter 845472: OK/pass at turn 54 with 38,999 tokens."""
+    assert actual_at_line(verdict="pass", output_tokens=38_999, turns=54) is False
+
+
+def test_a_fail_inside_the_line_is_not_actual_at_the_line() -> None:
+    assert actual_at_line(verdict="fail", output_tokens=1_000, turns=3) is False
+
+
+def test_a_tripped_cell_is_not_actual_at_the_line_whatever_the_tripped_grade() -> None:
+    """Ruling 3: the tripped verdict describes the 48k teardown, never a delivery at the line."""
+    assert actual_at_line(verdict=None, output_tokens=20_000, turns=30) is False
+
+
+def test_the_boundary_is_inclusive_on_both_axes() -> None:
+    assert actual_at_line(verdict="pass", output_tokens=32_000, turns=48) is True
+    assert actual_at_line(verdict="pass", output_tokens=32_001, turns=48) is False
+    assert actual_at_line(verdict="pass", output_tokens=32_000, turns=49) is False
+
+
+def test_the_class_flags_read_the_line_not_the_budget() -> None:
+    """Ruling 5: a cell that passed outside the line, holding a pass state inside it,
+    is a finishing row -- the same reading the tally uses."""
+    row = flags(_facts(verdict="pass", code="OK", passed_at_line=False,
+                       first_pass_turn=16, first_pass_tokens=13_809))
+    assert (row["finishing"], row["capability"], row["budget"]) == (True, False, False)
+
+
+def test_a_cell_that_passed_inside_the_line_flags_none_of_the_three() -> None:
+    row = flags(_facts(verdict="pass", code="OK", passed_at_line=True,
+                       first_pass_turn=16, first_pass_tokens=9_081))
+    assert not any(row[name] for name in ("capability", "budget", "finishing"))
+
+
+def test_attempt_started_is_the_directorys_utc_stamp() -> None:
+    from datetime import UTC, datetime
+
+    expected = datetime(2026, 9, 16, 18, 29, 41, 312540, tzinfo=UTC).timestamp()
+    assert attempt_started("selfhost-docs-linter-20260916-182941-312540") == expected
+
+
+def test_a_directory_name_without_a_stamp_has_no_start() -> None:
+    assert attempt_started("not-a-stamp") is None

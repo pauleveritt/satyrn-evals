@@ -1,7 +1,8 @@
 {
- "evals_commit": "e606b24d8f0dbc8a2eb3aa19a0c7adffdba85ced",
- "evals_dirty": false,
- "command": "classify.py --night /Users/pauleveritt/satyrn-runs/2026-09-16-census-selfhost-docs-linter --record records/2026-09-16-census-selfhost-docs-linter.json",
+ "evals_commit": "48545119add4c1f7c73aa86a8a20ff55c5d9ffdd",
+ "evals_dirty": true,
+ "night": "2026-09-16-census-selfhost-docs-linter",
+ "command": "classify.py --night /Users/pauleveritt/satyrn-runs/2026-09-16-census-selfhost-docs-linter --record records/2026-09-16-census-selfhost-docs-linter.json --grade-root /Users/pauleveritt/satyrn-census-grades",
  "task": "selfhost-docs-linter",
  "cells": [
   {
@@ -10,6 +11,8 @@
    "attempt": "312540",
    "code": "OK",
    "verdict": "fail",
+   "actual_32k": false,
+   "actual_48k": false,
    "tripped_verdict": null,
    "turns": 59,
    "tokens": 21906,
@@ -54,6 +57,8 @@
    "attempt": "374751",
    "code": "OK",
    "verdict": "pass",
+   "actual_32k": false,
+   "actual_48k": true,
    "tripped_verdict": null,
    "turns": 52,
    "tokens": 24059,
@@ -76,20 +81,22 @@
     "ambiguity": null,
     "capability": false,
     "budget": false,
-    "finishing": false,
+    "finishing": true,
     "runaway": false,
     "hunting": false,
     "allowlist": false
    },
    "run1": {
-    "counterfactual": "pass",
+    "counterfactual": "not-pass",
     "change": "none"
    },
    "run2": {
     "counterfactual": "pass",
-    "change": "none"
+    "change": "rescue"
    },
-   "unmeasured": [],
+   "unmeasured": [
+    "unverified-rescue: bash at turns 1, 4, 5, 6"
+   ],
    "raised": null
   },
   {
@@ -98,6 +105,8 @@
    "attempt": "453263",
    "code": "BUDGET_EXCEEDED",
    "verdict": null,
+   "actual_32k": false,
+   "actual_48k": false,
    "tripped_verdict": "pass",
    "turns": 73,
    "tokens": 36505,
@@ -142,6 +151,8 @@
    "attempt": "906198",
    "code": "OK",
    "verdict": "pass",
+   "actual_32k": false,
+   "actual_48k": true,
    "tripped_verdict": null,
    "turns": 66,
    "tokens": 38476,
@@ -163,18 +174,18 @@
     "information": null,
     "ambiguity": null,
     "capability": false,
-    "budget": false,
+    "budget": true,
     "finishing": false,
     "runaway": false,
     "hunting": false,
     "allowlist": false
    },
    "run1": {
-    "counterfactual": "pass",
+    "counterfactual": "not-pass",
     "change": "none"
    },
    "run2": {
-    "counterfactual": "pass",
+    "counterfactual": "not-pass",
     "change": "none"
    },
    "unmeasured": [],
@@ -186,6 +197,8 @@
    "attempt": "782306",
    "code": "OK",
    "verdict": "pass",
+   "actual_32k": true,
+   "actual_48k": true,
    "tripped_verdict": null,
    "turns": 40,
    "tokens": 27509,
@@ -230,6 +243,8 @@
    "attempt": "845472",
    "code": "OK",
    "verdict": "pass",
+   "actual_32k": false,
+   "actual_48k": true,
    "tripped_verdict": null,
    "turns": 54,
    "tokens": 38999,
@@ -252,20 +267,22 @@
     "ambiguity": null,
     "capability": false,
     "budget": false,
-    "finishing": false,
+    "finishing": true,
     "runaway": false,
     "hunting": false,
     "allowlist": false
    },
    "run1": {
-    "counterfactual": "pass",
+    "counterfactual": "not-pass",
     "change": "none"
    },
    "run2": {
     "counterfactual": "pass",
-    "change": "none"
+    "change": "rescue"
    },
-   "unmeasured": [],
+   "unmeasured": [
+    "unverified-rescue: bash at turns 6, 7, 8, 9, 10, 13, 16, 17, 18, 20, 21, 22, 23, 24, 25, 28, 30"
+   ],
    "raised": null
   }
  ],
@@ -274,18 +291,25 @@
    "task": "selfhost-docs-linter",
    "reading": "run1",
    "cells": 6,
+   "actual_32k": 1,
+   "actual_48k": 4,
    "rescues": 0,
    "harms": 0,
    "net": 0,
-   "unmeasured": []
+   "unmeasured": [
+    "374751",
+    "845472"
+   ]
   },
   {
    "task": "selfhost-docs-linter",
    "reading": "run2",
    "cells": 6,
-   "rescues": 0,
+   "actual_32k": 1,
+   "actual_48k": 4,
+   "rescues": 2,
    "harms": 0,
-   "net": 0,
+   "net": 2,
    "unmeasured": []
   }
  ]
