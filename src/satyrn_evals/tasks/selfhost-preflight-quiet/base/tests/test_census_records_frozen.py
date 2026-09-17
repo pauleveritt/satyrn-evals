@@ -17,8 +17,7 @@ from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
 from satyrn_evals.qualify import CENSUS_TASKS
 from satyrn_evals.task_tree import tree_digest
 
-ROOT = Path(__file__).resolve().parent.parent
-RECORDS = ROOT / "records"
+RECORDS = Path(__file__).resolve().parent.parent / "records"
 
 
 def _frozen(prefix: str) -> list[Path]:
@@ -62,17 +61,13 @@ def test_the_five_night_one_records_are_all_present() -> None:
     assert {p.stem.removeprefix("2026-09-16-census-") for p in NIGHT1} == NIGHT1_TASKS
 
 
-AUTHORED = {"selfhost-preflight-quiet"}
-
-
-def test_night_two_is_the_three_replacements_and_the_census_set_gains_only_the_authored_task() -> None:
-    """Amendment 2026-09-17 (night-2 design section 4): record 1, the third
-    candidate, was withdrawn and Task 2 deferred to a separate spec. Night 2 is
-    the three replacement records only. The authored task
-    (2026-09-17-release-two-authored-task-design.md) is that deferred third
-    build task; it joins CENSUS_TASKS and gets its own night-3 record, and it
-    must not widen night 2's record set."""
-    assert set(CENSUS_TASKS) == NIGHT1_TASKS | AUTHORED
+def test_night_two_is_the_three_replacements_and_census_tasks_is_still_night_one() -> None:
+    """Amendment 2026-09-17 (design section 4): record 1, the third candidate, was
+    withdrawn -- Task 1 found no candidate and Task 2 was deferred to a separate,
+    later spec. Night 2 is the three replacement records only, and ``CENSUS_TASKS``
+    must still be night 1's five: a later cut of a sixth task cannot silently widen
+    this night's record set."""
+    assert set(CENSUS_TASKS) == NIGHT1_TASKS
     assert {json.loads(p.read_text())["task"] for p in NIGHT2} == REPLACED
 
 
@@ -119,33 +114,3 @@ def test_a_replacement_authority_would_reject_a_transposed_id_triple(task: str) 
     wrong = tuple(reversed(REPLACEMENT_CELL_IDS[task]))
     assert wrong != REPLACEMENT_CELL_IDS[task]
     assert not _authority_has_id_triple(record["authority"], task, wrong)
-
-
-def _authoring_spec_resolves(manifest_body: dict, root: Path) -> bool:
-    """Whether an authored manifest's ``generator.authoring.spec`` names a file
-    that exists in the repository (design section 5: the disclosure must point
-    at something real, not a typo'd or later-deleted path)."""
-    generator = manifest_body.get("generator")
-    authoring = generator.get("authoring") if isinstance(generator, dict) else None
-    if not isinstance(authoring, dict):
-        return True
-    spec = authoring.get("spec")
-    return isinstance(spec, str) and (root / spec).is_file()
-
-
-def test_every_authored_census_tasks_disclosed_spec_resolves_to_a_real_file() -> None:
-    """Review finding 2: nothing else checks that ``authoring.spec`` names a file
-    that exists; a typo'd or later-deleted design-spec path would otherwise
-    qualify clean and point at nothing."""
-    for task in sorted(CENSUS_TASKS):
-        manifest_body = json.loads((DEFAULT_TASKS_ROOT / task / "manifest.json").read_text())
-        assert _authoring_spec_resolves(manifest_body, ROOT), (
-            f"{task}: generator.authoring.spec does not resolve to a file in the repository"
-        )
-
-
-def test_the_resolving_check_would_catch_a_missing_spec_path() -> None:
-    """Sibling of the check above: it actually bites on a spec path that is absent."""
-    body = {"generator": {"authoring": {
-        "spec": "docs/superpowers/specs/does-not-exist-2026-09-99.md", "roles": {"heading": "Opus"}}}}
-    assert not _authoring_spec_resolves(body, ROOT)

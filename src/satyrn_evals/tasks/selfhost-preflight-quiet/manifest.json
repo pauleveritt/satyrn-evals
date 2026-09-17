@@ -56,8 +56,8 @@
   "oracle_visibility": "hidden",
   "provenance": {
     "repo": "https://github.com/pauleveritt/satyrn-evals.git",
-    "base_sha": "3cd88a6ce1e6987293dfa638337d8594535bffd3",
-    "fix_sha": "d3082580868f960af7f6d4b0cf4903ca252ac6ab"
+    "base_sha": "3f7a561931e4c4fabb79991756359d6d6c9c9aac",
+    "fix_sha": "f7459ef5a4ccece490c8a7cb48a8e0dfea713d6b"
   },
   "generator": {
     "tool": "tools/cut_task.py",
@@ -84,7 +84,7 @@
     }
   },
   "digests": {
-    "task_tree": "15ebc341896b2d562d029ee18cb25a51a2ca77247e21f7a4dae60a713eeb629b",
+    "task_tree": "b04e178dc8aef3b881812915015cf6060606e87d275c092facb9b77a4483f7d2",
     "prompt": "df04f00587106515f9358218df0e921f69b733fc2571b4ccd8574bf98e477bbd"
   }
 }

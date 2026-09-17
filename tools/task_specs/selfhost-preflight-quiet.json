@@ -1,7 +1,7 @@
 {
   "name": "selfhost-preflight-quiet",
-  "base": "3cd88a6ce1e6987293dfa638337d8594535bffd3",
-  "good": "d3082580868f960af7f6d4b0cf4903ca252ac6ab",
+  "base": "3f7a561931e4c4fabb79991756359d6d6c9c9aac",
+  "good": "f7459ef5a4ccece490c8a7cb48a8e0dfea713d6b",
   "files": [
     "scripts/preflight_quiet.py"
   ],

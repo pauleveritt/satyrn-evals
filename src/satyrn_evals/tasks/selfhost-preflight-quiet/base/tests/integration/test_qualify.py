@@ -27,7 +27,7 @@ FIXTURE_TASKS = Path(__file__).parent / "data" / "tasks"
 @pytest.mark.parametrize("name", [*CEILING_CANDIDATES, *FLOOR_CANDIDATES, *HELDOUT_TASKS])
 def test_every_candidate_qualifies_offline(name: str) -> None:
     checks = qualify(DEFAULT_TASKS_ROOT / name)
-    assert [check.name for check in checks] == ["known-good run 1", "known-good run 2", "known-good run 3", "known-broken", "r1-plan-prompt", "prompt-edits", "authored-disclosure", "live-harvest"]
+    assert [check.name for check in checks] == ["known-good run 1", "known-good run 2", "known-good run 3", "known-broken", "r1-plan-prompt", "prompt-edits", "live-harvest"]
     assert all(check.passed for check in checks), "\n".join(check.line(name) for check in checks)
 
 
@@ -41,12 +41,4 @@ def test_a_task_whose_known_broken_fixture_passes_does_not_qualify(tmp_path: Pat
 
 def test_the_qualify_command_exits_zero_for_a_qualifying_task(capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["qualify", "calc-build", "--tasks-root", str(FIXTURE_TASKS)]) == 0
-    out = capsys.readouterr().out
-    # Every check line is prefixed "qualify calc-build: "; a passing one also
-    # carries " ok: ". Comparing the two counts asserts every check that ran
-    # passed, without pinning how many checks `qualify` currently runs; the
-    # second assertion guards against that equality being vacuously true
-    # (0 == 0) if no check lines were emitted at all, i.e. it asserts checks
-    # actually ran.
-    assert out.count(" ok: ") == out.count("qualify calc-build: ")
-    assert out.count("qualify calc-build: ") > 0
+    assert capsys.readouterr().out.count(" ok: ") == 7

@@ -354,9 +354,9 @@ def test_the_default_contract_is_still_r3() -> None:
     assert manifest.contract == manifest.contracts["R3"]
 
 
-def test_the_census_rung_map_names_six_tasks_that_exist() -> None:
+def test_the_census_rung_map_names_five_tasks_that_exist() -> None:
     from satyrn_evals.qualify import CENSUS_TASKS
 
-    assert len(CENSUS_TASKS) == 6
+    assert len(CENSUS_TASKS) == 5
     for task, rung in CENSUS_TASKS.items():
         assert rung in load_manifest(resolve_task(task)).contracts, task
