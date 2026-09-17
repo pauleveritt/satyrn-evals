@@ -148,6 +148,7 @@ def test_a_timed_out_cell_without_agent_end_still_yields_every_count() -> None:
         "tool_span_seconds": None, "exploration_turns": None,
         "biggest_turn": {"turn": 1, "output_tokens": 1500, "share": 1.0}, "self_stop": None,
         "finish_nudges": 0, "runaway_resumes": 0, "turns_after_nudge": None,
+        "guard_messages_delivered": {}, "finish_nudge_turns": [], "resumes_followed_by_tool_call": 0,
     }
 
 
@@ -485,6 +486,14 @@ def _entry(kind: str, data: dict) -> str:
     return _line({"type": "entry_appended", "entry": {"customType": kind, "data": data}})
 
 
+def _delivered_message(kind: str) -> str:
+    """Pi 0.85.1's `_appendCustomMessage`/`sendCustomMessage`
+    (agent-session.js) and `agent-loop.js` emit exactly this envelope for a
+    delivered steer or follow-up: `message_start` with `message.role ==
+    "custom"` and `message.customType` set."""
+    return _line({"type": "message_start", "message": {"role": "custom", "customType": kind}})
+
+
 def test_evidence_counts_both_new_firings_and_the_turns_after_the_first_nudge() -> None:
     text = _transcript(
         _entry("finish_nudged", {"generation": 1}),
@@ -496,6 +505,7 @@ def test_evidence_counts_both_new_firings_and_the_turns_after_the_first_nudge() 
     assert evidence.finish_nudges == 1
     assert evidence.runaway_resumes == 1
     assert evidence.turns_after_nudge == 2
+    assert evidence.finish_nudge_turns == (1,)
 
 
 def test_a_cell_with_no_nudge_reports_none_for_the_turns_after() -> None:
@@ -503,3 +513,104 @@ def test_a_cell_with_no_nudge_reports_none_for_the_turns_after() -> None:
     evidence = collect_evidence(text)
     assert evidence.finish_nudges == 0
     assert evidence.turns_after_nudge is None
+    assert evidence.finish_nudge_turns == ()
+
+
+# --- Important 1 (whole-path review): queued vs. delivered -----------------
+
+
+def test_a_delivered_steer_is_counted_separately_from_the_queued_entry() -> None:
+    """`finish_nudged` means the Engine queued the steer; `sendCustomMessage`
+    silently drops it when the session is not streaming. `guard_messages_
+    delivered` counts the `message_start` that is the only evidence the model
+    actually received it, per kind, so a reader can tell which firing landed."""
+    text = _transcript(
+        _entry("finish_nudged", {"generation": 1}),
+        _delivered_message("finish_nudged"),
+    )
+    evidence = collect_evidence(text)
+    assert evidence.finish_nudges == 1
+    assert evidence.guard_messages_delivered == {"finish_nudged": 1}
+
+
+def test_a_queued_steer_with_no_delivered_message_is_not_counted_as_delivered() -> None:
+    text = _transcript(_entry("finish_nudged", {"generation": 1}))
+    evidence = collect_evidence(text)
+    assert evidence.finish_nudges == 1
+    assert evidence.guard_messages_delivered == {}
+
+
+def test_an_ordinary_assistant_message_is_not_mistaken_for_a_delivered_guard_message() -> None:
+    """role != "custom" (or a customType outside GUARD_KINDS) must not count --
+    the delivery check is exact, not a role-agnostic message count."""
+    text = _transcript(
+        _entry("finish_nudged", {"generation": 1}),
+        _line({"type": "message_start", "message": {"role": "assistant"}}),
+        _line({"type": "message_start", "message": {"role": "custom", "customType": "not_a_guard_kind"}}),
+    )
+    evidence = collect_evidence(text)
+    assert evidence.guard_messages_delivered == {}
+
+
+# --- Important 2 (whole-path review): resume followed by a tool call -------
+
+
+def test_a_resume_followed_by_a_tool_call_counts_toward_the_go_criterion() -> None:
+    """Section 7's go criterion ("a resume produces a tool call in 2 of 3")
+    is unreadable from a bare `runaway_resumes` count."""
+    text = _transcript(
+        _entry("runaway_resumed", {"resume": 1, "output_tokens": 16000}),
+        _line({"type": "turn_end"}),
+        _line({"type": "turn_start"}),
+        *_bash("b1", "uv run python -m pytest -q"),
+        _line({"type": "turn_end"}),
+    )
+    evidence = collect_evidence(text)
+    assert evidence.runaway_resumes == 1
+    assert evidence.resumes_followed_by_tool_call == 1
+
+
+def test_a_resume_followed_by_a_text_only_turn_does_not_count() -> None:
+    text = _transcript(
+        _entry("runaway_resumed", {"resume": 1, "output_tokens": 16000}),
+        _line({"type": "turn_end"}),
+        _line({"type": "turn_start"}),
+        _line({"type": "turn_end"}),
+    )
+    evidence = collect_evidence(text)
+    assert evidence.runaway_resumes == 1
+    assert evidence.resumes_followed_by_tool_call == 0
+
+
+def test_a_resume_cut_before_its_own_turn_closes_is_not_counted() -> None:
+    """No `turn_end` ever closes the resume's own turn (the cell was cut
+    mid-turn), so whether the resumed turn made a tool call is unknowable --
+    it must not be counted as a hit."""
+    text = _transcript(
+        _entry("runaway_resumed", {"resume": 1, "output_tokens": 16000}),
+        *_bash("b1", "uv run python -m pytest -q"),
+    )
+    evidence = collect_evidence(text)
+    assert evidence.runaway_resumes == 1
+    assert evidence.resumes_followed_by_tool_call == 0
+
+
+# --- Important 3 (whole-path review): every nudge's turn, not just the first
+
+
+def test_finish_nudge_turns_reports_every_nudge_not_just_the_first() -> None:
+    """`turns_after_nudge` latches on the first `finish_nudged` and never
+    reports which turn any nudge sat on; a two-nudge cell (design §2 fires
+    once per source generation) needs both, and `turns_after_nudge` itself
+    must stay pinned to the first (it is already relied on by `to_block()`'s
+    literal-dict assertion and the plan's reading template)."""
+    text = _transcript(
+        _line({"type": "turn_start"}),
+        _entry("finish_nudged", {"generation": 1}),
+        _line({"type": "turn_start"}),
+        _line({"type": "turn_start"}),
+        _entry("finish_nudged", {"generation": 2}),
+    )
+    evidence = collect_evidence(text)
+    assert evidence.finish_nudge_turns == (2, 4)
+    assert evidence.turns_after_nudge == 2

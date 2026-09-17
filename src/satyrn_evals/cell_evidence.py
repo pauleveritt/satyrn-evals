@@ -69,6 +69,22 @@ The escape rules are lexical and stated so a reader can recompute them:
   own and was only over budget in the tail it wrote before exiting was not cut,
   so its ``agent_end`` is a genuine self-stop. Its turn and token counts are
   those at that event.
+- a **delivered guard message** is a ``message_start`` whose ``message.role``
+  is ``"custom"`` and whose ``message.customType`` is in ``GUARD_KINDS``
+  (whole-path review Important 1): the Engine writes ``finish_nudged`` *before*
+  calling ``sendCustomMessage``, which silently takes no branch when the
+  session is not streaming, so the entry alone means only "queued". The
+  delivered message is the only evidence the model received the text --
+  confirmed against pi-coding-agent 0.85.1's ``agent-session.js``
+  (``sendCustomMessage``/``_appendCustomMessage``) and ``agent-loop.js``,
+  which emit exactly ``{"type": "message_start", "message": {"role":
+  "custom", "customType": ..., ...}}``.
+- a **resume followed by a tool call** (whole-path review Important 2) is a
+  ``runaway_resumed`` entry whose resumed turn made a tool call: a
+  ``tool_execution_start`` occurring after the ``turn_end`` that closes the
+  resume's own turn and before the next ``turn_end`` after that. This is
+  section 7's go criterion ("a resume produces a tool call in 2 of 3") made
+  mechanical instead of a hand read of the transcript.
 """
 
 import json
@@ -83,7 +99,7 @@ from pathlib import PurePosixPath
 from satyrn_evals.budget import UsageCounter
 from satyrn_evals.contamination import scan_transcript
 from satyrn_evals.overlay import OverlaySpec
-from satyrn_evals.pathology import decoded_scan_text
+from satyrn_evals.pathology import GUARD_KINDS, decoded_scan_text
 from satyrn_evals.timeline import read_timeline
 
 #: The spec's per-command threshold: "commands over 120 s".
@@ -138,6 +154,9 @@ class CellEvidence:
     finish_nudges: int = 0
     runaway_resumes: int = 0
     turns_after_nudge: int | None = None
+    guard_messages_delivered: dict[str, int] = field(default_factory=dict)
+    finish_nudge_turns: tuple[int, ...] = ()
+    resumes_followed_by_tool_call: int = 0
 
     def to_block(self) -> dict[str, object]:
         return {
@@ -166,6 +185,9 @@ class CellEvidence:
             "finish_nudges": self.finish_nudges,
             "runaway_resumes": self.runaway_resumes,
             "turns_after_nudge": self.turns_after_nudge,
+            "guard_messages_delivered": dict(sorted(self.guard_messages_delivered.items())),
+            "finish_nudge_turns": list(self.finish_nudge_turns),
+            "resumes_followed_by_tool_call": self.resumes_followed_by_tool_call,
         }
 
 
@@ -543,6 +565,7 @@ def collect_evidence(
     pending_mutations: dict[str, int] = {}
     nudged = False
     turns_after_nudge: int | None = None
+    finish_nudge_turns: list[int] = []
     for event in events:
         before = usage.output_tokens
         usage.feed_event(event)
@@ -554,9 +577,14 @@ def collect_evidence(
             self_stop = {"turn": usage.turns, "output_tokens": usage.output_tokens}
         if mutation_turn is None:
             mutation_turn = _track_mutation(event, usage.turns, cwd, source_paths, pending_mutations)
+        entry = event.get("entry") if event.get("type") == "entry_appended" else None
+        is_nudge = isinstance(entry, dict) and entry.get("customType") == "finish_nudged"
+        if is_nudge:
+            # Whole-path review Important 3: every nudge's turn, not just the first --
+            # question 1 needs the turn each `finish_nudged` entry sits on.
+            finish_nudge_turns.append(usage.turns)
         if not nudged:
-            entry = event.get("entry") if event.get("type") == "entry_appended" else None
-            if isinstance(entry, dict) and entry.get("customType") == "finish_nudged":
+            if is_nudge:
                 nudged = True
                 turns_after_nudge = 0
         elif event.get("type") == "turn_start":
@@ -590,6 +618,14 @@ def collect_evidence(
         and isinstance(e.get("entry"), dict)
         and isinstance(e["entry"].get("customType"), str)
     )
+    guard_messages_delivered = Counter(
+        e["message"]["customType"]
+        for e in events
+        if e.get("type") == "message_start"
+        and isinstance(e.get("message"), dict)
+        and e["message"].get("role") == "custom"
+        and e["message"].get("customType") in GUARD_KINDS
+    )
     timeouts = sum(
         1
         for e in events
@@ -597,6 +633,7 @@ def collect_evidence(
     )
     spans = [span for span in all_spans.values() if span.tool_name == "bash"]
     finished = [span.seconds for span in spans if span.seconds is not None]
+    resumes_followed_by_tool_call = _resumes_followed_by_tool_call(events)
     return CellEvidence(
         turns=usage.turns,
         output_tokens=usage.output_tokens,
@@ -627,4 +664,29 @@ def collect_evidence(
         finish_nudges=guard_firings.get("finish_nudged", 0),
         runaway_resumes=guard_firings.get("runaway_resumed", 0),
         turns_after_nudge=turns_after_nudge,
+        guard_messages_delivered=dict(guard_messages_delivered),
+        finish_nudge_turns=tuple(finish_nudge_turns),
+        resumes_followed_by_tool_call=resumes_followed_by_tool_call,
     )
+
+
+def _resumes_followed_by_tool_call(events: Sequence[dict]) -> int:
+    """Whole-path review Important 2: counts each ``runaway_resumed`` entry
+    whose resumed turn made a tool call -- a ``tool_execution_start`` between
+    the ``turn_end`` that closes the resume's own turn and the next
+    ``turn_end`` after it. Section 7's go criterion ("a resume produces a
+    tool call in 2 of 3") is otherwise unreadable from a bare count."""
+    turn_end_indices = [i for i, e in enumerate(events) if e.get("type") == "turn_end"]
+    count = 0
+    for i, event in enumerate(events):
+        entry = event.get("entry") if event.get("type") == "entry_appended" else None
+        if not (isinstance(entry, dict) and entry.get("customType") == "runaway_resumed"):
+            continue
+        te1 = next((idx for idx in turn_end_indices if idx >= i), None)
+        if te1 is None:
+            continue
+        te2 = next((idx for idx in turn_end_indices if idx > te1), None)
+        window = events[te1 + 1 : te2] if te2 is not None else events[te1 + 1 :]
+        if any(e.get("type") == "tool_execution_start" for e in window):
+            count += 1
+    return count

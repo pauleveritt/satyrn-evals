@@ -1,5 +1,6 @@
 """The committed Engine arm's pins against the engine checkout (SATYRN_V4_ENGINE_REPO): git reads only, no model."""
 
+import ast
 import hashlib
 import io
 import json
@@ -15,6 +16,7 @@ from integration.test_attempt import (
 from satyrn_evals.arms import ENGINE_SOURCES, load_arm
 from satyrn_evals.cell_engine import EXPORT_PATHS
 from satyrn_evals.hygiene import overlay_digests
+from satyrn_evals.pathology import GUARD_KINDS
 
 pytestmark = pytest.mark.integration
 
@@ -58,3 +60,33 @@ def test_the_whole_tree_of_the_pinned_commit_names_a_hidden_suite_and_the_allowl
     hidden = {Path(path).name for path in overlay_digests().values()}
     assert "test_doc_caps.py" in _archived_names(commit) & hidden
     assert _archived_names(commit, *EXPORT_PATHS) & hidden == set()
+
+
+def _engine_guard_kinds(commit: str) -> tuple[str, ...]:
+    """`GUARD_KINDS` out of the engine's own `budget.py` at the pinned commit,
+    parsed by AST -- not imported, so the engine's own venv need not be
+    active (a pure git read, same isolation as this module's digest checks)."""
+    source = _git("show", f"{commit}:src/satyrn_engine/budget.py").stdout.decode()
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.AnnAssign)
+            and isinstance(node.target, ast.Name)
+            and node.target.id == "GUARD_KINDS"
+            and node.value is not None
+        ):
+            return tuple(ast.literal_eval(node.value))
+    raise AssertionError("GUARD_KINDS not found in the engine's budget.py at the pinned commit")
+
+
+def test_the_two_trees_guard_kinds_sets_agree() -> None:
+    """Whole-path review Minor 3, ruled into the fix wave: the lists are two
+    literals in two repositories and nothing pinned them together. A future
+    engine kind added without a matching evals add makes every cell where it
+    fires read `unknown_event` -- the exact defect Task 7 closed, recurring
+    silently. Integration-tier only (never default): the whole-branch
+    review's Important 3 already ruled that the default tier must not read
+    another repo."""
+    arm = load_arm(ENGINE_ARM)
+    assert arm.pins.engine_commit is not None
+    assert set(_engine_guard_kinds(arm.pins.engine_commit)) == set(GUARD_KINDS)
