@@ -284,9 +284,14 @@ def audit(cell: Cell, attempt: dict, bash_touched: dict[int, tuple[str, ...]]) -
 
 
 def _empty_evidence() -> dict:
+    # S5-1: `turns`/`output_tokens` are None -- evidence unavailable -- not 0.
+    # Zero sits inside the 32k/48 line (`cc.within_32k(0, 0)` is True), so a
+    # parse failure that read zero would manufacture a pass at the line out
+    # of a measurement failure. `cc.actual_at_line` treats None as "not
+    # actual", and the tables print "-" for both, never a fabricated zero.
     return {
-        "turns": 0,
-        "output_tokens": 0,
+        "turns": None,
+        "output_tokens": None,
         "length_stops": 0,
         "root_searches": 0,
         "tool_reported_timeouts": 0,
@@ -664,10 +669,17 @@ class DecodeLog:
     ``spans`` always comes from the whole night, never from a ``--cell`` filtered
     subset: a filtered re-run still shared the machine with the excluded cells, and
     a ``decode_overlap`` built only from the selection would understate the sharing
-    the log actually contains (FINDING 2)."""
+    the log actually contains (FINDING 2).
+
+    ``unspannable`` is the count of the night's cells whose own span could not be
+    built (one of Ruling 10's four reasons). Such a cell still shared the machine
+    for some unknown window; dropping it from ``spans`` would silently undercount
+    every *other* cell's ``decode_overlap`` (S5-7), so its count is carried
+    separately and added to every row's overlap instead."""
 
     completions: list
     spans: list
+    unspannable: int = 0
 
 
 def cell_span(cell: Cell) -> tuple[float | None, float | None, str | None]:
@@ -694,8 +706,10 @@ def load_decode_log(pattern: str, night_cells: list[Cell]) -> DecodeLog:
     completions: list = []
     for name in sorted(glob.glob(pattern)):
         completions.extend(cd.parse_completions(Path(name).read_text(errors="replace")))
-    spans = [(s, e) for s, e, reason in map(cell_span, night_cells) if reason is None]
-    return DecodeLog(completions=completions, spans=spans)
+    cell_spans = [(s, e, reason) for s, e, reason in map(cell_span, night_cells)]
+    spans = [(s, e) for s, e, reason in cell_spans if reason is None]
+    unspannable = sum(1 for _, _, reason in cell_spans if reason is not None)
+    return DecodeLog(completions=completions, spans=spans, unspannable=unspannable)
 
 
 def decode_row(cell: Cell, log: DecodeLog) -> dict:
@@ -708,7 +722,10 @@ def decode_row(cell: Cell, log: DecodeLog) -> dict:
         "decode_tok_s": reading.tok_s,
         "decode_median_tok_s": reading.median_tok_s,
         "decode_completions": reading.completions,
-        "decode_overlap": cd.span_overlap(log.spans, start, end),
+        # S5-7: a cell whose own span is null still shared the machine for
+        # some unknown window, so it is counted in, not dropped -- `spans`
+        # already excludes it, and `unspannable` puts it back.
+        "decode_overlap": cd.span_overlap(log.spans, start, end) + log.unspannable,
         "decode_reason": reading.reason,
     }
 
@@ -866,7 +883,7 @@ def table(rows: list[dict], header: dict) -> str:
         verdict_at_line = "pass" if r["actual_32k"] else "not-pass"
         values = [
             r["task"], r["attempt"], _dash(r["code"]), _dash(r["verdict"]), verdict_at_line, _dash(r["raised"]),
-            _dash(r["tripped_verdict"]), str(r["turns"]), str(r["tokens"]), str(r["length_stops"]),
+            _dash(r["tripped_verdict"]), _dash(r["turns"]), _dash(r["tokens"]), str(r["length_stops"]),
             _dash(r["exploration_turns"]), biggest, share, span, whole, decode, str(r["decode_completions"]),
             _dash(r["decode_overlap"]),
             _dash(r["self_stop_turn"]), _dash(r["self_stop_tokens"]), _dash(r["pass_turn"]),
@@ -940,16 +957,22 @@ def stamp(argv: list[str], night: Path) -> dict:
 
 def _overwrite_refusal(out: Path, tasks: set[str], night: str) -> str | None:
     """Ruling 11: refuse to let this night's cells silently overwrite another
-    night's committed folder. Three of night 2's four tasks share night 1's
-    names, and the default ``--out`` is night 1's directory.
+    night's committed folder. All three of night 2's tasks (S6-3: corrected from
+    "three of four" -- the maintainer withdrew record 1, so night 2 is three
+    records, nine cells) share night 1's names, and the default ``--out`` is
+    night 1's directory.
 
     Returns the refusal text for the first task whose existing ``cells.json``
-    names a different night, or ``None`` when every task is clear to write --
-    either its folder is fresh, or it already holds this same night's cells
-    (a deliberate re-classification).
+    names a different night, or whose folder already holds ``table.md`` /
+    ``classes.md`` with no ``cells.json`` to name its night at all (S6-2: such a
+    folder cannot be verified as this same night's own re-classification, so it
+    is refused rather than silently overwritten). Returns ``None`` when every
+    task is clear to write -- either its folder is fresh, or it already holds
+    this same night's cells (a deliberate re-classification).
     """
     for task in sorted(tasks):
-        existing = out / task / "cells.json"
+        folder = out / task
+        existing = folder / "cells.json"
         if existing.is_file():
             previous = json.loads(existing.read_text()).get("night")
             if previous is not None and previous != night:
@@ -957,6 +980,11 @@ def _overwrite_refusal(out: Path, tasks: set[str], night: str) -> str | None:
                     f"classify: {existing} holds {previous}, not {night}; "
                     "pass --out for this night rather than overwriting another night's table"
                 )
+        elif any((folder / name).exists() for name in ("table.md", "classes.md")):
+            return (
+                f"classify: {folder} holds table.md/classes.md with no cells.json to name its night; "
+                "pass --out for this night rather than overwriting an unattributed folder"
+            )
     return None
 
 
@@ -982,12 +1010,20 @@ def main(argv: list[str]) -> int:
     except Refused as exc:
         print(f"classify: {exc}", file=sys.stderr)
         return 2
+    header = stamp(argv, args.night)
+    # S6-1: refused here, before any cell is measured -- not after the whole
+    # measure loop. The task set (and thus the night the refusal names) is
+    # already known from `selected`; an operator who forgets --out on the
+    # morning after must not pay for hours of replay and grading before the
+    # refusal fires.
+    if (refusal := _overwrite_refusal(args.out, {cell.task for cell in selected}, header["night"])) is not None:
+        print(refusal, file=sys.stderr)
+        return 2
     grade_root = args.grade_root.resolve()
     if markers := cf.project_markers(grade_root):
         print(f"classify: --grade-root sits under {markers[0]}; pytest would read it while grading", file=sys.stderr)
         return 2
     grade_root.mkdir(parents=True, exist_ok=True)
-    header = stamp(argv, args.night)
     cf.WORK = HERE / "work"
     shutil.rmtree(cf.WORK, ignore_errors=True)
     cf.WORK.mkdir(parents=True, exist_ok=True)
@@ -1007,9 +1043,6 @@ def main(argv: list[str]) -> int:
             )
     finally:
         shutil.rmtree(cf.WORK, ignore_errors=True)
-    if (refusal := _overwrite_refusal(args.out, {r["task"] for r in rows}, header["night"])) is not None:
-        print(refusal, file=sys.stderr)
-        return 2
     for task in sorted({r["task"] for r in rows}):
         mine = [r for r in rows if r["task"] == task]
         folder = args.out / task

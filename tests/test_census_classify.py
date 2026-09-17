@@ -17,6 +17,8 @@ import pytest
 
 from satyrn_evals.census_classify import (
     CLASSES,
+    TOKEN_LINE,
+    TURN_LINE,
     Facts,
     TurnRow,
     actual_at_line,
@@ -401,3 +403,171 @@ def test_load_decode_log_spans_come_from_the_whole_night_not_a_filtered_selectio
     assert driver.cd.span_overlap(filtered_only.spans, started_a, ended_a) < driver.cd.span_overlap(
         full.spans, started_a, ended_a
     )
+
+
+# --- Task 5 whole-path review fix round ---
+
+
+def test_missing_evidence_is_not_actual_at_the_line() -> None:
+    """S5-1: `_empty_evidence()` feeds `actual_at_line` an unavailable reading, not a
+    zero one. Zero tokens and zero turns both sit inside the 32k/48 line, so a
+    parse failure must not silently manufacture a pass at the line."""
+    assert actual_at_line(verdict="pass", output_tokens=None, turns=None) is False
+
+
+def test_a_real_zero_reading_is_still_actual_at_the_line() -> None:
+    """The sibling: a cell that genuinely passed at turn 0 with 0 tokens (not an
+    unavailable reading) is still actual at the line -- the fix distinguishes
+    "unavailable" from "zero", it does not forbid zero."""
+    assert actual_at_line(verdict="pass", output_tokens=0, turns=0) is True
+
+
+def test_the_empty_evidence_block_states_unavailable_not_zero() -> None:
+    """S5-1: the row a parse failure produces must say the evidence was
+    unavailable, not print zero as though it had been measured."""
+    empty = driver._empty_evidence()
+    assert (empty["output_tokens"], empty["turns"]) == (None, None)
+
+
+def test_a_cell_with_unreadable_evidence_never_reads_as_actual_at_the_line(tmp_path: Path) -> None:
+    """S5-1, end to end through `_no_reading`: an `_empty_audit` row -- the shape a
+    swallowed audit failure produces -- must never read `actual_32k = True`."""
+    cell = driver.Cell(
+        task="t", night="n", arm="baseline", attempt="000001",
+        attempt_dir="t-20260101-000000-000001", folder=tmp_path,
+    )
+    audit_row = driver._empty_audit(cell, {"code": "OK", "verdict": "pass"})
+    reading = driver._no_reading(audit_row, raised="RuntimeError: boom")
+    assert reading["actual"] is False
+
+
+def test_the_pre_registered_line_constants_are_pinned_to_the_committed_instrument() -> None:
+    """S5-3: `actual_at_line` reads `TOKEN_LINE`/`TURN_LINE`, `trigger.within_budget`
+    reads `counterfactual.py`'s `TOKEN_BUDGET`/`TURN_BUDGET`. They agree today but
+    nothing pins them, and `counterfactual.py` may not be touched (Ruling 18) --
+    so the pin lives here, on the package side."""
+    assert TOKEN_LINE == driver.cf.TOKEN_BUDGET
+    assert TURN_LINE == driver.cf.TURN_BUDGET
+
+
+def test_a_cell_whose_span_is_null_still_counts_toward_other_cells_overlap(tmp_path: Path) -> None:
+    """S5-7: a cell that cannot contribute a span (one of Ruling 10's four reasons)
+    must not simply vanish from every other cell's `decode_overlap` -- it shared
+    the machine even though its own window is unknown."""
+    good_dir = tmp_path / "good"
+    good_dir.mkdir()
+    (good_dir / "attempt.json").write_text("{}")
+    good_cell = driver.Cell(
+        task="t", night="n", arm="baseline", attempt="000001",
+        attempt_dir="t-20260101-000000-000001", folder=good_dir,
+    )
+    # No attempt.json in this one -> NO_ATTEMPT_JSON, a null span.
+    bad_dir = tmp_path / "bad"
+    bad_dir.mkdir()
+    bad_cell = driver.Cell(
+        task="t", night="n", arm="baseline", attempt="000002",
+        attempt_dir="t-20260101-000000-500000", folder=bad_dir,
+    )
+    started, ended, reason = driver.cell_span(good_cell)
+    assert reason is None
+    log_without_fix_context = driver.load_decode_log(str(tmp_path / "server.log*"), [good_cell, bad_cell])
+    overlap = driver.decode_row(good_cell, log_without_fix_context)["decode_overlap"]
+    # Only `good_cell` contributes a real span (1), but `bad_cell` shared the
+    # machine and must still be accounted for rather than silently dropped.
+    assert overlap == 2
+
+
+def test_a_night_with_no_unspannable_cells_is_unaffected() -> None:
+    """The sibling of S5-7: when every cell has a clean span, nothing changes."""
+    assert driver.cd.span_overlap([(0.0, 100.0)], 0.0, 100.0) == 1
+
+
+def test_the_overwrite_refusal_runs_before_any_cell_is_measured(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """S6-1: an operator who forgets `--out` on the morning after must be refused
+    before paying for hours of replay and grading, not after measuring every cell."""
+    out = tmp_path / "out"
+    task_dir = out / "t"
+    task_dir.mkdir(parents=True)
+    (task_dir / "cells.json").write_text(json.dumps({"night": "some-other-night"}))
+
+    cell = driver.Cell(
+        task="t", night="n", arm="baseline", attempt="000001",
+        attempt_dir="t-20260101-000000-000001", folder=tmp_path,
+    )
+    monkeypatch.setattr(driver, "select", lambda night, record, only=(): [cell])
+    monkeypatch.setattr(driver, "cells", lambda night, record: [cell])
+    monkeypatch.setattr(driver, "stamp", lambda argv, night: {"night": "this-night", "evals_commit": "x",
+                                                               "evals_dirty": False, "command": "x",
+                                                               "tz_offset": "+0000"})
+    measured: list[int] = []
+
+    def _fake_measure(*a: object, **k: object) -> dict:
+        measured.append(1)
+        return {"task": "t", "attempt": "000001", "code": "OK", "own_green_turn": None,
+                "pass_turn": None, "run1": {"change": "none"}, "run2": {"change": "none"}, "raised": None}
+
+    monkeypatch.setattr(driver, "measure", _fake_measure)
+
+    grade_root = tmp_path / "grades"
+    rc = driver.main([
+        "--night", str(tmp_path), "--record", str(tmp_path / "record.json"),
+        "--out", str(out), "--grade-root", str(grade_root),
+        "--server-log", str(tmp_path / "no-such-server.log*"),
+    ])
+    assert rc == 2
+    assert measured == []
+
+
+def test_the_overwrite_refusal_still_writes_when_the_night_is_clear(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The sibling of S6-1: a fresh --out still measures and writes."""
+    out = tmp_path / "out"
+    cell = driver.Cell(
+        task="t", night="n", arm="baseline", attempt="000001",
+        attempt_dir="t-20260101-000000-000001", folder=tmp_path,
+    )
+    monkeypatch.setattr(driver, "select", lambda night, record, only=(): [cell])
+    monkeypatch.setattr(driver, "cells", lambda night, record: [cell])
+    monkeypatch.setattr(driver, "stamp", lambda argv, night: {"night": "this-night", "evals_commit": "x",
+                                                               "evals_dirty": False, "command": "x",
+                                                               "tz_offset": "+0000"})
+    fake_row = {"task": "t", "attempt": "000001", "code": "OK", "own_green_turn": None,
+                "pass_turn": None, "run1": {"change": "none"}, "run2": {"change": "none"}, "raised": None,
+                "actual_32k": False, "actual_48k": False, "unmeasured": []}
+    monkeypatch.setattr(driver, "measure", lambda *a, **k: fake_row)
+    monkeypatch.setattr(driver, "table", lambda rows, header: "table\n")
+    monkeypatch.setattr(driver, "tally_table", lambda rows: "tally\n")
+    monkeypatch.setattr(driver, "classes", lambda rows, header: "classes\n")
+
+    grade_root = tmp_path / "grades"
+    rc = driver.main([
+        "--night", str(tmp_path), "--record", str(tmp_path / "record.json"),
+        "--out", str(out), "--grade-root", str(grade_root),
+        "--server-log", str(tmp_path / "no-such-server.log*"),
+    ])
+    assert rc == 0
+    assert (out / "t" / "cells.json").is_file()
+
+
+def test_the_night_guard_refuses_a_folder_with_outputs_but_no_cellsjson(tmp_path: Path) -> None:
+    """S6-2: the refusal keyed only on `cells.json` would let a folder holding
+    `table.md`/`classes.md` (no `cells.json`) be overwritten without complaint."""
+    task_dir = tmp_path / "selfhost-docs-linter"
+    task_dir.mkdir()
+    (task_dir / "table.md").write_text("stale table\n")
+    refusal = driver._overwrite_refusal(tmp_path, {"selfhost-docs-linter"}, "2026-09-17-census-selfhost-docs-linter")
+    assert refusal is not None
+    assert "selfhost-docs-linter" in refusal
+
+
+def test_the_night_guard_still_allows_a_folder_with_neither_file(tmp_path: Path) -> None:
+    """The sibling of S6-2: a folder with no prior outputs at all is still clear
+    to write."""
+    task_dir = tmp_path / "selfhost-docs-linter"
+    task_dir.mkdir()
+    assert driver._overwrite_refusal(
+        tmp_path, {"selfhost-docs-linter"}, "2026-09-17-census-selfhost-docs-linter"
+    ) is None

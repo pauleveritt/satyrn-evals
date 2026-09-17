@@ -110,11 +110,17 @@ def decode_rate(completions: Sequence[Completion], *, start: float, end: float) 
     inside = [c for c in completions if start <= c.started and c.ended <= end]
     if not inside:
         return DecodeReading(None, None, 0, 0, 0.0, NO_COMPLETIONS)
-    tokens = sum(c.tokens for c in inside)
-    seconds = sum(c.seconds for c in inside)
-    rates = [c.tokens / c.seconds for c in inside if c.seconds > 0]
-    if seconds <= 0 or not rates:
-        return DecodeReading(None, None, len(inside), tokens, seconds, NO_DECODE_SECONDS)
+    # S5-6: a completion reporting zero decode seconds contributes no measured
+    # time, so it must not contribute tokens to the rate either -- summing its
+    # tokens into the numerator while `rates` (and the denominator) excluded
+    # its seconds would inflate tok_s. `timed` is the one set both the
+    # numerator and the denominator are built from.
+    timed = [c for c in inside if c.seconds > 0]
+    tokens = sum(c.tokens for c in timed)
+    seconds = sum(c.seconds for c in timed)
+    if seconds <= 0 or not timed:
+        return DecodeReading(None, None, len(inside), sum(c.tokens for c in inside), seconds, NO_DECODE_SECONDS)
+    rates = [c.tokens / c.seconds for c in timed]
     return DecodeReading(
         tok_s=tokens / seconds,
         median_tok_s=median(rates),

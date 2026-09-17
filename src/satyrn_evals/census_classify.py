@@ -83,7 +83,7 @@ def within_32k(output_tokens: int, turn: int) -> bool:
     return output_tokens <= TOKEN_LINE and turn <= TURN_LINE
 
 
-def actual_at_line(*, verdict: str | None, output_tokens: int, turns: int) -> bool:
+def actual_at_line(*, verdict: str | None, output_tokens: int | None, turns: int | None) -> bool:
     """The harness verdict read at the pre-registered line, not at the record's budget.
 
     Night 1 compared own-green triggers at 32,000 tokens / 48 turns against the
@@ -96,7 +96,15 @@ def actual_at_line(*, verdict: str | None, output_tokens: int, turns: int) -> bo
     by the census's own rule, so its ``tripped_verdict`` -- a 48k teardown state
     -- can never make it actual at the line (Ruling 3), and ``code`` adds
     nothing because only an ``OK`` cell carries a graded verdict (Ruling 4).
+
+    ``output_tokens``/``turns`` are ``None`` exactly when the evidence could not
+    be read at all (S5-1: a swallowed parse failure), never a genuine zero --
+    a cell that measured nothing is not actual at the line, whatever ``verdict``
+    reads, because zero would otherwise sit inside the line and manufacture a
+    pass out of a measurement failure.
     """
+    if output_tokens is None or turns is None:
+        return False
     return verdict == "pass" and within_32k(output_tokens, turns)
 
 

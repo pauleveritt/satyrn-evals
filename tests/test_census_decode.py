@@ -97,3 +97,32 @@ def test_span_overlap_counts_the_nights_concurrent_cells_including_this_one() ->
 
 def test_a_cell_that_shared_the_machine_with_nobody_overlaps_only_itself() -> None:
     assert span_overlap([(0.0, 100.0)], 0.0, 100.0) == 1
+
+
+def test_a_zero_second_completion_does_not_inflate_the_rate() -> None:
+    """S5-6: a completion reporting zero decode seconds must not add its tokens
+    to the numerator while contributing nothing to the denominator -- that
+    inflates tok_s for the whole span."""
+    text = "\n".join(
+        [
+            _line("2026-09-16 12:00:10,000", 100, 10.0),
+            _line("2026-09-16 12:00:20,000", 5000, 0.0),
+        ]
+    )
+    reading = decode_rate(parse_completions(text), start=_epoch("2026-09-16 12:00:00,000"),
+                          end=_epoch("2026-09-16 12:01:00,000"))
+    assert reading.completions == 2
+    assert reading.tok_s == 10.0
+
+
+def test_a_completion_with_real_seconds_is_unaffected_by_the_zero_second_fix() -> None:
+    """The sibling: when nothing reports zero seconds, the rate is unchanged."""
+    text = "\n".join(
+        [
+            _line("2026-09-16 12:00:10,000", 100, 10.0),
+            _line("2026-09-16 12:00:30,000", 100, 10.0),
+        ]
+    )
+    reading = decode_rate(parse_completions(text), start=_epoch("2026-09-16 12:00:00,000"),
+                          end=_epoch("2026-09-16 12:01:00,000"))
+    assert reading.tok_s == 10.0
