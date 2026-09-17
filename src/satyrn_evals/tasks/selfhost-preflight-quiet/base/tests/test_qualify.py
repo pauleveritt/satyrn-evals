@@ -5,13 +5,16 @@ from pathlib import Path
 
 import pytest
 
+import satyrn_evals.qualify as qualify_module
 from satyrn_evals.attempt_record import AttemptCode
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, load_manifest
 from satyrn_evals.patch import parse_patch_paths
 from satyrn_evals.qualify import (
     CEILING_CANDIDATES,
+    CENSUS_TASKS,
     FLOOR_CANDIDATES,
     HELDOUT_TASKS,
+    PLAN_RUNG,
     SELF_HOSTED_CONVENTION_FILES,
     convention_files_patch,
     judge_fixture,
@@ -185,3 +188,67 @@ def test_recorded_edits_with_no_plan_prompt_fail() -> None:
     body = _body([{"old": "a", "new": "b", "reason": "r"}])
     body["contracts"] = {}
     assert not judge_prompt_edits(body).passed
+
+
+def test_an_authored_manifest_discloses_its_spec_and_roles() -> None:
+    body = {"generator": {"authored": True, "authoring": {
+        "spec": "docs/superpowers/specs/x.md", "roles": {"heading": "Opus"}}}}
+    check = qualify_module.judge_authored(body)
+    assert check.passed
+    assert check.name == "authored-disclosure"
+
+
+def test_a_cut_manifest_without_the_disclosure_passes_untouched() -> None:
+    """The sibling: six cut tasks carry no disclosure and must not be failed by it."""
+    check = qualify_module.judge_authored({"generator": {"tool": "tools/cut_task.py"}})
+    assert check.passed
+    assert check.detail == "not an authored task"
+
+
+def test_a_stray_authoring_block_with_no_authored_key_fails() -> None:
+    """Finding A: cut_task.py cannot emit this shape, but a hand-edited manifest
+    could carry a complete authoring block without ever setting authored: true.
+    That must fail, not pass silently as an unremarkable cut task."""
+    check = qualify_module.judge_authored({"generator": {
+        "authoring": {"spec": "docs/superpowers/specs/x.md", "roles": {"heading": "Opus"}}}})
+    assert not check.passed
+    assert "authored" in check.detail
+
+
+@pytest.mark.parametrize("generator", ["not a dict", ["authored", True]])
+def test_a_non_dict_generator_fails_instead_of_raising(generator: object) -> None:
+    """Finding 4: judge_authored must be total, like every other judge."""
+    check = qualify_module.judge_authored({"generator": generator})
+    assert not check.passed
+
+
+def test_a_well_formed_dict_generator_still_passes() -> None:
+    """The sibling to the totality fix: a normal dict generator is unaffected."""
+    body = {"generator": {"authored": True, "authoring": {
+        "spec": "docs/superpowers/specs/x.md", "roles": {"heading": "Opus"}}}}
+    assert qualify_module.judge_authored(body).passed
+
+
+@pytest.mark.parametrize(
+    "generator",
+    [
+        {"authored": False, "authoring": {"spec": "x", "roles": {"a": "b"}}},
+        {"authored": True},
+        {"authored": True, "authoring": {"spec": "", "roles": {"a": "b"}}},
+        {"authored": True, "authoring": {"spec": "x", "roles": {}}},
+        {"authored": True, "authoring": {"spec": "x", "roles": {"a": ""}}},
+        {"authored": True, "authoring": "Opus"},
+        {"authored": True, "authoring": {"spec": "   ", "roles": {"a": "b"}}},
+        {"authored": True, "authoring": {"spec": "x", "roles": {" ": "b"}}},
+        {"authored": True, "authoring": {"spec": "x", "roles": {"a": "   "}}},
+    ],
+)
+def test_a_malformed_disclosure_is_refused(generator: dict) -> None:
+    assert not qualify_module.judge_authored({"generator": generator}).passed
+
+
+def test_the_census_set_carries_the_authored_task() -> None:
+    """Design section 2: the authored task joins night 1's five as the third
+    medium-build member of the census set."""
+    assert CENSUS_TASKS["selfhost-preflight-quiet"] == PLAN_RUNG
+    assert len(CENSUS_TASKS) == 6

@@ -83,6 +83,7 @@ CENSUS_TASKS: dict[str, str] = {
     "selfhost-docs-linter": PLAN_RUNG,
     "selfhost-cell-loop": PLAN_RUNG,
     "selfhost-speed-probe": PLAN_RUNG,
+    "selfhost-preflight-quiet": PLAN_RUNG,
 }
 
 
@@ -193,6 +194,40 @@ def judge_prompt_edits(manifest_body: dict) -> Check:
     return Check("prompt-edits", not problems, detail)
 
 
+def judge_authored(manifest_body: dict) -> Check:
+    """An authored task discloses its spec and its roles (design section 5).
+
+    Pure. A task cut from a historical plan carries no ``authored`` key and
+    passes untouched; a task that claims to be authored must say under which
+    spec and by which roles, because it is reported beside the cut tasks and
+    never pooled with them.
+    """
+    generator = manifest_body.get("generator")
+    if generator is None:
+        generator = {}
+    if not isinstance(generator, dict):
+        return Check("authored-disclosure", False, f"generator must be a dict, got {type(generator).__name__}")
+    if "authored" not in generator:
+        if "authoring" in generator:
+            return Check(
+                "authored-disclosure", False, "authoring present without authored: true"
+            )
+        return Check("authored-disclosure", True, "not an authored task")
+    if generator["authored"] is not True:
+        return Check("authored-disclosure", False, f"authored is {generator['authored']!r}, want True")
+    authoring = generator.get("authoring")
+    if not isinstance(authoring, dict) or set(authoring) != {"spec", "roles"}:
+        return Check("authored-disclosure", False, "authoring must be {spec, roles}")
+    spec, roles = authoring["spec"], authoring["roles"]
+    if not isinstance(spec, str) or not spec.strip():
+        return Check("authored-disclosure", False, "authoring.spec must be a non-empty path string")
+    if not isinstance(roles, dict) or not roles or not all(
+        isinstance(key, str) and key.strip() and isinstance(value, str) and value.strip() for key, value in roles.items()
+    ):
+        return Check("authored-disclosure", False, "authoring.roles must map non-empty strings to non-empty strings")
+    return Check("authored-disclosure", True, f"authored under {spec}, {len(roles)} roles")
+
+
 def convention_files_patch(paths: tuple[str, ...]) -> str:
     """New-file sections for ``paths``, as a model following the base's conventions writes them."""
     return "".join(
@@ -244,6 +279,7 @@ def qualify(task_dir: Path, *, scratch: Path | None = None) -> list[Check]:
         checks.append(judge_prompt(manifest.contracts, manifest.source_paths, task_dir / "base"))
         manifest_body = json.loads((task_dir / "manifest.json").read_text(encoding="utf-8"))
         checks.append(judge_prompt_edits(manifest_body))
+        checks.append(judge_authored(manifest_body))
         generated = "generator" in manifest_body
         extra = SELF_HOSTED_CONVENTION_FILES if generated else ()
         harvest = root / "harvest.patch"

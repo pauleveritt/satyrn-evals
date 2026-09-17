@@ -23,6 +23,7 @@ from tools.cut_task import (
 )
 
 SPECS = Path(__file__).resolve().parent.parent / "tools" / "task_specs"
+SPEC_PATH = SPECS / "selfhost-run-record-gate.json"
 SHA_A, SHA_B = "a" * 40, "b" * 40
 PLAN = """# Plan
 
@@ -91,8 +92,8 @@ def test_a_malformed_spec_is_refused(tmp_path: Path, spec_body: dict, over: dict
 def test_every_committed_spec_loads() -> None:
     names = sorted(load_spec(path).name for path in SPECS.glob("*.json"))
     assert names == [
-        "selfhost-cell-loop", "selfhost-docs-linter", "selfhost-guard-prefixes", "selfhost-review-script",
-        "selfhost-run-record-gate", "selfhost-speed-probe",
+        "selfhost-cell-loop", "selfhost-docs-linter", "selfhost-guard-prefixes", "selfhost-preflight-quiet",
+        "selfhost-review-script", "selfhost-run-record-gate", "selfhost-speed-probe",
     ]
 
 
@@ -248,6 +249,58 @@ def test_recorded_edits_land_in_the_generator_block(tmp_path: Path, spec_body: d
     path.write_text(json.dumps(spec_body | {"prompt_edits": [{"old": "a", "new": "b", "reason": "r"}]}))
     body = manifest_body(load_spec(path), "b\n", ["tests/test_x.py::test_y"], "0" * 64)
     assert body["generator"]["prompt_edits"] == [{"old": "a", "new": "b", "reason": "r"}]
+
+
+def test_a_spec_may_carry_an_authored_disclosure(tmp_path: Path) -> None:
+    """Design section 5: an authored task discloses itself in the manifest's
+    generator block, inside the body `check` compares -- not as a post-cut
+    annotation anyone may edit."""
+    body = json.loads(SPEC_PATH.read_text(encoding="utf-8"))
+    body["authored"] = {"spec": "docs/superpowers/specs/x.md", "roles": {"heading": "Opus"}}
+    path = tmp_path / "spec.json"
+    path.write_text(json.dumps(body), encoding="utf-8")
+    spec = load_spec(path)
+    from tools.cut_task import Authored
+
+    assert spec.authored == Authored(spec="docs/superpowers/specs/x.md", roles={"heading": "Opus"})
+    generator = manifest_body(spec, "prompt", ["a::b"], "digest")["generator"]
+    assert generator["authored"] is True
+    assert generator["authoring"] == {
+        "spec": "docs/superpowers/specs/x.md", "roles": {"heading": "Opus"}
+    }
+
+
+def test_a_cut_spec_without_the_key_carries_no_disclosure(tmp_path: Path) -> None:
+    """The sibling: the six cut tasks must re-cut byte-identically, so the key is
+    optional and absent means absent -- never `authored: false`."""
+    spec = load_spec(SPEC_PATH)
+    assert spec.authored is None
+    generator = manifest_body(spec, "prompt", ["a::b"], "digest")["generator"]
+    assert "authored" not in generator
+    assert "authoring" not in generator
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        {"spec": "", "roles": {"heading": "Opus"}},
+        {"spec": "docs/x.md", "roles": {}},
+        {"spec": "docs/x.md", "roles": {"heading": ""}},
+        {"spec": "docs/x.md"},
+        {"spec": "docs/x.md", "roles": {"heading": "Opus"}, "extra": "no"},
+        "yes",
+        {"spec": "   ", "roles": {"heading": "Opus"}},
+        {"spec": "docs/x.md", "roles": {" ": "Opus"}},
+        {"spec": "docs/x.md", "roles": {"heading": "   "}},
+    ],
+)
+def test_a_malformed_authored_block_is_refused(tmp_path: Path, value: object) -> None:
+    body = json.loads(SPEC_PATH.read_text(encoding="utf-8"))
+    body["authored"] = value
+    path = tmp_path / "spec.json"
+    path.write_text(json.dumps(body), encoding="utf-8")
+    with pytest.raises(CutError):
+        load_spec(path)
 
 
 def test_check_ignores_a_post_cut_validity_annotation(tmp_path: Path) -> None:

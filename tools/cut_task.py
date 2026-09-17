@@ -216,9 +216,21 @@ def load_spec(path: Path) -> TaskSpec:
     )
 
 
-def excluded(path: str, hidden: Iterable[str]) -> bool:
-    """Whether a BASE path stays out of ``base/``."""
-    return path in EXCLUDED_FILES or path in set(hidden) or path.startswith(EXCLUDED_PREFIXES)
+def excluded(path: str, hidden: Iterable[str], name: str) -> bool:
+    """Whether a BASE path stays out of ``base/``.
+
+    Beyond the plan/spec/CI prefixes and the hidden suite, a task's own prior
+    committed cut tree and cut spec never ship inside its own base (Ruling
+    R2-8) -- a re-cut whose base already contains that commit would otherwise
+    carry the task's own answer straight into a cell. A validity record's
+    ``solution.diff`` is a complete solution to *some* census task, so that
+    exclusion is global rather than scoped to ``name``.
+    """
+    if path in EXCLUDED_FILES or path in set(hidden) or path.startswith(EXCLUDED_PREFIXES):
+        return True
+    if path.startswith(f"src/satyrn_evals/tasks/{name}/") or path == f"tools/task_specs/{name}.json":
+        return True
+    return path.startswith("evidence/") and "validity" in path.split("/")
 
 
 def residue_gitignore(existing: str | None) -> str | None:
@@ -420,7 +432,7 @@ def cut(spec: TaskSpec, repo: Path, tasks_root: Path) -> Path:
     if dest.exists():
         raise CutError(f"{dest} exists; remove it deliberately to cut again")
     listing = _git(repo, "ls-tree", "-r", "--name-only", "-z", spec.base).decode("utf-8").split("\0")
-    base_paths = [path for path in listing if path and not excluded(path, spec.hidden)]
+    base_paths = [path for path in listing if path and not excluded(path, spec.hidden, spec.name)]
     (dest / "base").mkdir(parents=True)
     archive(repo, spec.base, dest / "base", keep=base_paths)
     gitignore = dest / "base" / ".gitignore"

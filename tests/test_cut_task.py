@@ -102,12 +102,54 @@ def test_every_committed_spec_loads() -> None:
     ["docs/superpowers/plans/p.md", "docs/superpowers/specs/s.md", ".claude/settings.json", ".github/w.yml", "PROVENANCE.md", "tests/test_x.py"],
 )
 def test_the_answer_bearing_paths_stay_out_of_the_base(path: str) -> None:
-    assert excluded(path, ["tests/test_x.py"])
+    assert excluded(path, ["tests/test_x.py"], "t")
 
 
 @pytest.mark.parametrize("path", ["docs/lessons.md", "tests/test_other.py", "tools/x.py", "docs/superpowers/research/r.md"])
 def test_everything_else_stays_in_the_base(path: str) -> None:
-    assert not excluded(path, ["tests/test_x.py"])
+    assert not excluded(path, ["tests/test_x.py"], "t")
+
+
+def test_a_tasks_own_cut_tree_stays_out_of_its_own_base() -> None:
+    """Ruling R2-8: a task never ships its own cut tree in its own base -- a
+    re-cut whose base already contains a prior committed cut would otherwise
+    leak the overlay suite, the known-good patch and the manifest verbatim."""
+    assert excluded("src/satyrn_evals/tasks/t/manifest.json", [], "t")
+    assert excluded("src/satyrn_evals/tasks/t/fixtures/known-good.patch", [], "t")
+    assert excluded("src/satyrn_evals/tasks/t/overlay/test_x.py", [], "t")
+
+
+def test_another_tasks_cut_tree_stays_in_the_base() -> None:
+    """The sibling: cutting `t` must not blind a cell to an unrelated task's
+    already-committed tree."""
+    assert not excluded("src/satyrn_evals/tasks/other/manifest.json", [], "t")
+
+
+def test_a_tasks_own_cut_spec_stays_out_of_its_own_base() -> None:
+    """Ruling R2-8: nor does a task ship its own cut spec, whose `formats`
+    states every literal the acceptance suite matches."""
+    assert excluded("tools/task_specs/t.json", [], "t")
+
+
+def test_another_tasks_cut_spec_stays_in_the_base() -> None:
+    assert not excluded("tools/task_specs/other.json", [], "t")
+
+
+def test_a_validity_records_solution_stays_out_of_every_base() -> None:
+    """Ruling R2-8: a validity `solution.diff` is by definition a complete
+    solution to some census task, so the exclusion is global, not scoped to
+    the task being cut."""
+    assert excluded("evidence/2026-09-17-census-2/validity/anything/solution.diff", [], "t")
+
+
+def test_evidence_without_a_validity_segment_stays_in_the_base() -> None:
+    assert not excluded("evidence/2026-09-16-census/README.md", [], "t")
+
+
+def test_a_validity_path_outside_evidence_stays_in_the_base() -> None:
+    """The exclusion is scoped to `evidence/`; a same-named directory
+    elsewhere in the tree is not a validity record and carries no answer."""
+    assert not excluded("src/satyrn_evals/validity/x.py", [], "t")
 
 
 def test_a_gitignore_that_ignores_all_residue_is_left_alone() -> None:
