@@ -31,7 +31,7 @@ pre-registered 32,000-token, 48-turn line:
 "Finishing": a hidden-suite pass state inside the line, not stopped at.
 "Runaway": the cell ended on one 16,000-token turn with no tool call.
 Stopping at own-green harmed no cell in 30. Under run 2's method at the 32k
-line it rescues 5 of the 12 medium-build cells against a Baseline of 2.
+line it rescues 4 of the 12 medium-build cells against a Baseline of 2 (run 1's pre-registered rules count 0, with 4 cells unmeasured). *Corrected 2026-09-17: the first draft said 5, a hand count made before the classifier read the 32k line; the regenerated tables at `evidence/2026-09-16-census/<task>/table.md` are the producer.*
 
 Three consequences bind this night:
 
@@ -52,7 +52,7 @@ Three consequences bind this night:
 
 The Engine work R0 §1.4 now permits, and this night does not run: a
 finish-on-green steer keyed on `self_test` green after a source mutation
-(offline estimate: 5 rescues of 12, harm 0), and reading the completion gate
+(offline estimate: 4 rescues of 12 under run 2's method, 0 under run 1's, harm 0; corrected 2026-09-17), and reading the completion gate
 against the five runaway cells, whose `agent_end` without a tool call is the
 gate's trigger. Both are built and measured after this night, on their own
 spec.

@@ -77,7 +77,7 @@ classifier outputs `evidence/2026-09-16-census/<task>/`). Read at the
 pre-registered 32k/48 line: depth-3 at R2 is a floor task (6/6, so the
 release-one leg was a rung defect); run-record-gate and docs-linter are
 finishing-bound (9 of 12 cells held a hidden-suite pass inside the line and
-2 stopped; stopping at own-green rescues 5 of 12, harm 0 in 30 cells);
+2 stopped; stopping at own-green rescues 4 of 12 under run 2's method and 0 under run 1's pre-registered rules, harm 0 in 30 cells; corrected 2026-09-17 from an unsourced 5, see the census page);
 cell-loop and speed-probe reached no pass state in any cell; five build
 cells ended on a runaway 16k turn with no tool call, the completion gate's
 trigger. Nine cells were wall-clock-cut on a shared machine; their 32k-line
