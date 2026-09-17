@@ -1703,8 +1703,9 @@ from pathlib import Path
 
 from satyrn_evals.cell_evidence import collect_evidence
 
-print("night | cell | code | verdict | turns | out_tokens | nudges | turns_after_nudge | "
-      "resumes | enforced | first_pass (turn, tokens, route)")
+print("night | cell | code | verdict | turns | out_tokens | nudges | nudge_turns | nudge_delivered | "
+      "turns_after_nudge | resumes | resume_delivered | resumes_with_tool_call | enforced | "
+      "first_pass (turn, tokens, route)")
 for stem in sys.argv[1:]:
     arm = Path.home() / "satyrn-runs" / stem / "engine"
     if not arm.is_dir():
@@ -1720,8 +1721,11 @@ for stem in sys.argv[1:]:
         first = ev.first_passing_self_test
         shown = "-" if first is None else f"{first['turn']}, {first['output_tokens']}, {first['route']}"
         print(f"{stem} | {cell.name} | {attempt['code']} | {attempt['verdict']} | {ev.turns} | "
-              f"{ev.output_tokens} | {ev.finish_nudges} | {ev.turns_after_nudge} | "
-              f"{ev.runaway_resumes} | {ev.guard_firings.get('self_test_enforced', 0)} | {shown}")
+              f"{ev.output_tokens} | {ev.finish_nudges} | {list(ev.finish_nudge_turns)} | "
+              f"{ev.guard_messages_delivered.get('finish_nudged', 0)} | {ev.turns_after_nudge} | "
+              f"{ev.runaway_resumes} | {ev.guard_messages_delivered.get('runaway_resumed', 0)} | "
+              f"{ev.resumes_followed_by_tool_call} | "
+              f"{ev.guard_firings.get('self_test_enforced', 0)} | {shown}")
 PY
 ```
 
@@ -1733,11 +1737,11 @@ PY
 
 One line per question, from the table and the result files. These cells decide no task outcome.
 
-1. **Did the steer fire at own-green?** Per claim-task cell: `nudges`, and the turn each `finish_nudged` entry sits on against the turn of that cell's first passing self-test. The steer fired at own-green when the two are the same turn. Denominator: the cells that reached a green self-test at all; say so, and name any cell that never went green, which is a cell the question cannot be asked of.
-2. **Did the model stop within three turns of it?** `turns_after_nudge` per nudged cell. "Stopped" is the session ending (`agent_end`) within three `turn_start` events of the nudge. Quote what the model did in those turns from the transcript — a cell that stopped because it hit the token budget did not stop because of the steer, and must be read as not stopping.
-3. **Did a resume produce a tool call?** Per cell-loop cell: `resumes`, and for each `runaway_resumed` entry whether the next turn holds a `tool_execution_start`. Denominator 3 cells; a cell that never ran away is a cell the question cannot be asked of, and is named, not counted as a failure.
+1. **Did the steer fire at own-green?** Per claim-task cell: `nudges`, and `nudge_turns` (`finish_nudge_turns`) read element-wise against the turn of that cell's first passing self-test (`first_pass`'s turn). The steer fired at own-green when a nudge turn and that turn are the same. Denominator: the cells that reached a green self-test at all; say so, and name any cell that never went green, which is a cell the question cannot be asked of.
+2. **Did the model stop within three turns of it?** `turns_after_nudge` per nudged cell, and `nudge_delivered` (`guard_messages_delivered["finish_nudged"]`) first: a nudge that was queued but never delivered cannot be read as "the model ignored the steer" — it is a delivery-path finding (see 5), not an answer to this question. For a delivered nudge, "stopped" is the session ending (`agent_end`) within three `turn_start` events of the nudge. Quote what the model did in those turns from the transcript — a cell that stopped because it hit the token budget did not stop because of the steer, and must be read as not stopping.
+3. **Did a resume produce a tool call?** Per cell-loop cell: `resumes`, and `resumes_with_tool_call` (`resumes_followed_by_tool_call`), which is already the per-cell count of `runaway_resumed` entries whose resumed turn holds a `tool_execution_start` — no hand check of "the next turn" is needed. Denominator 3 cells; a cell that never ran away is a cell the question cannot be asked of, and is named, not counted as a failure.
 4. **Did the gate and the resume ever both fire on one turn?** They must not (Ruling 4). Read `self_test_enforced` beside `runaway_resumed` per turn; any co-firing is an implementation defect, not a finding.
-5. **Side effects.** `code` and `verdict` per cell; the result's `pathology` block. A cell reading `unknown_event` or `malformed` points at Task 7 or at a `sendMessage` path — `finish_nudged` as a `steer` is the one delivery Phase 3b never exercised live, and Ruling 5's reading of `runLoop` is the only evidence it behaves. Also watch the `size_refusal` on cell-loop's receipts: it must be present and must not appear in any transcript.
+5. **Side effects.** `code` and `verdict` per cell; the result's `pathology` block. A cell reading `unknown_event` or `malformed` points at Task 7 or at a `sendMessage` path — `finish_nudged` as a `steer` is the one delivery Phase 3b never exercised live, and Ruling 5's reading of `runLoop` is the only evidence it behaves. A firing (`nudges` or `resumes` > 0) whose matching `nudge_delivered`/`resume_delivered` count is lower is itself a finding about the delivery path, not just a gap in question 1-3's answer. Also watch the `size_refusal` on cell-loop's receipts: it must be present and must not appear in any transcript.
 6. **The decision.** The §7 go criterion, read from lines 1–3: the steer fires in 3 of 4 own-green cells and the model stops within three turns in 2 of those 3; a resume produces a tool call in 2 of 3. Above it, the comparison is sized at the R0 sitting (§8). Below it, the design returns to the maintainer. Either way the three records stay excluded from every denominator.
 
 ---

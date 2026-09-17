@@ -72,10 +72,12 @@ The escape rules are lexical and stated so a reader can recompute them:
 - a **delivered guard message** is a ``message_start`` whose ``message.role``
   is ``"custom"`` and whose ``message.customType`` is in ``GUARD_KINDS``
   (whole-path review Important 1): the Engine writes ``finish_nudged`` *before*
-  calling ``sendCustomMessage``, which silently takes no branch when the
-  session is not streaming, so the entry alone means only "queued". The
-  delivered message is the only evidence the model received the text --
-  confirmed against pi-coding-agent 0.85.1's ``agent-session.js``
+  calling ``sendCustomMessage``, and the steer it hands to ``agent.steer()``
+  is only delivered if that turn reaches the agent-loop's injection point --
+  a turn that never gets there (the session ends first) drops the steer
+  silently, so the entry alone means only "queued". The delivered message is
+  the only evidence the model received the text -- confirmed against
+  pi-coding-agent 0.85.1's ``agent-session.js``
   (``sendCustomMessage``/``_appendCustomMessage``) and ``agent-loop.js``,
   which emit exactly ``{"type": "message_start", "message": {"role":
   "custom", "customType": ..., ...}}``.
@@ -675,7 +677,12 @@ def _resumes_followed_by_tool_call(events: Sequence[dict]) -> int:
     whose resumed turn made a tool call -- a ``tool_execution_start`` between
     the ``turn_end`` that closes the resume's own turn and the next
     ``turn_end`` after it. Section 7's go criterion ("a resume produces a
-    tool call in 2 of 3") is otherwise unreadable from a bare count."""
+    tool call in 2 of 3") is otherwise unreadable from a bare count. The
+    window's correctness depends on the ``entry_appended`` landing before its
+    own ``turn_end``: extensions are dispatched before listeners
+    (agent-session.js:360-384) and ``appendEntry`` emits synchronously inside
+    that dispatch (agent-session.js:2029-2035), so a turn_end-handler entry
+    always precedes its own ``turn_end`` line."""
     turn_end_indices = [i for i, e in enumerate(events) if e.get("type") == "turn_end"]
     count = 0
     for i, event in enumerate(events):

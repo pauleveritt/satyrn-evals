@@ -595,6 +595,26 @@ def test_a_resume_cut_before_its_own_turn_closes_is_not_counted() -> None:
     assert evidence.resumes_followed_by_tool_call == 0
 
 
+def test_a_tool_call_two_turns_after_a_resume_does_not_count() -> None:
+    """Re-review O3: widening the window from "up to the next `turn_end`" to
+    "the rest of the transcript" would count this cell as a hit and inflate
+    section 7's go criterion. The tool call lands in the turn after the one
+    that follows the resume, not in the resumed turn itself, so it must not
+    count."""
+    text = _transcript(
+        _entry("runaway_resumed", {"resume": 1, "output_tokens": 16000}),
+        _line({"type": "turn_end"}),
+        _line({"type": "turn_start"}),
+        _line({"type": "turn_end"}),
+        _line({"type": "turn_start"}),
+        *_bash("b1", "uv run python -m pytest -q"),
+        _line({"type": "turn_end"}),
+    )
+    evidence = collect_evidence(text)
+    assert evidence.runaway_resumes == 1
+    assert evidence.resumes_followed_by_tool_call == 0
+
+
 # --- Important 3 (whole-path review): every nudge's turn, not just the first
 
 
