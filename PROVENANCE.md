@@ -4216,3 +4216,4 @@
 | evidence/2026-09-17-census-2/selfhost-speed-probe/cells.json | created in release-one |
 | evidence/2026-09-17-census-2/selfhost-speed-probe/classes.md | created in release-one |
 | evidence/2026-09-17-census-2/selfhost-speed-probe/table.md | created in release-one |
+| evidence/2026-09-16-census/classes-summary.md | created in release-one |

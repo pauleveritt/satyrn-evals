@@ -1,19 +1,30 @@
 <!-- evals be7ba898221b8f04baa3c6b566e8b0a148a30c5d; classify.py --night /Users/pauleveritt/satyrn-runs/2026-09-16-census-selfhost-cell-loop --record records/2026-09-16-census-selfhost-cell-loop.json --grade-root /Users/pauleveritt/satyrn-census-grades -->
 
-The eight class columns are empty on purpose: a reviewer fills them, by turn, from the reconstruction (design section 7). `primary` and `cited turns` are the reviewer's too. The mechanical evidence each class would be argued from is printed beneath.
+The eight class columns are the reviewer's, filled by turn from the reconstruction (design section 7), 2026-09-17, for the maintainer's sign-off. `primary` and `cited turns` are the reviewer's too; the primary is the class whose removal would have changed the verdict at the 32,000-token, 48-turn line. The mechanical evidence each class is argued from is printed beneath, paired with the reviewer's `argument:` line. Where a column departs from the mechanical flag the argument says why. Cross-task reading: `classes-summary.md` in `evidence/2026-09-16-census/`.
 
 | task | attempt | raised | information | ambiguity | capability | budget | finishing | runaway | hunting | allowlist | primary | cited turns |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| selfhost-cell-loop | 442168 | - |  |  |  |  |  |  |  |  |  |  |
-| selfhost-cell-loop | 631530 | - |  |  |  |  |  |  |  |  |  |  |
-| selfhost-cell-loop | 918779 | - |  |  |  |  |  |  |  |  |  |  |
-| selfhost-cell-loop | 346861 | - |  |  |  |  |  |  |  |  |  |  |
-| selfhost-cell-loop | 320931 | - |  |  |  |  |  |  |  |  |  |  |
-| selfhost-cell-loop | 332393 | - |  |  |  |  |  |  |  |  |  |  |
+| selfhost-cell-loop | 442168 | - | False | False | True | False | False | True | False | False | runaway | t11, t13, t14 |
+| selfhost-cell-loop | 631530 | - | False | False | True | False | False | False | False | False | capability | t9, t11, t12, t14, t15 |
+| selfhost-cell-loop | 918779 | - | False | False | True | False | False | False | False | False | capability | t14, t18, t20, t22, t25, t30, t38, t41, t43 |
+| selfhost-cell-loop | 346861 | - | False | False | True | False | False | True | False | False | runaway | t6, t7, t8 |
+| selfhost-cell-loop | 320931 | - | False | False | True | False | False | False | True | False | capability | t9, t12, t13, t14, t16, t18, t21, t33 |
+| selfhost-cell-loop | 332393 | - | False | False | True | False | False | True | False | False | runaway | t21, t22 |
 
 evidence: selfhost-cell-loop 442168 information=None, ambiguity=None, capability=True, budget=False, finishing=False, runaway=True, hunting=False, allowlist=False actual@32k=False actual@48k=False decode_tok_s=13.0 decode_overlap=3
+argument: Ended by a 16,000-token length-stop at t14 with no tool call, so `runaway` is primary by the rule; `capability` is True as a secondary because the cell had the facts and never reached a pass state. The runaway turn is a design think about `identity`, the one term in the prompt left as an opaque mapping: at t13 the cell decided "the acceptance suite (22 tests) will define it" and at t14 set out to design a coherent identity concept, emitting 16k tokens without calling a tool. t11 had already spent a turn on the provenance gate, which this task does not grade.
+
 evidence: selfhost-cell-loop 631530 information=None, ambiguity=None, capability=True, budget=False, finishing=False, runaway=False, hunting=False, allowlist=False actual@32k=False actual@48k=False decode_tok_s=12.9 decode_overlap=5
+argument: No pass state, no length-stop, and the 3,000 s backstop cut the record at t15 with 37,843 tokens spent in essentially three turns: `capability` is primary. t9 is a 13,832-token plan over the prompt's roughly thirty named behaviours, t11 writes `launch.py` in one 3,610-token turn and t12 writes the whole 22-test file in one 14,216-token turn; own-green is recorded at t12 but the hidden suite was never satisfied. The cell has every fact it needs and cannot hold the contract: it never got a second pass at its own harness.
+
 evidence: selfhost-cell-loop 918779 information=None, ambiguity=None, capability=True, budget=False, finishing=False, runaway=False, hunting=False, allowlist=False actual@32k=False actual@48k=False decode_tok_s=12.9 decode_overlap=5
+argument: No pass state and the backstop cut the record at t43 after 23 exploration turns: `capability` is primary. t1-t24 went on reconnaissance that the task does not grade -- looking for a phase-2c design document that does not exist (t18), the provenance gate (t20-t22), and the detached-HEAD branch state (t23) -- with a 9,209-token plan at t14. From t25 the cell was repairing its own fakes, not the module: the signal block rewritten three times (t25-t28), `Protocol` imported from `collections.abc` (t30-t32), and `AttemptCode.COMMAND` which does not exist (t38-t39).
+
 evidence: selfhost-cell-loop 346861 information=None, ambiguity=None, capability=True, budget=False, finishing=False, runaway=True, hunting=False, allowlist=False actual@32k=False actual@48k=False decode_tok_s=12.9 decode_overlap=3
+argument: Ended by a 16,000-token length-stop at t8 with no tool call: `runaway` is primary, `capability` secondary. t6 and t7 searched the tree for a launch design document and for `launch_cells` / `LEDGER_NAME` / `preflight drift`, and both returned nothing; the cell then concluded at t8 that the prompt itself was sufficient and began re-transcribing the whole interface list into a plan, which hit the cap. It is the shortest cell of the census at 8 turns and left no patch.
+
 evidence: selfhost-cell-loop 320931 information=None, ambiguity=None, capability=True, budget=False, finishing=False, runaway=False, hunting=True, allowlist=False actual@32k=False actual@48k=False decode_tok_s=17.7 decode_overlap=4
+argument: No pass state, no length-stop, backstop at t33 with 46,351 tokens: `capability` is primary, and `hunting` is True as a secondary. t9 is a 10,332-token turn wrapped around a `grep -rn` for `launch_cells|write_ledger|check_night|read_slots|infrastructure` across the tree that returned nothing, and t12 and t13 were both lost to `timeout 300` and `timeout 400` prefixes on a machine with no `timeout` binary -- a bounded command that cost the cell two turns outright. The module was rewritten whole at t16 and t19, an 11,777-token edit at t18 followed, and from t21 the cell was still failing its own `test_write_ledger_first_write`.
+
 evidence: selfhost-cell-loop 332393 information=None, ambiguity=None, capability=True, budget=False, finishing=False, runaway=True, hunting=False, allowlist=False actual@32k=False actual@48k=False decode_tok_s=16.5 decode_overlap=2
+argument: Ended by a 16,000-token length-stop at t22 with no tool call: `runaway` is primary, `capability` secondary. t21 read `tools/provenance.py` in full -- a gate this task's hidden suite does not run -- and t22 opened by resolving to add PROVENANCE rows, then slid into designing the test harness ("let me now design...") and ran to the cap without calling a tool. No patch was written in 22 turns.

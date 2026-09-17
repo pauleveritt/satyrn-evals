@@ -89,8 +89,10 @@ reached green inside the line and none stopped there; cell-loop and
 speed-probe again reached no pass state. No plan on the branch holds a third
 medium-build task, so one is authored under
 `docs/superpowers/specs/2026-09-17-release-two-authored-task-design.md`.
-Next: the reviewer fills the class columns, the census page is approved
-(`evidence/2026-09-16-census/README.md`, draft), the R0 sitting sizes the
+The class columns and the census page are signed
+(`evidence/2026-09-16-census/README.md`, `classes-summary.md`): finishing
+primary on 10 cells, capability 11, runaway 8; speed-probe dropped from
+the ceiling set for a prompt ambiguity. Next: the R0 sitting sizes the
 claim on the medium-build tier, and the Engine spec names finish-on-green
 and the completion gate with their cells. `ROADMAP.md` holds the phase rows.
 

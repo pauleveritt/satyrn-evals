@@ -1,8 +1,10 @@
 # The pathology census — nights 1 and 2 (2026-09-16 and 2026-09-17)
 
-Draft for the maintainer's review, 2026-09-17. The mechanical fields are the
+Signed by the maintainer 2026-09-17. The mechanical fields are the
 classifier's (`classify.py` at `6a95720`); the eight class columns in each
-`<task>/classes.md` are the reviewer's and are **not yet filled**. Nothing
+`<task>/classes.md` were drafted by Opus from the reconstructions, cited by
+turn, and signed by the maintainer; the cross-task reading is
+`classes-summary.md`. Nothing
 below pools across tasks. Design: `docs/superpowers/specs/2026-09-15-release-two-census-design.md`
 and `2026-09-17-release-two-census-night-2-design.md`.
 
@@ -48,7 +50,7 @@ Harm is zero in all 39 cells. The night-2 design's first draft said "5 of
 12"; the producer says 4 of 12 under run 2 and 0 under run 1, corrected
 2026-09-17.
 
-## What the two nights say, before the class columns are filled
+## What the two nights say, with the class columns signed
 
 1. **depth-3 at R2 is a floor task.** 6 of 6 in a median 11 turns. The
    release-one depth-3 leg measured a rung defect. The claim table in the
@@ -61,10 +63,12 @@ Harm is zero in all 39 cells. The night-2 design's first draft said "5 of
    1's rules the cells are unmeasured rather than counted.
 3. **Large builds are out of reach at 9B.** cell-loop and speed-probe reached
    no pass state in any of 18 cells, quiet machine or not; the tripped
-   trees grade `fail`. Whether that is capability or ambiguity is the
-   reviewer's call from the reconstruction; the R0 §1.2 validity solver
-   passed both prompts.
-4. **Runaway is a real class, 8 of 30 build cells,** and every one ended at
+   trees grade `fail`. The signed columns read all 18 as capability (11
+   primary, 7 behind a runaway), every runaway turn a design think that
+   opened on one detail; speed-probe carries a prompt ambiguity beside it,
+   below.
+4. **Runaway is a real class, 8 of 33 build cells over both nights (5 of 24
+   on night 1),** and every one ended at
    `agent_end` with no tool call, which is the Engine completion gate's
    trigger. The per-turn cap converted these from whole-budget burns into
    early stops with no patch.
@@ -88,6 +92,13 @@ Harm is zero in all 39 cells. The night-2 design's first draft said "5 of
   (`.superpowers/sdd/2026-09-17-release-two-census-night-2/maintainer-authorization-2026-09-17.md`).
 - The third medium-build task was not found in any plan on the branch; it is
   authored under `2026-09-17-release-two-authored-task-design.md`.
+- **speed-probe is dropped from the ceiling set, maintainer's decision
+  2026-09-17.** Its cut prompt carries the plan's Steps 4 and 6, an attended
+  checklist and a preflight a cell cannot run; ambiguity is argued on 6 of 9
+  cells (never primary, since no cell reached a pass state on the build
+  alone). Under R0 §2 that is fix-or-drop. Its 9 cells stay in the
+  large-tier evidence as capability with the defect named; they are never
+  claimed against.
 
 ## Recompute
 

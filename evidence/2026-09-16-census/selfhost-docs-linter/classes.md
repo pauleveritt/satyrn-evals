@@ -1,19 +1,30 @@
 <!-- evals be7ba898221b8f04baa3c6b566e8b0a148a30c5d; classify.py --night /Users/pauleveritt/satyrn-runs/2026-09-16-census-selfhost-docs-linter --record records/2026-09-16-census-selfhost-docs-linter.json --grade-root /Users/pauleveritt/satyrn-census-grades -->
 
-The eight class columns are empty on purpose: a reviewer fills them, by turn, from the reconstruction (design section 7). `primary` and `cited turns` are the reviewer's too. The mechanical evidence each class would be argued from is printed beneath.
+The eight class columns are the reviewer's, filled by turn from the reconstruction (design section 7), 2026-09-17, for the maintainer's sign-off. `primary` and `cited turns` are the reviewer's too; the primary is the class whose removal would have changed the verdict at the 32,000-token, 48-turn line. The mechanical evidence each class is argued from is printed beneath, paired with the reviewer's `argument:` line. Where a column departs from the mechanical flag the argument says why. Cross-task reading: `classes-summary.md` in `evidence/2026-09-16-census/`.
 
 | task | attempt | raised | information | ambiguity | capability | budget | finishing | runaway | hunting | allowlist | primary | cited turns |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| selfhost-docs-linter | 312540 | - |  |  |  |  |  |  |  |  |  |  |
-| selfhost-docs-linter | 374751 | - |  |  |  |  |  |  |  |  |  |  |
-| selfhost-docs-linter | 453263 | - |  |  |  |  |  |  |  |  |  |  |
-| selfhost-docs-linter | 906198 | - |  |  |  |  |  |  |  |  |  |  |
-| selfhost-docs-linter | 782306 | - |  |  |  |  |  |  |  |  |  |  |
-| selfhost-docs-linter | 845472 | - |  |  |  |  |  |  |  |  |  |  |
+| selfhost-docs-linter | 312540 | - | False | False | True | False | False | False | False | False | capability | t11, t36, t43, t50, t51, t52, t59 |
+| selfhost-docs-linter | 374751 | - | False | False | False | False | True | False | False | False | finishing | t11, t21, t25, t31, t37, t44, t52 |
+| selfhost-docs-linter | 453263 | - | False | False | False | False | True | False | False | False | finishing | t46, t51, t52, t55, t60, t63, t69, t73 |
+| selfhost-docs-linter | 906198 | - | False | False | False | True | False | False | False | False | budget | t18, t26, t32, t39, t41, t47, t48, t66 |
+| selfhost-docs-linter | 782306 | - | False | False | False | False | False | False | False | False | - | t17, t23, t24, t25, t37, t40 |
+| selfhost-docs-linter | 845472 | - | False | False | False | False | True | False | False | False | finishing | t14, t18, t30, t33, t34, t45, t48, t50, t54 |
 
 evidence: selfhost-docs-linter 312540 information=None, ambiguity=None, capability=True, budget=False, finishing=False, runaway=False, hunting=False, allowlist=False actual@32k=False actual@48k=False decode_tok_s=19.2 decode_overlap=3
+argument: No pass state at any turn, `tripped_verdict` is None and the 48k tree graded fail, while the prompt names every rule and every message string verbatim: `capability` is primary. The cell mistook its own `RESULTS_CAP` (120 lines) for the twelve-file cap and did not see it until t36, and at t43 discovered it had defined `SPEC_DIR` and `SPEC_CAP` but never written the spec line-cap check at all, adding it only at t50. Its own nine tests were green at t51 and stayed green, which is why nothing forced the gap open: the tests it wrote did not exercise the boundaries the hidden suite tests.
+
 evidence: selfhost-docs-linter 374751 information=None, ambiguity=None, capability=False, budget=False, finishing=True, runaway=False, hunting=False, allowlist=False actual@32k=False actual@48k=True decode_tok_s=18.8 decode_overlap=4
+argument: A hidden-suite pass state at t11 (11,676 tokens), own-green at t21, then 41 turns and 12,383 tokens to a self-stop at t52; verdict is pass at 48k and not-pass at 32k, so the post-green work carried the tree across the line and back: `finishing` is primary. After green it fought `main`'s argv handling (t25-t33), and at t37 changed the results-file branch from reporting both a line-count and a fence finding to an `elif`, a behaviour change made for ruff's SIM rules rather than for the contract. The remaining turns are ruff (t35-t46) and a provenance excursion.
+
 evidence: selfhost-docs-linter 453263 information=None, ambiguity=None, capability=False, budget=False, finishing=True, runaway=False, hunting=False, allowlist=False actual@32k=False actual@48k=False decode_tok_s=17.4 decode_overlap=5
+argument: A hidden-suite pass state at t46 (27,113 tokens), inside the line, and the budget then tripped at t73 with `tripped_verdict` pass while the 32k reading is not-pass: `finishing` is primary. The post-pass work is the census's sharpest piece of ceremony -- the prompt's "-> 9 passed" was read as a requirement, so from t51 to t63 the cell counted its own tests and deleted three of them to reach exactly nine, at t62 leaving a test function with an empty body. At t69 an edit meant to remove an unused `_is_skipped` helper took `SKIP_PARTS` with it, and the cap ended the record at t73.
+
 evidence: selfhost-docs-linter 906198 information=None, ambiguity=None, capability=False, budget=True, finishing=False, runaway=False, hunting=False, allowlist=False actual@32k=False actual@48k=True decode_tok_s=14.7 decode_overlap=5
+argument: The pass state arrives at t47 and 32,481 tokens -- 481 tokens past the line -- and the cell then self-stopped at t66 with verdict pass at 48k: `budget` is primary, and by the narrowest margin in the census. What pushed it past is a chain of self-inflicted defects: an edit tool that received its `edits` array as a string (t18, t26-t27), module-level relative `Path` constants that broke `relative_to` (t32-t35), and a `rstrip("\r\n \\t")` whose escaping stripped backslashes and the letter t, reported as trailing whitespace on every line until t48. Removing any one of them would have brought the pass state inside the line.
+
 evidence: selfhost-docs-linter 782306 information=None, ambiguity=None, capability=False, budget=False, finishing=False, runaway=False, hunting=False, allowlist=False actual@32k=True actual@48k=True decode_tok_s=14.2 decode_overlap=4
+argument: Passed inside the line -- pass state t17 at 20,672 tokens, own-green t23, self-stop t40 at 27,509 tokens -- so there is no primary. It also shows the same "9 passed" ceremony as 453263, deleting its tenth test at t24-t25, but it had the budget to absorb it. `allowlist` is False although `PROVENANCE.md` appears in its patch: that path is in the task's `ignored_paths` and did not void the tree.
+
 evidence: selfhost-docs-linter 845472 information=None, ambiguity=None, capability=False, budget=False, finishing=True, runaway=False, hunting=False, allowlist=False actual@32k=False actual@48k=True decode_tok_s=15.6 decode_overlap=3
+argument: A hidden-suite pass state at t14 (22,017 tokens), own-green at t30, then 40 turns and 16,982 tokens to a self-stop at t54; pass at 48k, not-pass at 32k, so `finishing` is primary. After green it edited the `Justfile` at t33-t34 to change how `just lint-docs` invokes the linter, appended rows to `PROVENANCE.md` at t45-t46, and spent t48-t49 establishing that the provenance gate fails for the whole tree for reasons predating the cell. `allowlist` is False: the `Justfile` edit is outside `source_paths` and was simply dropped from the patch, and `PROVENANCE.md` is in `ignored_paths`.

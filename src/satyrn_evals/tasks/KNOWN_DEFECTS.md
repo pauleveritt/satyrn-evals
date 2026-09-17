@@ -55,6 +55,16 @@ authorized a recorded prompt edit stating the launcher creates the directory
 (`tools/task_specs/selfhost-cell-loop.json`, applied and re-cut here); the
 re-check passed 22 of 22.
 
+## `selfhost-speed-probe`
+
+Prompt-ambiguity at R1-plan, found by the census class review (2026-09-17):
+the cut prompt includes the plan's Steps 4 and 6 (the maintainer's attended
+checklist and an isolated preflight a cell cannot run), and 6 of 9 cells
+committed turns to executing them. No cell reached a pass state on the build
+alone, so the primary class is capability; the ambiguity is secondary.
+Maintainer's decision 2026-09-17: dropped from the ceiling set; its cells
+stay in the census evidence as capability with the defect named.
+
 ## Admission rule
 
 Neither task may be reused as a ceiling candidate until its defect is
