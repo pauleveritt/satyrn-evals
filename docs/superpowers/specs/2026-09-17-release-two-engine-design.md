@@ -1,7 +1,8 @@
 # Release two — the Engine (design)
 
-**Status:** draft for the maintainer's review, 2026-09-17, by Fable at the
-maintainer's request. Bound by `2026-09-15-release-two-r0-constraints.md`.
+**Status:** approved by the maintainer 2026-09-17, with route proof on the
+claim tasks chosen for section 7; drafted by Fable at the maintainer's
+request. Bound by `2026-09-15-release-two-r0-constraints.md`.
 This is the first Engine design since release one's negative, and R0 §1's
 order is satisfied: harness validity (census build, `b2720a4`), task
 validity (five tasks checked, one dropped), diagnosed admission (39 cells
@@ -125,8 +126,8 @@ and it is disclosed on the numbers page as the boundary the census found.
 
 R0 §3 asks that a remediation be measured on development tasks that exhibit
 its class. The only tasks that exhibit finishing are the two claim tasks;
-no other task on the branch reaches green and overruns. Two ways through,
-the maintainer's choice:
+no other task on the branch reaches green and overruns. Two ways through;
+**the maintainer chose the first, 2026-09-17:**
 
 - **Route proof on the claim tasks, disclosed and excluded.** Engine at the
   new commit, n = 2 per claim task, read for behaviour only: did the steer
