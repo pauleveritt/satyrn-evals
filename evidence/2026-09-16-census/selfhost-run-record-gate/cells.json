@@ -1,5 +1,5 @@
 {
- "evals_commit": "f8c1ab89399d49e15a264e6ba79e067d2c2065cf",
+ "evals_commit": "4b8fc430daf77f55992ddb232c712ea92716fd60",
  "evals_dirty": false,
  "night": "2026-09-16-census-selfhost-run-record-gate",
  "command": "classify.py --night /Users/pauleveritt/satyrn-runs/2026-09-16-census-selfhost-run-record-gate --record records/2026-09-16-census-selfhost-run-record-gate.json --grade-root /Users/pauleveritt/satyrn-census-grades",

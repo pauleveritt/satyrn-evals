@@ -1,4 +1,4 @@
-<!-- evals f8c1ab89399d49e15a264e6ba79e067d2c2065cf; classify.py --night /Users/pauleveritt/satyrn-runs/2026-09-16-census-selfhost-speed-probe --record records/2026-09-16-census-selfhost-speed-probe.json --grade-root /Users/pauleveritt/satyrn-census-grades -->
+<!-- evals 4b8fc430daf77f55992ddb232c712ea92716fd60; classify.py --night /Users/pauleveritt/satyrn-runs/2026-09-16-census-selfhost-speed-probe --record records/2026-09-16-census-selfhost-speed-probe.json --grade-root /Users/pauleveritt/satyrn-census-grades -->
 
 The eight class columns are empty on purpose: a reviewer fills them, by turn, from the reconstruction (design section 7). `primary` and `cited turns` are the reviewer's too. The mechanical evidence each class would be argued from is printed beneath.
 
