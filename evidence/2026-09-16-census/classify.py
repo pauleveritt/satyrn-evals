@@ -659,7 +659,12 @@ def row(
 
 @dataclass(frozen=True, slots=True)
 class DecodeLog:
-    """The night's completions and every selected cell's span (Ruling 7)."""
+    """The night's completions and every one of the night's cell spans (Ruling 7).
+
+    ``spans`` always comes from the whole night, never from a ``--cell`` filtered
+    subset: a filtered re-run still shared the machine with the excluded cells, and
+    a ``decode_overlap`` built only from the selection would understate the sharing
+    the log actually contains (FINDING 2)."""
 
     completions: list
     spans: list
@@ -677,14 +682,19 @@ def cell_span(cell: Cell) -> tuple[float | None, float | None, str | None]:
     return started, ended, None
 
 
-def load_decode_log(pattern: str, selected: list[Cell]) -> DecodeLog:
+def load_decode_log(pattern: str, night_cells: list[Cell]) -> DecodeLog:
     """Read-only over `~/.omlx/logs/`. Files are read in name order, which is
     date order for oMLX's rotation, and the completions are not re-sorted: the
-    attribution is by instant, not by position."""
+    attribution is by instant, not by position.
+
+    `night_cells` must be the night's full set of finished cells (`cells(...)`),
+    not a `--cell`-filtered selection, so `decode_overlap` reflects everything
+    that shared the machine that night, whether or not this run is reporting on
+    all of it."""
     completions: list = []
     for name in sorted(glob.glob(pattern)):
         completions.extend(cd.parse_completions(Path(name).read_text(errors="replace")))
-    spans = [(s, e) for s, e, reason in map(cell_span, selected) if reason is None]
+    spans = [(s, e) for s, e, reason in map(cell_span, night_cells) if reason is None]
     return DecodeLog(completions=completions, spans=spans)
 
 
@@ -833,11 +843,16 @@ def table(rows: list[dict], header: dict) -> str:
     columns = [
         "task", "attempt", "code", "verdict", "verdict@32k", "raised", "tripped", "turns", "tokens",
         "length stops", "exploration turns", "biggest turn", "biggest share", "tool span s",
-        "whole-attempt s", "decode tok/s", "decode n", "self-stop turn", "self-stop tokens", "pass turn",
-        "pass tokens", "own-green turn", "post-pass turns", "post-pass tokens",
+        "whole-attempt s", "decode tok/s", "decode n", "decode overlap", "self-stop turn", "self-stop tokens",
+        "pass turn", "pass tokens", "own-green turn", "post-pass turns", "post-pass tokens",
     ]
     lines = [
         f"<!-- {_stamp_text(header)} -->",
+        "<!-- decode tok/s: the per-stream rate while this many (`decode overlap`) cell "
+        "spans shared the machine -- not this cell's private stream, and not the "
+        "machine's aggregate throughput (which is higher by roughly `decode overlap`); "
+        "decode n is that shared completion count, counted once per overlapping cell "
+        "(Ruling 7) -->",
         "",
         "| " + " | ".join(columns) + " |",
         "|" + "---|" * len(columns),
@@ -853,6 +868,7 @@ def table(rows: list[dict], header: dict) -> str:
             r["task"], r["attempt"], _dash(r["code"]), _dash(r["verdict"]), verdict_at_line, _dash(r["raised"]),
             _dash(r["tripped_verdict"]), str(r["turns"]), str(r["tokens"]), str(r["length_stops"]),
             _dash(r["exploration_turns"]), biggest, share, span, whole, decode, str(r["decode_completions"]),
+            _dash(r["decode_overlap"]),
             _dash(r["self_stop_turn"]), _dash(r["self_stop_tokens"]), _dash(r["pass_turn"]),
             _dash(r["pass_tokens"]), _dash(r["own_green_turn"]), _dash(r["post_pass_turns"]),
             _dash(r["post_pass_tokens"]),
@@ -959,6 +975,10 @@ def main(argv: list[str]) -> int:
     args = parser.parse_args(argv)
     try:
         selected = select(args.night, args.record, tuple(args.cell))
+        # The night's full cell set, unfiltered by --cell (FINDING 2): decode_overlap
+        # must count every cell that shared the machine, whether or not this run is
+        # reporting on all of them.
+        night_cells = cells(args.night.resolve(), args.record.resolve())
     except Refused as exc:
         print(f"classify: {exc}", file=sys.stderr)
         return 2
@@ -971,7 +991,7 @@ def main(argv: list[str]) -> int:
     cf.WORK = HERE / "work"
     shutil.rmtree(cf.WORK, ignore_errors=True)
     cf.WORK.mkdir(parents=True, exist_ok=True)
-    log = load_decode_log(args.server_log, selected)
+    log = load_decode_log(args.server_log, night_cells)
     if not log.completions and not glob.glob(args.server_log):
         print(f"classify: no server log matched {args.server_log!r}; decode columns will be unmeasured", file=sys.stderr)
     rows = []

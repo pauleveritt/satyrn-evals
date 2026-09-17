@@ -300,3 +300,104 @@ def test_the_night_guard_allows_the_same_night_or_a_fresh_folder(tmp_path: Path)
         tmp_path, {"selfhost-docs-linter"}, "2026-09-16-census-selfhost-docs-linter"
     ) is None
     assert driver._overwrite_refusal(tmp_path, {"a-fresh-task"}, "2026-09-17-census-a-fresh-task") is None
+
+
+# --- Task 4 fix round 1: cell_span / decode_row / load_decode_log coverage ---
+
+_DECODE_COMPLETION_LINE = (
+    "2026-01-01 00:01:00,000 - omlx.server - INFO - [-] - Chat completion: "
+    "model=Ornith-1.5-9B-MLX-8bit, 50 tokens in 10.0s (5.0 tok/s), "
+    "prompt: 10, finish_reason=tool_calls, max_tokens=1000, request_max_tokens=1000"
+)
+
+
+def _stamped_cell(folder: Path, *, attempt_dir: str = "t-20260101-000000-000001") -> Any:
+    return driver.Cell(
+        task="t", night="n", arm="baseline", attempt=attempt_dir.rsplit("-", 1)[-1],
+        attempt_dir=attempt_dir, folder=folder,
+    )
+
+
+def test_cell_span_reads_the_directory_stamp_and_the_attempt_json_mtime(tmp_path: Path) -> None:
+    """Ruling 10's fourth-reason sibling: both stamps present is a clean span."""
+    (tmp_path / "attempt.json").write_text("{}")
+    cell = _stamped_cell(tmp_path)
+    started, ended, reason = driver.cell_span(cell)
+    assert reason is None
+    assert started == attempt_started(cell.attempt_dir)
+    assert ended == (tmp_path / "attempt.json").stat().st_mtime
+
+
+def test_cell_span_refuses_a_directory_name_without_a_stamp(tmp_path: Path) -> None:
+    """Ruling 10's NO_STAMP reason, exercised directly (previously untested)."""
+    (tmp_path / "attempt.json").write_text("{}")
+    cell = _stamped_cell(tmp_path, attempt_dir="not-a-stamp")
+    assert driver.cell_span(cell) == (None, None, driver.cd.NO_STAMP)
+
+
+def test_cell_span_refuses_a_missing_attempt_json(tmp_path: Path) -> None:
+    """Ruling 10's NO_ATTEMPT_JSON reason, exercised directly (previously untested,
+    though reachable on night 2 -- `measure` already tolerates an unreadable attempt)."""
+    cell = _stamped_cell(tmp_path)  # attempt.json never written
+    assert driver.cell_span(cell) == (None, None, driver.cd.NO_ATTEMPT_JSON)
+
+
+def test_decode_row_reports_the_span_reason_when_the_span_is_unavailable(tmp_path: Path) -> None:
+    cell = _stamped_cell(tmp_path)  # no attempt.json -> NO_ATTEMPT_JSON
+    log = driver.DecodeLog(completions=[], spans=[])
+    assert driver.decode_row(cell, log) == {
+        "decode_tok_s": None, "decode_median_tok_s": None, "decode_completions": 0,
+        "decode_overlap": None, "decode_reason": driver.cd.NO_ATTEMPT_JSON,
+    }
+
+
+def test_decode_row_reads_the_rate_when_the_span_is_available(tmp_path: Path) -> None:
+    """The sibling of the reason case: a real span reads a real rate."""
+    (tmp_path / "attempt.json").write_text("{}")
+    cell = _stamped_cell(tmp_path)
+    started, ended, reason = driver.cell_span(cell)
+    assert reason is None
+    completion = driver.cd.Completion(ended=started + 100.0, seconds=10.0, tokens=50, prompt=10, max_tokens=100)
+    log = driver.DecodeLog(completions=[completion], spans=[(started, ended)])
+    row = driver.decode_row(cell, log)
+    assert (row["decode_tok_s"], row["decode_completions"], row["decode_overlap"], row["decode_reason"]) == (
+        5.0, 1, 1, None,
+    )
+
+
+def test_load_decode_log_reads_every_matching_file_in_name_order(tmp_path: Path) -> None:
+    (tmp_path / "server.log").write_text(_DECODE_COMPLETION_LINE + "\n")
+    (tmp_path / "attempt.json").write_text("{}")
+    cell = _stamped_cell(tmp_path)
+    log = driver.load_decode_log(str(tmp_path / "server.log*"), [cell])
+    assert len(log.completions) == 1
+    assert log.completions[0].tokens == 50
+
+
+def test_load_decode_log_spans_come_from_the_whole_night_not_a_filtered_selection(tmp_path: Path) -> None:
+    """FINDING 2: a --cell-filtered re-run must still report the full night's
+    decode_overlap. `load_decode_log` is given the night's whole cell set by
+    `main`, never the `--cell`-narrowed `selected` list."""
+    (tmp_path / "server.log").write_text(_DECODE_COMPLETION_LINE + "\n")
+    dir_a, dir_b = tmp_path / "a", tmp_path / "b"
+    dir_a.mkdir()
+    dir_b.mkdir()
+    (dir_a / "attempt.json").write_text("{}")
+    (dir_b / "attempt.json").write_text("{}")
+    cell_a = _stamped_cell(dir_a, attempt_dir="t-20260101-000000-000001")
+    cell_b = _stamped_cell(dir_b, attempt_dir="t-20260101-000000-500000")
+    started_a, ended_a, _ = driver.cell_span(cell_a)
+
+    # An unfiltered run: both cells contribute a span.
+    full = driver.load_decode_log(str(tmp_path / "server.log*"), [cell_a, cell_b])
+    assert len(full.spans) == 2
+    assert driver.cd.span_overlap(full.spans, started_a, ended_a) == 2
+
+    # The regression this guards against: if `load_decode_log` were given only
+    # a `--cell`-filtered selection (as `main` did before this fix), the same
+    # cell's decode_overlap would silently undercount the sharing.
+    filtered_only = driver.load_decode_log(str(tmp_path / "server.log*"), [cell_a])
+    assert driver.cd.span_overlap(filtered_only.spans, started_a, ended_a) == 1
+    assert driver.cd.span_overlap(filtered_only.spans, started_a, ended_a) < driver.cd.span_overlap(
+        full.spans, started_a, ended_a
+    )

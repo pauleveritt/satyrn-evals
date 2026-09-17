@@ -9,9 +9,13 @@ numbers out -- the night driver does the globbing and owns the spans.
 **The log does not name the cell** (Ruling 7). A completion line has a model, a
 size, a duration and a finish reason, and no session, request or cell id. At
 k = 3 up to three cell spans overlap, so a completion inside the overlap is
-attributed to all three: this module reports *the machine's decode rate while
-the cell ran*, which is the contention number the design asks for, and never a
-private per-cell stream. `span_overlap` puts the sharing on the row as a number.
+attributed to all three: this module reports *the per-stream decode rate while
+this cell's span was contended*, which is the contention number the design
+asks for -- **not the machine's aggregate throughput** (that would be higher by
+roughly the concurrency factor: three streams saturated end to end sum to
+~3x one stream's rate) and never a private per-cell stream either, since the
+attributed completions are shared with whatever else was decoding at the same
+time. `span_overlap` puts the size of that sharing on the row as a number.
 
 Timestamps in the log are naive **local** time (Ruling 9); attempt stamps are
 UTC. Both become epoch seconds before anything is compared.
@@ -58,9 +62,11 @@ class Completion:
 
 @dataclass(frozen=True, slots=True)
 class DecodeReading:
-    """`tok_s` is token-weighted (Ruling 8); `median_tok_s` is the per-completion median,
-    carried because `run-2/q3stats.md`'s bins are medians. `reason` is non-null exactly
-    when `tok_s` is null."""
+    """`tok_s` is the token-weighted per-stream decode rate under whatever contention
+    this span saw (Ruling 8), never the machine's aggregate throughput -- with N spans
+    truly concurrent the machine moved roughly N times `tok_s`. `median_tok_s` is the
+    per-completion median, carried because `run-2/q3stats.md`'s bins are medians.
+    `reason` is non-null exactly when `tok_s` is null."""
 
     tok_s: float | None
     median_tok_s: float | None
@@ -93,7 +99,9 @@ def parse_completions(text: str, *, model_contains: str = "Ornith-1.5-9B") -> li
 
 
 def decode_rate(completions: Sequence[Completion], *, start: float, end: float) -> DecodeReading:
-    """The machine's decode rate over the completions wholly inside `[start, end]`.
+    """The per-stream decode rate over the completions wholly inside `[start, end]`,
+    under whatever contention this span shared the machine with -- not the machine's
+    aggregate throughput, which is higher by roughly the concurrency (`span_overlap`).
 
     A completion counts only when it both began and ended inside the span: a
     completion straddling the boundary decoded partly for some other cell's
