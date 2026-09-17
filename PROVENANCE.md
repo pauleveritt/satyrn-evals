@@ -4206,3 +4206,13 @@
 | records/2026-09-17-census2-selfhost-run-record-gate.json | created in release-one |
 | records/2026-09-17-census2-selfhost-cell-loop.json | created in release-one |
 | records/2026-09-17-census2-selfhost-speed-probe.json | created in release-one |
+| evidence/2026-09-16-census/README.md | created in release-one |
+| evidence/2026-09-17-census-2/selfhost-cell-loop/cells.json | created in release-one |
+| evidence/2026-09-17-census-2/selfhost-cell-loop/classes.md | created in release-one |
+| evidence/2026-09-17-census-2/selfhost-cell-loop/table.md | created in release-one |
+| evidence/2026-09-17-census-2/selfhost-run-record-gate/cells.json | created in release-one |
+| evidence/2026-09-17-census-2/selfhost-run-record-gate/classes.md | created in release-one |
+| evidence/2026-09-17-census-2/selfhost-run-record-gate/table.md | created in release-one |
+| evidence/2026-09-17-census-2/selfhost-speed-probe/cells.json | created in release-one |
+| evidence/2026-09-17-census-2/selfhost-speed-probe/classes.md | created in release-one |
+| evidence/2026-09-17-census-2/selfhost-speed-probe/table.md | created in release-one |

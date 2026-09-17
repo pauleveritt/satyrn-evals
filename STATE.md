@@ -1,4 +1,4 @@
-# State of the project — 2026-09-16
+# State of the project — 2026-09-17
 
 The one page to read first. What exists, what is proven, what is disproven,
 what is decided, and what is next. Every claim here cites the file or commit
@@ -11,8 +11,8 @@ stay at the wheel: the developer does domain engineering (specs and tests),
 not agent engineering. Two repositories, both on branch `release-one`:
 
 - **`satyrn-evals`** — the eval harness: tasks, isolated cells, launcher,
-  grading from retained evidence. Head `ff2436c` (the census build plus its
-  2026-09-16 fix wave).
+  grading from retained evidence. Head: the commit that adds this line; the
+  census build, its fix wave, both census nights and the night-2 build are in.
 - **`satyrn-engine`** — the product: `/implement`, a derived contract, four
   guards, symbol preservation, carried tests, `self_test`, a receipt. Head
   `ea49666`; the last code commit is `8049d73`, unchanged by the census.
@@ -46,7 +46,7 @@ for a reason the Engine cannot reach under identical prompts:
   a per-turn 16,000 cap on both arms, a harvested-and-graded `tripped_verdict`
   (never a pass), the backstop as a gated record field, the R0 §1.2 validity
   check on all five tasks, and the classifier and night driver. Fixture tests
-  both directions; no census cell has run.
+  both directions; 39 census cells have run on it.
 - **k = 3 is sound.** On 1,932 live completions, k = 1 gives 41 tok/s per
   stream and k = 3 about 89 total, 2.2× (`evidence/2026-09-15-finishing-counterfactual/run-2/q3stats.md`).
 
@@ -63,10 +63,11 @@ for a reason the Engine cannot reach under identical prompts:
 - **Two ceiling tasks were defective, not hard**, and are addressed for the
   census: depth-3 gains rung R2 with the `tzinfo` assertion text;
   run-record-gate gets two recorded prompt edits. Both pass the R0 §1.2 check.
-- **The census is frozen, not measured.** Five Baseline records exist; no cell
-  has run, so no failure class is counted at a denominator yet.
+- **The census is measured, not yet classified.** 39 Baseline cells over two
+  nights (`evidence/2026-09-16-census/README.md`); the eight class columns
+  are still the reviewer's.
 
-## Current direction, decided 2026-09-15; census night 1 ran 2026-09-16
+## Current direction, decided 2026-09-15; census nights ran 2026-09-16 and 2026-09-17
 
 **A pathology census before any Engine work, then the claim shape.** The
 earlier "ship the Engine as a product with no outcome claim" direction was
@@ -82,12 +83,16 @@ cell-loop and speed-probe reached no pass state in any cell; five build
 cells ended on a runaway 16k turn with no tool call, the completion gate's
 trigger. Nine cells were wall-clock-cut on a shared machine; their 32k-line
 reading is complete, their self-stop is not. The eight class columns are
-still the reviewer's. **Night 2**
-(`docs/superpowers/specs/2026-09-17-release-two-census-night-2-design.md`):
-a third medium-build candidate at n = 6 plus nine replacement cells at a
-4,800 s backstop, Baseline only, on a quiet machine; then the census page,
-the R0 sitting and the Engine spec (finish-on-green, completion gate).
-`ROADMAP.md` holds the phase rows.
+still the reviewer's. **Night 2** ran 2026-09-17 on a quiet machine: nine
+replacement cells at a 4,800 s backstop, no timeouts; run-record-gate 3 of 3
+reached green inside the line and none stopped there; cell-loop and
+speed-probe again reached no pass state. No plan on the branch holds a third
+medium-build task, so one is authored under
+`docs/superpowers/specs/2026-09-17-release-two-authored-task-design.md`.
+Next: the reviewer fills the class columns, the census page is approved
+(`evidence/2026-09-16-census/README.md`, draft), the R0 sitting sizes the
+claim on the medium-build tier, and the Engine spec names finish-on-green
+and the completion gate with their cells. `ROADMAP.md` holds the phase rows.
 
 ## Rules that bind the work
 
@@ -129,8 +134,9 @@ the R0 sitting and the Engine spec (finish-on-green, completion gate).
   negative, with its scripts.
 - **`evidence/2026-09-15-finishing-counterfactual/`** — the pre-registered
   counterfactual: run 1's outputs, and `run-2/` with the corrected reading.
-- **`evidence/2026-09-16-census/`** — the classifier (`classify.py`); the
-  classified table lands after the night.
+- **`evidence/2026-09-16-census/`** and **`evidence/2026-09-17-census-2/`** —
+  the classifier, both nights' mechanical tables, the validity artefacts, and
+  the census page (draft).
 - **`scripts/`** — preflight, settings provenance, speed probe, sequential
   design, and the frozen `census_night.sh`.
 
