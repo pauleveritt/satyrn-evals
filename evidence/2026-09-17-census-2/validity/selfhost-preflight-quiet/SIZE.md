@@ -73,9 +73,11 @@ The target names **wall clock**, so `time`'s total elapsed figure leads;
 pytest's own internal suite-time figure is kept alongside it, labelled:
 
 - (a) `base` worktree: `time` wall clock **34.9 s** total elapsed
-  (`uv run pytest -q -m "not integration"` command: 34.851 s user+sys+real
-  reported by `time`; pytest's own internal figure: `2462 passed, 336
-  deselected in 34.16s`). **2462 passed, 0 failed, 336 deselected.**
+  (`uv run pytest -q -m "not integration"` command: 34.851 s, the
+  elapsed/total field of zsh `time`'s output — not a sum of the user
+  (3.40 s) and system (3.19 s) fields it reports beside it; pytest's own
+  internal figure: `2462 passed, 336 deselected in 34.16s`). **2462
+  passed, 0 failed, 336 deselected.**
 - (b) cut `base/` tree: `time` wall clock **34.8 s** total elapsed
   (pytest's own internal figure: `2462 passed, 336 deselected in 34.38s`).
   **2462 passed, 0 failed, 336 deselected.**
@@ -86,7 +88,8 @@ Task 3 re-reviewer's (2462 / 0 / 336 in 33.04 s) to within about a second —
 consistent with this run's higher contention.
 
 Contention inflates wall clock, never deflates it: at a load average of
-roughly 5-6 on an 18-core, otherwise-busy machine, both measured figures
+roughly 4-6 on an 18-core, otherwise-busy machine (this page's own two
+readings span 4.32 to 5.83), both measured figures
 are a **ceiling**, not a best case. A quiet machine would run this suite no
 slower than what is reported here, so a passing figure taken under this
 contention is a strictly stronger pass than the same figure on a quiet
@@ -192,7 +195,7 @@ unchanged from round 1's measurement:
 |---|---|---|
 | agentclinic-repair-depth-3 | 13 | 3 (`app.py`, `models.py`, `templates/base.html`) |
 | selfhost-docs-linter | 15 | 1 (`tools/lint_docs.py`) |
-| selfhost-run-record-gate | 20 | 2 (`src/satyrn_evals/cli.py`, `run_record.py`) |
+| selfhost-run-record-gate | 20 | 2 (`src/satyrn_evals/cli.py`, `src/satyrn_evals/run_record.py`) |
 | selfhost-speed-probe | 17 | 2 (`ROADMAP.md`, `scripts/speed_probe.py`) |
 | selfhost-cell-loop | 22 | 1 (`src/satyrn_evals/launch.py`) |
 | **selfhost-preflight-quiet** | **20** | **1 (`scripts/preflight_quiet.py`)** |
@@ -214,12 +217,16 @@ speed-probe, cell-loop carries no *deviation* entry dropping it from the
 census's large-tier ceiling set. But it is not uncaveated either:
 `classes-summary.md`'s "Cells where I was unsure, with both readings"
 records a reservation on cells 442168 and 225004, both classed
-`information` under reading A ("no fact is omitted... the cells over-read
-a term needing no reading"), where reading B holds "a named parameter with
-no stated domain is an omission, making `information` True on both and
-cell-loop a task-defect task" (classes-summary.md, that entry). Neither
-reading changes a primary class, and this page takes no position between
-them; it only reports that the reservation exists. `selfhost-speed-probe`'s
+`information` **False** under reading A ("no fact is omitted... the cells
+over-read a term needing no reading"; `information` is False on all 39
+census cells, `classes-summary.md:22`, and 442168's own row in
+`evidence/2026-09-16-census/selfhost-cell-loop/classes.md` shows
+`information=False`), where reading B is the alternative reading that
+would make it True on both: "a named parameter with no stated domain is an
+omission, making `information` True on both and cell-loop a task-defect
+task" (classes-summary.md, that entry). Neither reading changes a primary
+class, and this page takes no position between them; it only reports that
+the reservation exists. `selfhost-speed-probe`'s
 17 hidden tests sit inside the 15-20 band despite `speed-probe` itself
 being dropped from the census's large-tier ceiling set for a named prompt
 defect (README, "Deviations, stated": cut prompt carries an attended
