@@ -205,6 +205,16 @@ def test_a_cut_manifest_without_the_disclosure_passes_untouched() -> None:
     assert check.detail == "not an authored task"
 
 
+def test_a_stray_authoring_block_with_no_authored_key_fails() -> None:
+    """Finding A: cut_task.py cannot emit this shape, but a hand-edited manifest
+    could carry a complete authoring block without ever setting authored: true.
+    That must fail, not pass silently as an unremarkable cut task."""
+    check = qualify_module.judge_authored({"generator": {
+        "authoring": {"spec": "docs/superpowers/specs/x.md", "roles": {"heading": "Opus"}}}})
+    assert not check.passed
+    assert "authored" in check.detail
+
+
 @pytest.mark.parametrize("generator", ["not a dict", ["authored", True]])
 def test_a_non_dict_generator_fails_instead_of_raising(generator: object) -> None:
     """Finding 4: judge_authored must be total, like every other judge."""

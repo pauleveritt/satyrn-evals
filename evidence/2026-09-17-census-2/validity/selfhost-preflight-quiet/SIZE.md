@@ -151,14 +151,15 @@ above, across all six census tasks,
 
 `selfhost-run-record-gate` (medium, outcome-classed) has a two-module
 graded patch; `selfhost-cell-loop` (large, outcome-classed, carries no
-caveat in the signed reading) has a one-module patch and a hidden-test
-count above this task's; `selfhost-speed-probe`'s 17 hidden tests sit
-inside the 15-20 band despite `speed-probe` itself being dropped from the
-census's large-tier ceiling set for a named prompt defect (README,
-"Deviations, stated": cut prompt carries an attended checklist and a
-preflight a cell cannot run, "never claimed against"). No combination of
-the three targets, taken from this table, separates the medium tier from
-the large tier.
+caveat in its primary class, with a recorded both-readings reservation on
+two cells) has a one-module patch and a hidden-test count above this
+task's; `selfhost-speed-probe`'s 17 hidden tests sit inside the 15-20 band
+despite `speed-probe` itself being dropped from the census's large-tier
+ceiling set for a named prompt defect (README, "Deviations, stated": cut
+prompt carries an attended checklist and a preflight a cell cannot run,
+"never claimed against"). No combination of the two targets in this
+table — hidden-test counts and `known-good.patch` file counts — separates
+the medium tier from the large tier.
 
 Which tier `selfhost-preflight-quiet` actually belongs to is not decided
 here. Per design spec section 5, "What it decides": that is what the

@@ -208,6 +208,10 @@ def judge_authored(manifest_body: dict) -> Check:
     if not isinstance(generator, dict):
         return Check("authored-disclosure", False, f"generator must be a dict, got {type(generator).__name__}")
     if "authored" not in generator:
+        if "authoring" in generator:
+            return Check(
+                "authored-disclosure", False, "authoring present without authored: true"
+            )
         return Check("authored-disclosure", True, "not an authored task")
     if generator["authored"] is not True:
         return Check("authored-disclosure", False, f"authored is {generator['authored']!r}, want True")
