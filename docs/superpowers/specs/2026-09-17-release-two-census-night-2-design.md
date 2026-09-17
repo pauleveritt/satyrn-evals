@@ -89,7 +89,16 @@ spec.
 
 ## 4. The night
 
-Four records, Baseline arm, `--purpose admission`, isolated, `mode: batch`,
+**Amendment 2026-09-17, maintainer's decision.** The Task 1 survey found no
+candidate in any plan on the branch (`.superpowers/sdd/2026-09-17-release-two-census-night-2/task-1-report.md`
+and `task-1-extended-report.md`). The third task is authored under
+`2026-09-17-release-two-authored-task-design.md` and admitted on its own
+later night; record 1 below is withdrawn from this night, which runs the
+three replacement records only, nine cells, in the order 2, 3, 4. Section
+1's question is answered by that later night; this night answers the
+self-stop question and completes the contended denominators.
+
+Four records as first written (record 1 withdrawn by the amendment), Baseline arm, `--purpose admission`, isolated, `mode: batch`,
 k = 3, 48,000 tokens, 72 turns, **backstop 4,800 s**, chained from
 `records/2026-09-16-census-selfhost-speed-probe.result.json`, launched in
 this order by `scripts/census_night_2.sh` (the night-1 script with the task
@@ -102,7 +111,7 @@ list and record prefix as its only differences):
 | 3 | `2026-09-17-census2-selfhost-cell-loop` | cell-loop | 3 | replaces 631530, 918779, 320931 |
 | 4 | `2026-09-17-census2-selfhost-speed-probe` | speed-probe | 3 | replaces 529092, 941646, 944467 |
 
-Fifteen cells. **Why 4,800 s:** on a quiet machine 48,000 tokens decode in
+Nine cells after the amendment. **Why 4,800 s:** on a quiet machine 48,000 tokens decode in
 about 1,600 s and the suite-heavy tasks spend 1,000–1,700 s in their own
 test runs, so 3,000 s bound the wall clock before the token budget; 4,800
 lets the budget bind first with margin. The gate holds: 4,800 + 300 ≤ 240 ×
