@@ -86,5 +86,10 @@
   "digests": {
     "task_tree": "b04e178dc8aef3b881812915015cf6060606e87d275c092facb9b77a4483f7d2",
     "prompt": "df04f00587106515f9358218df0e921f69b733fc2571b4ccd8574bf98e477bbd"
+  },
+  "validity": {
+    "by": "sonnet",
+    "commit": "f7a10d7610eeec9a8fe029b192cac0cdcb2346ad",
+    "passed": true
   }
 }
