@@ -12,9 +12,10 @@ from pathlib import Path
 import pytest
 
 from satyrn_evals import attempt_engine, attempt_pi
+from satyrn_evals.attempt import COMMAND_BACKSTOP_ENV
 from satyrn_evals.attempt_engine import (
     CHECKOUT_LOG_NAME,
-    DELIVER_TIMEOUT_SECONDS,
+    DELIVER_MARGIN_SECONDS,
     ENGINE_REPO_ENV,
     RECEIPT_NAME,
     AdapterError,
@@ -23,11 +24,13 @@ from satyrn_evals.attempt_engine import (
     checkout_candidate,
     contract_path,
     deliver_argv,
+    deliver_timeout,
     delivery_environment,
     derive_argv,
     isolated,
     main,
     parse_args,
+    read_command_backstop,
 )
 from satyrn_evals.cell import CELL_PARENT_ENV, ISOLATION_ENV
 from satyrn_evals.workspace import GIT_SAFETY_CONFIG
@@ -63,9 +66,42 @@ def test_derive_and_deliver_are_the_implement_invocations() -> None:
     engine = ["/bin/uv", "run", "--project", str(ENGINE), "satyrn-engine"]
     assert derive_argv(args, WORKTREE, "Create calc/helpers.py") == [
         *engine, "derive", "--repo", str(WORKTREE), "--", "Create calc/helpers.py"]
-    assert deliver_argv(args, WORKTREE, CONTRACT) == [
-        *engine, "deliver", "--repo", str(WORKTREE), "--timeout", str(DELIVER_TIMEOUT_SECONDS), str(CONTRACT),
+    assert deliver_argv(args, WORKTREE, CONTRACT, backstop_s=4800) == [
+        *engine, "deliver", "--repo", str(WORKTREE), "--timeout", str(4800 - DELIVER_MARGIN_SECONDS), str(CONTRACT),
         "--", *engine, "attempt", "--model=omlx/m", "--", str(CONTRACT)]
+
+
+def test_the_deliver_margin_is_sixty_seconds() -> None:
+    """The literal, not a re-derivation (ledger: Task 3 boundary tests that
+    self-adapted to the constant and pinned nothing)."""
+    assert DELIVER_MARGIN_SECONDS == 60
+
+
+def test_the_deliver_timeout_is_the_records_backstop_less_the_margin() -> None:
+    assert deliver_timeout(4800) == 4740
+
+
+def test_a_backstop_at_or_below_the_margin_still_leaves_a_positive_timeout() -> None:
+    assert deliver_timeout(30) == 1
+    assert deliver_timeout(60) == 1
+
+
+def test_the_module_no_longer_carries_a_fixed_half_hour() -> None:
+    assert not hasattr(attempt_engine, "DELIVER_TIMEOUT_SECONDS")
+
+
+def test_a_missing_command_backstop_is_refused_naming_the_variable() -> None:
+    with pytest.raises(AdapterError, match=COMMAND_BACKSTOP_ENV):
+        read_command_backstop({})
+
+
+def test_an_unparseable_command_backstop_is_refused_naming_the_variable() -> None:
+    with pytest.raises(AdapterError, match=COMMAND_BACKSTOP_ENV):
+        read_command_backstop({COMMAND_BACKSTOP_ENV: "not-a-number"})
+
+
+def test_a_present_command_backstop_is_read_as_an_int() -> None:
+    assert read_command_backstop({COMMAND_BACKSTOP_ENV: "4800"}) == 4800
 
 
 def test_the_contract_path_is_read_from_derives_stderr_and_its_absence_refused() -> None:
@@ -94,6 +130,7 @@ def seam(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setenv(attempt_pi.PATCH_ENV, str(tmp_path / "patch.diff"))
     monkeypatch.setenv(attempt_pi.TRANSCRIPT_ENV, str(tmp_path / "transcript.txt"))
     monkeypatch.setenv(attempt_pi.BASE_SHA_ENV, BASE)
+    monkeypatch.setenv(COMMAND_BACKSTOP_ENV, "4800")
     monkeypatch.setenv(ENGINE_REPO_ENV, str(ENGINE))
     monkeypatch.setattr(attempt_engine, "harvest_patch", lambda worktree, base: f"harvested {base}\n")
     return tmp_path
@@ -142,7 +179,7 @@ def _args(engine: Path = ENGINE) -> attempt_engine.EngineArgs:
 
 def test_under_isolation_the_engine_calls_do_not_sync_the_shared_export() -> None:
     assert derive_argv(_args(), WORKTREE, "req", no_sync=True)[:3] == ["uv", "run", "--no-sync"]
-    delivered = deliver_argv(_args(), WORKTREE, CONTRACT, no_sync=True)
+    delivered = deliver_argv(_args(), WORKTREE, CONTRACT, no_sync=True, backstop_s=4800)
     assert delivered.count("--no-sync") == 2
     assert "--no-sync" not in derive_argv(_args(), WORKTREE, "req")
 

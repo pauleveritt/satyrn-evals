@@ -147,6 +147,7 @@ def test_a_timed_out_cell_without_agent_end_still_yields_every_count() -> None:
         "unfinished_commands": 0, "longest_command_seconds": None, "overlay_windows": None,
         "tool_span_seconds": None, "exploration_turns": None,
         "biggest_turn": {"turn": 1, "output_tokens": 1500, "share": 1.0}, "self_stop": None,
+        "finish_nudges": 0, "runaway_resumes": 0, "turns_after_nudge": None,
     }
 
 
@@ -475,3 +476,30 @@ def test_an_unfinished_last_command_still_spans_to_its_start() -> None:
 
 def test_no_timeline_means_no_tool_span() -> None:
     assert collect_evidence(_transcript()).to_block()["tool_span_seconds"] is None
+
+
+# --- Task 7: finish_nudged / runaway_resumed (design §2, §3) --------------
+
+
+def _entry(kind: str, data: dict) -> str:
+    return _line({"type": "entry_appended", "entry": {"customType": kind, "data": data}})
+
+
+def test_evidence_counts_both_new_firings_and_the_turns_after_the_first_nudge() -> None:
+    text = _transcript(
+        _entry("finish_nudged", {"generation": 1}),
+        _line({"type": "turn_start"}),
+        _line({"type": "turn_start"}),
+        _entry("runaway_resumed", {"resume": 1, "output_tokens": 16000}),
+    )
+    evidence = collect_evidence(text)
+    assert evidence.finish_nudges == 1
+    assert evidence.runaway_resumes == 1
+    assert evidence.turns_after_nudge == 2
+
+
+def test_a_cell_with_no_nudge_reports_none_for_the_turns_after() -> None:
+    text = _transcript(*_bash("b1", "ls"))
+    evidence = collect_evidence(text)
+    assert evidence.finish_nudges == 0
+    assert evidence.turns_after_nudge is None

@@ -66,6 +66,10 @@ GUARD_KINDS = frozenset(
     {
         "loop_broken", "scope_refused", "symbol_preserved", "command_bounded", "command_timed_out",
         "self_test_redirected", "self_test_enforced",
+        # Release two: the finish-on-green steer (design §2) and the runaway
+        # resume (design §3). Without them every cell where either fires
+        # reads `unknown_event` and the record is void.
+        "finish_nudged", "runaway_resumed",
     }
 )
 

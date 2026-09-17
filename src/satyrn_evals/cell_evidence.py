@@ -135,6 +135,9 @@ class CellEvidence:
     exploration_turns: int | None = None
     biggest_turn: dict[str, object] | None = None
     self_stop: dict[str, int] | None = None
+    finish_nudges: int = 0
+    runaway_resumes: int = 0
+    turns_after_nudge: int | None = None
 
     def to_block(self) -> dict[str, object]:
         return {
@@ -160,6 +163,9 @@ class CellEvidence:
             "exploration_turns": self.exploration_turns,
             "biggest_turn": self.biggest_turn,
             "self_stop": self.self_stop,
+            "finish_nudges": self.finish_nudges,
+            "runaway_resumes": self.runaway_resumes,
+            "turns_after_nudge": self.turns_after_nudge,
         }
 
 
@@ -535,6 +541,8 @@ def collect_evidence(
     self_stop: dict[str, int] | None = None
     mutation_turn: int | None = None
     pending_mutations: dict[str, int] = {}
+    nudged = False
+    turns_after_nudge: int | None = None
     for event in events:
         before = usage.output_tokens
         usage.feed_event(event)
@@ -546,6 +554,13 @@ def collect_evidence(
             self_stop = {"turn": usage.turns, "output_tokens": usage.output_tokens}
         if mutation_turn is None:
             mutation_turn = _track_mutation(event, usage.turns, cwd, source_paths, pending_mutations)
+        if not nudged:
+            entry = event.get("entry") if event.get("type") == "entry_appended" else None
+            if isinstance(entry, dict) and entry.get("customType") == "finish_nudged":
+                nudged = True
+                turns_after_nudge = 0
+        elif event.get("type") == "turn_start":
+            turns_after_nudge = (turns_after_nudge or 0) + 1
     total = usage.output_tokens
     biggest_turn: dict[str, object] | None = None
     if per_turn and total:
@@ -609,4 +624,7 @@ def collect_evidence(
         exploration_turns=None if mutation_turn is None else mutation_turn - 1,
         biggest_turn=biggest_turn,
         self_stop=self_stop,
+        finish_nudges=guard_firings.get("finish_nudged", 0),
+        runaway_resumes=guard_firings.get("runaway_resumed", 0),
+        turns_after_nudge=turns_after_nudge,
     )

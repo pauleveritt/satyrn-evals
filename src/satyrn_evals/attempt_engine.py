@@ -31,6 +31,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
+from satyrn_evals.attempt import COMMAND_BACKSTOP_ENV
 from satyrn_evals.attempt_pi import (
     PATCH_ENV,
     TRANSCRIPT_ENV,
@@ -56,10 +57,19 @@ RECEIPT_NAME = "engine-receipt.json"
 DERIVE_LOG_NAME = "engine-derive.txt"
 DELIVER_LOG_NAME = "engine-deliver.txt"
 CHECKOUT_LOG_NAME = "engine-checkout.txt"
-#: The deliver timeout: the spec's attempt-command backstop on this machine.
-#: The harness's own command timeout and budget stop the cell first.
-DELIVER_TIMEOUT_SECONDS = 1800
+#: How far below the record's per-attempt-command backstop the Engine's own
+#: deliver timeout sits (design §5.4; plan Ruling 9). Parity: until release
+#: two, `DELIVER_TIMEOUT_SECONDS = 1800` stopped an Engine cell earlier than
+#: Baseline's 3,000 or 4,800 s backstop, which `STATE.md` lists as an open
+#: arm-parity defect. The margin makes the Engine's own deliver stop just
+#: before the harness kills the command, so the Engine writes its receipt and
+#: leaves its candidate rather than dying with no evidence.
+DELIVER_MARGIN_SECONDS = 60
 _CONTRACT_PREFIX = "satyrn-engine: contract "
+
+
+def deliver_timeout(backstop_s: int) -> int:
+    return max(backstop_s - DELIVER_MARGIN_SECONDS, 1)
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,12 +122,28 @@ def derive_argv(args: EngineArgs, worktree: Path, request: str, *, no_sync: bool
     return [*_engine(args, no_sync), "derive", "--repo", os.fspath(worktree), "--", request]
 
 
-def deliver_argv(args: EngineArgs, worktree: Path, contract: Path, *, no_sync: bool = False) -> list[str]:
+def deliver_argv(
+    args: EngineArgs, worktree: Path, contract: Path, *, no_sync: bool = False, backstop_s: int
+) -> list[str]:
     return [
         *_engine(args, no_sync), "deliver", "--repo", os.fspath(worktree),
-        "--timeout", str(DELIVER_TIMEOUT_SECONDS), os.fspath(contract),
+        "--timeout", str(deliver_timeout(backstop_s)), os.fspath(contract),
         "--", *_engine(args, no_sync), "attempt", f"--model={args.model}", "--", os.fspath(contract),
     ]
+
+
+def read_command_backstop(environment: Mapping[str, str]) -> int:
+    """The record's command backstop Evals exported, refusing anything else.
+
+    Absent or unparseable is an AdapterError, never a default: the only
+    plausible fallback is the old fixed 1800 s this task exists to remove
+    (plan dispatch ruling, Tasks 7/8).
+    """
+    raw = environment.get(COMMAND_BACKSTOP_ENV, "")
+    try:
+        return int(raw)
+    except ValueError:
+        raise AdapterError(f"{COMMAND_BACKSTOP_ENV} must name the command backstop in seconds, got {raw!r}") from None
 
 
 def contract_path(stderr: str) -> Path:
@@ -206,6 +232,7 @@ def main(argv: list[str] | None = None) -> int:
     request = read_prompt(os.environ)
     patch_path, transcript_path = read_artifact_paths(os.environ)
     base_sha = read_base_sha(os.environ)
+    backstop_s = read_command_backstop(os.environ)
     worktree = Path.cwd()
     cell = isolated(args, os.environ)
     environment = delivery_environment(os.environ)
@@ -222,7 +249,11 @@ def main(argv: list[str] | None = None) -> int:
     if derived.returncode == 0:
         with (patch_path.parent / DELIVER_LOG_NAME).open("w", encoding="utf-8") as log:
             delivered = subprocess.run(
-                command(deliver_argv(args, worktree, contract_path(derived.stderr), no_sync=cell)),
+                command(
+                    deliver_argv(
+                        args, worktree, contract_path(derived.stderr), no_sync=cell, backstop_s=backstop_s
+                    )
+                ),
                 stdout=subprocess.PIPE, stderr=log, text=True, env=environment, check=False,
             )
         (patch_path.parent / RECEIPT_NAME).write_text(delivered.stdout, encoding="utf-8")

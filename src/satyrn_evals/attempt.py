@@ -63,6 +63,12 @@ TASK_CONTRACT_ENV = "SATYRN_TASK_CONTRACT"
 PATCH_ENV = "SATYRN_ATTEMPT_PATCH"
 TRANSCRIPT_ENV = "SATYRN_ATTEMPT_TRANSCRIPT"
 BASE_SHA_ENV = "SATYRN_WORKSPACE_BASE_SHA"
+#: The attempt's command backstop, in whole seconds (design §5.4; plan
+#: Ruling 9). Set for both arms identically: Baseline's `attempt_pi` simply
+#: ignores it, so the identical-tools premise is untouched. The Engine
+#: adapter (`attempt_engine.py`) reads it to compute its own deliver
+#: timeout, which must stop just before this backstop fires.
+COMMAND_BACKSTOP_ENV = "SATYRN_COMMAND_BACKSTOP_S"
 #: Under isolation the command's transcript is written here, beside the
 #: worktree where the cell user can write, and copied into the attempt
 #: directory as soon as the command returns.
@@ -268,6 +274,7 @@ def _attempt(
     env[TASK_CONTRACT_ENV] = contract_text
     env[PATCH_ENV] = str(patch_path)
     env[TRANSCRIPT_ENV] = str(transcript_path)
+    env[COMMAND_BACKSTOP_ENV] = str(int(timeout))
     # Keep uv's project environment and Python bytecode out of the model
     # workspace. Pi inherits this temporary location for any ``uv run`` it
     # invokes, but its active evaluator venv is removed separately.

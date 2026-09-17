@@ -198,6 +198,27 @@ def test_local_profile_strips_a_stray_isolation_and_cell_parent_from_the_environ
     assert CELL_PARENT_ENV not in seen
 
 
+def test_attempt_exports_the_command_backstop_beside_the_other_satyrn_variables(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """design §5.4, plan Ruling 9: the record's command backstop reaches the
+    adapter's environment beside SATYRN_TASK_NAME etc, in whole seconds, set
+    identically for both arms (Baseline's attempt_pi simply ignores it)."""
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+    seen: dict[str, str] = {}
+
+    def fake_run_workspace(**kwargs: Any) -> WorkspaceResult:
+        seen.update(kwargs["environment"])
+        return WorkspaceResult(WorkspaceCode.OK, "attempt command completed", 0, "b" * 40)
+
+    _install_workspace_double(monkeypatch, fake_run_workspace)
+    attempt_module.attempt(
+        task="t", tasks_root=tasks_root, output=tmp_path / "attempts", command=["fake-agent"], timeout=4800.0
+    )
+    assert seen[attempt_module.COMMAND_BACKSTOP_ENV] == "4800"
+
+
 def test_valid_artifacts_proceed() -> None:
     assert decide_refusal(GOOD_PATCH, TRANSCRIPT) is None
 

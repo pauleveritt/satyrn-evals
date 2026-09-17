@@ -5,6 +5,7 @@ from pathlib import Path
 
 from satyrn_evals.pathology import (
     EVENT_TYPES,
+    GUARD_KINDS,
     SESSION_VERSION,
     TOOL_NAMES,
     CellPathology,
@@ -1105,3 +1106,22 @@ def test_the_self_test_tool_is_a_known_tool() -> None:
     doc = _UPDATE_DOC.replace('"toolName": "bash"', '"toolName": "self_test"')
     block = count_transcript(doc, had_patch=True)
     assert (block.measured, block.tool_calls) == (True, {"self_test": 1})
+
+
+# --- Task 7: finish_nudged / runaway_resumed (design §2, §3) --------------
+
+
+def test_the_two_new_engine_entries_are_measured_guard_kinds() -> None:
+    assert {"finish_nudged", "runaway_resumed"} <= GUARD_KINDS
+
+
+def test_a_cell_with_a_finish_nudge_is_not_unknown_event() -> None:
+    doc = _LOOP_BROKEN_DOC.replace('"loop_broken"', '"finish_nudged"')
+    block = count_transcript(doc, had_patch=True)
+    assert (block.measured, block.reason) == (True, None)
+
+
+def test_a_cell_with_a_runaway_resume_is_not_unknown_event() -> None:
+    doc = _LOOP_BROKEN_DOC.replace('"loop_broken"', '"runaway_resumed"')
+    block = count_transcript(doc, had_patch=True)
+    assert (block.measured, block.reason) == (True, None)
