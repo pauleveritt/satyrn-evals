@@ -353,6 +353,25 @@ def test_an_all_model_outcome_arm_is_unaffected_by_the_infrastructure_exclusion(
     assert [cell["infrastructure"] for cell in result["cells"]] == [False]
 
 
+def test_an_interrupted_launch_records_its_sitting_and_names_no_killed_cells(tmp_path: Path) -> None:
+    """An interrupted launch is recorded as a sitting, not as replaced cells.
+
+    The result carries the interrupted sitting with its reason, ``replaced`` stays empty, and
+    ``cells`` holds only finished slots: the in-flight attempts the signal killed are not named
+    in the result. That is the shape night 3 relied on -- the census page, not the launcher,
+    discloses the killed attempts -- and this pins the launcher half of that contract so a later
+    change cannot drop the interruption from the result silently.
+    """
+    record = _record(tmp_path)
+    assert _launch(tmp_path, record, _facts()) == 3  # the fake spawn raised: interrupted
+    result = json.loads(record.with_suffix(".result.json").read_text())
+    assert result["status"] == "interrupted"
+    assert result["replaced"] == []
+    assert result["cells"] == []
+    sitting = result["sittings"][0]
+    assert sitting["status"] == "interrupted" and sitting["reason"]
+
+
 def test_a_summary_error_still_writes_a_result_with_best_effort_counts_and_exits_3(tmp_path: Path) -> None:
     """``write_arm_summaries`` raises once both slots are finished (no real attempt dirs on disk);
     the committed result must land anyway, with a ``summary_error`` and the counts still computed."""
