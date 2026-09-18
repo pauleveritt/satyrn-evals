@@ -143,6 +143,18 @@ Harm is zero in all 39 cells. The night-2 design's first draft said "5 of
   direction**, after GLM 5.3's provider returned `429 Insufficient balance`.
   This is a maintainer-directed substitution for the standing Opus review
   role, not an agent substitution.
+- **Three route-proof records are excluded from every comparison denominator,** by the
+  maintainer's choice of §7's first option on 2026-09-17:
+  `records/2026-09-17-route-proof-engine-selfhost-run-record-gate.json` (n = 2),
+  `…-selfhost-docs-linter.json` (n = 2) and `…-selfhost-cell-loop.json` (n = 3), all Engine at
+  the release-two commit, `--purpose route-proof`. **This night is void as a behavioural read:
+  trigger unreachable, Engine defect.** The Engine's `self_test` could not go green on this repo
+  — its second collection collected the `tests/data` and `tests/integration/data` fixture trees
+  that the repo's `norecursedirs` excludes, and exited 2 — so the finish-on-green steer's trigger
+  could not fire and "steer 0 of 4" is not a finding. The two facts that remain: 2 of 2 resumes
+  produced a tool call (a thin denominator); both docs-linter cells passed inside 32,000 tokens
+  against Baseline's 1 of 6 (n = 2, a hint at most). A second route proof on the fixed harness is
+  reported beside this one.
 
 ## Recompute
 
