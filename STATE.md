@@ -38,8 +38,6 @@ for a reason the Engine cannot reach under identical prompts:
   export carried a hidden test's name) before any cell used it.
 - **Guard 4 works live.** It bounded 6–38 bash commands per cell and cut a
   root-wide search that had cost a Baseline cell 1,800 s.
-- **The `self_test` redirect works.** Ad-hoc pytest runs fell from 24 to 3 on
-  development cells (engine `8049d73`).
 - **The harness measures what it claims.** Budget tripwire, base-commit
   harvest, per-cell evidence, offline reconstruction, and a launcher that
   stops on infrastructure failures and resumes a capped night. The census adds
@@ -60,6 +58,12 @@ for a reason the Engine cannot reach under identical prompts:
   0.26. `evidence/2026-09-15-finishing-counterfactual/` and its `run-2/`.
 - **`self_test` enforcement did not move outcomes.** The completion gate
   cannot fire in cells that end at the budget.
+- **The `self_test` redirect is superseded.** Ad-hoc pytest runs fell from 24
+  to 3 on development cells (engine `8049d73`), but the 2026-09-18 route proof
+  showed the command-text redirect missed real runs (compound commands,
+  heredocs, wrapper scripts), so the finish-on-green trigger could not fire.
+  Detection on the test output replaces it (engine `91e467c`); each detected
+  run now costs the model's own run plus the Engine's whole-suite self-test.
 - **Two ceiling tasks were defective, not hard**, and are addressed for the
   census: depth-3 gains rung R2 with the `tzinfo` assertion text;
   run-record-gate gets two recorded prompt edits. Both pass the R0 §1.2 check.

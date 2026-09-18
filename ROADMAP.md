@@ -32,7 +32,8 @@ settled, and what it leaves for that sitting:
 
 - **Keep:** two-uid isolation, the launcher and its records, the generator
   and qualification, the budget tripwire, per-cell evidence, guard 4, the
-  `self_test` redirect, and the offline reconstruction method
+  `self_test` output detection (which replaces the retired redirect), and the
+  offline reconstruction method
   (`evidence/2026-09-15-release-one-outcome/`).
 - **Hypothesis to test before building:** the lever at 9B on build tasks is
   finishing, not guarding — cells reach a passing state and keep working.
