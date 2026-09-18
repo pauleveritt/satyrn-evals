@@ -41,6 +41,13 @@ Integration test: a repo whose own suite is green but whose `tests/data` fixture
 
 Also `9a05c81`: fixed the pre-existing red gate where the route-proof `.result.json` companions matched the "no fourth record" guard.
 
+## Status (2026-09-18)
+
+- Tasks 1-7 built and committed. Engine `41ddd1b`, `9f80935`, `5faf2b8`, `91e467c`; evals `8134c0d`, `9a05c81`, `3c54f85`, `9146448`, `fadc3ab`, `b9f6773`.
+- Engine head is `91e467c`; Task 8's whole-path review is scoped to `0b496d8..91e467c`.
+- Default gates green in both repos; engine integration green. **Two evals integration rows are red by design until the re-pin:** `tests/integration/test_launch_record.py` exports the arm's pinned `0b496d8`, which predates the derive budget flags, so the Engine cell reads `NO_PATCH`; `tests/integration/test_engine_arm_pins.py` compares evals' `GUARD_KINDS` with the pinned commit's, which predates `self_test_detected`. Both clear at the Task 8 re-pin and export.
+- Task 7 Step 3 (the numbers-page disclosure) is recorded in the design pending a page that does not exist yet.
+
 ---
 
 ### Task 3: Evals — preflight the task's own self-test, per task base
@@ -102,10 +109,10 @@ Also `9a05c81`: fixed the pre-existing red gate where the route-proof `.result.j
 **Files:**
 - Modify: `docs/superpowers/specs/2026-09-17-release-two-engine-design.md` (the output-detection sentence, the budget-follows-the-record rule), the R0 sitting's rules (win rule reads at the line by reconstruction), and the numbers page disclosure.
 
-- [ ] **Step 1:** Add the one sentence naming the output-detection behaviour.
-- [ ] **Step 2:** Add the budget rule and the win-rule rule to the R0 sitting's constraints.
-- [ ] **Step 3:** Disclose the new model-visible text on the numbers page.
-- [ ] **Step 4:** Commit.
+- [x] **Step 1:** Add the one sentence naming the output-detection behaviour.
+- [x] **Step 2:** Add the budget rule and the win-rule rule to the R0 sitting's constraints.
+- [ ] **Step 3:** Disclose the new model-visible text on the numbers page. **Pending the page:** no `numbers` page exists on the branch; the design's §2 and §6 now name the disclosure as the page's obligation. Create the page, or add the disclosure when the page is written.
+- [x] **Step 4:** Commit `b9f6773`.
 
 ---
 
