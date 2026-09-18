@@ -31,7 +31,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
-from satyrn_evals.attempt import COMMAND_BACKSTOP_ENV
+from satyrn_evals.attempt import COMMAND_BACKSTOP_ENV, TOKEN_BUDGET_ENV, TURN_BUDGET_ENV
 from satyrn_evals.attempt_pi import (
     PATCH_ENV,
     TRANSCRIPT_ENV,
@@ -118,8 +118,19 @@ def _engine(args: EngineArgs, no_sync: bool) -> list[str]:
     return [args.uv_bin, "run", *sync, "--project", os.fspath(args.engine_repo), "satyrn-engine"]
 
 
-def derive_argv(args: EngineArgs, worktree: Path, request: str, *, no_sync: bool = False) -> list[str]:
-    return [*_engine(args, no_sync), "derive", "--repo", os.fspath(worktree), "--", request]
+def derive_argv(
+    args: EngineArgs,
+    worktree: Path,
+    request: str,
+    *,
+    no_sync: bool = False,
+    token_budget: int,
+    turn_budget: int,
+) -> list[str]:
+    return [
+        *_engine(args, no_sync), "derive", "--repo", os.fspath(worktree),
+        "--token-budget", str(token_budget), "--turn-budget", str(turn_budget), "--", request,
+    ]
 
 
 def deliver_argv(
@@ -132,6 +143,17 @@ def deliver_argv(
     ]
 
 
+def _read_positive(env_name: str, unit: str, environment: Mapping[str, str]) -> int:
+    raw = environment.get(env_name, "")
+    try:
+        value = int(raw)
+    except ValueError:
+        raise AdapterError(f"{env_name} must name {unit}, got {raw!r}") from None
+    if value < 1:
+        raise AdapterError(f"{env_name} must be a positive integer, got {value!r}")
+    return value
+
+
 def read_command_backstop(environment: Mapping[str, str]) -> int:
     """The record's command backstop Evals exported, refusing anything else.
 
@@ -142,14 +164,21 @@ def read_command_backstop(environment: Mapping[str, str]) -> int:
     -- a record could not have frozen a non-positive value, so a cell that
     reaches here with one is a wiring fault, not a legal 1-second attempt.
     """
-    raw = environment.get(COMMAND_BACKSTOP_ENV, "")
-    try:
-        backstop = int(raw)
-    except ValueError:
-        raise AdapterError(f"{COMMAND_BACKSTOP_ENV} must name the command backstop in seconds, got {raw!r}") from None
-    if backstop < 1:
-        raise AdapterError(f"{COMMAND_BACKSTOP_ENV} must be a positive integer, got {backstop!r}")
-    return backstop
+    return _read_positive(COMMAND_BACKSTOP_ENV, "the command backstop in seconds", environment)
+
+
+def read_budget(environment: Mapping[str, str]) -> tuple[int, int]:
+    """The record's token and turn limits Evals exported, refusing anything else.
+
+    Same rule as the backstop: absent, unparseable, or non-positive is an
+    AdapterError, never a default. The Engine must have no stop the record
+    does not name (maintainer ruling 2026-09-18), so the product's 32,000/48
+    must never leak into an eval cell through a missing variable.
+    """
+    return (
+        _read_positive(TOKEN_BUDGET_ENV, "the output-token limit", environment),
+        _read_positive(TURN_BUDGET_ENV, "the turn limit", environment),
+    )
 
 
 def contract_path(stderr: str) -> Path:
@@ -239,6 +268,7 @@ def main(argv: list[str] | None = None) -> int:
     patch_path, transcript_path = read_artifact_paths(os.environ)
     base_sha = read_base_sha(os.environ)
     backstop_s = read_command_backstop(os.environ)
+    token_budget, turn_budget = read_budget(os.environ)
     worktree = Path.cwd()
     cell = isolated(args, os.environ)
     environment = delivery_environment(os.environ)
@@ -247,7 +277,10 @@ def main(argv: list[str] | None = None) -> int:
         return as_cell(engine_argv, args, os.environ, worktree) if cell else engine_argv
 
     derived = subprocess.run(
-        command(derive_argv(args, worktree, request, no_sync=cell)),
+        command(derive_argv(
+            args, worktree, request, no_sync=cell,
+            token_budget=token_budget, turn_budget=turn_budget,
+        )),
         capture_output=True, text=True, env=environment, check=False,
     )
     (patch_path.parent / DERIVE_LOG_NAME).write_text(derived.stderr, encoding="utf-8")

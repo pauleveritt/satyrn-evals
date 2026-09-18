@@ -89,14 +89,15 @@ def test_an_engine_cell_over_budget_is_stopped_and_leaves_no_model_running(
 def test_an_engine_cell_under_the_engines_own_budget_is_stopped_by_the_harness_alone(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The harness's teardown, not the engine's, ends this cell.
+    """The harness's teardown, not a normal exit, ends this cell.
 
-    ``trickle`` reports 20,000 output tokens on one turn -- under the
-    engine's own default budget (32,000, written into the contract by
-    `derive`) and under `deliver`'s live enforcement of it -- so a lower
-    harness-only budget (16,000) is the only thing that can trip. If the
-    harness's teardown signal never reaches `deliver`'s Pi (each in its own
-    process group, Ruling 8/final review Important 1), the fake keeps
+    ``trickle`` reports 20,000 output tokens on one turn, over the harness's
+    16,000 budget. Since the 2026-09-18 ruling the same 16,000 is written into
+    the engine's contract by `derive`, so either the engine's own enforcement
+    or the harness's teardown may end the cell; what this pins is that the
+    harness's teardown reaches `deliver`'s Pi and leaves no process behind.
+    If the harness's teardown signal never reaches `deliver`'s Pi (each in
+    its own process group, Ruling 8/final review Important 1), the fake keeps
     running, the engine tree beneath `deliver` is never told to stop, and
     the transcript would keep growing after this function reads it.
     """

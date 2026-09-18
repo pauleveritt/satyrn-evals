@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from satyrn_evals import attempt_engine, attempt_pi
-from satyrn_evals.attempt import COMMAND_BACKSTOP_ENV
+from satyrn_evals.attempt import COMMAND_BACKSTOP_ENV, TOKEN_BUDGET_ENV, TURN_BUDGET_ENV
 from satyrn_evals.attempt_engine import (
     CHECKOUT_LOG_NAME,
     DELIVER_MARGIN_SECONDS,
@@ -30,6 +30,7 @@ from satyrn_evals.attempt_engine import (
     isolated,
     main,
     parse_args,
+    read_budget,
     read_command_backstop,
 )
 from satyrn_evals.cell import CELL_PARENT_ENV, ISOLATION_ENV
@@ -64,8 +65,9 @@ def test_bad_arguments_are_refused(argv: list[str], environment: dict[str, str],
 def test_derive_and_deliver_are_the_implement_invocations() -> None:
     args = parse_args(["--model", "omlx/m", "--engine-repo", str(ENGINE), "--uv-bin", "/bin/uv"], {})
     engine = ["/bin/uv", "run", "--project", str(ENGINE), "satyrn-engine"]
-    assert derive_argv(args, WORKTREE, "Create calc/helpers.py") == [
-        *engine, "derive", "--repo", str(WORKTREE), "--", "Create calc/helpers.py"]
+    assert derive_argv(args, WORKTREE, "Create calc/helpers.py", token_budget=48000, turn_budget=72) == [
+        *engine, "derive", "--repo", str(WORKTREE),
+        "--token-budget", "48000", "--turn-budget", "72", "--", "Create calc/helpers.py"]
     assert deliver_argv(args, WORKTREE, CONTRACT, backstop_s=4800) == [
         *engine, "deliver", "--repo", str(WORKTREE), "--timeout", str(4800 - DELIVER_MARGIN_SECONDS), str(CONTRACT),
         "--", *engine, "attempt", "--model=omlx/m", "--", str(CONTRACT)]
@@ -118,6 +120,30 @@ def test_the_smallest_accepted_command_backstop_is_one() -> None:
     assert read_command_backstop({COMMAND_BACKSTOP_ENV: "1"}) == 1
 
 
+def test_a_present_budget_is_read_as_the_token_and_turn_limits() -> None:
+    assert read_budget({TOKEN_BUDGET_ENV: "48000", TURN_BUDGET_ENV: "72"}) == (48000, 72)
+
+
+@pytest.mark.parametrize(
+    ("environment", "missing"),
+    [
+        ({TURN_BUDGET_ENV: "72"}, TOKEN_BUDGET_ENV),
+        ({TOKEN_BUDGET_ENV: "48000"}, TURN_BUDGET_ENV),
+        ({TOKEN_BUDGET_ENV: "not-a-number", TURN_BUDGET_ENV: "72"}, TOKEN_BUDGET_ENV),
+        ({TOKEN_BUDGET_ENV: "0", TURN_BUDGET_ENV: "72"}, TOKEN_BUDGET_ENV),
+        ({TOKEN_BUDGET_ENV: "48000", TURN_BUDGET_ENV: "-5"}, TURN_BUDGET_ENV),
+    ],
+)
+def test_a_bad_budget_is_refused_naming_the_variable(
+    environment: dict[str, str], missing: str
+) -> None:
+    """Same rule as the backstop: an absent or bad limit must never fall back to the
+    product default 32,000/48, or the Engine would stop at a budget the record did not
+    name (maintainer ruling 2026-09-18)."""
+    with pytest.raises(AdapterError, match=missing):
+        read_budget(environment)
+
+
 def test_the_contract_path_is_read_from_derives_stderr_and_its_absence_refused() -> None:
     assert contract_path(f"warming\nsatyrn-engine: contract {CONTRACT}\n") == CONTRACT
     with pytest.raises(AdapterError, match="derive named no contract"):
@@ -145,6 +171,8 @@ def seam(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setenv(attempt_pi.TRANSCRIPT_ENV, str(tmp_path / "transcript.txt"))
     monkeypatch.setenv(attempt_pi.BASE_SHA_ENV, BASE)
     monkeypatch.setenv(COMMAND_BACKSTOP_ENV, "4800")
+    monkeypatch.setenv(TOKEN_BUDGET_ENV, "48000")
+    monkeypatch.setenv(TURN_BUDGET_ENV, "72")
     monkeypatch.setenv(ENGINE_REPO_ENV, str(ENGINE))
     monkeypatch.setattr(attempt_engine, "harvest_patch", lambda worktree, base: f"harvested {base}\n")
     return tmp_path
@@ -192,10 +220,10 @@ def _args(engine: Path = ENGINE) -> attempt_engine.EngineArgs:
 
 
 def test_under_isolation_the_engine_calls_do_not_sync_the_shared_export() -> None:
-    assert derive_argv(_args(), WORKTREE, "req", no_sync=True)[:3] == ["uv", "run", "--no-sync"]
+    assert derive_argv(_args(), WORKTREE, "req", no_sync=True, token_budget=48000, turn_budget=72)[:3] == ["uv", "run", "--no-sync"]
     delivered = deliver_argv(_args(), WORKTREE, CONTRACT, no_sync=True, backstop_s=4800)
     assert delivered.count("--no-sync") == 2
-    assert "--no-sync" not in derive_argv(_args(), WORKTREE, "req")
+    assert "--no-sync" not in derive_argv(_args(), WORKTREE, "req", token_budget=48000, turn_budget=72)
 
 
 def test_the_local_profile_is_not_isolated() -> None:

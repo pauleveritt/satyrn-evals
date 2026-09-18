@@ -15,6 +15,7 @@ from satyrn_evals.attempt_record import (
     DeadlinePhase,
     load_attempt_record,
 )
+from satyrn_evals.budget import AttemptBudget
 from satyrn_evals.deadline import AttemptDeadline
 from satyrn_evals.errors import HookError, UsageError
 from satyrn_evals.receipt import Receipt, write_receipt
@@ -217,6 +218,29 @@ def test_attempt_exports_the_command_backstop_beside_the_other_satyrn_variables(
         task="t", tasks_root=tasks_root, output=tmp_path / "attempts", command=["fake-agent"], timeout=4800.0
     )
     assert seen[attempt_module.COMMAND_BACKSTOP_ENV] == "4800"
+
+
+def test_attempt_exports_the_records_budgets_beside_the_backstop(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Maintainer ruling 2026-09-18: the record's token and turn limits reach the
+    adapter's environment, so the Engine writes them into its contract instead of
+    stopping at the product default. Set for both arms; Baseline ignores them."""
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+    seen: dict[str, str] = {}
+
+    def fake_run_workspace(**kwargs: Any) -> WorkspaceResult:
+        seen.update(kwargs["environment"])
+        return WorkspaceResult(WorkspaceCode.OK, "attempt command completed", 0, "b" * 40)
+
+    _install_workspace_double(monkeypatch, fake_run_workspace)
+    attempt_module.attempt(
+        task="t", tasks_root=tasks_root, output=tmp_path / "attempts", command=["fake-agent"],
+        timeout=4800.0, budget=AttemptBudget(output_tokens=48000, turns=72),
+    )
+    assert seen[attempt_module.TOKEN_BUDGET_ENV] == "48000"
+    assert seen[attempt_module.TURN_BUDGET_ENV] == "72"
 
 
 def test_valid_artifacts_proceed() -> None:

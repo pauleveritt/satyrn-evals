@@ -69,6 +69,12 @@ BASE_SHA_ENV = "SATYRN_WORKSPACE_BASE_SHA"
 #: adapter (`attempt_engine.py`) reads it to compute its own deliver
 #: timeout, which must stop just before this backstop fires.
 COMMAND_BACKSTOP_ENV = "SATYRN_COMMAND_BACKSTOP_S"
+#: The record's own token and turn limits, set for both arms identically. The
+#: Engine adapter reads them and writes them into the derived contract, so the
+#: Engine has no stop the record does not name (maintainer ruling 2026-09-18).
+#: Baseline ignores them: its limits are the harness budget tripwire.
+TOKEN_BUDGET_ENV = "SATYRN_TOKEN_BUDGET"
+TURN_BUDGET_ENV = "SATYRN_TURN_BUDGET"
 #: Under isolation the command's transcript is written here, beside the
 #: worktree where the cell user can write, and copied into the attempt
 #: directory as soon as the command returns.
@@ -275,6 +281,9 @@ def _attempt(
     env[PATCH_ENV] = str(patch_path)
     env[TRANSCRIPT_ENV] = str(transcript_path)
     env[COMMAND_BACKSTOP_ENV] = str(int(timeout))
+    if budget is not None:
+        env[TOKEN_BUDGET_ENV] = str(budget.output_tokens)
+        env[TURN_BUDGET_ENV] = str(budget.turns)
     # Keep uv's project environment and Python bytecode out of the model
     # workspace. Pi inherits this temporary location for any ``uv run`` it
     # invokes, but its active evaluator venv is removed separately.
