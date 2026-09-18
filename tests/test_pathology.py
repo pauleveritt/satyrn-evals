@@ -1073,11 +1073,17 @@ def test_a_multi_session_concatenation_is_named_not_malformed() -> None:
 def test_every_engine_guard_entry_is_measured() -> None:
     for kind in (
         "loop_broken", "scope_refused", "symbol_preserved", "command_bounded", "command_timed_out",
-        "self_test_redirected", "self_test_enforced",
+        "self_test_redirected", "self_test_detected", "self_test_enforced",
     ):
         block = count_transcript(_LOOP_BROKEN_DOC.replace('"loop_broken"', f'"{kind}"'), had_patch=True)
         assert (block.measured, block.reason) == (True, None), kind
         assert block.loop_broken == (1 if kind == "loop_broken" else 0), kind
+
+
+def test_a_cell_with_a_detected_self_test_is_not_unknown_event() -> None:
+    doc = _LOOP_BROKEN_DOC.replace('"loop_broken"', '"self_test_detected"')
+    block = count_transcript(doc, had_patch=True)
+    assert (block.measured, block.reason) == (True, None)
 
 
 def test_the_engine_follow_up_after_an_enforced_run_is_one_measured_run() -> None:

@@ -25,13 +25,15 @@ The escape rules are lexical and stated so a reader can recompute them:
   program, after leading ``NAME=value`` words, ``env`` and a ``timeout
   DURATION`` wrapper, and after ``uv run`` and its options, is ``pytest`` or
   ``py.test``, or ``python``/``python3[.N]`` followed by ``-m pytest``; the
-  Engine's redirect (a narrower rule: nothing else in the command) is read
-  from ``guard_firings``;
+  Engine's output detection (it reads pytest's summary line in a bash result)
+  is counted from ``guard_firings`` as ``self_test_detected``;
 - the **first passing self-test** is the first of: a ``self_test`` result
   whose text starts ``Test command exited 0``; a ``bash`` result whose text
-  starts with the Engine's redirect sentence and holds that line; a
-  ``self_test_enforced`` entry with ``exit_code`` 0. It records the turns and
-  output tokens counted up to that event, and which route it took;
+  starts with the Engine's retired redirect sentence and holds that line; a
+  ``bash`` result the Engine appended its detected self_test to (``_DETECTED``)
+  that holds ``Test command exited 0``; a ``self_test_enforced`` entry with
+  ``exit_code`` 0. It records the turns and output tokens counted up to that
+  event, and which route it took;
 - a **length stop** is one assistant ``message_end`` whose ``stopReason`` is
   ``"length"``: the per-turn output cap cut that message. It is counted on the
   same events the budget counter sums ``usage.output`` from, so the two can
@@ -119,9 +121,14 @@ _RECURSIVE_FLAGS = {"grep": "rR", "egrep": "rR", "fgrep": "rR", "ls": "R"}
 _FILE_TOOLS = frozenset({"read", "edit", "write"})
 _TIMED_OUT = re.compile(r"Command timed out after \d+(?:\.\d+)? seconds")
 _PYTHON = re.compile(r"python(?:3(?:\.\d+)?)?")
-#: satyrn-engine runner.ts: `successResult`'s first line and `redirectSentence`'s opening.
+#: satyrn-engine runner.ts: `successResult`'s first line and the retired
+#: `redirectSentence`'s opening, kept so already-committed route-proof
+#: transcripts still classify their bash route.
 _SELF_TEST_PASSED = "Test command exited 0"
 _REDIRECTED = "The Engine ran self_test in place of this command"
+#: The current detection route (runner.ts `DETECTED_SENTENCE`'s opening): a
+#: bash result the Engine appended its own self_test to.
+_DETECTED = "The Engine also ran self_test on the current tree"
 _UV_RUN_VALUE_FLAGS = frozenset(
     {"--with", "--with-requirements", "--project", "--directory", "--python", "-p", "--group",
      "--extra", "--package", "--env-file", "--index"}
@@ -445,6 +452,8 @@ def _passing_route(event: dict) -> str | None:
                 return "tool"
             if event.get("toolName") == "bash" and text.startswith(_REDIRECTED) and _SELF_TEST_PASSED in text.split("\n")[1:2]:
                 return "redirected"
+            if event.get("toolName") == "bash" and _DETECTED in text and _SELF_TEST_PASSED in text.splitlines():
+                return "detected"
         case "entry_appended":
             entry = event.get("entry")
             if (

@@ -58,14 +58,16 @@ RUNNER_NAMES = frozenset({"pytest"})
 #: The engine's guard-firing entries (satyrn-engine Phase 1 Task 2,
 #: `budget.GUARD_KINDS`), each a `pi.appendEntry` custom entry the stream
 #: carries as `entry_appended` (Phase 1 Ruling 7). Counted as nothing here;
-#: `cell_evidence` counts them. `self_test_redirected` and `self_test_enforced`
-#: added in Phase 3b (a bash test run answered by `self_test`; the Engine's own
-#: run when the model stops untested): without them every cell where either
-#: fires would read `unknown_event`.
+#: `cell_evidence` counts them. `self_test_enforced` added in Phase 3b (the
+#: Engine's own run when the model stops untested); `self_test_detected` added
+#: 2026-09-18 (the Engine detects pytest's summary line in a bash result and
+#: runs its own self-test once). `self_test_redirected` is the retired Phase 3b
+#: redirect, kept so already-committed route-proof transcripts still classify.
+#: Without any of them every cell where it fires would read `unknown_event`.
 GUARD_KINDS = frozenset(
     {
         "loop_broken", "scope_refused", "symbol_preserved", "command_bounded", "command_timed_out",
-        "self_test_redirected", "self_test_enforced",
+        "self_test_redirected", "self_test_detected", "self_test_enforced",
         # Release two: the finish-on-green steer (design §2) and the runaway
         # resume (design §3). Without them every cell where either fires
         # reads `unknown_event` and the record is void.

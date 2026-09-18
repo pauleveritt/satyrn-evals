@@ -283,6 +283,27 @@ def test_a_redirected_bash_run_and_an_enforced_run_are_passing_routes() -> None:
     }
 
 
+def test_a_detected_bash_run_is_a_passing_route() -> None:
+    """The 2026-09-18 detection route: the Engine appends its own self_test to a
+    bash result whose output carried a pytest summary; a green there is the first
+    passing self-test, so a route-proof cell can be read for the steer."""
+    detected = _transcript(
+        _assistant(70),
+        _line({"type": "tool_execution_start", "toolCallId": "b1", "toolName": "bash",
+               "args": {"command": "uv run pytest -q 2>&1 | grep -iE 'failed' ; git status --short"}}),
+        _line({"type": "entry_appended", "entry": {"type": "custom", "customType": "self_test_detected",
+               "data": {"generation": 1}}}),
+        _end("b1", "bash",
+             "1 failed, 3 passed in 2.0s\n"
+             "The Engine also ran self_test on the current tree: this output carried a test run, "
+             "and no self-test had run since the last change.\n"
+             "Test command exited 0\n3 passed in 0.5s"),
+    )
+    block = collect_evidence(detected).to_block()
+    assert block["first_passing_self_test"] == {"turn": 1, "output_tokens": 70, "route": "detected"}
+    assert block["guard_firings"] == {"self_test_detected": 1}
+
+
 def test_failing_runs_and_look_alike_text_are_not_a_passing_self_test() -> None:
     text = _transcript(
         _assistant(10),
