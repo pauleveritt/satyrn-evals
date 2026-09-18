@@ -53,12 +53,14 @@ The trigger's input is the Engine's **output detection**, not a shell parse:
 when a bash result carries pytest's summary line and no self-test has run
 since the last mutation, the Engine runs its own once and appends the compact
 result to that result under one sentence saying so (`self_test_detected`); a
-green there arms the steer exactly as an explicit `self_test` does. A run
-hidden in a compound command, a heredoc or a wrapper script therefore still
-reaches it. The cost is one self-test, about 35 s, at most once per mutation
-generation. The appended sentence and result are model-visible; the
-identical-prompt rule allows them as the Engine's own message, and the
-numbers page discloses them.
+green there arms the steer exactly as an explicit `self_test` does. The cost
+is one self-test, about 35 s, at most once per mutation generation. The
+appended sentence and result are model-visible; the identical-prompt rule
+allows them as the Engine's own message, and the numbers page discloses them.
+Detection is **output-conditional**: a run whose summary never reaches the
+tool result -- filtered out by a `grep`, or a wrapper that printed only its
+own status and a traceback -- is still missed, and the design does not claim
+otherwise.
 
 **Offline estimate.** Replaying "stop at own-green" over the census cells at
 the 32k/48 line: run 2's method rescues 5 of 9 run-record-gate cells and 2
