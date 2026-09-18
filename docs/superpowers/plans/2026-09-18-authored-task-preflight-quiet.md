@@ -1671,13 +1671,7 @@ uv run pytest tests/test_census_records_frozen.py -q; echo "frozen=$?"
 
 Expected: no leftover worktree parents beyond the committed engine export; `git status --porcelain` printing nothing; the head Task 7's commit; `frozen=0`. A record must be tracked and unchanged against `HEAD` or `launch` refuses it.
 
-**4. The quiet-machine precondition — the maintainer's.** Nothing else runs on this machine from launch until the script exits: no other model-server client, no build, no indexing, no second agent session. Night 1 lost nine cells to a shared machine at 14–26 tok/s per stream against run 2's ~30. The check this very task builds is **not** wired into `launch --preflight` yet (Ruling 6), so the precondition is still the maintainer's own judgement — though it can now be read by hand:
-
-```bash
-PYTHONPATH=scripts uv run python scripts/preflight_quiet.py --model Ornith-1.5-9B-MLX-8bit; echo "quiet=$?"
-```
-
-Expected: `quiet=0` with an empty `problems` list, or a printed list naming exactly what is loud. A non-zero exit before a census night is advisory, not a gate — but it is the reason the task exists, and what it prints belongs in the night's ledger either way.
+**4. The quiet-machine precondition — the maintainer's.** Nothing else runs on this machine from launch until the script exits: no other model-server client, no build, no indexing, no second agent session. Night 1 lost nine cells to a shared machine at 14–26 tok/s per stream against run 2's ~30. The check this task builds is **not** wired into `launch --preflight` yet (Ruling 6), and it cannot be run from this branch either: `scripts/preflight_quiet.py` is the authored task's own answer, so it lives only in the cut tree's overlay and never on `release-one`. The precondition is therefore the maintainer's judgement, read by hand: the one-minute load average against 0.5 × the core count, the busy processes in `ps -axo pid,pcpu,comm`, and the recent decode rate in `~/.omlx/logs/server.log` against night 2's ~18.5 tok/s baseline. What it shows belongs in the night's ledger either way.
 
 **5. The pre-registered post-hoc read is already committed — read it, do not run it yet.** `evidence/2026-09-18-census-3/postreg.md` was written and committed before Task 7's record existed, against the disclosed four ungraded-literal gaps in the hidden suite (I2/P1/P3/P4, `evidence/2026-09-17-census-2/validity/selfhost-preflight-quiet/README.md`). It is read in the morning, beside the classifier, over each retained cell's harvested patch — **never before the night**, because it has nothing to read until night 3's cells exist, and **never to change a verdict**: it is a disclosure-side read of the four parked literals, not a second grading pass.
 
