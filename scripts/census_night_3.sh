@@ -33,6 +33,10 @@ for T in $TASKS; do
     git add "$RES" && { git diff --cached --quiet || git commit -qm "Census night 3 result: $T ($STATUS)
 
 $TRAILER"; }
+    # A result commit can move a guard (the 2026-09-18 route-proof .result.json
+    # files matched the "no fourth record" glob): run the gates so a red head
+    # cannot sit unnoticed.
+    just gates || { echo "census3: evals gates failed after committing $RES; the head is red" >&2; exit 2; }
   fi
   [ "$S" -eq 0 ] || { echo "census3: $T stopped with $S" >&2; break; }
 done

@@ -8501,3 +8501,6 @@
 | evidence/2026-09-18-census-3/postreg_read.py | created in release-one |
 | tests/test_postreg_read.py | created in release-one |
 | docs/superpowers/plans/2026-09-18-route-proof-defect-fixes.md | created in release-one |
+| src/satyrn_evals/task_selftest.py | created in release-one |
+| tests/test_task_selftest.py | created in release-one |
+| tests/integration/test_task_selftest_bases.py | created in release-one |

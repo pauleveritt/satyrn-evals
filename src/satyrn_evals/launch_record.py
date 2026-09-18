@@ -67,7 +67,7 @@ from satyrn_evals.launch import (
     write_ledger,
 )
 from satyrn_evals.launch_cell import popen_cell
-from satyrn_evals.manifest import load_manifest, resolve_task
+from satyrn_evals.manifest import TaskManifest, load_manifest, resolve_task
 from satyrn_evals.model_server import model_server_base_url, model_server_problems
 from satyrn_evals.pi_models import read_pi_models
 from satyrn_evals.rescore import (
@@ -87,6 +87,8 @@ from satyrn_evals.run_record import (
     record_arms,
 )
 from satyrn_evals.summary import SUMMARY_NAME, compute_summary, write_summary
+from satyrn_evals.task_selftest import TaskSelfTest
+from satyrn_evals.task_selftest import task_self_test as run_task_self_test
 from satyrn_evals.task_tree import tree_digest
 
 DEFAULT_RUNS_ROOT = Path.home() / "satyrn-runs"
@@ -180,6 +182,7 @@ class LaunchFacts:
     settings: Callable[[Path, bool], tuple[int, str]] = settings_provenance
     spawn_cell: Callable[[Path, Path], CellProcess] = popen_cell
     engine_export: Callable[[Arm], list[str]] = arm_export_problems
+    task_self_test: Callable[[Path, TaskManifest], TaskSelfTest] = run_task_self_test
     model_server: Callable[[str, str], list[str]] = model_server_problems
     pi_models: Callable[[bool], dict] = read_pi_models
 
@@ -315,10 +318,11 @@ def launch_record(
     deadline_s = attempt_deadline_s(record) if attempt_timeout is None else attempt_timeout
     arms = _arms(record, arm_paths)
     task_dir = resolve_task(record.task, tasks_root=tasks_root)
+    manifest = load_manifest(task_dir)
     commands = {name: build_argv(arm) for name, (_, arm) in arms.items()}
     for command in commands.values():
         check_invocation(record, task=record.task, task_dir=task_dir, command=command)
-    resolve_contract(load_manifest(task_dir), record.rung)
+    resolve_contract(manifest, record.rung)
     if record.purpose in DECIDING_PURPOSES:
         seams = [
             name for name, used in (
@@ -346,6 +350,9 @@ def launch_record(
         checked["preflight"] = report.checked
         for name, (_, arm) in arms.items():
             problems += [f"{name}: {problem}" for problem in facts.engine_export(arm)]
+        self_test = facts.task_self_test(task_dir, manifest)
+        problems += [f"task self-test: {problem}" for problem in self_test.problems]
+        checked["task_self_test"] = self_test.checked
     if not os.environ.get(CELL_PATH_PREFIX_ENV):
         # A development record on the fake-pi seam (`CELL_PATH_PREFIX_ENV`) never
         # reaches a real model server, the same reason it may skip settings; a

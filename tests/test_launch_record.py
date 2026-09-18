@@ -15,6 +15,7 @@ from satyrn_evals.launch import SLOTS_DIR, Slot, slot_path
 from satyrn_evals.launch_record import LaunchFacts, launch_record, model_server_checks
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
 from satyrn_evals.run_record import RunRecordError, new_record, write_new_record
+from satyrn_evals.task_selftest import TaskSelfTest
 
 REPO = Path(__file__).resolve().parent.parent
 ARM = REPO / "arms" / "baseline-ornith15-9b.json"
@@ -45,6 +46,7 @@ def _facts(**over: object) -> LaunchFacts:
         frozen=lambda path: True, committed=lambda path: True, head=lambda: "f" * 40,
         preflight=lambda **kw: CellPreflight([], {"pi_version": "0.85.1"}), settings=lambda path, cell: (0, SETTINGS),
         spawn_cell=spawn, model_server=lambda base_url, server_model: [], pi_models=lambda cell: {},
+        task_self_test=lambda task_dir, manifest: TaskSelfTest([], {}),
     )
     return LaunchFacts(**{**base, **over})  # type: ignore[arg-type]
 
@@ -453,6 +455,22 @@ def test_an_engine_export_problem_exits_1_and_runs_nothing(tmp_path: Path, capsy
         facts=facts, poll_interval=0.0, grace=0.0,
     ) == 1
     assert "launch FAILED: engine: the engine export /x is not under" in capsys.readouterr().err
+    assert not (tmp_path / "runs").exists()
+
+
+def test_a_task_self_test_problem_exits_1_and_runs_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    facts = _facts(
+        task_self_test=lambda task_dir, manifest: TaskSelfTest(
+            ["the self-test on the unmodified t base exited 2: boom"], {}
+        )
+    )
+    assert launch_record(
+        _route_proof(tmp_path), [ENGINE_ARM], tasks_root=DEFAULT_TASKS_ROOT, runs_root=tmp_path / "runs",
+        facts=facts, poll_interval=0.0, grace=0.0,
+    ) == 1
+    assert "launch FAILED: task self-test: the self-test on the unmodified t base exited 2" in capsys.readouterr().err
     assert not (tmp_path / "runs").exists()
 
 
