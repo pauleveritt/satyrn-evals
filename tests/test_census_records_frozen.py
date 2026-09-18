@@ -215,13 +215,12 @@ def test_a_cut_census_task_carries_no_authored_disclosure() -> None:
 
 
 # The three route-proof records (2026-09-17-release-two-engine.md, operator section;
-# progress.md, "The three route-proof records: issued, checked, and deliberately NOT
-# committed"). None of these exists in the tree today: the ledger explains why -- the
-# second and third cannot be gated until their predecessors' results exist, and the
-# first cannot be frozen ahead of the maintainer's sequencing decision against the
-# authored-task dispatch's own chain tail. This is a PRE-REGISTERED guard: it names the
-# frozen shape the plan fixes now, before the operator commits any of the three files,
-# so the shape cannot drift between the ledger and whatever eventually lands.
+# progress.md, "Operator: route-proof record 1 frozen"). All three are frozen in the
+# tree now, so the first guard below binds on them rather than skipping. The shape
+# was fixed before any file landed, so it cannot drift between the ledger and what
+# shipped. Each launched record leaves a `.result.json` beside it; the second guard
+# excludes that companion from the "no fourth record" check and the third pins it to
+# one of the three records.
 ROUTE_PROOF_N = {
     "records/2026-09-17-route-proof-engine-selfhost-run-record-gate.json": 2,
     "records/2026-09-17-route-proof-engine-selfhost-docs-linter.json": 2,
@@ -286,6 +285,23 @@ def test_no_route_proof_record_exists_outside_the_three_named_paths() -> None:
     """NOT conditional -- this is the half of the guard that is live today, and the
     reason the guard above is not vacuous in the meantime: a fourth record, a
     misnamed one, or a stray `route-proof` file is caught the moment it lands, before
-    any of the three expected records exists."""
-    found = {f"records/{p.name}" for p in RECORDS.glob("2026-09-17-route-proof-engine-*.json")}
+    any of the three expected records exists.
+
+    A launched record leaves its `.result.json` beside it; that companion is a
+    result, not a fourth record, so it is excluded here and pinned by its own
+    sibling below."""
+    found = {
+        f"records/{p.name}"
+        for p in RECORDS.glob("2026-09-17-route-proof-engine-*.json")
+        if not p.name.endswith(".result.json")
+    }
     assert found <= set(ROUTE_PROOF_N)
+
+
+def test_every_route_proof_result_belongs_to_one_of_the_named_records() -> None:
+    """The sibling of the exclusion above: a result file is not silently ignored --
+    it must be the result of exactly one of the three pre-registered records, so a
+    stray or misnamed result is still caught."""
+    for result in RECORDS.glob("2026-09-17-route-proof-engine-*.result.json"):
+        record = result.with_name(result.name.removesuffix(".result.json") + ".json")
+        assert f"records/{record.name}" in ROUTE_PROOF_N
