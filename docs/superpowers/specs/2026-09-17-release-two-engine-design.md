@@ -30,10 +30,11 @@ live cell in 39. They stay as built and claim nothing.
 (`evidence/2026-09-16-census/classes-summary.md`).
 
 **Mechanism.** When a `self_test` run through the Engine inside a turn
-(explicit or redirected; not the completion gate's own run, which only
-happens when the model was already stopping; plan Ruling 3) exits 0 and at
-least one source mutation has landed since the last green, the runner
-sends one steer message before the next turn:
+(explicit, or the Engine's own run after it detected pytest's summary line in
+a bash result; not the completion gate's own run, which only happens when the
+model was already stopping; plan Ruling 3) exits 0 and at least one source
+mutation has landed since the last green, the runner sends one steer message
+before the next turn:
 
 > self_test passes on the current tree. If the requested change is complete,
 > stop now and report what you changed. Do not commit, add provenance rows,
@@ -47,6 +48,17 @@ turn, once per mutation generation, recorded as `finish_nudged` in the
 receipt and counted by evals like the other firings. A nudge, never a hard
 stop: cell 511653 in release one had its own suite green with the hidden
 suite at 19 of 20 and fixed the last case five turns later.
+
+The trigger's input is the Engine's **output detection**, not a shell parse:
+when a bash result carries pytest's summary line and no self-test has run
+since the last mutation, the Engine runs its own once and appends the compact
+result to that result under one sentence saying so (`self_test_detected`); a
+green there arms the steer exactly as an explicit `self_test` does. A run
+hidden in a compound command, a heredoc or a wrapper script therefore still
+reaches it. The cost is one self-test, about 35 s, at most once per mutation
+generation. The appended sentence and result are model-visible; the
+identical-prompt rule allows them as the Engine's own message, and the
+numbers page discloses them.
 
 **Offline estimate.** Replaying "stop at own-green" over the census cells at
 the 32k/48 line: run 2's method rescues 5 of 9 run-record-gate cells and 2
@@ -114,6 +126,14 @@ premise is not met today:
    `Files:` block names, so it cannot admit a path the grader rejects.
 4. **Deliver timeout follows the record.** `DELIVER_TIMEOUT_SECONDS = 1800`
    becomes the record's `command_backstop_s`; the census runs at 4,800.
+5. **The contract's budget follows the record.** `derive` takes the record's
+   `token_budget`/`turn_budget`, wired like the backstop (absent or
+   unparseable is an error), so the Engine has no stop the record does not
+   name. The product default stays 32,000/48 for a developer; only the eval
+   contract changes, and both arms run the record's budget. The route proof
+   hid the opposite: the Engine self-stopped near 32,100 tokens while
+   Baseline ran to 48,000, so a candidate the Engine delivered was graded as
+   a pass where Baseline at the same count tripped the wire.
 
 ## 6. What the Engine refuses to attempt
 
@@ -162,6 +182,16 @@ claim tasks now, three if the authored task admits. Win rule, n, and
 whether the authored task joins are the sitting's to fix; the effect size
 is not, and is printed with run 1's 0 beside it.
 
+**The line is read by reconstruction, per arm.** The run budget is the
+record's (48,000/72), but the win rule reads the verdict at the
+pre-registered 32,000-token / 48-turn line, per arm, by the classifier's
+reconstruction of that arm's transcript -- never by the process exit code.
+A cell whose exit code is a budget trip can still hold a pass state inside
+the line, and under identical budgets the two arms are compared by the same
+instrument. This is the rule the route proof forced: both docs-linter Engine
+cells "passed" at about 32,166 tokens, over the line, and an exit-code read
+would have scored them either way.
+
 Secondary, declared and reported whatever the outcome: turns, tokens and
 seconds to the candidate, and floor parity on depth-3 at R2, guard-prefixes
 and review-script at n = 6.
@@ -169,7 +199,8 @@ and review-script at n = 6.
 ## 9. What is claimed and what is not
 
 Claimed, if the comparison holds: on medium-build tasks, `/implement`
-delivers a passing candidate within 32,000 tokens and 48 turns more often
+delivers a passing candidate inside the 32,000-token / 48-turn line -- read
+per arm by the classifier's reconstruction, never the exit code -- more often
 than bare Pi, on Ornith 1.5 9B, and stops when the developer's tests are
 green. Not claimed: any lift on large builds, any capability the model does
 not have, and anything about guards 1 to 3.

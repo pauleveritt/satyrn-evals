@@ -60,6 +60,11 @@ the harness the comparison will use.
   easy, or no tests) cannot measure the remedy.
 - **A mid-course finding that changes the diagnosis stops building** until the
   counterfactual is redone.
+- **The win rule reads the verdict at the pre-registered line, per arm, by the
+  same reconstruction, never by the process exit code.** The run budget may
+  exceed the line; a cell whose exit code is a budget trip can still hold a
+  pass state inside it, and both arms are read by one instrument (maintainer
+  ruling 2026-09-18).
 
 ## 4. Carried from release one
 
