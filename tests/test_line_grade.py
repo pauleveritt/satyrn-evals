@@ -71,6 +71,109 @@ class _FakeGrader:
         return {"verdict": self.verdicts[patch], "reason": ""}
 
 
+# --- grade_offline: a failed grade never crashes the night's report -------
+
+
+class _FakeCompleted:
+    def __init__(self, returncode: int, stdout: str = "", stderr: str = "") -> None:
+        self.returncode = returncode
+        self.stdout = stdout
+        self.stderr = stderr
+
+
+def test_a_non_zero_grade_exit_with_no_receipt_is_unavailable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`grade` crashed before writing a receipt: the cell is `unavailable`
+    with the error text, not an uncaught exception that kills the night's
+    report (F5)."""
+    import satyrn_evals.line_grade as line_grade_module
+
+    monkeypatch.setattr(
+        line_grade_module.subprocess, "run",
+        lambda *_a, **_k: _FakeCompleted(1, stderr="Traceback: boom"),
+    )
+    result = line_grade_module.grade_offline("t", "diff", tmp_path, "cell-1", {})
+    assert result["verdict"] == "unavailable"
+    assert "boom" in result["reason"] or "1" in result["reason"]
+
+
+def test_a_non_zero_grade_exit_is_unavailable_even_with_a_stale_receipt_present(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The exit code is checked on its own, not inferred from receipt
+    presence: a non-zero exit must not be trusted even when a (stale)
+    receipt.json happens to be sitting there."""
+    import satyrn_evals.line_grade as line_grade_module
+
+    def fake_run(argv: list[str], *, cwd: Path, **_k: object) -> _FakeCompleted:
+        (Path(cwd) / "receipt.json").write_text(json.dumps({"verdict": "pass"}))
+        return _FakeCompleted(1, stderr="boom")
+
+    monkeypatch.setattr(line_grade_module.subprocess, "run", fake_run)
+    result = line_grade_module.grade_offline("t", "diff", tmp_path, "cell-1b", {})
+    assert result["verdict"] == "unavailable"
+    assert "boom" in result["reason"]
+
+
+def test_a_missing_receipt_after_a_zero_exit_is_unavailable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`grade` exited 0 but somehow never wrote `receipt.json`."""
+    import satyrn_evals.line_grade as line_grade_module
+
+    monkeypatch.setattr(
+        line_grade_module.subprocess, "run", lambda *_a, **_k: _FakeCompleted(0)
+    )
+    result = line_grade_module.grade_offline("t", "diff", tmp_path, "cell-2", {})
+    assert result["verdict"] == "unavailable"
+    assert result["reason"]
+
+
+def test_an_invalid_receipt_json_is_unavailable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`grade` wrote something to `receipt.json`, but it is not valid JSON."""
+    import satyrn_evals.line_grade as line_grade_module
+
+    def fake_run(argv: list[str], *, cwd: Path, **_k: object) -> _FakeCompleted:
+        (Path(cwd) / "receipt.json").write_text("not json")
+        return _FakeCompleted(0)
+
+    monkeypatch.setattr(line_grade_module.subprocess, "run", fake_run)
+    result = line_grade_module.grade_offline("t", "diff", tmp_path, "cell-3", {})
+    assert result["verdict"] == "unavailable"
+    assert result["reason"]
+
+
+def test_grade_night_completes_when_one_cells_grade_is_unavailable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """End to end: a broken grade for one cell does not stop the whole
+    night's report from being written (F5)."""
+    night = tmp_path / "night"
+    cell_dir = night / "baseline" / "t-1"
+    cell_dir.mkdir(parents=True)
+    crossing = LineCrossing(by="tokens", output_tokens=16001, turn=1, at=AT)
+    (cell_dir / LINE_PATCH_NAME).write_text("diff --git a/x b/x\n")
+    write_attempt_record(
+        cell_dir / "attempt.json",
+        _record(attempt_dir="t-1", line_crossed=crossing, line_patch_path=LINE_PATCH_NAME),
+    )
+    _write_slot(night, 0, arm="baseline", attempt_dir="t-1")
+    record = _run_record()
+
+    import satyrn_evals.line_grade as line_grade_module
+
+    monkeypatch.setattr(
+        line_grade_module.subprocess, "run",
+        lambda *_a, **_k: _FakeCompleted(1, stderr="grade crashed"),
+    )
+    report = grade_night(night, record, tmp_path / "grades", tasks_root=tmp_path / "tasks")
+    assert len(report.rows) == 1
+    assert report.rows[0].line_verdict == "unavailable"
+
+
 # --- grade_cell: never crossed -------------------------------------------
 
 

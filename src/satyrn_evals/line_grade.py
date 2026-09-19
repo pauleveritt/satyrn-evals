@@ -99,16 +99,26 @@ def grade_offline(
     if tasks_root is not None:
         argv += ["--tasks-root", os.fspath(tasks_root)]
     argv += ["--receipt", "receipt.json"]
-    subprocess.run(
-        argv,
-        cwd=folder,
-        capture_output=True,
-        text=True,
-        timeout=900,
-        env={**os.environ, "UV_OFFLINE": "1", "TMPDIR": os.fspath(folder)},
-    )
-    receipt = json.loads((folder / "receipt.json").read_text())
-    result = {"verdict": receipt["verdict"], "reason": (receipt.get("reason") or "")[:200]}
+    try:
+        completed = subprocess.run(
+            argv,
+            cwd=folder,
+            capture_output=True,
+            text=True,
+            timeout=900,
+            env={**os.environ, "UV_OFFLINE": "1", "TMPDIR": os.fspath(folder)},
+        )
+        if completed.returncode != 0:
+            tail = (completed.stderr or completed.stdout or "").strip()[-500:]
+            raise RuntimeError(f"grade exited {completed.returncode}: {tail}" if tail else f"grade exited {completed.returncode}")
+        receipt = json.loads((folder / "receipt.json").read_text())
+        result = {"verdict": receipt["verdict"], "reason": (receipt.get("reason") or "")[:200]}
+    except (OSError, subprocess.SubprocessError, json.JSONDecodeError, KeyError, RuntimeError) as exc:
+        # A crashed grade, a missing receipt, or an unreadable one must never
+        # raise out of here: the cell is unavailable, not a lost night's
+        # report (F5). `grade_cell`/`grade_night` never catch this -- the
+        # only well-formed outcome from a grader is a dict with a verdict.
+        result = {"verdict": "unavailable", "reason": f"{type(exc).__name__}: {exc}"[:200]}
     cache[key] = result
     return result
 
