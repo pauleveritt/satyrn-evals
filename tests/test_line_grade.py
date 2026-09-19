@@ -449,6 +449,18 @@ def test_grade_night_refuses_a_slot_arm_not_in_the_record(tmp_path: Path) -> Non
 # --- render_summary: per (task, arm), never pooled -------------------------
 
 
+def test_render_summary_header_states_what_each_arm_grades(tmp_path: Path) -> None:
+    """I2: the report header says the raw-tree/delivered-candidate split so a
+    reader never mistakes the two verdict columns for grading the same tree."""
+    from satyrn_evals.line_grade import LineGradeReport, LineGradeRow
+
+    rows = (LineGradeRow("a-1", "taskA", "baseline", "OK", "pass", None, None, "pass", "final"),)
+    report = LineGradeReport(night="/n", rows=rows)
+    summary = render_summary(report)
+    assert "delivered candidate" in summary
+    assert "carried tests" in summary
+
+
 def test_render_summary_breaks_out_pass_counts_by_task_and_arm(tmp_path: Path) -> None:
     from satyrn_evals.line_grade import LineGradeReport, LineGradeRow
 

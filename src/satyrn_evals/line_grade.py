@@ -12,6 +12,10 @@ uses to walk a night's finished slots
 (``src/satyrn_evals/launch_record.py:279-292``); nothing here re-implements
 that walk.
 
+``line_verdict`` grades the raw tree at the crossing on both arms; an
+Engine cell's final verdict grades its delivered candidate, whose carried
+tests the Engine restores.
+
 The offline grading mechanism -- write a reconstructed patch under a scratch
 grade root outside any Python project, run ``satyrn-evals grade`` in a fresh
 subprocess so the hidden suite's own pytest run can never collide with this
@@ -375,6 +379,10 @@ def render_summary(report: LineGradeReport) -> str:
             entry[0] += 1
     lines = [
         f"# grade-line: {report.night}",
+        "",
+        "line_verdict grades the raw tree at the crossing on both arms; an "
+        "Engine cell's final verdict grades its delivered candidate, whose "
+        "carried tests the Engine restores.",
         "",
         "| task | arm | line pass | excluded (unavailable) |",
         "| --- | --- | --- | --- |",
