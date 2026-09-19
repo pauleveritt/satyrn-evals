@@ -404,6 +404,42 @@ class LineGradeReport:
         return {"night": self.night, "rows": [row.to_json() for row in self.rows]}
 
 
+@dataclass(frozen=True, slots=True)
+class FinishedCell:
+    """One finished slot of a night, its cell directory, and its loaded
+    ``AttemptRecord`` -- what every per-cell grader (``grade_cell``,
+    ``sensitivity_grade.grade_cell_sensitivity``) needs, enumerated once."""
+
+    arm: str
+    cell_dir: Path
+    record: AttemptRecord
+
+
+def iter_finished_cells(night: Path, record: RunRecord) -> list[FinishedCell]:
+    """Every finished slot of ``night``, in slot order.
+
+    Enumeration matches ``launch_record.write_arm_summaries``: ``read_slots``
+    names each finished slot's ``arm``/``attempt_dir``; each cell's record is
+    read with ``attempt_record.load_attempt_record``, never reimplemented.
+    Shared by ``grade_night`` and ``sensitivity_grade.grade_night_sensitivity``
+    so the two tools can never silently enumerate a night's cells two
+    different ways.
+    """
+    finished = read_slots(night)
+    known_arms = set(record_arms(record))
+    cells: list[FinishedCell] = []
+    for _index, slot in sorted(finished.items()):
+        arm = slot["arm"]
+        if arm not in known_arms:
+            raise UsageError(
+                f"slot names arm {arm!r}, not among the record's {sorted(known_arms)}"
+            )
+        cell_dir = night / arm / slot["attempt_dir"]
+        attempt_record = load_attempt_record(cell_dir / "attempt.json")
+        cells.append(FinishedCell(arm=arm, cell_dir=cell_dir, record=attempt_record))
+    return cells
+
+
 def grade_night(
     night: Path,
     record: RunRecord,
@@ -414,33 +450,24 @@ def grade_night(
 ) -> LineGradeReport:
     """Every finished slot of ``night``, graded.
 
-    Enumeration matches ``launch_record.write_arm_summaries``: ``read_slots``
-    names each finished slot's ``arm``/``attempt_dir``; each cell's record is
-    read with ``attempt_record.load_attempt_record``, never reimplemented.
+    Enumeration is ``iter_finished_cells``, never reimplemented here.
     ``tasks_root`` (default: the bundled tasks) is ignored when ``grader`` is
     given explicitly, e.g. a test's fake.
     """
     if grader is None:
         grader = make_grader(tasks_root)
-    finished = read_slots(night)
-    known_arms = set(record_arms(record))
     line_declared = record.line_token_budget is not None
     cache: GradeCache = {}
-    rows: list[LineGradeRow] = []
-    for _index, slot in sorted(finished.items()):
-        arm = slot["arm"]
-        if arm not in known_arms:
-            raise UsageError(
-                f"grade-line: slot names arm {arm!r}, not among the record's {sorted(known_arms)}"
-            )
-        cell_dir = night / arm / slot["attempt_dir"]
-        attempt_record = load_attempt_record(cell_dir / "attempt.json")
-        rows.append(
+    try:
+        rows = [
             grade_cell(
-                attempt_record, cell_dir=cell_dir, arm=arm, grade_root=grade_root, cache=cache,
+                cell.record, cell_dir=cell.cell_dir, arm=cell.arm, grade_root=grade_root, cache=cache,
                 grader=grader, line_declared=line_declared,
             )
-        )
+            for cell in iter_finished_cells(night, record)
+        ]
+    except UsageError as e:
+        raise UsageError(f"grade-line: {e}") from e
     return LineGradeReport(night=os.fspath(night), rows=tuple(rows))
 
 
