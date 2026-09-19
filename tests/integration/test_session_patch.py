@@ -105,6 +105,25 @@ def test_harvest_excludes_runtime_residue_and_keeps_new_files(tmp_path: Path) ->
     assert ".pytest_cache" in swept  # sibling: the session path's default is unchanged
 
 
+def test_harvest_excludes_the_mutators_atomic_replace_temp_file(tmp_path: Path) -> None:
+    """F4: satyrn-engine's ``_atomic_replace`` (mutation.py ~623-646 at
+    0a6e5df) writes each edit through ``.<name>.satyrn-<16 hex>.tmp`` before
+    ``os.replace``-ing it over the real file. A harvest that lands mid-write
+    must not sweep that temp file into the patch -- but an ordinary dotfile
+    the model itself created is still harvested, so the exclusion must name
+    this exact shape, not every dotfile."""
+    from satyrn_evals.session_patch import RESIDUE_EXCLUDES
+
+    repo, base = _repo(tmp_path)
+    (repo / "mid_write.py").write_text("x = 1\n")
+    (repo / ".mid_write.py.satyrn-0123456789abcdef.tmp").write_text("partial\n")
+    (repo / ".env").write_text("ORDINARY=1\n")  # an ordinary dotfile the model created
+    harvested = build_cumulative_patch(repo, base, exclude=RESIDUE_EXCLUDES).patch_text
+    assert "mid_write.py" in harvested
+    assert ".env" in harvested
+    assert ".satyrn-" not in harvested
+
+
 def test_harvest_survives_a_commit_inside_the_worktree(tmp_path: Path) -> None:
     repo, base = _repo(tmp_path)
     (repo / "edited.txt").write_text("edited v2\n")

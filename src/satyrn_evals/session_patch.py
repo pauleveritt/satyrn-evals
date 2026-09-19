@@ -21,11 +21,24 @@ from satyrn_evals.workspace import GIT_SAFETY_CONFIG
 #: Runtime residue a model's own tool runs leave in a worktree. A harvest
 #: passes these so ``git add -N --all`` never sweeps them into a candidate;
 #: the session path passes nothing and is unchanged.
+#:
+#: F4: satyrn-engine's mutator (``mutation.py``'s ``_atomic_replace``, ~623-646
+#: at 0a6e5df) writes each edit through ``.<name>.satyrn-<16 hex>.tmp`` before
+#: ``os.replace``-ing it over the real file; a harvest landing mid-write (the
+#: line harvest fires from inside the still-running cell's own transcript
+#: read, so this is not theoretical) would otherwise sweep the temp file into
+#: the patch through ``add -N --all``. Shared here, not scoped to one harvest,
+#: because no committed patch, evidence, fixture or test expectation anywhere
+#: in this repository or under ``~/satyrn-runs`` names a path matching this
+#: shape (checked before adding it) -- so widening it cannot change any
+#: existing digest, and the final/session/tripped/line harvests all stay one
+#: algorithm instead of three that can drift.
 RESIDUE_EXCLUDES: tuple[str, ...] = (
     ":(exclude,glob)**/.pytest_cache/**",
     ":(exclude,glob)**/__pycache__/**",
     ":(exclude,glob)**/.ruff_cache/**",
     ":(exclude,glob)**/.venv/**",
+    ":(exclude,glob)**/.*.satyrn-*.tmp",
 )
 
 
