@@ -247,8 +247,9 @@ class GroupSummary:
     #: Cells whose delivered_pass/delivered_pass_stripped disagree, with the
     #: paths stripped to get there.
     changed: tuple[dict, ...]
-    #: attempt -> "yes"/"no"/"unavailable", BUDGET_EXCEEDED cells only.
-    undelivered_tree: dict[str, str]
+    #: attempt -> {"verdict": "yes"/"no"/"unavailable", "stripped_paths": [...]},
+    #: BUDGET_EXCEEDED cells only.
+    undelivered_tree: dict[str, dict]
 
     def to_json(self) -> dict:
         return asdict(self)
@@ -267,7 +268,9 @@ def summarize(report: SensitivityReport) -> dict[tuple[str, str], GroupSummary]:
             if cell.delivered_pass != cell.delivered_pass_stripped
         )
         undelivered_tree = {
-            cell.attempt: cell.undelivered_tree for cell in cells if cell.undelivered_tree is not None
+            cell.attempt: {"verdict": cell.undelivered_tree, "stripped_paths": list(cell.undelivered_tree_stripped_paths)}
+            for cell in cells
+            if cell.undelivered_tree is not None
         }
         summary[(task, arm)] = GroupSummary(
             task=task,
@@ -399,12 +402,16 @@ def render_markdown(label: str, groups: dict[tuple[str, str], GroupSummary]) -> 
         "BUDGET_EXCEEDED cells only, the tripped patch was never a delivered candidate):"
     )
     tree_rows = [
-        (task, arm, attempt, verdict)
+        (task, arm, attempt, entry["verdict"], entry["stripped_paths"])
         for (task, arm), group in sorted(groups.items())
-        for attempt, verdict in sorted(group.undelivered_tree.items())
+        for attempt, entry in sorted(group.undelivered_tree.items())
     ]
     if tree_rows:
-        lines.extend(f"- {task}/{arm} {attempt}: held a passing tree: {verdict}" for task, arm, attempt, verdict in tree_rows)
+        lines.extend(
+            f"- {task}/{arm} {attempt}: held a passing tree: {verdict}"
+            + (f" (stripped {stripped_paths})" if stripped_paths else "")
+            for task, arm, attempt, verdict, stripped_paths in tree_rows
+        )
     else:
         lines.append("(none)")
     return lines

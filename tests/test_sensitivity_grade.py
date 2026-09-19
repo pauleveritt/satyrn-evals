@@ -382,3 +382,17 @@ def test_render_report_includes_fisher_p_when_both_arms_present() -> None:
     text = render_report([("A", groups)])
     assert "Fisher exact" in text
     assert "0.05" in text
+
+
+def test_render_report_names_the_paths_stripped_from_an_undelivered_tree() -> None:
+    from satyrn_evals.sensitivity_grade import GroupSummary
+
+    groups = {
+        ("t", "baseline"): GroupSummary(
+            task="t", arm="baseline", n=1, delivered_pass=0, delivered_pass_stripped=0, changed=(),
+            undelivered_tree={"a1": {"verdict": "yes", "stripped_paths": ["coverage.json"]}},
+        ),
+    }
+    text = render_report([("A", groups)])
+    assert "held a passing tree: yes" in text
+    assert "coverage.json" in text
