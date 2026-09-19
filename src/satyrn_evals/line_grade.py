@@ -16,6 +16,23 @@ that walk.
 Engine cell's final verdict grades its delivered candidate, whose carried
 tests the Engine restores.
 
+N7: a crossing first *observed* in the post-exit tail -- the last transcript
+lines read after the cell's process has already exited (``workspace.py``'s
+``_wait_or_trip``, the ``for line in pending.split("\n")`` loop feeding
+``on_line_crossed`` around lines 1132-1137) -- still harvests. On Baseline
+this harvests the end-of-run tree (``state.worktree`` persists past the
+process exit, until release), so the row is graded normally. On the Engine
+arm the harvest reads the Engine's own internal deliver worktree
+(``_engine_worktree``), which satyrn-engine removes as soon as the Pi
+command it runs exits -- so a crossing only observed in that same tail can
+already find the worktree gone, and the row is ``unavailable``
+(``line_harvest_error``), not a raw-tree grade. This asymmetry is
+negligible in practice: ``run_record.LINE_BUDGET_MARGIN_TOKENS`` (16,000
+tokens) keeps the declared line a full turn's output ahead of the budget
+that ends the attempt, and the poll interval feeding this loop is 0.25 s
+(``workspace._wait_or_trip``'s ``poll`` default) -- nowhere near enough
+margin for a crossing to land in this tail in the first place.
+
 A broken record -- a cell whose ``AttemptCode`` is not classified in
 ``_NEVER_CROSSED_RULES``, or a ``BUDGET_EXCEEDED`` cell that never crossed a
 declared line (impossible, since the line budget sits strictly below the
@@ -440,6 +457,12 @@ def render_summary(report: LineGradeReport) -> str:
         "line_verdict grades the raw tree at the crossing on both arms; an "
         "Engine cell's final verdict grades its delivered candidate, whose "
         "carried tests the Engine restores."
+    )
+    lines.append(
+        "N7: a crossing first observed in the post-exit tail harvests the "
+        "end-of-run tree on Baseline but is unavailable on Engine (its "
+        "deliver worktree is already gone) -- negligible in practice given "
+        "the 16,000-token line/budget margin and the 0.25 s poll."
     )
     lines.append("")
     lines.append("| task | arm | line pass | excluded (unavailable) |")
