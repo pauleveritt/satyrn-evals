@@ -244,6 +244,56 @@ def test_the_teardown_branch_tears_down_even_when_the_harvest_itself_raises(
     assert torn_down == [True]  # teardown ran even though the harvest raised
 
 
+def test_the_normal_exit_branch_leaves_cleanup_marked_safe_when_the_harvest_raises(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """N9: on the normal-exit over-budget branch (I1), the process already
+    exited on its own -- nothing to tear down -- so `process_cleanup_safe`
+    is set `True` *before* `_harvest_tripped` runs, not after. That ordering
+    is the whole guarantee: an unexpected harvest failure must not leave
+    `process_cleanup_safe` stuck at the `False` `_run_command` set right
+    before the process started, which would make `run_workspace`'s finally
+    block skip the worktree cleanup for no reason -- the process is not
+    running, so cleanup was always safe. If the ordering were reversed (the
+    flag set only after a successful harvest), this test would see
+    `process_cleanup_safe is False` after the raise instead.
+
+    The transcript is deliberately left unwritten before the run (unlike the
+    teardown-branch tests above): the budget must first observe the crossing
+    from `_WritesThenExits.wait()` itself, at exit, the same way
+    `test_the_normal_exit_over_budget_branch_harvests_the_worktree` reaches
+    this branch (`command_exit == 0`) -- pre-writing it here would instead
+    trip the tripwire on a live process (`command_exit is None`) and land in
+    the sibling teardown branch this test is not about."""
+    state = _default_state(tmp_path)
+    transcript = tmp_path / "transcript.jsonl"
+    out = tmp_path / TRIPPED_PATCH_NAME
+    monkeypatch.setattr(
+        workspace_module.subprocess, "Popen",
+        lambda *_a, **_k: _WritesThenExits(transcript, f"{OVER}\n"),
+    )
+    monkeypatch.setattr(
+        workspace_module, "_teardown_process", lambda *_a, **_k: (True, None)
+    )
+
+    def raising_harvest_tripped(*_a: object, **_k: object) -> None:
+        raise RuntimeError("unexpected harvest bug")
+
+    monkeypatch.setattr(workspace_module, "_harvest_tripped", raising_harvest_tripped)
+    with pytest.raises(RuntimeError, match="unexpected harvest bug"):
+        workspace_module._run_command(
+            ("x",),
+            state,
+            {},
+            10.0,
+            0.1,
+            transcript=transcript,
+            budget=AttemptBudget(output_tokens=1, turns=48),
+            tripped_patch=out,
+        )
+    assert state.process_cleanup_safe is True
+
+
 def _base(tmp_path: Path) -> Path:
     base = tmp_path / "base"
     (base / "src").mkdir(parents=True)
