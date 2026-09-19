@@ -1185,7 +1185,10 @@ def _harvest_patch(
     except (OSError, subprocess.SubprocessError, ValueError) as exc:
         return False, f"{type(exc).__name__}: {exc}"
     if capture.patch_text.strip():
-        destination.write_text(capture.patch_text, encoding="utf-8")
+        try:
+            destination.write_text(capture.patch_text, encoding="utf-8")
+        except OSError as exc:
+            return False, f"{type(exc).__name__}: {exc}"
         return True, None
     return False, None
 
@@ -1392,10 +1395,13 @@ def _run_command(
                     # The worktree still holds the cell's last state, and a
                     # cell that finished over budget is the one with the most
                     # to say, so harvest it here too -- before release, exactly
-                    # as the teardown branch does.
+                    # as the teardown branch does. The process already exited
+                    # on its own, so cleanup is unconditionally safe here --
+                    # record that before the harvest runs, so an unexpected
+                    # harvest failure can never leave cleanup unmarked (I1).
+                    state.process_cleanup_safe = True
                     if tripped_patch is not None:
                         _harvest_tripped(state, environment, tripped_patch)
-                    state.process_cleanup_safe = True
                     pending = WorkspaceResult(
                         WorkspaceCode.BUDGET_EXCEEDED,
                         tripped.message(),
@@ -1406,20 +1412,28 @@ def _run_command(
                     # The spending rule fired: tear down exactly as the
                     # timeout branch does, and report it as its own code so
                     # a stopped cell is never mistaken for one that refused
-                    # on its own. Artifacts already written are harvested.
-                    if isinstance(tripped, BudgetTripwire) and tripped_patch is not None:
-                        _harvest_tripped(state, environment, tripped_patch)
+                    # on its own. Artifacts already written are harvested
+                    # first -- inside its own try/finally, so an unexpected
+                    # harvest failure structurally cannot skip the teardown
+                    # in the finally block and leave a live process running
+                    # (I1). `_harvest_patch` itself never raises for its
+                    # known failure modes (git or write errors are recorded,
+                    # not raised); this is defense in depth for the rest.
                     try:
-                        safe, detail = _teardown(process, teardown_grace, state)
-                    except BaseException as exc:
-                        active_exception = exc
-                        _add_exception_note(
-                            exc,
-                            "process cleanup is unconfirmed; "
-                            f"{_retained_workspace(state)}",
-                        )
-                        raise
-                    state.process_cleanup_safe = safe
+                        if isinstance(tripped, BudgetTripwire) and tripped_patch is not None:
+                            _harvest_tripped(state, environment, tripped_patch)
+                    finally:
+                        try:
+                            safe, detail = _teardown(process, teardown_grace, state)
+                        except BaseException as exc:
+                            active_exception = exc
+                            _add_exception_note(
+                                exc,
+                                "process cleanup is unconfirmed; "
+                                f"{_retained_workspace(state)}",
+                            )
+                            raise
+                        state.process_cleanup_safe = safe
                     stopped = (
                         (WorkspaceCode.BUDGET_EXCEEDED, tripped.message(), "budget")
                         if isinstance(tripped, BudgetTripwire)

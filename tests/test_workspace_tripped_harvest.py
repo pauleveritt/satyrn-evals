@@ -164,6 +164,86 @@ def test_a_failed_build_is_swallowed_and_writes_no_file(
     assert not out.exists()
 
 
+def test_a_write_failure_on_the_teardown_branch_still_tears_down_and_is_swallowed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`_harvest_tripped` runs before `_teardown` on this branch (I1): a write
+    failure must not skip teardown and leave a live cell running. The
+    destination's parent directory does not exist, so the write inside
+    `_harvest_patch` fails -- teardown must still fire."""
+    state = _default_state(tmp_path)
+    transcript = tmp_path / "transcript.jsonl"
+    transcript.write_text(f"{OVER}\n")
+    out = tmp_path / "missing-parent" / TRIPPED_PATCH_NAME
+    torn_down: list[bool] = []
+    monkeypatch.setattr(
+        workspace_module.subprocess, "Popen", lambda *_a, **_k: _TrippedLiveProcess()
+    )
+
+    def fake_teardown_process(*_a: object, **_k: object) -> tuple[bool, str | None]:
+        torn_down.append(True)
+        return True, None
+
+    monkeypatch.setattr(workspace_module, "_teardown_process", fake_teardown_process)
+    monkeypatch.setattr(
+        "satyrn_evals.session_patch.build_cumulative_patch",
+        lambda *_a, **_k: _capture(_CAPTURED),
+    )
+    result = workspace_module._run_command(
+        ("x",),
+        state,
+        {},
+        10.0,
+        0.1,
+        transcript=transcript,
+        budget=AttemptBudget(output_tokens=1, turns=48),
+        tripped_patch=out,
+    )
+    assert torn_down == [True]  # teardown ran despite the write failure
+    assert result.code is WorkspaceCode.BUDGET_EXCEEDED
+    assert not out.exists()
+
+
+def test_the_teardown_branch_tears_down_even_when_the_harvest_itself_raises(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Defense in depth for I1: `_harvest_patch` is guarded against write
+    failures, but the teardown-branch call site must not depend on that --
+    any exception out of `_harvest_tripped` must still leave teardown
+    structurally unskippable."""
+    state = _default_state(tmp_path)
+    transcript = tmp_path / "transcript.jsonl"
+    transcript.write_text(f"{OVER}\n")
+    out = tmp_path / TRIPPED_PATCH_NAME
+    torn_down: list[bool] = []
+    monkeypatch.setattr(
+        workspace_module.subprocess, "Popen", lambda *_a, **_k: _TrippedLiveProcess()
+    )
+
+    def fake_teardown_process(*_a: object, **_k: object) -> tuple[bool, str | None]:
+        torn_down.append(True)
+        return True, None
+
+    monkeypatch.setattr(workspace_module, "_teardown_process", fake_teardown_process)
+
+    def raising_harvest_tripped(*_a: object, **_k: object) -> None:
+        raise RuntimeError("unexpected harvest bug")
+
+    monkeypatch.setattr(workspace_module, "_harvest_tripped", raising_harvest_tripped)
+    with pytest.raises(RuntimeError, match="unexpected harvest bug"):
+        workspace_module._run_command(
+            ("x",),
+            state,
+            {},
+            10.0,
+            0.1,
+            transcript=transcript,
+            budget=AttemptBudget(output_tokens=1, turns=48),
+            tripped_patch=out,
+        )
+    assert torn_down == [True]  # teardown ran even though the harvest raised
+
+
 def _base(tmp_path: Path) -> Path:
     base = tmp_path / "base"
     (base / "src").mkdir(parents=True)

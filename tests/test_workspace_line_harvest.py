@@ -329,6 +329,49 @@ def test_a_real_worktree_crossing_the_line_is_harvested_and_the_cell_keeps_runni
     assert "+value = 3" not in patch  # harvested at the crossing, not the final tree
 
 
+def test_a_write_failure_on_the_line_path_is_recorded_and_the_cell_is_unaffected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A destination the harvest cannot write to (e.g. permission denied, or
+    here a missing parent directory) must not escape `_harvest_patch`: the
+    write failure is recorded exactly like a git failure, and the cell's own
+    outcome is untouched (I1)."""
+    state = _default_state(tmp_path)
+    transcript = tmp_path / "transcript.jsonl"
+    transcript.write_text(TOKEN_LINE + "\n")
+    out = tmp_path / "missing-parent" / LINE_PATCH_NAME  # parent dir does not exist
+    monkeypatch.setattr(
+        workspace_module.subprocess, "Popen", lambda *_a, **_k: _KeepsRunningProcess()
+    )
+    monkeypatch.setattr(
+        workspace_module,
+        "_teardown_process",
+        lambda *_a, **_k: (_ for _ in ()).throw(
+            AssertionError("a line crossing must never tear the cell down")
+        ),
+    )
+    monkeypatch.setattr(
+        "satyrn_evals.session_patch.build_cumulative_patch",
+        lambda *_a, **_k: _capture(_BEFORE),
+    )
+    result = workspace_module._run_command(
+        ("x",),
+        state,
+        {},
+        10.0,
+        0.1,
+        transcript=transcript,
+        line_budget=LineBudget(100, 48),
+        line_patch=out,
+    )
+    assert result.code is WorkspaceCode.OK  # the cell's own outcome, unchanged
+    assert result.line_crossed is not None
+    assert result.line_patch_written is False
+    assert result.line_harvest_error is not None
+    assert "FileNotFoundError" in result.line_harvest_error
+    assert not out.exists()
+
+
 def test_the_engine_arm_records_an_error_when_the_worktree_cannot_be_found(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
