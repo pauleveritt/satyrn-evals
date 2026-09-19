@@ -425,6 +425,17 @@ def _attempt(
                 exported[ISOLATION_ENV] = isolation.value
                 exported[CELL_PARENT_ENV] = os.fspath(workspace_lease.parent)
                 exported[TRANSCRIPT_ENV] = os.fspath(live_transcript)
+            # C2 (Opus review of a113f0b..3ecf068): pre-bound to None so the
+            # except clause below can pass it to `_write_deadline_refusal`
+            # either way. `run_prepared_command` itself can raise
+            # AttemptDeadlineExceeded before ever returning -- `workspace`
+            # then correctly stays None, no crossing could have been
+            # observed. But the standalone `deadline.remaining(COMMAND)`
+            # check just below it can *also* raise, after `workspace` has
+            # already been assigned a real WorkspaceResult (possibly
+            # carrying a line crossing the model made before the whole-
+            # attempt deadline expired) -- that crossing must not be lost.
+            workspace: WorkspaceResult | None = None
             try:
                 try:
                     workspace = run_prepared_command(
@@ -465,6 +476,7 @@ def _attempt(
                     command_exit=None,
                     workspace_base_sha=workspace_lease.base_sha,
                     retained_path=os.fspath(workspace_lease.parent),
+                    workspace=workspace,
                 )
             except BaseException as exc:
                 _release_after_exception(workspace_lease, exc, deadline=deadline)
@@ -832,8 +844,16 @@ def _write_deadline_refusal(
         raise AssertionError("deadline refusal requires an expired deadline")
     patch_bytes, _patch_error = _read_artifact(patch_path, "patch")
     transcript_bytes, _transcript_error = _read_artifact(transcript_path, "transcript")
+    # Defensive (C2): a line.diff can exist on disk from a crossing this
+    # call site was never told about (no `workspace`) -- never report a
+    # line_patch_path the AttemptRecord itself would then refuse to accept
+    # without a line_crossed (attempt_record.py's "both or neither" rule).
     line_patch_path: str | None = (
-        LINE_PATCH_NAME if (attempt_dir / LINE_PATCH_NAME).is_file() else None
+        LINE_PATCH_NAME
+        if workspace is not None
+        and workspace.line_crossed is not None
+        and (attempt_dir / LINE_PATCH_NAME).is_file()
+        else None
     )
     record = AttemptRecord(
         version=1,
@@ -1130,11 +1150,17 @@ def _finish_attempt(
     # can cross the line and still end at any outcome. `line_patch_path`
     # follows the tripped-patch convention: the file's presence is the
     # interface, not a second flag to keep in sync with it.
-    line_patch_path: str | None = (
-        LINE_PATCH_NAME if (attempt_dir / LINE_PATCH_NAME).is_file() else None
-    )
     line_crossed = workspace.line_crossed
     line_harvest_error = workspace.line_harvest_error
+    # Defensive (C2), mirroring `_write_deadline_refusal`: never report a
+    # line_patch_path without line_crossed, even here where `workspace` is
+    # always present -- attempt_record.py's own validation would refuse the
+    # combination and this function has no caller left to catch it.
+    line_patch_path: str | None = (
+        LINE_PATCH_NAME
+        if line_crossed is not None and (attempt_dir / LINE_PATCH_NAME).is_file()
+        else None
+    )
     if code is not None:
         if deadline is not None:
             deadline.remaining(DeadlinePhase.PRESERVATION)

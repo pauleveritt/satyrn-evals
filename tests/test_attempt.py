@@ -1328,6 +1328,49 @@ def test_private_deadline_command_expiry_retains_available_artifacts(
     assert record.retained_path == "/tmp/fake-prepared-workspace"
 
 
+def test_private_deadline_command_expiry_after_a_crossing_carries_it_into_the_refusal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """C2 (Opus review of a113f0b..3ecf068): a cell can cross the declared
+    line, and `run_prepared_command` can return a normal WorkspaceResult
+    carrying that crossing, before the whole-attempt deadline check right
+    after it (`_attempt`'s own `deadline.remaining(DeadlinePhase.COMMAND)`,
+    not one inside `run_prepared_command`) raises. Before this fix, the
+    `except AttemptDeadlineExceeded` there called `_write_deadline_refusal`
+    with no `workspace=`, so `line_crossed` came back None while
+    `line_patch_path` was still derived from line.diff's presence on disk --
+    an AttemptRecord combination attempt_record.py's own validation forbids,
+    so building the record raised ValueError and no attempt.json was ever
+    written. Distinct from the sibling case at
+    `test_private_deadline_command_expiry_retains_available_artifacts`
+    (line ~1307): there the deadline fires *inside* `run_prepared_command`
+    itself, before it can return anything, so `workspace` is legitimately
+    unbound and all three line fields are correctly None."""
+    clock = _Clock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+    crossing = LineCrossing(by="tokens", output_tokens=16001, turn=10, at="2026-09-19T00:00:00+00:00")
+
+    def run(**kwargs: Any) -> WorkspaceResult:
+        environment = kwargs["environment"]
+        Path(environment[attempt_module.PATCH_ENV]).write_text(GOOD_PATCH)
+        Path(environment[attempt_module.TRANSCRIPT_ENV]).write_text(TRANSCRIPT)
+        kwargs["line_patch"].write_text("diff --git a/x b/x\n")
+        clock.now = 1.0  # expired by the time _attempt's own COMMAND check runs next
+        return WorkspaceResult(
+            WorkspaceCode.OK, "done", 0, "b" * 40, line_crossed=crossing, line_patch_written=True,
+        )
+
+    _install_workspace_double(monkeypatch, run)
+    record = _bounded_attempt(tmp_path, monkeypatch, deadline)
+
+    assert record.code is AttemptCode.DEADLINE_EXCEEDED
+    assert record.deadline is not None
+    assert record.deadline.phase is DeadlinePhase.COMMAND
+    assert record.line_crossed == crossing
+    assert record.line_harvest_error is None
+    assert record.line_patch_path == LINE_PATCH_NAME
+
+
 def test_deadline_refusal_keeps_unreadable_artifact_path_without_digest(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
