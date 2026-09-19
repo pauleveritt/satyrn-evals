@@ -8504,3 +8504,4 @@
 | src/satyrn_evals/task_selftest.py | created in release-one |
 | tests/test_task_selftest.py | created in release-one |
 | tests/integration/test_task_selftest_bases.py | created in release-one |
+| tests/data/v10/truncated-engine.jsonl | created in release-one |

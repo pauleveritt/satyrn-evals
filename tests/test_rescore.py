@@ -990,8 +990,13 @@ def test_regrade_reclassification_is_idempotent(tmp_path: Path) -> None:
 
 
 def _partial_leak(payload: str) -> str:
-    """A timed-out cell's transcript: the leak is read, nothing closes the turn."""
-    return "\n".join(_leaky_transcript(payload).splitlines()[:5]) + "\n"
+    """A timed-out cell's transcript: the leak is read, the session never settled.
+
+    The turn closes but there is no ``agent_end``, so pathology reads it
+    ``partial`` -- an unmeasured shape the evidence scan must still cover.
+    (A cut *open* turn is measured now; see the 2026-09-18 truncation rule.)
+    """
+    return "\n".join(_leaky_transcript(payload).splitlines()[:-2]) + "\n"
 
 
 def test_evidence_scans_a_timed_out_hidden_cell_that_pathology_cannot_measure(tmp_path: Path) -> None:

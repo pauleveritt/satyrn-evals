@@ -102,13 +102,37 @@ def test_missing_session_header_is_malformed() -> None:
     assert _unmeasured(text).reason == "malformed"
 
 
-def test_unbalanced_turns_are_malformed() -> None:
+def test_a_single_open_final_turn_is_measured_and_truncated() -> None:
+    """A budget- or backstop-stopped cell is killed mid-turn: one open
+    ``turn_start`` at the end and no ``agent_end``. It is measured, with the
+    truncation recorded (2026-09-18), not malformed."""
     text = (
         '{"type": "session", "version": 3, "cwd": "/w"}\n'
         '{"type": "turn_start"}\n{"type": "turn_end", "message": {}}\n'
         '{"type": "turn_start"}\n'
     )
-    assert _unmeasured(text).reason == "malformed"
+    block = count_transcript(text, had_patch=False)
+    assert (block.measured, block.truncated) == (True, True)
+    assert block.to_block()["truncated"] is True
+
+
+def test_other_turn_imbalances_are_malformed() -> None:
+    nested = (
+        '{"type": "session", "version": 3, "cwd": "/w"}\n'
+        '{"type": "turn_start"}\n{"type": "turn_start"}\n'
+    )
+    assert _unmeasured(nested).reason == "malformed"
+    reversal = (
+        '{"type": "session", "version": 3, "cwd": "/w"}\n'
+        '{"type": "turn_end", "message": {}}\n{"type": "turn_start"}\n'
+    )
+    assert _unmeasured(reversal).reason == "malformed"
+    two_open = (
+        '{"type": "session", "version": 3, "cwd": "/w"}\n'
+        '{"type": "turn_start"}\n{"type": "turn_end", "message": {}}\n'
+        '{"type": "turn_start"}\n{"type": "turn_start"}\n'
+    )
+    assert _unmeasured(two_open).reason == "malformed"
 
 
 def test_duplicate_start_id_is_malformed() -> None:
@@ -542,6 +566,8 @@ def test_measured_cell_to_block_wire_shape() -> None:
     wire = count_transcript(GOOD, had_patch=True).to_block()
     assert wire == {
         "measured": True,
+        "truncated": False,
+        "invalid_tool_calls": 0,
         "tool_calls": {"read": 2, "edit": 2},
         "repeats": 1,  # the two identical edit executions on app.py
         "churn": 0,
@@ -654,6 +680,8 @@ def test_validation_row_reproduces_the_spec_table() -> None:
     block = count_transcript(text, had_patch=True)
     assert block.to_block() == {
         "measured": True,
+        "truncated": False,
+        "invalid_tool_calls": 0,
         "tool_calls": {"read": 6, "edit": 2},
         "repeats": 4,
         "churn": 0,
@@ -663,6 +691,18 @@ def test_validation_row_reproduces_the_spec_table() -> None:
         "workspace_escapes": 0,
         "loop_broken": 0,
     }
+
+
+def test_a_budget_stopped_engine_transcript_reads_measured_and_truncated() -> None:
+    """The 2026-09-18 defect: a budget- or backstop-stopped Engine cell is
+    killed mid-turn, so its transcript ends with one open ``turn_start``, no
+    ``agent_end``, and the tool call that was in flight. It must read as
+    measured with the truncation recorded, or every budget-stopped cell reads
+    malformed and the evidence fields are lost."""
+    text = Path("tests/data/v10/truncated-engine.jsonl").read_text(encoding="utf-8")
+    block = count_transcript(text, had_patch=True)
+    assert (block.measured, block.truncated) == (True, True)
+    assert block.to_block()["truncated"] is True
 
 
 def test_measured_false_never_carries_counts() -> None:
@@ -876,24 +916,20 @@ def _doc(*tool_events: str) -> str:
     ])
 
 
-def test_an_edit_without_a_top_level_path_is_malformed() -> None:
-    """Regression pin, and a correction (2026-09-05).
+def test_an_edit_without_a_top_level_path_is_counted_invalid_not_voided() -> None:
+    """A refused file-tool call is counted, not voided (2026-09-18).
 
-    Two Engine cells of the V11c spike read ``measured: false`` on an
-    ``edit`` whose args were ``{"edits": [{"path": …, oldText, newText}]}``
-    with no top-level ``path``. That was first diagnosed here as a second
-    legitimate argument shape V10 failed to model. It is not. The paired
-    ``tool_execution_end`` records pi refusing the call --
-    ``Validation failed for tool "edit": - path: must have required
-    properties path`` -- so the edit never executed. Teaching V10 to read a
-    path out of it would manufacture ``tool_calls``, ``churn`` and
-    ``noop_edits`` from a call that did nothing.
+    The 2026-09-05 and 2026-09-08 rulings voided the whole cell when pi
+    refused an ``edit`` whose args carried no top-level ``path``: the call
+    never executed, so counting it would manufacture ``tool_calls``. That
+    also lost every other count in the cell. The 2026-09-18 route proof forced
+    the axis the ruling itself proposed -- the refused call is counted in
+    ``invalid_tool_calls``, contributes to nothing else, and the cell stays
+    measured. The success sibling is ``test_a_well_formed_edit_is_still_measured``.
 
-    Evidence: ``~/satyrn-smokes/2026-09-05-v11c-spike-184017/
-    cell-005-engine`` events 163 and 197, ``cell-011-engine`` event 220.
-
-    What remains owed is a way to *count* an invalid tool call rather than
-    void the cell over it -- a new axis, and a proposal. See `BACKLOG.md`.
+    Evidence: ``~/satyrn-smokes/2026-09-05-v11c-spike-184017/cell-005-engine``
+    events 163 and 197, ``cell-011-engine`` event 220; the 2026-09-18 route
+    proof's run-record-gate 743907, docs-linter 770123 and cell-loop 697210.
     """
     block = count_transcript(
         _doc(
@@ -905,7 +941,10 @@ def test_an_edit_without_a_top_level_path_is_malformed() -> None:
         ),
         had_patch=True,
     )
-    assert (block.measured, block.reason) == (False, "malformed")
+    assert block.measured is True
+    assert block.invalid_tool_calls == 1
+    assert block.tool_calls == {}
+    assert (block.churn, block.noop_edits) == (0, 0)
 
 
 def test_a_well_formed_edit_is_still_measured() -> None:
@@ -928,19 +967,21 @@ def test_a_well_formed_edit_is_still_measured() -> None:
 #
 # The R1 batch found two things in the parser. Only one was a defect.
 #
-# NOT a defect: three Baseline cells carried an `edit` whose args are
-# `{"edits": [{oldText, newText}]}` with no top-level path, and the cells read
-# `malformed`. Relaxing R5 to admit that shape was drafted and then abandoned,
-# because the paired `tool_execution_end` shows pi REFUSING each call --
-# `isError: true`, "Validation failed for tool \"edit\": - path: must have
-# required properties path" -- in
-# `~/satyrn-smokes/2026-09-08-misleading-locus-r1-201314/screen/`
-# `cell-012-baseline`, `cell-036-baseline` and `cell-070-baseline`. Counting it
-# would manufacture `tool_calls` from a call that never executed. This is the
-# second occurrence of the shape; the first was corrected on 2026-09-05 and is
-# pinned by `test_an_edit_without_a_top_level_path_is_malformed` above. What
-# remains owed is unchanged: an axis that COUNTS an invalid tool call instead
-# of voiding the cell -- a proposal, not a parser relaxation.
+# The pathless batch edit: three Baseline cells carried an `edit` whose args
+# are `{"edits": [{oldText, newText}]}` with no top-level path, and the cells
+# read `malformed`. Relaxing R5 to admit that shape was drafted and abandoned
+# on 2026-09-08, because the paired `tool_execution_end` shows pi REFUSING
+# each call -- `isError: true`, "Validation failed for tool \"edit\": - path:
+# must have required properties path" -- so counting it would manufacture
+# `tool_calls` from a call that never executed. The ruling named the fix it
+# wanted: "an axis that COUNTS an invalid tool call instead of voiding the
+# cell -- a proposal, not a parser relaxation."
+#
+# 2026-09-18 supersedes the voiding: the route proof's run-record-gate 743907,
+# docs-linter 770123 and cell-loop 697210 all carried this shape, and voiding
+# them lost every other count. The proposal is now built:
+# `invalid_tool_calls` counts the refused call and it contributes to nothing
+# else; the cell stays measured. The 2026-09-05 pin is updated in place.
 #
 # A defect: `compaction_start`/`compaction_end` were absent from the
 # vocabulary, so any transcript whose context window filled read
@@ -998,11 +1039,12 @@ def test_an_unknown_event_is_still_unknown() -> None:
     )
 
 
-def test_todays_pathless_batch_edit_is_still_malformed() -> None:
-    """The second occurrence of the refused shape, pinned with its evidence.
+def test_todays_pathless_batch_edit_is_counted_invalid() -> None:
+    """The second occurrence of the refused shape, counted rather than voided.
 
     Blocks carrying neither a path nor anything else pi accepts: the call was
-    refused, so the cell is voided rather than counted. Sibling success is
+    refused, so it is counted in ``invalid_tool_calls`` and the cell is kept
+    (2026-09-18). Sibling success is
     `test_a_well_formed_edit_is_still_measured` above.
     """
     document = _document(
@@ -1012,7 +1054,9 @@ def test_todays_pathless_batch_edit_is_still_malformed() -> None:
         '"edit", "isError": true, "result": {"content": [{"type": "text", '
         '"text": "Validation failed for tool \\"edit\\""}]}}',
     )
-    assert _unmeasured(document).reason == "malformed"
+    block = count_transcript(document, had_patch=True)
+    assert block.measured is True
+    assert block.invalid_tool_calls == 1
 
 
 # --- 2026-09-11 V2b: the adapter marker and the multi-session concatenation ---
