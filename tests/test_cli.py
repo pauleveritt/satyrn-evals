@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from satyrn_evals import cli as cli_module
-from satyrn_evals.budget import AttemptBudget
+from satyrn_evals.budget import AttemptBudget, LineBudget
 from satyrn_evals.cell import Isolation
 from satyrn_evals.cli import (
     main,
@@ -357,6 +357,46 @@ def test_attempt_takes_the_isolated_profile_from_the_run_record(tmp_path: Path, 
     record = _record(tmp_path, isolation="isolated", purpose="admission")
     assert main(["attempt", "format_number", "--run-record", str(record), "--", *PI]) == 2
     assert seen["isolation"] is Isolation.ISOLATED
+
+
+def test_attempt_takes_the_line_budget_from_the_run_record(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The launcher path (`launch_cell.run_cell`) already builds a `LineBudget`
+    from a record's `line_token_budget`/`line_turn_budget` and passes it to
+    `attempt()`; the CLI's `--run-record` path must do the same, reusing
+    `run_record.line_budget()` (release-two line-harvest gap, Part B)."""
+    seen: dict[str, object] = {}
+
+    def fake_attempt(**kwargs: object) -> object:
+        seen.update(kwargs)
+        raise UsageError("stop here")
+
+    monkeypatch.setattr(cli_module, "attempt", fake_attempt)
+    record = _record(tmp_path, line_token_budget=16000, line_turn_budget=24)
+    assert main(["attempt", "format_number", "--run-record", str(record), "--", *PI]) == 2
+    assert seen["line_budget"] == LineBudget(output_tokens=16000, turns=24)
+
+
+def test_run_takes_the_line_budget_from_the_run_record(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, object] = {}
+    monkeypatch.setattr(cli_module, "run", lambda **kwargs: seen.update(kwargs))
+    record = _record(tmp_path, line_token_budget=16000, line_turn_budget=24)
+    assert main(["run", "format_number", "--n", "4", "--run-record", str(record), "--", *PI]) == 0
+    assert seen["line_budget"] == LineBudget(output_tokens=16000, turns=24)
+
+
+def test_attempt_without_a_declared_line_has_no_line_budget(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sibling success: a record with no declared line still reaches attempt()
+    with a line_budget of None, same as the launcher's own both-or-neither rule."""
+    seen: dict[str, object] = {}
+
+    def fake_attempt(**kwargs: object) -> object:
+        seen.update(kwargs)
+        raise UsageError("stop here")
+
+    monkeypatch.setattr(cli_module, "attempt", fake_attempt)
+    record = _record(tmp_path)
+    assert main(["attempt", "format_number", "--run-record", str(record), "--", *PI]) == 2
+    assert seen["line_budget"] is None
 
 
 def test_attempt_refuses_a_command_the_record_does_not_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

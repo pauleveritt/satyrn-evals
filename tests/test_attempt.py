@@ -15,12 +15,13 @@ from satyrn_evals.attempt_record import (
     DeadlinePhase,
     load_attempt_record,
 )
-from satyrn_evals.budget import AttemptBudget
+from satyrn_evals.budget import AttemptBudget, LineCrossing
 from satyrn_evals.deadline import AttemptDeadline
 from satyrn_evals.errors import HookError, UsageError
 from satyrn_evals.receipt import Receipt, write_receipt
 from satyrn_evals.verdict import Verdict
 from satyrn_evals.workspace import (
+    LINE_PATCH_NAME,
     WorkspaceCode,
     WorkspacePrepareError,
     WorkspaceReleaseError,
@@ -1395,6 +1396,52 @@ def test_private_deadline_preservation_expiry_retains_artifacts_without_grading(
     assert record.deadline.phase is DeadlinePhase.PRESERVATION
     assert record.patch_digest is not None and record.transcript_digest is not None
     assert record.retained_path == "/tmp/fake-prepared-workspace"
+    # Sibling to the crossed-line case below: a cell that never crossed the
+    # line must still get all three fields, all None/absent.
+    assert record.line_crossed is None
+    assert record.line_patch_path is None
+    assert record.line_harvest_error is None
+
+
+def test_private_deadline_preservation_expiry_carries_a_crossed_line_into_the_refusal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A cell can cross the declared line and then hit the whole-attempt
+    deadline before `_finish_attempt` ever runs. `_write_deadline_refusal`
+    must carry the same three line fields `_finish_attempt` would have --
+    the line harvest happened regardless of which function ends up writing
+    the durable record (release-two line-harvest gap, Part B)."""
+
+    class PreservationClock(_Clock):
+        def __call__(self) -> float:
+            observed = self.now
+            if observed == 0.5:
+                self.now = 1.0
+            return observed
+
+    clock = PreservationClock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+    crossing = LineCrossing(by="tokens", output_tokens=16001, turn=10, at="2026-09-19T00:00:00+00:00")
+
+    def run(**kwargs: Any) -> WorkspaceResult:
+        environment = kwargs["environment"]
+        Path(environment[attempt_module.PATCH_ENV]).write_text(GOOD_PATCH)
+        Path(environment[attempt_module.TRANSCRIPT_ENV]).write_text(TRANSCRIPT)
+        kwargs["line_patch"].write_text("diff --git a/x b/x\n")
+        clock.now = 0.5
+        return WorkspaceResult(
+            WorkspaceCode.OK, "done", 0, "b" * 40, line_crossed=crossing, line_patch_written=True,
+        )
+
+    _install_workspace_double(monkeypatch, run)
+    record = _bounded_attempt(tmp_path, monkeypatch, deadline)
+
+    assert record.code is AttemptCode.DEADLINE_EXCEEDED
+    assert record.deadline is not None
+    assert record.deadline.phase is DeadlinePhase.PRESERVATION
+    assert record.line_crossed == crossing
+    assert record.line_harvest_error is None
+    assert record.line_patch_path == LINE_PATCH_NAME
 
 
 def test_private_deadline_preservation_keeps_command_timeout_authority(

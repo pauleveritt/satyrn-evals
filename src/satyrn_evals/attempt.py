@@ -466,6 +466,7 @@ def _attempt(
                         deadline=deadline,
                         workspace_base_sha=workspace_lease.base_sha,
                         retained_path=os.fspath(workspace_lease.parent),
+                        workspace=workspace,
                     )
             try:
                 retained_path, release_message = _release_attempt_workspace(
@@ -486,6 +487,7 @@ def _attempt(
                     deadline=deadline,
                     workspace_base_sha=workspace_lease.base_sha,
                     retained_path=os.fspath(workspace_lease.parent),
+                    workspace=workspace,
                 )
             except BaseException as exc:
                 assert workspace_lease is not None
@@ -512,6 +514,7 @@ def _attempt(
                         deadline=deadline,
                         workspace_base_sha=workspace_lease.base_sha,
                         retained_path=retained_path,
+                        workspace=workspace,
                     )
             workspace_lease = None
             if retained_path is None:
@@ -581,6 +584,7 @@ def _attempt(
                     command_exit=workspace.command_exit,
                     workspace_base_sha=workspace.base_sha,
                     retained_path=os.fspath(workspace_lease.parent),
+                    workspace=workspace,
                 )
         try:
             record = _finish_attempt(
@@ -651,6 +655,7 @@ def _attempt(
                 command_exit=workspace.command_exit,
                 workspace_base_sha=workspace.base_sha,
                 retained_path=os.fspath(workspace_lease.parent),
+                workspace=workspace,
             )
         except BaseException as exc:
             if workspace_lease is not None:
@@ -786,8 +791,17 @@ def _write_deadline_refusal(
     command_exit: int | None = None,
     workspace_base_sha: str | None = None,
     retained_path: str | None = None,
+    workspace: WorkspaceResult | None = None,
 ) -> AttemptRecord:
-    """Finalize a pre-grade expiry from whatever evidence is already local."""
+    """Finalize a pre-grade expiry from whatever evidence is already local.
+
+    The declared-line harvest (release two): same rule as `_finish_attempt`
+    -- `line_patch_path` follows the tripped-patch convention (the file's
+    presence under `attempt_dir` is the interface), and `line_crossed`/
+    `line_harvest_error` come off `workspace` when one is available. A call
+    site before the command ever ran (no `workspace` yet) correctly leaves
+    all three None: nothing could have crossed a line that never started.
+    """
     expiry: AttemptDeadlineExceeded
     try:
         deadline.remaining(DeadlinePhase.PRESERVATION)
@@ -797,6 +811,9 @@ def _write_deadline_refusal(
         raise AssertionError("deadline refusal requires an expired deadline")
     patch_bytes, _patch_error = _read_artifact(patch_path, "patch")
     transcript_bytes, _transcript_error = _read_artifact(transcript_path, "transcript")
+    line_patch_path: str | None = (
+        LINE_PATCH_NAME if (attempt_dir / LINE_PATCH_NAME).is_file() else None
+    )
     record = AttemptRecord(
         version=1,
         outcome=AttemptOutcome.REFUSED,
@@ -832,6 +849,9 @@ def _write_deadline_refusal(
             expiry.elapsed,
             workspace_retained=retained_path is not None,
         ),
+        line_crossed=workspace.line_crossed if workspace is not None else None,
+        line_patch_path=line_patch_path,
+        line_harvest_error=workspace.line_harvest_error if workspace is not None else None,
     )
     write_attempt_record(attempt_dir / "attempt.json", record)
     return record

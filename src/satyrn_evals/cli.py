@@ -11,7 +11,7 @@ from pathlib import Path
 from satyrn_evals.arms import load_arm
 from satyrn_evals.attempt import attempt, resolve_contract
 from satyrn_evals.attempt_record import AttemptCode, AttemptOutcome
-from satyrn_evals.budget import AttemptBudget
+from satyrn_evals.budget import AttemptBudget, LineBudget
 from satyrn_evals.capture import capture
 from satyrn_evals.capture_record import CaptureOutcome
 from satyrn_evals.cell import CELL_PATH_PREFIX_ENV, Isolation
@@ -42,6 +42,9 @@ from satyrn_evals.run_record import (
     new_record,
     record_arms,
     write_new_record,
+)
+from satyrn_evals.run_record import (
+    line_budget as record_line_budget,
 )
 from satyrn_evals.session import run_session
 from satyrn_evals.session_grader import SessionGrader
@@ -100,15 +103,18 @@ def _previous_result_committed(record: object) -> bool | None:
 
 def _record_settings(
     run_record: str | None, *, task: str, tasks_root: str, command: list[str], n: int | None = None
-) -> tuple[AttemptBudget | None, Isolation]:
-    """The budget and profile a run record froze, after the same gate ``launch --check``
-    runs and after checking the invocation (task, tree, arm, model, and — for ``run`` —
-    ``--n``) is the record's.
+) -> tuple[AttemptBudget | None, Isolation, LineBudget | None]:
+    """The budget, profile, and declared line a run record froze, after the same
+    gate ``launch --check`` runs and after checking the invocation (task, tree,
+    arm, model, and — for ``run`` — ``--n``) is the record's.
 
-    Without a record: no budget, the local profile.
+    Without a record: no budget, the local profile, no declared line. With a
+    record, the declared line (if any) is extracted the same way
+    ``launch_cell.run_cell`` builds one from a launch spec: via
+    ``run_record.line_budget``, never reimplemented here.
     """
     if run_record is None:
-        return None, Isolation.LOCAL
+        return None, Isolation.LOCAL, None
     record = load_run_record(Path(run_record))
     gate(record, previous_result_committed=_previous_result_committed(record))
     check_invocation(
@@ -116,7 +122,7 @@ def _record_settings(
     )
     if n is not None and n != record.n:
         raise RunRecordError(f"the record asks n={record.n}; --n {n} disagrees")
-    return attempt_budget(record), record.isolation
+    return attempt_budget(record), record.isolation, record_line_budget(record)
 
 
 def split_attempt_argv(argv: list[str]) -> tuple[list[str], list[str]]:
@@ -142,7 +148,7 @@ def main(argv: list[str] | None = None) -> int:
                     "attempt command is required: attempt TASK [flags] -- COMMAND..."
                 )
             args = parser.parse_args(["attempt", *flags])
-            budget, isolation = _record_settings(
+            budget, isolation, line_budget = _record_settings(
                 args.run_record, task=args.task, tasks_root=args.tasks_root, command=command
             )
             record = attempt(
@@ -156,6 +162,7 @@ def main(argv: list[str] | None = None) -> int:
                 rung=args.rung,
                 budget=budget,
                 isolation=isolation,
+                line_budget=line_budget,
             )
             if record.code is AttemptCode.GRADE_FAILED:
                 print(f"satyrn-evals: {record.message}", file=sys.stderr)
@@ -175,7 +182,7 @@ def main(argv: list[str] | None = None) -> int:
                     "run command is required: run TASK [flags] -- COMMAND..."
                 )
             args = parser.parse_args(["run", *flags])
-            budget, isolation = _record_settings(
+            budget, isolation, line_budget = _record_settings(
                 args.run_record, task=args.task, tasks_root=args.tasks_root, command=command, n=args.n
             )
             run(
@@ -190,6 +197,7 @@ def main(argv: list[str] | None = None) -> int:
                 rung=args.rung,
                 budget=budget,
                 isolation=isolation,
+                line_budget=line_budget,
             )
             return 0
         if argv[:1] == ["session"]:

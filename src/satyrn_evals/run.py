@@ -34,7 +34,7 @@ from pathlib import Path
 from types import FrameType
 
 from satyrn_evals.attempt import DEFAULT_TIMEOUT, attempt, resolve_contract
-from satyrn_evals.budget import AttemptBudget
+from satyrn_evals.budget import AttemptBudget, LineBudget
 from satyrn_evals.cell import Isolation
 from satyrn_evals.deadline import validate_attempt_timeout
 from satyrn_evals.errors import OverlayError, SatyrnError, UsageError
@@ -157,6 +157,7 @@ def run(
     attempt_timeout: float | None = None,
     budget: AttemptBudget | None = None,
     isolation: Isolation = Isolation.LOCAL,
+    line_budget: LineBudget | None = None,
 ) -> Summary:
     if n < 1:
         raise UsageError("run requires a positive --n")
@@ -199,6 +200,8 @@ def run(
                     attempt_kwargs["budget"] = budget
                 if isolation is Isolation.ISOLATED:
                     attempt_kwargs["isolation"] = isolation
+                if line_budget is not None:
+                    attempt_kwargs["line_budget"] = line_budget
                 record = attempt(**attempt_kwargs)  # type: ignore[arg-type]
                 if record.attempt_dir is None:
                     raise RuntimeError(
