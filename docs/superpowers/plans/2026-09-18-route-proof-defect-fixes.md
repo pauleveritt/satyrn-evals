@@ -43,10 +43,11 @@ Also `9a05c81`: fixed the pre-existing red gate where the route-proof `.result.j
 
 ## Status (2026-09-18)
 
-- Tasks 1-7 built and committed. Engine `41ddd1b`, `9f80935`, `5faf2b8`, `91e467c`; evals `8134c0d`, `9a05c81`, `3c54f85`, `9146448`, `fadc3ab`, `b9f6773`.
-- Engine head is `91e467c`; Task 8's whole-path review is scoped to `0b496d8..91e467c`.
-- Default gates green in both repos; engine integration green. **Two evals integration rows are red by design until the re-pin:** `tests/integration/test_launch_record.py` exports the arm's pinned `0b496d8`, which predates the derive budget flags, so the Engine cell reads `NO_PATCH`; `tests/integration/test_engine_arm_pins.py` compares evals' `GUARD_KINDS` with the pinned commit's, which predates `self_test_detected`. Both clear at the Task 8 re-pin and export.
-- Task 7 Step 3 (the numbers-page disclosure) is recorded in the design pending a page that does not exist yet.
+- Tasks 1-7 built and committed. Engine `41ddd1b`, `9f80935`, `5faf2b8`, `91e467c`, `2cccef1`; evals `8134c0d`, `9a05c81`, `3c54f85`, `9146448`, `fadc3ab`, `b9f6773`, `dfd71ef`, `15caff6`, `f7cace2`.
+- Engine head is `2cccef1`; the whole-path review (fresh, `0b496d8..91e467c`) returned **fit to re-freeze/re-pin/export with two conditions**. Condition 1 (fresh-session detection guard) and the review's I-3/M-1/M-2 were fixed in `2cccef1`; the arm is re-pinned to it and the previously-red integration rows are green.
+- **Malformed handling fixed** (`15caff6`): a cut final turn (`turn_end == turn_start - 1`, no `agent_end`) is measured with `truncated: true`, and a refused file-tool call (no top-level `path`) is counted in `invalid_tool_calls` instead of voiding the cell. All seven void-night transcripts classify, as do the Baseline budget-tripped census cells.
+- **Condition 2 closed** (`f7cace2`): `engine_self_test` runs the Engine's own derive + `satyrn-engine protocol` self-test on a copy of each base and its known-good state, with the Engine executable as a seam. A red known-good refuses the record; a red base with a green known-good is a repair task. The void-night row is a default-tier launch test. Live acceptance is `tests/integration/test_engine_selftest.py`, which skips until the export exists.
+- **Remaining, the maintainer's:** export the engine under the cells root (root), then the live acceptance runs; then the night. Option 2 (the six-base live loop) is the fallback only, never a standing gate.
 
 ---
 
