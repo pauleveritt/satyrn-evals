@@ -419,6 +419,7 @@ def launch_record(
             "attempt_timeout": deadline_s, "rung": record.rung, "token_budget": record.token_budget,
             "turn_budget": record.turn_budget, "isolation": record.isolation.value,
             "result": os.fspath(slot_path(night, slot)),
+            "line_token_budget": record.line_token_budget, "line_turn_budget": record.line_turn_budget,
         }
         spec_path = night / SLOTS_DIR / f"{slot.name}.spec.json"
         write_atomically(spec_path, spec)

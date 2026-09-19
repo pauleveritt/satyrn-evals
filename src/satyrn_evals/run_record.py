@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Literal
 
 from satyrn_evals.attempt import resolve_contract
-from satyrn_evals.budget import AttemptBudget
+from satyrn_evals.budget import AttemptBudget, LineBudget
 from satyrn_evals.cell import Isolation
 from satyrn_evals.errors import UsageError
 from satyrn_evals.manifest import load_manifest, resolve_task
@@ -89,6 +89,11 @@ class RunRecord:
     command_backstop_s: int = DEFAULT_COMMAND_BACKSTOP_S
     rung: str | None = None
     authority: str | None = None
+    # Release two "line harvest": both or neither, and each strictly below
+    # the attempt budget above. Absent means no line harvest and today's
+    # behaviour byte for byte -- older records need not carry these.
+    line_token_budget: int | None = None
+    line_turn_budget: int | None = None
 
 
 _REQUIRED: dict[str, type | tuple[type, ...]] = {
@@ -101,7 +106,7 @@ _REQUIRED: dict[str, type | tuple[type, ...]] = {
 
 _OPTIONAL: dict[str, type | tuple[type, ...]] = {
     "k": int, "rung": (str, type(None)), "authority": (str, type(None)),
-    "command_backstop_s": int,
+    "command_backstop_s": int, "line_token_budget": int, "line_turn_budget": int,
 }
 _ARM_PART = re.compile(r"^[a-z][a-z-]*$")
 
@@ -149,6 +154,22 @@ def load_run_record(path: Path) -> RunRecord:
     backstop = body.get("command_backstop_s", DEFAULT_COMMAND_BACKSTOP_S)
     if backstop < 1:
         raise RunRecordError(f"run record {path}: command_backstop_s must be a positive integer")
+    line_token = body.get("line_token_budget")
+    line_turn = body.get("line_turn_budget")
+    if (line_token is None) != (line_turn is None):
+        raise RunRecordError(
+            f"run record {path}: line_token_budget and line_turn_budget must both be set or neither"
+        )
+    if line_token is not None:
+        if line_token < 1 or line_turn < 1:
+            raise RunRecordError(
+                f"run record {path}: line_token_budget and line_turn_budget must be positive integers"
+            )
+        if line_token >= body["token_budget"] or line_turn >= body["turn_budget"]:
+            raise RunRecordError(
+                f"run record {path}: line_token_budget and line_turn_budget must be "
+                "strictly less than the record's token_budget and turn_budget"
+            )
     fields = {k: body[k] for k in _REQUIRED} | {k: body[k] for k in _OPTIONAL if k in body}
     fields["isolation"] = Isolation(body["isolation"])
     return RunRecord(**fields)
@@ -162,6 +183,14 @@ def record_arms(record: RunRecord) -> tuple[str, ...]:
 def attempt_budget(record: RunRecord) -> AttemptBudget:
     """The budget every attempt under this record is held to."""
     return AttemptBudget(output_tokens=record.token_budget, turns=record.turn_budget)
+
+
+def line_budget(record: RunRecord) -> LineBudget | None:
+    """The record's declared line, or None when it did not name one."""
+    if record.line_token_budget is None:
+        return None
+    assert record.line_turn_budget is not None  # both-or-neither, enforced at load
+    return LineBudget(output_tokens=record.line_token_budget, turns=record.line_turn_budget)
 
 
 def attempt_deadline_s(record: RunRecord) -> float:
@@ -271,6 +300,8 @@ def new_record(
     decision_rule: str | None,
     stop_rule: str = STOP_RULE,
     command_backstop_s: int = DEFAULT_COMMAND_BACKSTOP_S,
+    line_token_budget: int | None = None,
+    line_turn_budget: int | None = None,
 ) -> dict[str, object]:
     """A record body ``load_run_record`` and ``gate`` accept, with the tree digest and rung read from the task.
 
@@ -288,13 +319,17 @@ def new_record(
                 decision_rule = "none: development, no task outcome"
             case _:
                 raise RunRecordError(f"a {purpose} record needs --decision-rule")
-    return {
+    body: dict[str, object] = {
         "version": 1, "task": task, "task_tree_sha256": tree_digest(task_dir), "arm": arm, "model": model,
         "condition": "cold", "n": n, "mode": mode, "max_minutes": max_minutes, "stop_rule": stop_rule,
         "decision_rule": decision_rule, "previous_result": previous_result, "token_budget": token_budget,
         "turn_budget": turn_budget, "isolation": isolation, "purpose": purpose, "k": k, "rung": rung,
         "authority": authority, "command_backstop_s": command_backstop_s,
     }
+    if line_token_budget is not None or line_turn_budget is not None:
+        body["line_token_budget"] = line_token_budget
+        body["line_turn_budget"] = line_turn_budget
+    return body
 
 
 def write_new_record(path: Path, body: dict[str, object]) -> RunRecord:

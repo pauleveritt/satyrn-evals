@@ -1,0 +1,295 @@
+"""The declared line: harvested mid-run without disturbing the cell.
+
+Default-tier tests fake the process and the cumulative-patch build, so
+`just gates` proves: the harvest fires exactly once, at the crossing (not the
+final tree); the cell is never signaled or torn down; a cell that never
+crosses gets no file; a harvest failure is recorded and never changes the
+cell's own outcome; the Engine arm's harvest reads its own internal deliver
+worktree, not the Evals one.
+"""
+
+import subprocess
+from pathlib import Path
+
+import pytest
+
+import satyrn_evals.workspace as workspace_module
+from satyrn_evals.budget import LineBudget
+from satyrn_evals.cell import Isolation
+from satyrn_evals.session_patch import PatchCapture
+from satyrn_evals.workspace import LINE_PATCH_NAME, WorkspaceCode
+
+TOKEN_LINE = '{"type": "message_end", "message": {"role": "assistant", "usage": {"output": 101}}}'
+TOKEN_AT_LIMIT = '{"type": "message_end", "message": {"role": "assistant", "usage": {"output": 100}}}'
+TURN_LINE = '{"type": "turn_start"}'
+
+_BEFORE = "diff --git a/a.py b/a.py\n+before\n"
+_AFTER = "diff --git a/a.py b/a.py\n+before\n+after\n"
+
+
+def _capture(text: str) -> PatchCapture:
+    return PatchCapture(patch_text=text, changed_paths=(), status_lines=())
+
+
+def _default_state(tmp_path: Path, *, isolation: Isolation = Isolation.LOCAL) -> workspace_module._WorkspaceState:
+    parent = tmp_path / "owned"
+    parent.mkdir(parents=True)
+    repository = parent / "seed"
+    repository.mkdir()
+    worktree = parent / "worktree"
+    worktree.mkdir()
+    state = workspace_module._WorkspaceState(parent, repository, worktree, isolation=isolation)
+    state.base_sha = "a" * 40
+    return state
+
+
+class _KeepsRunningProcess:
+    """A cell that crosses the line, keeps running unsignaled, then exits on its own."""
+
+    pid = 4242
+
+    def __init__(self, exit_after: int = 3) -> None:
+        self.polls = 0
+        self.exit_after = exit_after
+
+    def wait(self, timeout: float | None = None) -> int:
+        self.polls += 1
+        if self.polls >= self.exit_after:
+            return 0
+        raise subprocess.TimeoutExpired(cmd="x", timeout=timeout or 0)
+
+    def kill(self) -> None:
+        raise AssertionError("a line crossing must never signal the cell")
+
+    def terminate(self) -> None:
+        raise AssertionError("a line crossing must never signal the cell")
+
+    def send_signal(self, _sig: int) -> None:
+        raise AssertionError("a line crossing must never signal the cell")
+
+
+def _run(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    transcript_text: str,
+    line_budget: LineBudget,
+    build,
+    process: object | None = None,
+    engine_arm: bool = False,
+    state: workspace_module._WorkspaceState | None = None,
+) -> tuple[workspace_module.WorkspaceResult, Path]:
+    state = state if state is not None else _default_state(tmp_path)
+    transcript = tmp_path / "transcript.jsonl"
+    transcript.write_text(transcript_text)
+    out = tmp_path / LINE_PATCH_NAME
+    proc = process if process is not None else _KeepsRunningProcess()
+    monkeypatch.setattr(workspace_module.subprocess, "Popen", lambda *_a, **_k: proc)
+    monkeypatch.setattr(workspace_module, "_teardown_process", lambda *_a, **_k: (_ for _ in ()).throw(
+        AssertionError("a line crossing must never tear the cell down")
+    ))
+    monkeypatch.setattr("satyrn_evals.session_patch.build_cumulative_patch", build)
+    result = workspace_module._run_command(
+        ("x",),
+        state,
+        {},
+        10.0,
+        0.1,
+        transcript=transcript,
+        line_budget=line_budget,
+        line_patch=out,
+        engine_arm=engine_arm,
+    )
+    return result, out
+
+
+def test_crossing_the_token_line_harvests_at_the_crossing_not_the_final_tree(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tree = {"text": _BEFORE}
+
+    def build(worktree, base, env, *, exclude=(), timeout=None):
+        return _capture(tree["text"])
+
+    process = _KeepsRunningProcess(exit_after=3)
+    original_wait = process.wait
+
+    def wait(timeout=None):
+        try:
+            return original_wait(timeout)
+        finally:
+            # Mutate the "worktree" only after the first poll -- i.e. after
+            # the harvest, which happens on the transcript read that
+            # precedes this poll in the same loop iteration.
+            if process.polls == 1:
+                tree["text"] = _AFTER
+
+    process.wait = wait  # type: ignore[method-assign]
+
+    result, out = _run(
+        tmp_path, monkeypatch, transcript_text=TOKEN_LINE + "\n", line_budget=LineBudget(100, 48), build=build,
+        process=process,
+    )
+    assert result.code is WorkspaceCode.OK
+    assert result.command_exit == 0
+    assert result.line_crossed is not None
+    assert result.line_crossed.by == "tokens"
+    assert result.line_crossed.output_tokens == 101
+    assert result.line_patch_written is True
+    assert result.line_harvest_error is None
+    assert out.read_text() == _BEFORE  # not _AFTER
+
+
+def test_crossing_the_turn_line_first(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    result, out = _run(
+        tmp_path,
+        monkeypatch,
+        transcript_text="\n".join([TURN_LINE] * 3) + "\n",
+        line_budget=LineBudget(32000, 2),
+        build=lambda *_a, **_k: _capture(_BEFORE),
+    )
+    assert result.line_crossed is not None
+    assert result.line_crossed.by == "turns"
+    assert result.line_crossed.turn == 3
+    assert out.read_text() == _BEFORE
+
+
+def test_crossing_exactly_at_the_limit_does_not_cross(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    result, out = _run(
+        tmp_path,
+        monkeypatch,
+        transcript_text=TOKEN_AT_LIMIT + "\n",
+        line_budget=LineBudget(100, 48),
+        build=lambda *_a, **_k: _capture(_BEFORE),
+    )
+    assert result.line_crossed is None
+    assert result.line_patch_written is False
+    assert not out.exists()
+
+
+def test_never_crossing_leaves_null_and_no_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    result, out = _run(
+        tmp_path,
+        monkeypatch,
+        transcript_text=TURN_LINE + "\n",
+        line_budget=LineBudget(32000, 48),
+        build=lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("harvest must not run")),
+    )
+    assert result.line_crossed is None
+    assert result.line_patch_written is False
+    assert result.line_harvest_error is None
+    assert not out.exists()
+
+
+def test_a_harvest_failure_is_recorded_and_the_cell_is_unaffected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def fail(*_a, **_k):
+        raise OSError("git is wedged")
+
+    result, out = _run(
+        tmp_path, monkeypatch, transcript_text=TOKEN_LINE + "\n", line_budget=LineBudget(100, 48), build=fail,
+    )
+    assert result.code is WorkspaceCode.OK  # the cell's own outcome, unchanged
+    assert result.command_exit == 0
+    assert result.line_crossed is not None
+    assert result.line_patch_written is False
+    assert result.line_harvest_error == "OSError: git is wedged"
+    assert not out.exists()
+
+
+def test_the_engine_arm_harvest_reads_its_own_internal_worktree(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state = _default_state(tmp_path, isolation=Isolation.ISOLATED)
+    engine_tmp = state.parent / "tmp"
+    engine_tmp.mkdir()
+    internal = engine_tmp / "satyrn-engine-abc123" / "worktree"
+    internal.mkdir(parents=True)
+
+    seen: dict[str, Path] = {}
+
+    def build(worktree, base, env, *, exclude=(), timeout=None):
+        seen["worktree"] = Path(worktree)
+        return _capture(_BEFORE)
+
+    result, out = _run(
+        tmp_path,
+        monkeypatch,
+        transcript_text=TOKEN_LINE + "\n",
+        line_budget=LineBudget(100, 48),
+        build=build,
+        engine_arm=True,
+        state=state,
+    )
+    assert seen["worktree"] == internal
+    assert result.line_patch_written is True
+    assert out.read_text() == _BEFORE
+
+
+def _base(tmp_path: Path) -> Path:
+    base = tmp_path / "base"
+    (base / "src").mkdir(parents=True)
+    (base / "src" / "app.py").write_text("value = 1\n")
+    return base
+
+
+@pytest.mark.integration
+def test_a_real_worktree_crossing_the_line_is_harvested_and_the_cell_keeps_running(
+    tmp_path: Path,
+) -> None:
+    """Real Git, real subprocess: the harness never sends a signal, the cell
+    runs to its own end, and the line patch is the tree at the crossing."""
+    import os
+
+    from satyrn_evals.attempt import TRANSCRIPT_ENV
+    from satyrn_evals.workspace import prepare_workspace, release_workspace
+
+    workspace = prepare_workspace(base=_base(tmp_path), protected_paths=(), environment=dict(os.environ))
+    out = tmp_path / LINE_PATCH_NAME
+    transcript = tmp_path / "t.jsonl"
+    script = (
+        f"printf 'value = 2\\n' > src/app.py; "
+        f"printf '%s\\n' '{TOKEN_LINE}' >> \"${{{TRANSCRIPT_ENV}}}\"; "
+        f"sleep 2; "  # give the harness's poll loop time to harvest the crossing
+        f"printf 'value = 3\\n' > src/app.py"  # further edits after the crossing
+    )
+    try:
+        result = workspace_module.run_prepared_command(
+            workspace,
+            command=["/bin/sh", "-c", script],
+            timeout=60.0,
+            transcript=transcript,
+            extra_environment={TRANSCRIPT_ENV: os.fspath(transcript)},
+            line_budget=LineBudget(100, 48),
+            line_patch=out,
+        )
+    finally:
+        release_workspace(workspace)
+    assert result.code is workspace_module.WorkspaceCode.OK
+    assert result.line_crossed is not None
+    assert result.line_crossed.by == "tokens"
+    patch = out.read_text()
+    assert "+value = 2" in patch
+    assert "+value = 3" not in patch  # harvested at the crossing, not the final tree
+
+
+def test_the_engine_arm_records_an_error_when_the_worktree_cannot_be_found(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state = _default_state(tmp_path, isolation=Isolation.ISOLATED)
+    (state.parent / "tmp").mkdir()  # empty: no satyrn-engine-* directory yet
+
+    result, _out = _run(
+        tmp_path,
+        monkeypatch,
+        transcript_text=TOKEN_LINE + "\n",
+        line_budget=LineBudget(100, 48),
+        build=lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("must not reach the build")),
+        engine_arm=True,
+        state=state,
+    )
+    assert result.line_crossed is not None
+    assert result.line_patch_written is False
+    assert result.line_harvest_error is not None
+    assert "engine" in result.line_harvest_error

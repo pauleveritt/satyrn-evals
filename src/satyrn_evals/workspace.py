@@ -16,14 +16,20 @@ import stat
 import subprocess
 import tempfile
 import time
-from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from dataclasses import dataclass, replace
 from enum import Enum, StrEnum, auto
 from pathlib import Path
 from typing import BinaryIO
 
 from satyrn_evals.attempt_record import DeadlinePhase
-from satyrn_evals.budget import AttemptBudget, BudgetTripwire
+from satyrn_evals.budget import (
+    AttemptBudget,
+    BudgetTripwire,
+    LineBudget,
+    LineCrossing,
+    LineTripwire,
+)
 from satyrn_evals.cell import (
     CELLS_ROOT,
     Isolation,
@@ -56,6 +62,14 @@ TRIPPED_PATCH_NAME = "tripped.diff"
 #: the cumulative-patch build gets this per-call ceiling. A timeout is a
 #: missing secondary, never a lost cell: `_harvest_tripped` swallows it.
 TRIPPED_HARVEST_TIMEOUT_S = 30.0
+#: Where a declared-line crossing's harvest is written (release-two line
+#: harvest). Written beside the attempt's own artifacts, alongside (never
+#: instead of) `tripped.diff`.
+LINE_PATCH_NAME = "line.diff"
+#: Same ceiling as the tripped harvest (Ruling R-2's reasoning applies
+#: identically): a wedged git must never hold a still-running cell's harness
+#: thread open, and a slow harvest is a missing secondary, not a lost cell.
+LINE_HARVEST_TIMEOUT_S = 30.0
 
 _GIT_SAFETY_CONFIG = (
     "--no-replace-objects",
@@ -171,6 +185,12 @@ class WorkspaceResult:
     command_exit: int | None
     base_sha: str | None
     retained_path: str | None = None
+    #: The declared-line harvest (release two): set regardless of ``code`` --
+    #: a cell can cross the line and still end at any outcome. ``None`` means
+    #: the cell never crossed either line (or no line was declared).
+    line_crossed: LineCrossing | None = None
+    line_patch_written: bool = False
+    line_harvest_error: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "code", WorkspaceCode(self.code))
@@ -202,6 +222,20 @@ class WorkspaceResult:
             and self.retained_path is not None
         ):
             raise ValueError("only CLEANUP_FAILED may retain a path")
+        if self.line_crossed is not None and not isinstance(self.line_crossed, LineCrossing):
+            raise ValueError("workspace line_crossed must be a LineCrossing or null")
+        if type(self.line_patch_written) is not bool:
+            raise ValueError("workspace line_patch_written must be a boolean")
+        if self.line_harvest_error is not None and not (
+            isinstance(self.line_harvest_error, str) and self.line_harvest_error
+        ):
+            raise ValueError("workspace line_harvest_error must be a non-empty string or null")
+        if self.line_crossed is None and (
+            self.line_patch_written or self.line_harvest_error is not None
+        ):
+            raise ValueError("workspace line_patch_written/line_harvest_error require line_crossed")
+        if self.line_patch_written and self.line_harvest_error is not None:
+            raise ValueError("workspace line result cannot both write a patch and record an error")
 
 
 def _hex_object_id(value: object, length: int) -> bool:
@@ -988,6 +1022,8 @@ def _wait_or_trip(
     poll: float = 0.25,
     budget: AttemptBudget | None = None,
     timeline: Path | None = None,
+    line_budget: LineBudget | None = None,
+    on_line_crossed: Callable[[LineCrossing], None] | None = None,
 ) -> tuple[int | None, RepeatTripwire | BudgetTripwire | None]:
     """Wait for the process, watching the transcript for a locked loop.
 
@@ -995,15 +1031,21 @@ def _wait_or_trip(
     finished on its own (with a ``None`` tripwire), or ``(None, wire)``
     when the repeated-call limit or the budget tripped first;
     ``(exit code, budget wire)`` when the budget was exceeded by lines the
-    command wrote before exiting. With neither ``limit`` nor ``budget`` the
-    tailing is skipped entirely. ``TimeoutExpired`` propagates, so the
-    timeout path above is unchanged.
+    command wrote before exiting. With neither ``limit`` nor ``budget`` nor
+    ``line_budget`` the tailing is skipped entirely. ``TimeoutExpired``
+    propagates, so the timeout path above is unchanged.
 
     The transcript is read as it is written, so only whole lines are fed
     and a partial trailing write is held until its newline arrives.
 
     With ``timeline``, each tool start and end line is stamped as read
     (``timeline.py``).
+
+    ``line_budget``, when given, is watched alongside the stopping wires but
+    never joins them: crossing it never trips a stop. ``on_line_crossed`` is
+    called synchronously, at most once, on the very transcript line whose
+    processing first crosses it -- the cell has not been touched and keeps
+    running underneath the call.
     """
 
     def whole_remaining() -> float:
@@ -1013,7 +1055,9 @@ def _wait_or_trip(
             else timeout
         )
 
-    if transcript is None or (limit is None and budget is None and timeline is None):
+    if transcript is None or (
+        limit is None and budget is None and timeline is None and line_budget is None
+    ):
         try:
             result = process.wait(timeout=min(timeout, whole_remaining()))
         except subprocess.TimeoutExpired:
@@ -1025,11 +1069,17 @@ def _wait_or_trip(
         return result, None
     wire = RepeatTripwire(limit) if limit is not None else None
     budget_wire = BudgetTripwire(budget) if budget is not None else None
+    line_wire = LineTripwire(line_budget) if line_budget is not None else None
     writer = TimelineWriter(timeline) if timeline is not None else None
+
+    def _feed_line(line: str) -> None:
+        if line_wire is not None and line_wire.feed(line) and on_line_crossed is not None:
+            on_line_crossed(line_wire.crossed)  # type: ignore[arg-type]
 
     def tripped_by(line: str) -> RepeatTripwire | BudgetTripwire | None:
         if writer is not None:
             writer.feed(line)
+        _feed_line(line)
         if budget_wire is not None and budget_wire.feed(line):
             return budget_wire
         if wire is not None and wire.feed(line):
@@ -1075,6 +1125,7 @@ def _wait_or_trip(
             for line in pending.split("\n"):
                 if writer is not None:
                     writer.feed(line)
+                _feed_line(line)
                 if budget_wire is not None:
                     over = budget_wire.feed(line) or over
             return result, (budget_wire if over else None)
@@ -1083,6 +1134,45 @@ def _wait_or_trip(
             writer.close()
         if handle is not None:
             handle.close()
+
+
+def _harvest_patch(
+    state: _WorkspaceState,
+    environment: Mapping[str, str],
+    destination: Path,
+    *,
+    timeout: float,
+    worktree: Path | None = None,
+) -> tuple[bool, str | None]:
+    """Write the cumulative diff of ``worktree`` (default ``state.worktree``)
+    against ``state.base_sha`` to ``destination``.
+
+    Returns ``(wrote_a_file, error)``: a blank cumulative diff writes nothing
+    and is not an error (nothing changed yet); a raised git/OS failure writes
+    nothing and reports its message rather than raising, so a harvest failure
+    can never fail or alter the cell that asked for it.
+    """
+    # Imported here, not at module scope: `session_patch` imports
+    # `GIT_SAFETY_CONFIG` from this module, so a top-level import is a cycle.
+    from satyrn_evals.session_patch import RESIDUE_EXCLUDES, build_cumulative_patch
+
+    if state.base_sha is None:
+        return False, "workspace base_sha is not set"
+    target = worktree if worktree is not None else state.worktree
+    try:
+        capture = build_cumulative_patch(
+            target,
+            state.base_sha,
+            environment,
+            exclude=RESIDUE_EXCLUDES,
+            timeout=timeout,
+        )
+    except (OSError, subprocess.SubprocessError, ValueError) as exc:
+        return False, f"{type(exc).__name__}: {exc}"
+    if capture.patch_text.strip():
+        destination.write_text(capture.patch_text, encoding="utf-8")
+        return True, None
+    return False, None
 
 
 def _harvest_tripped(
@@ -1098,24 +1188,44 @@ def _harvest_tripped(
     secondary, never a lost cell, and the primary outcome must not change
     because a secondary could not be taken.
     """
-    # Imported here, not at module scope: `session_patch` imports
-    # `GIT_SAFETY_CONFIG` from this module, so a top-level import is a cycle.
-    from satyrn_evals.session_patch import RESIDUE_EXCLUDES, build_cumulative_patch
+    _harvest_patch(state, environment, destination, timeout=TRIPPED_HARVEST_TIMEOUT_S)
 
-    if state.base_sha is None:
-        return
-    try:
-        capture = build_cumulative_patch(
-            state.worktree,
-            state.base_sha,
-            environment,
-            exclude=RESIDUE_EXCLUDES,
-            timeout=TRIPPED_HARVEST_TIMEOUT_S,
-        )
-        if capture.patch_text.strip():
-            destination.write_text(capture.patch_text, encoding="utf-8")
-    except (OSError, subprocess.SubprocessError, ValueError):
-        return
+
+def _engine_worktree(state: _WorkspaceState) -> Path | None:
+    """The Engine arm's own transient deliver worktree, if exactly one is live.
+
+    satyrn-engine's own ``deliver`` allocates a private worktree under a fresh
+    ``tempfile.mkdtemp(prefix="satyrn-engine-", dir=<TMPDIR>)``, then
+    ``<that>/worktree`` (satyrn-engine ``delivery.py``'s isolated-root
+    allocation), removed only after the Pi command it runs exits -- so while a
+    line crossing is being harvested (synchronously, from the transcript that
+    same Pi process is writing) the directory is guaranteed to still be there.
+
+    Under isolation this harness gives every cell its own ``TMPDIR``
+    (``cell.cell_paths``: ``parent / "tmp"``), so this glob can never see a
+    concurrent cell's directory -- each cell's Engine subprocess is confined
+    to its own attempt's tree, the same isolation the harvest already trusts
+    for everything else under ``state.parent``. Under the local profile
+    (development only, never a deciding record) it falls back to the ambient
+    ``TMPDIR``, which is shared across whatever else the maintainer's own
+    session is doing; an ambiguous scan there is reported as "no worktree
+    found" rather than guessed at.
+    """
+    tmp_root = (
+        state.parent / "tmp"
+        if state.isolation is Isolation.ISOLATED
+        else Path(tempfile.gettempdir())
+    )
+    if not tmp_root.is_dir():
+        return None
+    candidates = [
+        entry / "worktree"
+        for entry in tmp_root.glob("satyrn-engine-*")
+        if (entry / "worktree").is_dir()
+    ]
+    if len(candidates) != 1:
+        return None
+    return candidates[0]
 
 
 def _run_command(
@@ -1131,10 +1241,37 @@ def _run_command(
     budget: AttemptBudget | None = None,
     timeline: Path | None = None,
     tripped_patch: Path | None = None,
+    line_budget: LineBudget | None = None,
+    line_patch: Path | None = None,
+    engine_arm: bool = False,
 ) -> WorkspaceResult:
     outputs: list[BinaryIO] = []
     pending: WorkspaceResult | None = None
     active_exception: BaseException | None = None
+    line_state: dict[str, object] = {"crossed": None, "written": False, "error": None}
+
+    def _on_line_crossed(crossing: LineCrossing) -> None:
+        line_state["crossed"] = crossing
+        if line_patch is None:
+            return
+        worktree_override: Path | None = None
+        if engine_arm:
+            worktree_override = _engine_worktree(state)
+            if worktree_override is None:
+                line_state["error"] = (
+                    "engine arm: cannot uniquely locate the internal deliver worktree"
+                )
+                return
+        wrote, error = _harvest_patch(
+            state,
+            environment,
+            line_patch,
+            timeout=LINE_HARVEST_TIMEOUT_S,
+            worktree=worktree_override,
+        )
+        line_state["written"] = wrote
+        line_state["error"] = error
+
     try:
         for _ in range(2):
             outputs.append(
@@ -1184,6 +1321,8 @@ def _run_command(
                     deadline=deadline,
                     budget=budget,
                     timeline=timeline,
+                    line_budget=line_budget,
+                    on_line_crossed=_on_line_crossed,
                 )
             except subprocess.TimeoutExpired:
                 try:
@@ -1347,6 +1486,13 @@ def _run_command(
                 raise close_error
     if pending is None:
         raise AssertionError("command execution produced no result")
+    if line_state["crossed"] is not None:
+        pending = replace(
+            pending,
+            line_crossed=line_state["crossed"],  # type: ignore[arg-type]
+            line_patch_written=bool(line_state["written"]),
+            line_harvest_error=line_state["error"],  # type: ignore[arg-type]
+        )
     return pending
 
 
@@ -1832,6 +1978,9 @@ def run_prepared_command(
     budget: AttemptBudget | None = None,
     timeline: Path | None = None,
     tripped_patch: Path | None = None,
+    line_budget: LineBudget | None = None,
+    line_patch: Path | None = None,
+    engine_arm: bool = False,
 ) -> WorkspaceResult:
     """Run one command while leaving the prepared workspace leased."""
     _validate_command_limits(command, timeout, teardown_grace)
@@ -1847,6 +1996,9 @@ def run_prepared_command(
         budget=budget,
         timeline=timeline,
         tripped_patch=tripped_patch,
+        line_budget=line_budget,
+        line_patch=line_patch,
+        engine_arm=engine_arm,
     )
 
 

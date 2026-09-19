@@ -4165,6 +4165,11 @@
 | docs/superpowers/plans/2026-09-15-release-two-census.md | created in release-one |
 | tests/test_workspace_tripped_harvest.py | created in release-one |
 | tests/test_attempt_tripped_patch.py | created in release-one |
+| tests/test_line_budget.py | created in release-two |
+| tests/test_workspace_line_harvest.py | created in release-two |
+| tests/test_attempt_record_line.py | created in release-two |
+| tests/test_attempt_line.py | created in release-two |
+| tests/test_run_record_line.py | created in release-two |
 | docs/superpowers/specs/2026-09-15-release-two-task-validity.md | created in release-one |
 | src/satyrn_evals/census_classify.py | created in release-one |
 | evidence/2026-09-16-census/classify.py | created in release-one |

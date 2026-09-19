@@ -45,6 +45,10 @@ for a reason the Engine cannot reach under identical prompts:
   (never a pass), the backstop as a gated record field, the R0 §1.2 validity
   check on all five tasks, and the classifier and night driver. Fixture tests
   both directions; 39 census cells have run on it.
+- **A declared per-record line can now be harvested mid-run, undisturbed.**
+  Optional `line_token_budget`/`line_turn_budget` snapshot a cell's patch at
+  the transcript line that crosses either one, for both arms; not yet used
+  by a committed night (`src/satyrn_evals/budget.py`, `workspace.py`).
 - **k = 3 is sound.** On 1,932 live completions, k = 1 gives 41 tok/s per
   stream and k = 3 about 89 total, 2.2× (`evidence/2026-09-15-finishing-counterfactual/run-2/q3stats.md`).
 

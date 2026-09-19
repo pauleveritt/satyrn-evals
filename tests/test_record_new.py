@@ -110,3 +110,21 @@ def test_record_new_takes_a_backstop(tmp_path: Path) -> None:
 def test_record_new_refuses_a_backstop_that_does_not_fit_the_wall_clock(tmp_path: Path) -> None:
     assert main(_new(tmp_path, "--command-backstop", "3600", "--max-minutes", "60")) == 2
     assert not (tmp_path / "records" / "depth-3.json").exists()
+
+
+def test_record_new_takes_a_line(tmp_path: Path) -> None:
+    assert main(_new(tmp_path, "--line-token-budget", "16000", "--line-turn-budget", "24")) == 0
+    record = load_run_record(tmp_path / "records" / "depth-3.json")
+    assert (record.line_token_budget, record.line_turn_budget) == (16000, 24)
+
+
+def test_record_new_without_a_line_writes_neither_field(tmp_path: Path) -> None:
+    assert main(_new(tmp_path)) == 0
+    record = load_run_record(tmp_path / "records" / "depth-3.json")
+    assert record.line_token_budget is None
+    assert record.line_turn_budget is None
+
+
+def test_record_new_refuses_only_one_line_flag(tmp_path: Path) -> None:
+    assert main(_new(tmp_path, "--line-token-budget", "16000")) == 2
+    assert not (tmp_path / "records" / "depth-3.json").exists()

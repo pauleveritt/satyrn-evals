@@ -349,6 +349,7 @@ def _record_new(args: argparse.Namespace) -> int:
         token_budget=args.token_budget,
         turn_budget=args.turn_budget, previous_result=args.previous_result, authority=args.authority,
         decision_rule=args.decision_rule,
+        line_token_budget=args.line_token_budget, line_turn_budget=args.line_turn_budget,
     )
     write_new_record(Path(args.output), body)
     print(f"record: wrote {args.output} (task_tree_sha256 {body['task_tree_sha256']}); commit it before launch")
@@ -592,6 +593,14 @@ record_new_p.add_argument(
 )
 record_new_p.add_argument("--token-budget", type=positive_int, default=32000)
 record_new_p.add_argument("--turn-budget", type=positive_int, default=48)
+record_new_p.add_argument(
+    "--line-token-budget", type=positive_int, default=None,
+    help="declared line: output tokens, strictly below --token-budget (requires --line-turn-budget too)",
+)
+record_new_p.add_argument(
+    "--line-turn-budget", type=positive_int, default=None,
+    help="declared line: turns, strictly below --turn-budget (requires --line-token-budget too)",
+)
 record_new_p.add_argument("--previous-result", default=None, help="the committed result this record follows")
 record_new_p.add_argument("--authority", default=None, help="who authorized this spend, and when")
 record_new_p.add_argument("--decision-rule", default=None, help="required unless purpose is admission or development")

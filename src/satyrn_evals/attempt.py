@@ -28,7 +28,7 @@ from satyrn_evals.attempt_record import (
     load_attempt_record,
     write_attempt_record,
 )
-from satyrn_evals.budget import AttemptBudget
+from satyrn_evals.budget import AttemptBudget, LineBudget
 from satyrn_evals.cell import CELL_PARENT_ENV, ISOLATION_ENV, Isolation
 from satyrn_evals.deadline import AttemptDeadline, AttemptDeadlineExceeded
 from satyrn_evals.engine_contract import (
@@ -47,6 +47,7 @@ from satyrn_evals.timeline import TIMELINE_NAME
 from satyrn_evals.verdict import Verdict
 from satyrn_evals.workspace import (
     DEFAULT_TIMEOUT,
+    LINE_PATCH_NAME,
     TRIPPED_PATCH_NAME,
     PreparedWorkspace,
     WorkspaceCode,
@@ -216,6 +217,7 @@ def attempt(
     attempt_timeout: float | None = None,
     budget: AttemptBudget | None = None,
     isolation: Isolation = Isolation.LOCAL,
+    line_budget: LineBudget | None = None,
 ) -> AttemptRecord:
     """Run an unbounded attempt through the stable public API."""
     return _attempt(
@@ -229,6 +231,7 @@ def attempt(
         attempt_timeout=attempt_timeout,
         budget=budget,
         isolation=isolation,
+        line_budget=line_budget,
     )
 
 
@@ -245,6 +248,7 @@ def _attempt(
     attempt_timeout: float | None = None,
     budget: AttemptBudget | None = None,
     isolation: Isolation = Isolation.LOCAL,
+    line_budget: LineBudget | None = None,
 ) -> AttemptRecord:
     """Run COMMAND against TASK, preserve patch + transcript, grade, and record.
 
@@ -413,6 +417,9 @@ def _attempt(
                         budget=budget,
                         timeline=attempt_dir / TIMELINE_NAME,
                         tripped_patch=attempt_dir / TRIPPED_PATCH_NAME,
+                        line_budget=line_budget,
+                        line_patch=attempt_dir / LINE_PATCH_NAME,
+                        engine_arm=_is_engine_wrapper_command(command),
                     )
                 finally:
                     _collect_live_transcript(live_transcript, transcript_path)
@@ -1077,6 +1084,16 @@ def _finish_attempt(
             patch_bytes.decode("utf-8")
         except UnicodeDecodeError:
             code = AttemptCode.PATCH_INVALID
+    # The declared-line harvest (release two): set from whatever the
+    # workspace observed, regardless of the cell's own final code -- a cell
+    # can cross the line and still end at any outcome. `line_patch_path`
+    # follows the tripped-patch convention: the file's presence is the
+    # interface, not a second flag to keep in sync with it.
+    line_patch_path: str | None = (
+        LINE_PATCH_NAME if (attempt_dir / LINE_PATCH_NAME).is_file() else None
+    )
+    line_crossed = workspace.line_crossed
+    line_harvest_error = workspace.line_harvest_error
     if code is not None:
         if deadline is not None:
             deadline.remaining(DeadlinePhase.PRESERVATION)
@@ -1123,6 +1140,9 @@ def _finish_attempt(
             attempt_dir=attempt_dir.name,
             attempt_timeout=deadline.timeout if deadline is not None else None,
             tripped_patch_path=tripped_patch_path,
+            line_crossed=line_crossed,
+            line_patch_path=line_patch_path,
+            line_harvest_error=line_harvest_error,
         )
         write_attempt_record(attempt_dir / "attempt.json", record)
         return record
@@ -1151,6 +1171,9 @@ def _finish_attempt(
         workspace_base_sha=workspace.base_sha,
         attempt_dir=attempt_dir.name,
         attempt_timeout=deadline.timeout if deadline is not None else None,
+        line_crossed=line_crossed,
+        line_patch_path=line_patch_path,
+        line_harvest_error=line_harvest_error,
     )
     write_attempt_record(attempt_dir / "attempt.json", base_record)
     try:

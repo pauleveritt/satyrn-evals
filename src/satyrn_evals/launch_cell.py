@@ -15,11 +15,12 @@ import os
 import signal
 import subprocess
 import sys
+from dataclasses import asdict
 from pathlib import Path
 
 from satyrn_evals.attempt import attempt
 from satyrn_evals.attempt_record import AttemptRecord
-from satyrn_evals.budget import AttemptBudget
+from satyrn_evals.budget import AttemptBudget, LineBudget
 from satyrn_evals.cell import Isolation
 from satyrn_evals.errors import SatyrnError
 from satyrn_evals.launch import write_atomically
@@ -45,10 +46,16 @@ def slot_result(*, slot: int, arm: str, record: AttemptRecord) -> dict[str, obje
         "message": record.message,
         "command_exit": record.command_exit,
         "deadline_phase": None if record.deadline is None else record.deadline.phase.value,
+        "line_crossed": None if record.line_crossed is None else asdict(record.line_crossed),
     }
 
 
 def run_cell(spec: dict) -> int:
+    line_budget = None
+    if spec.get("line_token_budget") is not None:
+        line_budget = LineBudget(
+            output_tokens=spec["line_token_budget"], turns=spec["line_turn_budget"]
+        )
     with _abort_on_signals():
         record = attempt(
             task=spec["task"],
@@ -60,6 +67,7 @@ def run_cell(spec: dict) -> int:
             rung=spec["rung"],
             budget=AttemptBudget(output_tokens=spec["token_budget"], turns=spec["turn_budget"]),
             isolation=Isolation(spec["isolation"]),
+            line_budget=line_budget,
         )
     write_atomically(Path(spec["result"]), slot_result(slot=spec["slot"], arm=spec["arm"], record=record))
     return 0
