@@ -128,18 +128,24 @@ premise is not met today:
    `Files:` block names, so it cannot admit a path the grader rejects.
 4. **Deliver timeout follows the record.** `DELIVER_TIMEOUT_SECONDS = 1800`
    becomes the record's `command_backstop_s`; the census runs at 4,800.
-5. **The contract's budget follows the record.** `derive` takes the record's
-   `token_budget`/`turn_budget`, wired like the backstop (absent or
-   unparseable is an error), so the Engine has no stop the record does not
-   name. The product default stays 32,000/48 for a developer; only the eval
-   contract changes, and both arms run the record's budget. The route proof
-   hid the opposite: the Engine self-stopped near 32,100 tokens while
-   Baseline ran to 48,000, so a candidate the Engine delivered was graded as
-   a pass where Baseline at the same count tripped the wire. `derive` is
-   given the record's budget plus a fixed headroom (`DERIVE_TOKEN_HEADROOM`,
-   `DERIVE_TURN_HEADROOM` in `attempt_engine.py`), so the Engine's own
-   contract-budget enforcement can never bind at or before the harness's
-   stop -- the harness alone ends an over-budget cell, on both arms.
+5. **The contract's budget follows the record; only deliver's own
+   enforcement carries headroom (C3 correction, Opus review of
+   a113f0b..3ecf068).** `derive` takes the record's `token_budget`/
+   `turn_budget` verbatim, wired like the backstop (absent or unparseable is
+   an error), so the Engine has no stop the record does not name and the
+   contract it renders into the model's own prompt ("Budget: N output tokens
+   and M turns.") always states the same numbers the harness enforces. The
+   product default stays 32,000/48 for a developer; only the eval contract
+   changes, and both arms run the record's budget. The route proof hid the
+   opposite: the Engine self-stopped near 32,100 tokens while Baseline ran to
+   48,000, so a candidate the Engine delivered was graded as a pass where
+   Baseline at the same count tripped the wire. `deliver` is given the
+   record's budget plus a fixed headroom, as its own
+   `--token-limit`/`--turn-limit` (`DELIVER_TOKEN_HEADROOM`,
+   `DELIVER_TURN_HEADROOM` in `attempt_engine.py`), so the Engine's own live
+   budget enforcement can never bind at or before the harness's stop -- the
+   harness alone ends an over-budget cell, on both arms, and never through a
+   contract the model itself was shown a looser number for.
 
 ## 6. What the Engine refuses to attempt
 

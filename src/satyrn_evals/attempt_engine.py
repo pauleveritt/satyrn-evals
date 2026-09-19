@@ -65,26 +65,36 @@ CHECKOUT_LOG_NAME = "engine-checkout.txt"
 #: before the harness kills the command, so the Engine writes its receipt and
 #: leaves its candidate rather than dying with no evidence.
 DELIVER_MARGIN_SECONDS = 60
-#: How far above the record's token/turn budget `derive`'s own contract sits
-#: (design §5 item 5). Parity: the record's `token_budget`/`turn_budget` are
-#: the harness's own tripwire (`attempt.py`'s `AttemptBudget`, wired through
-#: `SATYRN_TOKEN_BUDGET`/`SATYRN_TURN_BUDGET`); passing them to `derive`
-#: verbatim lets the Engine's own contract-budget enforcement bind at, or
-#: before, the harness's stop -- a race the harness must always win, or a
-#: cell that exhausted budget could convert into a delivered, graded
-#: candidate that a Baseline cell at the same budget could not also get
-#: (two integration tests pin this: `test_an_isolated_engine_cell_stopped_by_
-#: the_harness_leaves_no_model_running`, `test_an_engine_cell_under_the_
-#: engines_own_budget_is_stopped_by_the_harness_alone`). The margin covers
-#: one maximal turn -- `DERIVE_TOKEN_HEADROOM` is the arm's per-turn
-#: output-token cap (`arms/engine-ornith15-9b.json`'s `max_tokens: 16000`) --
-#: plus `DERIVE_TURN_HEADROOM` extra turns, so the Engine's own counter can
-#: never reach the record's budget before the harness's teardown does. This
-#: headroom is applied only when building `derive_argv`'s contract budget,
-#: never when validating or refusing a record's budget (`read_budget`,
+#: How far above the record's token/turn budget `deliver`'s own live
+#: enforcement (`--token-limit`/`--turn-limit`) sits (design §5 item 5; C3
+#: fix, Opus review of a113f0b..3ecf068). Parity: the record's
+#: `token_budget`/`turn_budget` are the harness's own tripwire
+#: (`attempt.py`'s `AttemptBudget`, wired through
+#: `SATYRN_TOKEN_BUDGET`/`SATYRN_TURN_BUDGET`); `derive`'s own contract now
+#: carries the record's budget verbatim -- it is rendered straight into the
+#: model's prompt (satyrn-engine `attempt.py`'s "Budget: N output tokens and
+#: M turns." line), so the model must never be told it has more room than
+#: the harness actually enforces. The headroom instead widens `deliver`'s
+#: own live budget check, so the Engine's own enforcement bind can never
+#: fire at or before the harness's stop -- a race the harness must always
+#: win, or a cell that exhausted budget could convert into a delivered,
+#: graded candidate that a Baseline cell at the same budget could not also
+#: get (two integration tests pin this: `test_an_isolated_engine_cell_
+#: stopped_by_the_harness_leaves_no_model_running`,
+#: `test_an_engine_cell_under_the_engines_own_budget_is_stopped_by_the_
+#: harness_alone`). The margin covers one maximal turn --
+#: `DELIVER_TOKEN_HEADROOM` is the arm's per-turn output-token cap
+#: (`arms/engine-ornith15-9b.json`'s `max_tokens: 16000`, pinned against
+#: every committed Engine arm by
+#: `test_the_deliver_headroom_never_falls_below_any_engine_arms_own_turn_cap`)
+#: -- plus `DELIVER_TURN_HEADROOM` extra turns, so the Engine's own counter
+#: can never reach the record's budget before the harness's teardown does.
+#: This headroom is applied only when building `deliver_argv`'s
+#: `--token-limit`/`--turn-limit`, never in `derive_argv`'s contract budget
+#: and never when validating or refusing a record's budget (`read_budget`,
 #: `_read_positive` stay exactly as strict as before).
-DERIVE_TOKEN_HEADROOM = 16_000
-DERIVE_TURN_HEADROOM = 2
+DELIVER_TOKEN_HEADROOM = 16_000
+DELIVER_TURN_HEADROOM = 2
 _CONTRACT_PREFIX = "satyrn-engine: contract "
 
 
@@ -147,19 +157,34 @@ def derive_argv(
     token_budget: int,
     turn_budget: int,
 ) -> list[str]:
+    """The contract carries the record's exact budget (C3): it is what the
+    model's prompt shows, so it must never be headroom-inflated."""
     return [
         *_engine(args, no_sync), "derive", "--repo", os.fspath(worktree),
-        "--token-budget", str(token_budget + DERIVE_TOKEN_HEADROOM),
-        "--turn-budget", str(turn_budget + DERIVE_TURN_HEADROOM), "--", request,
+        "--token-budget", str(token_budget),
+        "--turn-budget", str(turn_budget), "--", request,
     ]
 
 
 def deliver_argv(
-    args: EngineArgs, worktree: Path, contract: Path, *, no_sync: bool = False, backstop_s: int
+    args: EngineArgs,
+    worktree: Path,
+    contract: Path,
+    *,
+    no_sync: bool = False,
+    backstop_s: int,
+    token_budget: int,
+    turn_budget: int,
 ) -> list[str]:
+    """``--token-limit``/``--turn-limit`` carry the record's budget plus the
+    deliver headroom (C3): the Engine's own live enforcement must bind
+    looser than the harness's exact stop, never at or before it."""
     return [
         *_engine(args, no_sync), "deliver", "--repo", os.fspath(worktree),
-        "--timeout", str(deliver_timeout(backstop_s)), os.fspath(contract),
+        "--timeout", str(deliver_timeout(backstop_s)),
+        "--token-limit", str(token_budget + DELIVER_TOKEN_HEADROOM),
+        "--turn-limit", str(turn_budget + DELIVER_TURN_HEADROOM),
+        os.fspath(contract),
         "--", *_engine(args, no_sync), "attempt", f"--model={args.model}", "--", os.fspath(contract),
     ]
 
@@ -196,8 +221,9 @@ def read_budget(environment: Mapping[str, str]) -> tuple[int, int]:
     does not name (maintainer ruling 2026-09-18), so the product's 32,000/48
     must never leak into an eval cell through a missing variable. The values
     returned here are the record's own budget, exactly as validated; the
-    ``DERIVE_TOKEN_HEADROOM``/``DERIVE_TURN_HEADROOM`` margin is added only
-    where `derive_argv` builds the contract's argv, never here.
+    ``DELIVER_TOKEN_HEADROOM``/``DELIVER_TURN_HEADROOM`` margin is added only
+    where `deliver_argv` builds its `--token-limit`/`--turn-limit`, never here
+    and never in `derive_argv`'s contract budget.
     """
     return (
         _read_positive(TOKEN_BUDGET_ENV, "the output-token limit", environment),
@@ -314,7 +340,8 @@ def main(argv: list[str] | None = None) -> int:
             delivered = subprocess.run(
                 command(
                     deliver_argv(
-                        args, worktree, contract_path(derived.stderr), no_sync=cell, backstop_s=backstop_s
+                        args, worktree, contract_path(derived.stderr), no_sync=cell, backstop_s=backstop_s,
+                        token_budget=token_budget, turn_budget=turn_budget,
                     )
                 ),
                 stdout=subprocess.PIPE, stderr=log, text=True, env=environment, check=False,

@@ -16,8 +16,8 @@ from satyrn_evals.attempt import COMMAND_BACKSTOP_ENV, TOKEN_BUDGET_ENV, TURN_BU
 from satyrn_evals.attempt_engine import (
     CHECKOUT_LOG_NAME,
     DELIVER_MARGIN_SECONDS,
-    DERIVE_TOKEN_HEADROOM,
-    DERIVE_TURN_HEADROOM,
+    DELIVER_TOKEN_HEADROOM,
+    DELIVER_TURN_HEADROOM,
     ENGINE_REPO_ENV,
     RECEIPT_NAME,
     AdapterError,
@@ -65,39 +65,82 @@ def test_bad_arguments_are_refused(argv: list[str], environment: dict[str, str],
 
 
 def test_derive_and_deliver_are_the_implement_invocations() -> None:
+    """C3 (Opus review of a113f0b..3ecf068): the contract -- and therefore the
+    prompt the model reads (satyrn-engine attempt.py's budget line) -- must
+    carry the record's exact budget, never a headroom-inflated one. The
+    headroom moves to `deliver`'s own `--token-limit`/`--turn-limit`, which
+    bind the Engine's own live enforcement looser than the harness's exact
+    stop -- the harness must always win that race (design §5 item 5)."""
     args = parse_args(["--model", "omlx/m", "--engine-repo", str(ENGINE), "--uv-bin", "/bin/uv"], {})
     engine = ["/bin/uv", "run", "--project", str(ENGINE), "satyrn-engine"]
     assert derive_argv(args, WORKTREE, "Create calc/helpers.py", token_budget=48000, turn_budget=72) == [
         *engine, "derive", "--repo", str(WORKTREE),
-        "--token-budget", str(48000 + DERIVE_TOKEN_HEADROOM), "--turn-budget", str(72 + DERIVE_TURN_HEADROOM),
+        "--token-budget", "48000", "--turn-budget", "72",
         "--", "Create calc/helpers.py"]
-    assert deliver_argv(args, WORKTREE, CONTRACT, backstop_s=4800) == [
-        *engine, "deliver", "--repo", str(WORKTREE), "--timeout", str(4800 - DELIVER_MARGIN_SECONDS), str(CONTRACT),
+    assert deliver_argv(args, WORKTREE, CONTRACT, backstop_s=4800, token_budget=48000, turn_budget=72) == [
+        *engine, "deliver", "--repo", str(WORKTREE), "--timeout", str(4800 - DELIVER_MARGIN_SECONDS),
+        "--token-limit", str(48000 + DELIVER_TOKEN_HEADROOM), "--turn-limit", str(72 + DELIVER_TURN_HEADROOM),
+        str(CONTRACT),
         "--", *engine, "attempt", "--model=omlx/m", "--", str(CONTRACT)]
 
 
-def test_derive_argv_carries_the_records_budget_plus_headroom_not_the_raw_budget() -> None:
-    """The Engine's own contract must never bind at or before the harness's stop
-    (design §5 item 5; race confirmed by the two integration tests this fixes).
-    """
+def test_derive_argv_carries_the_records_exact_budget_not_a_headroom_inflated_one() -> None:
+    """The contract is what satyrn-engine's attempt.py renders into the
+    prompt ("Budget: N output tokens and M turns."); a model shown more room
+    than the harness actually enforces is model-visible and false (C3)."""
     args = parse_args(["--model", "omlx/m", "--engine-repo", str(ENGINE), "--uv-bin", "/bin/uv"], {})
     argv = derive_argv(args, WORKTREE, "req", token_budget=16_000, turn_budget=48)
     token_index = argv.index("--token-budget") + 1
     turn_index = argv.index("--turn-budget") + 1
-    assert argv[token_index] == str(16_000 + DERIVE_TOKEN_HEADROOM)
-    assert argv[turn_index] == str(48 + DERIVE_TURN_HEADROOM)
+    assert argv[token_index] == "16000"
+    assert argv[turn_index] == "48"
+
+
+def test_deliver_argv_carries_the_records_budget_plus_headroom_not_the_raw_budget() -> None:
+    """The Engine's own live enforcement (deliver's --token-limit/--turn-limit)
+    must never bind at or before the harness's stop (design §5 item 5; race
+    confirmed by the two integration tests this fixes)."""
+    args = parse_args(["--model", "omlx/m", "--engine-repo", str(ENGINE), "--uv-bin", "/bin/uv"], {})
+    argv = deliver_argv(args, WORKTREE, CONTRACT, backstop_s=4800, token_budget=16_000, turn_budget=48)
+    token_index = argv.index("--token-limit") + 1
+    turn_index = argv.index("--turn-limit") + 1
+    assert argv[token_index] == str(16_000 + DELIVER_TOKEN_HEADROOM)
+    assert argv[turn_index] == str(48 + DELIVER_TURN_HEADROOM)
     assert argv[token_index] != "16000"
     assert argv[turn_index] != "48"
 
 
-def test_the_derive_headroom_constants_cover_one_maximal_turn_plus_two_turns() -> None:
+def test_the_deliver_headroom_constants_cover_one_maximal_turn_plus_two_turns() -> None:
     """Literal, not a re-derivation (same rule as the deliver-margin test above).
 
     16,000 is the arm's per-turn output-token cap (``arms/engine-ornith15-9b.json``
     ``max_tokens``); 2 turns is the task author's stated starting margin.
     """
-    assert DERIVE_TOKEN_HEADROOM == 16_000
-    assert DERIVE_TURN_HEADROOM == 2
+    assert DELIVER_TOKEN_HEADROOM == 16_000
+    assert DELIVER_TURN_HEADROOM == 2
+
+
+def test_the_deliver_headroom_never_falls_below_any_engine_arms_own_turn_cap() -> None:
+    """I5: DELIVER_TOKEN_HEADROOM equalled the arm's per-turn max_tokens only
+    by comment, with nothing failing if an arm's cap grew past it. Scan every
+    committed arm file: an Engine arm's inference.max_tokens must never
+    exceed the headroom, or a single maximal turn could cross deliver's own
+    limit before the headroom's margin assumes it can't."""
+    import json as _json
+
+    arms_root = Path(__file__).resolve().parents[1] / "arms"
+    checked = 0
+    for arm_path in arms_root.glob("*.json"):
+        data = _json.loads(arm_path.read_text())
+        if data.get("arm") != "engine":
+            continue
+        max_tokens = data.get("inference", {}).get("max_tokens")
+        assert isinstance(max_tokens, int), arm_path
+        assert max_tokens <= DELIVER_TOKEN_HEADROOM, (
+            f"{arm_path}: max_tokens {max_tokens} exceeds DELIVER_TOKEN_HEADROOM {DELIVER_TOKEN_HEADROOM}"
+        )
+        checked += 1
+    assert checked > 0, "no engine arm files found to check"
 
 
 def test_the_deliver_margin_is_sixty_seconds() -> None:
@@ -229,21 +272,38 @@ def test_main_derives_delivers_checks_out_the_candidate_and_harvests(seam: Path,
     assert (seam / "patch.diff").read_text() == f"harvested {BASE}\n"
 
 
-def test_main_derives_with_the_records_budget_plus_headroom_not_the_raw_env_budget(
+def test_main_derives_with_the_records_exact_budget_not_a_headroom_inflated_one(
     seam: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The env carries the record's raw budget (48000/72, the `seam` fixture);
-    the derive call on the wire must carry it plus headroom, matching what
+    the derive call on the wire must carry it verbatim -- matching what
     `derive_argv` alone already proves -- this pins that `main` does not
-    bypass `derive_argv` or apply the headroom twice."""
+    bypass `derive_argv` or apply headroom to the contract (C3)."""
     calls, run = _fake_run(0, {"code": "OK", "candidate_commit": COMMIT})
     monkeypatch.setattr(attempt_engine.subprocess, "run", run)
     assert main(["--model", "omlx/m"]) == 0
     derive_call = next(call for call in calls if "derive" in call)
     token_index = derive_call.index("--token-budget") + 1
     turn_index = derive_call.index("--turn-budget") + 1
-    assert derive_call[token_index] == str(48000 + DERIVE_TOKEN_HEADROOM)
-    assert derive_call[turn_index] == str(72 + DERIVE_TURN_HEADROOM)
+    assert derive_call[token_index] == "48000"
+    assert derive_call[turn_index] == "72"
+
+
+def test_main_delivers_with_the_records_budget_plus_headroom_not_the_raw_env_budget(
+    seam: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Sibling of the derive test above: the headroom belongs on deliver's own
+    live enforcement (--token-limit/--turn-limit), matching what
+    `deliver_argv` alone already proves -- this pins that `main` does not
+    bypass `deliver_argv` or apply the headroom to the contract instead (C3)."""
+    calls, run = _fake_run(0, {"code": "OK", "candidate_commit": COMMIT})
+    monkeypatch.setattr(attempt_engine.subprocess, "run", run)
+    assert main(["--model", "omlx/m"]) == 0
+    deliver_call = next(call for call in calls if "deliver" in call)
+    token_index = deliver_call.index("--token-limit") + 1
+    turn_index = deliver_call.index("--turn-limit") + 1
+    assert deliver_call[token_index] == str(48000 + DELIVER_TOKEN_HEADROOM)
+    assert deliver_call[turn_index] == str(72 + DELIVER_TURN_HEADROOM)
 
 
 def test_main_without_a_candidate_checks_out_nothing_and_still_writes_the_patch(
@@ -265,7 +325,9 @@ def _args(engine: Path = ENGINE) -> attempt_engine.EngineArgs:
 
 def test_under_isolation_the_engine_calls_do_not_sync_the_shared_export() -> None:
     assert derive_argv(_args(), WORKTREE, "req", no_sync=True, token_budget=48000, turn_budget=72)[:3] == ["uv", "run", "--no-sync"]
-    delivered = deliver_argv(_args(), WORKTREE, CONTRACT, no_sync=True, backstop_s=4800)
+    delivered = deliver_argv(
+        _args(), WORKTREE, CONTRACT, no_sync=True, backstop_s=4800, token_budget=48000, turn_budget=72,
+    )
     assert delivered.count("--no-sync") == 2
     assert "--no-sync" not in derive_argv(_args(), WORKTREE, "req", token_budget=48000, turn_budget=72)
 
