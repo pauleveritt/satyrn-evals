@@ -1371,6 +1371,42 @@ def test_private_deadline_command_expiry_after_a_crossing_carries_it_into_the_re
     assert record.line_patch_path == LINE_PATCH_NAME
 
 
+def test_private_deadline_command_expiry_never_carries_both_line_patch_path_and_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """N2: `_harvest_patch` can return `(False, error)` with `line.diff`
+    already present on disk (a write that creates the file and then fails).
+    At this call site, that means `workspace.line_harvest_error` is set
+    while the file still exists -- `line_patch_path` must not be derived
+    from file presence alone here either, or the same
+    attempt_record.py refusal (`cannot both carry a line_patch_path and a
+    line_harvest_error`) crashes the cell with no attempt.json written."""
+    clock = _Clock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+    crossing = LineCrossing(by="tokens", output_tokens=16001, turn=10, at="2026-09-19T00:00:00+00:00")
+
+    def run(**kwargs: Any) -> WorkspaceResult:
+        environment = kwargs["environment"]
+        Path(environment[attempt_module.PATCH_ENV]).write_text(GOOD_PATCH)
+        Path(environment[attempt_module.TRANSCRIPT_ENV]).write_text(TRANSCRIPT)
+        # A partial/stale line.diff is present on disk despite the harvest
+        # itself having failed.
+        kwargs["line_patch"].write_text("diff --git a/x b/x\n")
+        clock.now = 1.0  # expired by the time _attempt's own COMMAND check runs next
+        return WorkspaceResult(
+            WorkspaceCode.OK, "done", 0, "b" * 40, line_crossed=crossing, line_patch_written=False,
+            line_harvest_error="OSError: No space left on device",
+        )
+
+    _install_workspace_double(monkeypatch, run)
+    record = _bounded_attempt(tmp_path, monkeypatch, deadline)
+
+    assert record.code is AttemptCode.DEADLINE_EXCEEDED
+    assert record.line_crossed == crossing
+    assert record.line_harvest_error == "OSError: No space left on device"
+    assert record.line_patch_path is None
+
+
 def test_deadline_refusal_keeps_unreadable_artifact_path_without_digest(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

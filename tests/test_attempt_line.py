@@ -176,6 +176,42 @@ def test_attempt_records_a_line_crossing_even_on_a_refusal(
     assert record.line_patch_path is None
 
 
+def test_attempt_never_carries_both_a_line_patch_path_and_a_line_harvest_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """N2: `_harvest_patch` can return `(False, error)` with `line.diff`
+    already present on disk (a write that creates the file and then fails,
+    or any other race) -- `line_patch_path` must never be set alongside
+    `line_harvest_error`, or `AttemptRecord` refuses the combination and the
+    whole cell crashes instead of writing attempt.json."""
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+    crossing = LineCrossing(by="tokens", output_tokens=16001, turn=10, at="2026-09-19T00:00:00+00:00")
+
+    def run(lease: _FakeLease, **kwargs: Any) -> WorkspaceResult:
+        Path(lease._environment[attempt_module.PATCH_ENV]).write_text(GOOD_PATCH)
+        Path(lease._environment[attempt_module.TRANSCRIPT_ENV]).write_text("did it\n")
+        # A partial/stale line.diff is present on disk despite the harvest
+        # itself having failed -- the exact shape `_harvest_patch` returns
+        # when a write raises after creating the file.
+        kwargs["line_patch"].write_text("diff --git a/x b/x\n")
+        return WorkspaceResult(
+            WorkspaceCode.OK, "attempt command completed", 0, "b" * 40,
+            line_crossed=crossing, line_patch_written=False,
+            line_harvest_error="OSError: No space left on device",
+        )
+
+    monkeypatch.setattr(attempt_module, "grade", _grade_pass)
+    _install(monkeypatch, run)
+    record = attempt_module.attempt(
+        task="t", tasks_root=tasks_root, output=tmp_path / "attempts", command=["fake-agent"], timeout=10.0,
+        line_budget=LineBudget(16000, 24),
+    )
+    assert record.line_crossed == crossing
+    assert record.line_patch_path is None
+    assert record.line_harvest_error == "OSError: No space left on device"
+
+
 def test_attempt_marks_the_engine_wrapper_command_as_the_engine_arm(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

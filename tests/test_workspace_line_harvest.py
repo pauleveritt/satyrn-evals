@@ -431,6 +431,59 @@ def test_a_write_failure_on_the_line_path_is_recorded_and_the_cell_is_unaffected
     assert not out.exists()
 
 
+def test_a_write_that_creates_the_file_then_fails_removes_the_partial_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`Path.write_text` can create the destination and then fail partway
+    (ENOSPC/EIO): the harvest must not leave a partial `line.diff` behind,
+    because attempt.py treats the file's mere presence as the interface --
+    a partial file left on disk would be reported as a successful harvest
+    even though `line_harvest_error` is also set (N2)."""
+    state = _default_state(tmp_path)
+    transcript = tmp_path / "transcript.jsonl"
+    transcript.write_text(TOKEN_LINE + "\n")
+    out = tmp_path / LINE_PATCH_NAME
+    orig_write_text = Path.write_text
+
+    def flaky_write_text(self, data, encoding=None, errors=None, newline=None):
+        if self.name == LINE_PATCH_NAME:
+            self.write_bytes(data.encode(encoding or "utf-8"))
+            raise OSError(28, "No space left on device")
+        return orig_write_text(self, data, encoding=encoding, errors=errors, newline=newline)
+
+    monkeypatch.setattr(Path, "write_text", flaky_write_text)
+    monkeypatch.setattr(
+        workspace_module.subprocess, "Popen", lambda *_a, **_k: _KeepsRunningProcess()
+    )
+    monkeypatch.setattr(
+        workspace_module,
+        "_teardown_process",
+        lambda *_a, **_k: (_ for _ in ()).throw(
+            AssertionError("a line crossing must never tear the cell down")
+        ),
+    )
+    monkeypatch.setattr(
+        "satyrn_evals.session_patch.build_cumulative_patch",
+        lambda *_a, **_k: _capture(_BEFORE),
+    )
+    result = workspace_module._run_command(
+        ("x",),
+        state,
+        {},
+        10.0,
+        0.1,
+        transcript=transcript,
+        line_budget=LineBudget(100, 48),
+        line_patch=out,
+    )
+    assert result.code is WorkspaceCode.OK  # the cell's own outcome, unchanged
+    assert result.line_crossed is not None
+    assert result.line_patch_written is False
+    assert result.line_harvest_error is not None
+    assert "No space left" in result.line_harvest_error
+    assert not out.exists()  # the partial file must be removed, not left behind
+
+
 def test_the_engine_arm_records_an_error_when_the_worktree_cannot_be_found(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

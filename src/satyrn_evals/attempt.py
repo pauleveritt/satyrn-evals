@@ -848,10 +848,13 @@ def _write_deadline_refusal(
     # call site was never told about (no `workspace`) -- never report a
     # line_patch_path the AttemptRecord itself would then refuse to accept
     # without a line_crossed (attempt_record.py's "both or neither" rule).
+    # N2: also never alongside a line_harvest_error -- a partial/stale file
+    # can be present on disk even when the harvest itself failed.
     line_patch_path: str | None = (
         LINE_PATCH_NAME
         if workspace is not None
         and workspace.line_crossed is not None
+        and workspace.line_harvest_error is None
         and (attempt_dir / LINE_PATCH_NAME).is_file()
         else None
     )
@@ -1156,9 +1159,16 @@ def _finish_attempt(
     # line_patch_path without line_crossed, even here where `workspace` is
     # always present -- attempt_record.py's own validation would refuse the
     # combination and this function has no caller left to catch it.
+    # N2: also never alongside line_harvest_error -- `_harvest_patch` can
+    # return a failure with a partial/stale file still present on disk (a
+    # write that creates the file and then fails), and reporting both would
+    # hit the same refusal and crash the cell before attempt.json is ever
+    # written.
     line_patch_path: str | None = (
         LINE_PATCH_NAME
-        if line_crossed is not None and (attempt_dir / LINE_PATCH_NAME).is_file()
+        if line_crossed is not None
+        and line_harvest_error is None
+        and (attempt_dir / LINE_PATCH_NAME).is_file()
         else None
     )
     if code is not None:

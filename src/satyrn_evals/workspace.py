@@ -1208,6 +1208,13 @@ def _harvest_patch(
         try:
             destination.write_text(capture.patch_text, encoding="utf-8")
         except OSError as exc:
+            # write_text can create the file and then fail partway through
+            # (ENOSPC/EIO): a partial file left behind would still read as
+            # a successful harvest downstream, since callers key off the
+            # file's mere presence (N2). Best effort only -- a failure here
+            # must never mask or replace the original write error.
+            with contextlib.suppress(OSError):
+                destination.unlink(missing_ok=True)
             return False, f"{type(exc).__name__}: {exc}"
         return True, None
     return False, None
