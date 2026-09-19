@@ -49,7 +49,7 @@ from typing import TextIO
 from satyrn_evals.arms import Arm, build_argv, load_arm
 from satyrn_evals.attempt import resolve_contract
 from satyrn_evals.cell import CELL_PATH_PREFIX_ENV, CELLS_ROOT, Isolation
-from satyrn_evals.cell_engine import arm_export_problems
+from satyrn_evals.cell_engine import arm_export, arm_export_problems
 from satyrn_evals.cell_preflight import CellPreflight, preflight_cell
 from satyrn_evals.errors import SatyrnError
 from satyrn_evals.launch import (
@@ -88,6 +88,7 @@ from satyrn_evals.run_record import (
 )
 from satyrn_evals.summary import SUMMARY_NAME, compute_summary, write_summary
 from satyrn_evals.task_selftest import TaskSelfTest
+from satyrn_evals.task_selftest import engine_self_test as run_engine_self_test
 from satyrn_evals.task_selftest import task_self_test as run_task_self_test
 from satyrn_evals.task_tree import tree_digest
 
@@ -182,6 +183,7 @@ class LaunchFacts:
     settings: Callable[[Path, bool], tuple[int, str]] = settings_provenance
     spawn_cell: Callable[[Path, Path], CellProcess] = popen_cell
     engine_export: Callable[[Arm], list[str]] = arm_export_problems
+    engine_self_test: Callable[..., TaskSelfTest] = run_engine_self_test
     task_self_test: Callable[[Path, TaskManifest], TaskSelfTest] = run_task_self_test
     model_server: Callable[[str, str], list[str]] = model_server_problems
     pi_models: Callable[[bool], dict] = read_pi_models
@@ -322,7 +324,7 @@ def launch_record(
     commands = {name: build_argv(arm) for name, (_, arm) in arms.items()}
     for command in commands.values():
         check_invocation(record, task=record.task, task_dir=task_dir, command=command)
-    resolve_contract(manifest, record.rung)
+    selected_rung, contract_text = resolve_contract(manifest, record.rung)
     if record.purpose in DECIDING_PURPOSES:
         seams = [
             name for name, used in (
@@ -350,6 +352,18 @@ def launch_record(
         checked["preflight"] = report.checked
         for name, (_, arm) in arms.items():
             problems += [f"{name}: {problem}" for problem in facts.engine_export(arm)]
+        for name, (_, arm) in arms.items():
+            export = arm_export(arm)
+            if export is None:
+                continue
+            engine_test = facts.engine_self_test(
+                task_dir, manifest,
+                engine=("uv", "run", "--no-sync", "--project", os.fspath(export), "satyrn-engine"),
+                request=contract_text,
+                token_budget=record.token_budget, turn_budget=record.turn_budget,
+            )
+            problems += [f"{name} engine self-test: {problem}" for problem in engine_test.problems]
+            checked[f"{name}_engine_self_test"] = engine_test.checked
         self_test = facts.task_self_test(task_dir, manifest)
         problems += [f"task self-test: {problem}" for problem in self_test.problems]
         checked["task_self_test"] = self_test.checked

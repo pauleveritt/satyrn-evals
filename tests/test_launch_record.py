@@ -47,6 +47,7 @@ def _facts(**over: object) -> LaunchFacts:
         preflight=lambda **kw: CellPreflight([], {"pi_version": "0.85.1"}), settings=lambda path, cell: (0, SETTINGS),
         spawn_cell=spawn, model_server=lambda base_url, server_model: [], pi_models=lambda cell: {},
         task_self_test=lambda task_dir, manifest: TaskSelfTest([], {}),
+        engine_self_test=lambda *a, **k: TaskSelfTest([], {}),
     )
     return LaunchFacts(**{**base, **over})  # type: ignore[arg-type]
 
@@ -471,6 +472,28 @@ def test_a_task_self_test_problem_exits_1_and_runs_nothing(
         facts=facts, poll_interval=0.0, grace=0.0,
     ) == 1
     assert "launch FAILED: task self-test: the self-test on the unmodified t base exited 2" in capsys.readouterr().err
+    assert not (tmp_path / "runs").exists()
+
+
+def test_the_void_night_is_refused_by_the_engine_self_test(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The 2026-09-18 reproduction: the task's public suite is green (the plain
+    preflight passes), the Engine's own self-test exits 2, and the record is
+    refused. This is the hole the whole-path review confirmed."""
+    facts = _facts(
+        engine_self_test=lambda *a, **k: TaskSelfTest(
+            ["the Engine self-test on the t known-good state exited 2: boom"], {}
+        )
+    )
+    assert launch_record(
+        _route_proof(tmp_path), [ENGINE_ARM], tasks_root=DEFAULT_TASKS_ROOT, runs_root=tmp_path / "runs",
+        facts=facts, poll_interval=0.0, grace=0.0,
+    ) == 1
+    assert (
+        "launch FAILED: engine engine self-test: the Engine self-test on the t known-good state exited 2"
+        in capsys.readouterr().err
+    )
     assert not (tmp_path / "runs").exists()
 
 
