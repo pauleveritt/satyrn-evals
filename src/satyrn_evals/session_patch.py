@@ -37,10 +37,14 @@ class PatchCapture:
 
 
 def _git(
-    worktree: Path, env: dict[str, str], *args: str, timeout: float | None = None
+    worktree: Path,
+    env: dict[str, str],
+    *args: str,
+    timeout: float | None = None,
+    extra_config: Sequence[str] = (),
 ) -> bytes:
     result = subprocess.run(
-        ["git", *GIT_SAFETY_CONFIG, *args],
+        ["git", *GIT_SAFETY_CONFIG, *extra_config, *args],
         cwd=worktree,
         env=env,
         capture_output=True,
@@ -73,6 +77,7 @@ def build_cumulative_patch(
     *,
     exclude: Sequence[str] = (),
     timeout: float | None = None,
+    extra_config: Sequence[str] = (),
 ) -> PatchCapture:
     """Snapshot the whole tree as one cumulative patch from base_commit.
 
@@ -85,6 +90,12 @@ def build_cumulative_patch(
     ``timeout`` is a per-git-call ceiling in seconds; None keeps today's
     unbounded behaviour for the session and adapter callers. A tripped
     teardown passes a bound so a wedged git can never hold a cell open.
+
+    ``extra_config`` is forwarded to every git call as literal ``-c``
+    arguments (e.g. a single ``safe.directory=<resolved path>`` scoped to
+    a worktree whose Git admin data this process does not own -- C1: the
+    Engine arm's own internal deliver worktree, created by the cell user).
+    It is never a caller's job to widen this beyond one resolved path.
     """
     fd, index_path = tempfile.mkstemp(prefix="satyrn-session-index-")
     os.close(fd)
@@ -94,8 +105,11 @@ def build_cumulative_patch(
         "GIT_INDEX_FILE": index_path,
     }
     try:
-        _git(worktree, env, "read-tree", base_commit, timeout=timeout)
-        _git(worktree, env, "add", "-N", "--all", "--", ".", *exclude, timeout=timeout)
+        _git(worktree, env, "read-tree", base_commit, timeout=timeout, extra_config=extra_config)
+        _git(
+            worktree, env, "add", "-N", "--all", "--", ".", *exclude,
+            timeout=timeout, extra_config=extra_config,
+        )
         patch_text = _git(
             worktree,
             env,
@@ -106,6 +120,7 @@ def build_cumulative_patch(
             "--no-textconv",
             base_commit,
             timeout=timeout,
+            extra_config=extra_config,
         ).decode("utf-8", "surrogateescape")
         status_z = _git(
             worktree,
@@ -115,6 +130,7 @@ def build_cumulative_patch(
             "--untracked-files=all",
             "-z",
             timeout=timeout,
+            extra_config=extra_config,
         )
     finally:
         Path(index_path).unlink(missing_ok=True)

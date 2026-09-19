@@ -144,22 +144,43 @@ def contract_digest(text: str) -> str:
 
 
 def _is_engine_wrapper_command(command: list[str]) -> bool:
-    """Whether COMMAND is evals' own E5 wrapper: ``uv run --project ENGINE
-    satyrn-engine ...`` (`tests/integration/test_attempt.py::_engine_command`
-    builds exactly this shape; nothing else in this codebase does).
+    """Whether COMMAND runs the Engine arm's adapter (``attempt_engine``).
 
     Bare-Pi (Baseline) commands run the model's own binary directly and must
     keep receiving ``UV_PROJECT_ENVIRONMENT`` — that is the model-visible
     isolation for its own nested ``uv run`` calls. The engine wrapper is a
-    trusted command evals itself constructs, naming its own ``--project``;
-    redirecting *its* ``UV_PROJECT_ENVIRONMENT`` onto the attempt's private,
-    empty per-attempt directory makes ``uv`` treat that directory as the
-    engine project's own virtualenv and, under ``UV_NO_SYNC=1``, fail to spawn
-    ``satyrn-engine`` at all (Task 13 report, "Root cause").
+    trusted command evals itself constructs; redirecting *its*
+    ``UV_PROJECT_ENVIRONMENT`` onto the attempt's private, empty per-attempt
+    directory makes ``uv`` treat that directory as the engine project's own
+    virtualenv and, under ``UV_NO_SYNC=1``, fail to spawn ``satyrn-engine`` at
+    all (Task 13 report, "Root cause"). It also gates ``engine_arm``, which
+    tells the line harvest to read the Engine's own internal deliver
+    worktree (``workspace._engine_worktree``) instead of the Evals one.
+
+    Three shapes, all matched (C1 fix, Opus review of a113f0b..3ecf068):
+    every real arm (``arms/engine-ornith15-9b.json``'s argv,
+    ``arms.build_argv``) runs the ``satyrn-evals-attempt-engine`` console
+    script; the integration suite (`tests/integration/test_isolated_arms.
+    py::_engine_arm`) runs the same adapter as
+    ``python -m satyrn_evals.attempt_engine``; a still-supported legacy
+    fixture shape (`tests/test_attempt.py::test_engine_spawn_drops_uv_
+    project_environment_workspace_prep_keeps_it`) runs the bare
+    ``uv run --project ENGINE satyrn-engine ...`` invocation directly.
+    Before this fix, only the third shape matched, so ``engine_arm`` was
+    always False for a real attempt and a line crossing silently harvested
+    the wrong (not-yet-populated) worktree instead of either succeeding or
+    recording an error.
     """
+    if not command:
+        return False
+    name = Path(command[0]).name
+    if name == "satyrn-evals-attempt-engine":
+        return True
+    if name.startswith("python") and len(command) >= 3 and command[1] == "-m":
+        return command[2] == "satyrn_evals.attempt_engine"
     return (
         len(command) >= 5
-        and Path(command[0]).name == "uv"
+        and name == "uv"
         and command[1] == "run"
         and command[2] == "--project"
         and command[4] == "satyrn-engine"

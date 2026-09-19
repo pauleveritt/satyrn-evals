@@ -22,6 +22,14 @@ stdout:
 - ``unreachable``: change nothing and end the one turn the way Pi does when
   the model server cannot be reached (``stopReason: error`` with no status),
   which the harness records as ``MODEL_ERROR`` (Phase 2c's infrastructure stop).
+- ``line-cross``: like ``write``, but a first turn reports enough output
+  tokens to cross a small declared line budget, then sleeps briefly (giving
+  the harness's poll loop time to observe the crossing and harvest mid-run)
+  before writing calc-build's GOOD files and finishing normally. Used by the
+  Engine-arm line-harvest integration test (C1): under the Engine arm this
+  process runs inside satyrn-engine's own ``deliver``, in its private,
+  cell-created internal worktree, so the crossing is harvested while that
+  worktree -- not the Evals one -- is what the model has touched.
 """
 
 import json
@@ -68,6 +76,17 @@ def main() -> int:
     if mode == "unreachable":
         emit({"type": "turn_start"})
         emit({"type": "turn_end", "message": {"role": "assistant", "content": [], "stopReason": "error", "errorMessage": "Connection error."}})
+        emit({"type": "agent_end"})
+        return 0
+    if mode == "line-cross":
+        emit({"type": "turn_start"})
+        for index, (path, text) in enumerate(GOOD.items()):
+            emit({"type": "tool_execution_start", "toolCallId": f"w{index}", "toolName": "write", "args": {"path": path, "content": text}})
+            Path(path).write_text(text)
+            emit({"type": "tool_execution_end", "toolCallId": f"w{index}", "toolName": "write", "result": {"content": [{"type": "text", "text": "ok"}]}})
+        emit({"type": "message_end", "message": {"role": "assistant", "usage": {"input": 1000, "output": 5_000}}})  # over a small declared line budget
+        emit({"type": "turn_end", "message": {"role": "assistant", "content": []}})
+        time.sleep(3)  # let the harness's poll loop observe the crossing and harvest
         emit({"type": "agent_end"})
         return 0
     if mode in ("commit", "write"):

@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -465,6 +466,42 @@ def test_engine_spawn_drops_uv_project_environment_workspace_prep_keeps_it(
 
     assert "UV_PROJECT_ENVIRONMENT" in prepared_environment
     assert "UV_PROJECT_ENVIRONMENT" not in spawned_environment
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        # The real arm's actual command (arms/engine-ornith15-9b.json's argv,
+        # `arms.build_argv`): the console-script entry point, not the legacy
+        # `uv run --project ... satyrn-engine ...` fixture shape below.
+        ["satyrn-evals-attempt-engine", "--engine-repo", "/x/engine-abc", "--model", "omlx/m"],
+        # `tests/integration/test_isolated_arms.py::_engine_arm`'s shape.
+        [sys.executable, "-m", "satyrn_evals.attempt_engine", "--model", "omlx/m",
+         "--engine-repo", "/x/engine-abc", "--uv-bin", "uv"],
+        # The legacy fixture shape `test_engine_spawn_drops_uv_project_environment_
+        # workspace_prep_keeps_it` above still exercises.
+        ["uv", "run", "--project", "/engine/repo", "satyrn-engine", "attempt"],
+    ],
+)
+def test_the_engine_wrapper_is_recognized_by_every_shape_it_actually_runs_as(
+    command: list[str],
+) -> None:
+    """C1 (Opus review of a113f0b..3ecf068): `engine_arm` gated the line
+    harvest's lookup of the Engine's own internal deliver worktree
+    (workspace.py's `_engine_worktree`), but `_is_engine_wrapper_command` only
+    ever matched a `uv run --project ... satyrn-engine ...` fixture shape --
+    never the real arm's `satyrn-evals-attempt-engine` console script
+    (`arms/engine-ornith15-9b.json`'s argv) or the `-m satyrn_evals.
+    attempt_engine` shape the integration suite uses. `engine_arm` was always
+    False for a real Engine-arm attempt, so a line crossing harvested the
+    outer Evals worktree (not yet holding the model's changes, mid-deliver)
+    instead of erroring -- silently wrong, not even the recorded failure the
+    review describes."""
+    assert attempt_module._is_engine_wrapper_command(command)
+
+
+def test_a_bare_pi_command_is_not_the_engine_wrapper() -> None:
+    assert not attempt_module._is_engine_wrapper_command(["fake-agent", "--model", "m"])
 
 
 def test_non_engine_spawn_keeps_uv_project_environment(

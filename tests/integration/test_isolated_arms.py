@@ -161,6 +161,40 @@ def test_an_isolated_engine_cell_stopped_by_the_harness_leaves_no_model_running(
     _no_cells_left(before)
 
 
+def test_an_isolated_engine_cells_line_crossing_is_harvested_from_its_own_worktree(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, cell_scratch: Path
+) -> None:
+    """C1 (Opus review of a113f0b..3ecf068): the Engine's own internal
+    deliver worktree is created by ``git worktree add`` run as the cell user
+    (satyrn-engine's own subprocess, under isolation) -- its Git admin data
+    is cell-owned, so a maintainer-run harvest against it must scope
+    ``safe.directory`` to that one resolved path or git refuses it as
+    "dubious ownership" (exit 128). A crossed line, harvested while the
+    Engine's `deliver` is still running in its own private worktree, must
+    read that worktree's real content -- not error, and not silently read
+    the (not-yet-populated) Evals worktree instead."""
+    _cell_pi(cell_scratch, monkeypatch, "line-cross")
+    command = _engine_arm(cell_scratch)
+    output = tmp_path / "attempts"
+    from satyrn_evals.budget import LineBudget
+
+    record = attempt(
+        task="calc-build", tasks_root=TASKS, output=output, command=command, timeout=300,
+        budget=CAMPAIGN, isolation=Isolation.ISOLATED,
+        line_budget=LineBudget(output_tokens=2_000, turns=40),
+    )
+    assert (record.code, record.verdict) == (AttemptCode.OK, Verdict.PASS), record.message
+    assert record.attempt_dir is not None
+    cell = output / record.attempt_dir
+    assert record.line_crossed is not None
+    assert record.line_harvest_error is None, record.line_harvest_error
+    line_patch = cell / "line.diff"
+    assert line_patch.exists()
+    assert sorted(parse_patch_paths(line_patch.read_text())) == [
+        "calc/core.py", "calc/format.py", "calc/helpers.py",
+    ]
+
+
 def test_the_engine_export_is_made_once_and_runs_as_the_cell_user(cell_scratch: Path, capsys: pytest.CaptureFixture[str]) -> None:
     from integration.cell_support import run_as_cell
     from satyrn_evals.cell import cell_environment

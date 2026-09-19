@@ -108,7 +108,7 @@ def test_crossing_the_token_line_harvests_at_the_crossing_not_the_final_tree(
 ) -> None:
     tree = {"text": _BEFORE}
 
-    def build(worktree, base, env, *, exclude=(), timeout=None):
+    def build(worktree, base, env, *, exclude=(), timeout=None, extra_config=()):
         return _capture(tree["text"])
 
     process = _KeepsRunningProcess(exit_after=3)
@@ -209,7 +209,7 @@ def test_the_engine_arm_harvest_reads_its_own_internal_worktree(
 
     seen: dict[str, Path] = {}
 
-    def build(worktree, base, env, *, exclude=(), timeout=None):
+    def build(worktree, base, env, *, exclude=(), timeout=None, extra_config=()):
         seen["worktree"] = Path(worktree)
         return _capture(_BEFORE)
 
@@ -225,6 +225,61 @@ def test_the_engine_arm_harvest_reads_its_own_internal_worktree(
     assert seen["worktree"] == internal
     assert result.line_patch_written is True
     assert out.read_text() == _BEFORE
+
+
+def test_the_engine_arm_harvest_trusts_only_its_own_internal_worktree(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The Engine's internal deliver worktree is created by the cell user
+    (satyrn-engine's own ``git worktree add``, run as ``satyrn-cell``), so a
+    maintainer-run git harvest against it hits "dubious ownership" unless the
+    harvest scopes ``safe.directory`` to that one resolved path -- never a
+    blanket trust of every path (C1)."""
+    state = _default_state(tmp_path, isolation=Isolation.ISOLATED)
+    engine_tmp = state.parent / "tmp"
+    engine_tmp.mkdir()
+    internal = engine_tmp / "satyrn-engine-abc123" / "worktree"
+    internal.mkdir(parents=True)
+
+    seen: dict[str, object] = {}
+
+    def build(worktree, base, env, *, exclude=(), timeout=None, extra_config=()):
+        seen["worktree"] = Path(worktree)
+        seen["extra_config"] = tuple(extra_config)
+        return _capture(_BEFORE)
+
+    result, out = _run(
+        tmp_path,
+        monkeypatch,
+        transcript_text=TOKEN_LINE + "\n",
+        line_budget=LineBudget(100, 48),
+        build=build,
+        engine_arm=True,
+        state=state,
+    )
+    assert seen["worktree"] == internal
+    assert seen["extra_config"] == ("-c", f"safe.directory={internal.resolve()}")
+    assert result.line_patch_written is True
+
+
+def test_a_baseline_harvest_never_widens_safe_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The maintainer already owns the Evals worktree's Git admin data (it
+    created the worktree itself), so the ordinary harvest passes no extra
+    safe.directory config -- the scoped trust is only for the Engine's own
+    internal worktree."""
+    seen: dict[str, object] = {}
+
+    def build(worktree, base, env, *, exclude=(), timeout=None, extra_config=()):
+        seen["extra_config"] = tuple(extra_config)
+        return _capture(_BEFORE)
+
+    result, out = _run(
+        tmp_path, monkeypatch, transcript_text=TOKEN_LINE + "\n", line_budget=LineBudget(100, 48), build=build,
+    )
+    assert seen["extra_config"] == ()
+    assert result.line_patch_written is True
 
 
 def _base(tmp_path: Path) -> Path:

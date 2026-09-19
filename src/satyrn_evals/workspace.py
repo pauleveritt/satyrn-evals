@@ -1159,6 +1159,20 @@ def _harvest_patch(
     if state.base_sha is None:
         return False, "workspace base_sha is not set"
     target = worktree if worktree is not None else state.worktree
+    # A `worktree` override names the Engine's own internal deliver
+    # worktree (`_engine_worktree`): `git worktree add` for it ran as the
+    # cell user (satyrn-engine's own subprocess under isolation), so its
+    # Git admin data is cell-owned and the maintainer's git refuses it as
+    # "dubious ownership" without this. Scoped to this one resolved path
+    # only -- never a blanket `safe.directory=*` and never written to any
+    # global/system git config. The Evals worktree itself needs no such
+    # override: the maintainer created it, so it already owns the admin
+    # data the ordinary harvest reads.
+    extra_config: tuple[str, ...] = (
+        ("-c", f"safe.directory={os.fspath(target.resolve())}")
+        if worktree is not None
+        else ()
+    )
     try:
         capture = build_cumulative_patch(
             target,
@@ -1166,6 +1180,7 @@ def _harvest_patch(
             environment,
             exclude=RESIDUE_EXCLUDES,
             timeout=timeout,
+            extra_config=extra_config,
         )
     except (OSError, subprocess.SubprocessError, ValueError) as exc:
         return False, f"{type(exc).__name__}: {exc}"
