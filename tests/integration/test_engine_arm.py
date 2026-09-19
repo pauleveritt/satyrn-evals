@@ -92,14 +92,19 @@ def test_an_engine_cell_under_the_engines_own_budget_is_stopped_by_the_harness_a
     """The harness's teardown, not a normal exit, ends this cell.
 
     ``trickle`` reports 20,000 output tokens on one turn, over the harness's
-    16,000 budget. Since the 2026-09-18 ruling the same 16,000 is written into
-    the engine's contract by `derive`, so either the engine's own enforcement
-    or the harness's teardown may end the cell; what this pins is that the
+    16,000 budget. Since the 2026-09-18 ruling the same 16,000 is written
+    into the engine's contract by `derive`, but the enforcement headroom
+    that would let `deliver` observe its own limit and exit cleanly now
+    lives at `deliver`'s own boundary, not in this fake -- ``trickle``
+    never stops on its own, so only the harness's own teardown can end this
+    cell. ``record.command_exit is None`` below pins exactly that: a stop
+    the harness's teardown produced, not a normal exit the engine's own
+    enforcement would have produced. What this test proves is that the
     harness's teardown reaches `deliver`'s Pi and leaves no process behind.
     If the harness's teardown signal never reaches `deliver`'s Pi (each in
-    its own process group, Ruling 8/final review Important 1), the fake keeps
-    running, the engine tree beneath `deliver` is never told to stop, and
-    the transcript would keep growing after this function reads it.
+    its own process group, Ruling 8/final review Important 1), the fake
+    keeps running, the engine tree beneath `deliver` is never told to stop,
+    and the transcript would keep growing after this function reads it.
     """
     engine_tmp = tmp_path / "engine-tmp"
     engine_tmp.mkdir()
