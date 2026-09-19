@@ -1209,8 +1209,103 @@ def _harvest_tripped(
     _harvest_patch(state, environment, destination, timeout=TRIPPED_HARVEST_TIMEOUT_S)
 
 
-def _engine_worktree(state: _WorkspaceState) -> Path | None:
-    """The Engine arm's own transient deliver worktree, if exactly one is live.
+#: I4c: satyrn-engine's own ``_temporary_parent`` (delivery.py ~1704-1721 at
+#: 0a6e5df) tries ``tempfile.gettempdir()`` first and falls back to these two
+#: roots in order when that candidate is skipped (inside a repository
+#: worktree, or ``mkdtemp`` fails). Under the ``local`` isolation profile this
+#: harness scans the same fallback roots Engine itself would have tried, so a
+#: deliver worktree that landed in one of them is still found -- a *foreign*
+#: ``satyrn-engine-*`` directory left there by something else is harmless
+#: because every candidate is bound to this attempt (below) before it is
+#: accepted, never guessed at by position or count alone.
+_LOCAL_TMP_FALLBACKS: tuple[Path, ...] = (Path("/tmp"), Path("/var/tmp"))
+
+
+def _engine_worktree_search_roots(state: _WorkspaceState) -> tuple[Path, ...]:
+    """Where an Engine arm's transient deliver worktree could be rooted.
+
+    Isolated: exactly the cell's own private ``TMPDIR`` (``cell.cell_paths``:
+    ``parent / "tmp"``) -- no other cell's Engine subprocess can write there,
+    so one root is both necessary and sufficient. Local (development only,
+    never a deciding record): the ambient ``TMPDIR`` plus the two roots
+    Engine's own ``_temporary_parent`` falls back to, deduplicated by
+    resolved identity -- scanning only the first candidate would miss a
+    worktree Engine itself put in a fallback root.
+    """
+    if state.isolation is Isolation.ISOLATED:
+        return (state.parent / "tmp",)
+    seen: dict[Path, None] = {}
+    for root in (Path(tempfile.gettempdir()), *_LOCAL_TMP_FALLBACKS):
+        try:
+            resolved = root.resolve()
+        except OSError:
+            continue
+        if resolved.is_dir():
+            seen.setdefault(resolved, None)
+    return tuple(seen)
+
+
+def _resolve_git_common_dir(
+    root: Path,
+    environment: Mapping[str, str],
+    *,
+    extra_args: tuple[str, ...] = (),
+) -> Path | None:
+    """``git -C root rev-parse --git-common-dir``, resolved; ``None`` if git refuses."""
+    try:
+        completed = _git(root, (*extra_args, "rev-parse", "--git-common-dir"), environment)
+    except _WorkspaceError:
+        return None
+    raw = Path(os.fsdecode(completed.stdout).removesuffix("\n"))
+    try:
+        return (raw if raw.is_absolute() else (root / raw)).resolve()
+    except OSError:
+        return None
+
+
+def _engine_worktree_bound(
+    state: _WorkspaceState, candidate: Path, environment: Mapping[str, str]
+) -> tuple[bool, str]:
+    """I4b: verify ``candidate`` is THIS attempt's own Engine deliver worktree.
+
+    satyrn-engine creates its deliver worktree with ``git worktree add`` run
+    from ``context.root`` -- the directory the harness itself gave the Engine
+    command as its cwd, i.e. this attempt's own ``state.worktree`` (the seed
+    the cell was materialized from). A worktree ``git worktree add`` creates
+    shares its parent repository's administration data, so the candidate's
+    ``git-common-dir`` must equal ``state.worktree``'s own ``git-common-dir``
+    -- comparing anything else (e.g. the candidate's path, or a name pattern)
+    would accept a same-named directory another process happened to leave
+    behind. The candidate's Git admin data is cell-owned (C1), so the check
+    scopes ``safe.directory`` to that one resolved path, exactly as the
+    harvest itself does -- never ``*``, never global config. ``state.worktree``
+    needs no such override: the maintainer created it.
+    """
+    own_common = _resolve_git_common_dir(state.worktree, environment)
+    if own_common is None:
+        return False, (
+            f"engine arm: cannot resolve this attempt's own git-common-dir "
+            f"to verify {candidate}"
+        )
+    candidate_common = _resolve_git_common_dir(
+        candidate,
+        environment,
+        extra_args=("-c", f"safe.directory={candidate.resolve()}"),
+    )
+    if candidate_common is None:
+        return False, f"engine arm: cannot inspect candidate worktree {candidate}"
+    if candidate_common != own_common:
+        return False, (
+            f"engine arm: candidate worktree {candidate} belongs to a foreign "
+            "repository, not this attempt"
+        )
+    return True, ""
+
+
+def _engine_worktree(
+    state: _WorkspaceState, environment: Mapping[str, str]
+) -> tuple[Path | None, str | None]:
+    """The Engine arm's own transient deliver worktree, bound to this attempt.
 
     satyrn-engine's own ``deliver`` allocates a private worktree under a fresh
     ``tempfile.mkdtemp(prefix="satyrn-engine-", dir=<TMPDIR>)``, then
@@ -1219,31 +1314,51 @@ def _engine_worktree(state: _WorkspaceState) -> Path | None:
     line crossing is being harvested (synchronously, from the transcript that
     same Pi process is writing) the directory is guaranteed to still be there.
 
-    Under isolation this harness gives every cell its own ``TMPDIR``
-    (``cell.cell_paths``: ``parent / "tmp"``), so this glob can never see a
-    concurrent cell's directory -- each cell's Engine subprocess is confined
-    to its own attempt's tree, the same isolation the harvest already trusts
-    for everything else under ``state.parent``. Under the local profile
-    (development only, never a deciding record) it falls back to the ambient
-    ``TMPDIR``, which is shared across whatever else the maintainer's own
-    session is doing; an ambiguous scan there is reported as "no worktree
-    found" rather than guessed at.
+    I4a/I4b: a glob match is never accepted on position or count alone. Every
+    ``satyrn-engine-*/worktree`` found under the search roots
+    (``_engine_worktree_search_roots``) is bound to this attempt
+    (``_engine_worktree_bound``) before it is trusted; only a candidate that
+    binds is a match. Zero bound candidates, or more than one, is refused --
+    accepting the first of several (the mutation this guards against) or an
+    unverified single match (the local-TMPDIR hazard I4 exists for) would
+    both let a harvest silently diff the wrong tree. Exactly one bound
+    candidate among several *unbound* ones is still accepted: under
+    ``local``, an ambient TMPDIR can hold a foreign ``satyrn-engine-*``
+    directory from an unrelated process (including the Engine repository's
+    own test suite) alongside this attempt's own -- refusing the harvest
+    just because something foreign is also present would defeat the point of
+    binding. Returns ``(worktree, None)`` on a bound match, or
+    ``(None, reason)`` naming why nothing was accepted.
     """
-    tmp_root = (
-        state.parent / "tmp"
-        if state.isolation is Isolation.ISOLATED
-        else Path(tempfile.gettempdir())
+    candidates: list[Path] = []
+    for tmp_root in _engine_worktree_search_roots(state):
+        if not tmp_root.is_dir():
+            continue
+        candidates.extend(
+            entry / "worktree"
+            for entry in tmp_root.glob("satyrn-engine-*")
+            if (entry / "worktree").is_dir()
+        )
+    if not candidates:
+        return None, "engine arm: no satyrn-engine-* worktree found under the cell TMPDIR"
+    bound: list[Path] = []
+    reasons: list[str] = []
+    for candidate in candidates:
+        ok, detail = _engine_worktree_bound(state, candidate, environment)
+        if ok:
+            bound.append(candidate)
+        else:
+            reasons.append(detail)
+    if len(bound) == 1:
+        return bound[0], None
+    if not bound:
+        return None, reasons[0] if reasons else (
+            "engine arm: cannot uniquely locate the internal deliver worktree"
+        )
+    return None, (
+        f"engine arm: {len(bound)} worktrees are bound to this attempt; "
+        "cannot uniquely locate the internal deliver worktree"
     )
-    if not tmp_root.is_dir():
-        return None
-    candidates = [
-        entry / "worktree"
-        for entry in tmp_root.glob("satyrn-engine-*")
-        if (entry / "worktree").is_dir()
-    ]
-    if len(candidates) != 1:
-        return None
-    return candidates[0]
 
 
 def _run_command(
@@ -1274,11 +1389,9 @@ def _run_command(
             return
         worktree_override: Path | None = None
         if engine_arm:
-            worktree_override = _engine_worktree(state)
+            worktree_override, error = _engine_worktree(state, environment)
             if worktree_override is None:
-                line_state["error"] = (
-                    "engine arm: cannot uniquely locate the internal deliver worktree"
-                )
+                line_state["error"] = error
                 return
         wrote, error = _harvest_patch(
             state,

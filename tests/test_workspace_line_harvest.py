@@ -8,6 +8,7 @@ cell's own outcome; the Engine arm's harvest reads its own internal deliver
 worktree, not the Evals one.
 """
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -198,6 +199,15 @@ def test_a_harvest_failure_is_recorded_and_the_cell_is_unaffected(
     assert not out.exists()
 
 
+def _bind_everything(monkeypatch: pytest.MonkeyPatch) -> None:
+    """I4b: fake every candidate as bound to this attempt (no real git)."""
+    monkeypatch.setattr(
+        workspace_module,
+        "_engine_worktree_bound",
+        lambda _state, _candidate, _environment: (True, ""),
+    )
+
+
 def test_the_engine_arm_harvest_reads_its_own_internal_worktree(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -206,6 +216,7 @@ def test_the_engine_arm_harvest_reads_its_own_internal_worktree(
     engine_tmp.mkdir()
     internal = engine_tmp / "satyrn-engine-abc123" / "worktree"
     internal.mkdir(parents=True)
+    _bind_everything(monkeypatch)
 
     seen: dict[str, Path] = {}
 
@@ -240,6 +251,7 @@ def test_the_engine_arm_harvest_trusts_only_its_own_internal_worktree(
     engine_tmp.mkdir()
     internal = engine_tmp / "satyrn-engine-abc123" / "worktree"
     internal.mkdir(parents=True)
+    _bind_everything(monkeypatch)
 
     seen: dict[str, object] = {}
 
@@ -391,3 +403,201 @@ def test_the_engine_arm_records_an_error_when_the_worktree_cannot_be_found(
     assert result.line_patch_written is False
     assert result.line_harvest_error is not None
     assert "engine" in result.line_harvest_error
+
+
+# --- I4: the candidate is bound to this attempt before it is accepted ------
+
+
+def _make_candidates(state: workspace_module._WorkspaceState, *names: str) -> list[Path]:
+    engine_tmp = state.parent / "tmp"
+    engine_tmp.mkdir(exist_ok=True)
+    paths = []
+    for name in names:
+        candidate = engine_tmp / name / "worktree"
+        candidate.mkdir(parents=True)
+        paths.append(candidate)
+    return paths
+
+
+def _bind_only(monkeypatch: pytest.MonkeyPatch, *own: Path) -> None:
+    """I4b: fake every candidate in ``own`` as bound; everything else foreign."""
+    own_set = set(own)
+
+    def fake(_state: object, candidate: Path, _environment: object) -> tuple[bool, str]:
+        if candidate in own_set:
+            return True, ""
+        return False, (
+            f"engine arm: candidate worktree {candidate} belongs to a foreign "
+            "repository, not this attempt"
+        )
+
+    monkeypatch.setattr(workspace_module, "_engine_worktree_bound", fake)
+
+
+def test_two_unbound_candidates_are_refused_not_the_first_of_several(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """I4a: the mutation this test kills is 'accept the first match instead
+    of refusing several' -- both candidates here are unbound (foreign), so
+    accepting either would silently harvest the wrong tree."""
+    state = _default_state(tmp_path, isolation=Isolation.ISOLATED)
+    a, b = _make_candidates(state, "satyrn-engine-aaa", "satyrn-engine-bbb")
+    _bind_only(monkeypatch)  # nothing is bound
+
+    result, _out = _run(
+        tmp_path,
+        monkeypatch,
+        transcript_text=TOKEN_LINE + "\n",
+        line_budget=LineBudget(100, 48),
+        build=lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("must not reach the build")),
+        engine_arm=True,
+        state=state,
+    )
+    assert result.line_patch_written is False
+    assert result.line_harvest_error is not None
+    assert "engine" in result.line_harvest_error
+    assert str(a) in result.line_harvest_error or str(b) in result.line_harvest_error
+
+
+def test_one_foreign_candidate_is_refused_and_named(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """I4b: a single match is no longer accepted unchecked -- a foreign
+    directory (same glob shape, different repository) is refused and named,
+    never silently diffed."""
+    state = _default_state(tmp_path, isolation=Isolation.ISOLATED)
+    (foreign,) = _make_candidates(state, "satyrn-engine-foreign")
+    _bind_only(monkeypatch)  # nothing is bound
+
+    result, _out = _run(
+        tmp_path,
+        monkeypatch,
+        transcript_text=TOKEN_LINE + "\n",
+        line_budget=LineBudget(100, 48),
+        build=lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("must not reach the build")),
+        engine_arm=True,
+        state=state,
+    )
+    assert result.line_patch_written is False
+    assert result.line_harvest_error is not None
+    assert str(foreign) in result.line_harvest_error
+    assert "foreign" in result.line_harvest_error
+
+
+def test_several_candidates_with_exactly_one_own_is_accepted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """I4b design choice: an ambient TMPDIR can hold a foreign
+    ``satyrn-engine-*`` directory (another process, or the Engine
+    repository's own test suite) alongside this attempt's own. Refusing the
+    harvest just because something foreign is *also* present would defeat
+    the point of binding, so the one candidate that binds to this attempt is
+    still accepted."""
+    state = _default_state(tmp_path, isolation=Isolation.ISOLATED)
+    foreign, own = _make_candidates(state, "satyrn-engine-foreign", "satyrn-engine-own")
+    _bind_only(monkeypatch, own)
+
+    seen: dict[str, Path] = {}
+
+    def build(worktree, base, env, *, exclude=(), timeout=None, extra_config=()):
+        seen["worktree"] = Path(worktree)
+        return _capture(_BEFORE)
+
+    result, out = _run(
+        tmp_path,
+        monkeypatch,
+        transcript_text=TOKEN_LINE + "\n",
+        line_budget=LineBudget(100, 48),
+        build=build,
+        engine_arm=True,
+        state=state,
+    )
+    assert seen["worktree"] == own
+    assert result.line_patch_written is True
+    assert out.read_text() == _BEFORE
+
+
+def test_several_all_foreign_candidates_are_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state = _default_state(tmp_path, isolation=Isolation.ISOLATED)
+    _make_candidates(state, "satyrn-engine-a", "satyrn-engine-b", "satyrn-engine-c")
+    _bind_only(monkeypatch)  # nothing is bound
+
+    result, _out = _run(
+        tmp_path,
+        monkeypatch,
+        transcript_text=TOKEN_LINE + "\n",
+        line_budget=LineBudget(100, 48),
+        build=lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("must not reach the build")),
+        engine_arm=True,
+        state=state,
+    )
+    assert result.line_patch_written is False
+    assert result.line_harvest_error is not None
+    assert "engine" in result.line_harvest_error
+
+
+def test_several_own_candidates_are_ambiguous_and_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Two candidates that both bind to this attempt should not happen in
+    practice (satyrn-engine keeps one deliver worktree per attempt), but if
+    it ever does, refuse rather than guess which one is current."""
+    state = _default_state(tmp_path, isolation=Isolation.ISOLATED)
+    a, b = _make_candidates(state, "satyrn-engine-a", "satyrn-engine-b")
+    _bind_only(monkeypatch, a, b)
+
+    result, _out = _run(
+        tmp_path,
+        monkeypatch,
+        transcript_text=TOKEN_LINE + "\n",
+        line_budget=LineBudget(100, 48),
+        build=lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("must not reach the build")),
+        engine_arm=True,
+        state=state,
+    )
+    assert result.line_patch_written is False
+    assert result.line_harvest_error is not None
+    assert "engine" in result.line_harvest_error
+
+
+def test_local_profile_scans_the_engine_fallback_tmp_roots_too(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """I4c: satyrn-engine's own ``_temporary_parent`` falls back to two more
+    roots when its ``TMPDIR`` candidate is skipped -- under the ``local``
+    profile this harness scans those same roots, and a foreign directory
+    found there is harmless because it must still bind (I4b) before it is
+    trusted."""
+    primary = tmp_path / "primary-tmp"
+    fallback_one = tmp_path / "fallback-one"
+    fallback_two = tmp_path / "fallback-two"
+    for root in (primary, fallback_one, fallback_two):
+        root.mkdir()
+    monkeypatch.setattr(workspace_module.tempfile, "gettempdir", lambda: os.fspath(primary))
+    monkeypatch.setattr(
+        workspace_module, "_LOCAL_TMP_FALLBACKS", (fallback_one, fallback_two)
+    )
+    own = fallback_two / "satyrn-engine-own" / "worktree"
+    own.mkdir(parents=True)
+    _bind_only(monkeypatch, own)
+
+    seen: dict[str, Path] = {}
+
+    def build(worktree, base, env, *, exclude=(), timeout=None, extra_config=()):
+        seen["worktree"] = Path(worktree)
+        return _capture(_BEFORE)
+
+    result, out = _run(
+        tmp_path,
+        monkeypatch,
+        transcript_text=TOKEN_LINE + "\n",
+        line_budget=LineBudget(100, 48),
+        build=build,
+        engine_arm=True,
+        # default state: Isolation.LOCAL
+    )
+    assert seen["worktree"] == own
+    assert result.line_patch_written is True
+    assert out.read_text() == _BEFORE
