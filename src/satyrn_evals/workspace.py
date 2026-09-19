@@ -1151,6 +1151,7 @@ def _harvest_patch(
     timeout: float,
     worktree: Path | None = None,
     total: bool = False,
+    deadline: float | None = None,
 ) -> tuple[bool, str | None]:
     """Write the cumulative diff of ``worktree`` (default ``state.worktree``)
     against ``state.base_sha`` to ``destination``.
@@ -1167,6 +1168,15 @@ def _harvest_patch(
     line harvest asks for the total form: it runs synchronously inside the
     still-running cell's own poll loop, so a per-call ceiling repeated four
     times could block that loop up to 4x longer than the ceiling's name says.
+
+    ``deadline`` (N1): with ``total=True``, a caller that already spent some
+    of the budget on other work before this call (the Engine arm's worktree
+    binding) passes the *same* ``time.monotonic()`` instant it used to bound
+    that earlier work, so the whole line harvest -- binding and patch, not
+    just the patch -- shares one deadline instead of the patch build getting
+    a fresh full ``timeout`` regardless of how much binding already spent.
+    When omitted (the tripped harvest never sets it), ``total=True`` falls
+    back to computing ``time.monotonic() + timeout`` here, unchanged.
     """
     # Imported here, not at module scope: `session_patch` imports
     # `GIT_SAFETY_CONFIG` from this module, so a top-level import is a cycle.
@@ -1197,7 +1207,7 @@ def _harvest_patch(
             exclude=RESIDUE_EXCLUDES,
             extra_config=extra_config,
             **(
-                {"deadline": time.monotonic() + timeout}
+                {"deadline": deadline if deadline is not None else time.monotonic() + timeout}
                 if total
                 else {"timeout": timeout}
             ),
@@ -1272,17 +1282,42 @@ def _engine_worktree_search_roots(state: _WorkspaceState) -> tuple[Path, ...]:
     return tuple(seen)
 
 
+def _remaining_or_expired(deadline: float | None) -> float | None:
+    """Seconds until ``deadline`` (a ``time.monotonic()`` instant), or
+    ``None`` when there is no deadline (unbounded, today's behaviour).
+
+    Raises ``subprocess.TimeoutExpired`` if ``deadline`` has already passed,
+    mirroring ``build_cumulative_patch``'s own ``_call_timeout`` -- every git
+    call inside a bounded line harvest (binding and the patch build alike)
+    treats an already-expired shared deadline identically, and never starts
+    a git process after it.
+    """
+    if deadline is None:
+        return None
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise subprocess.TimeoutExpired(cmd="git", timeout=0.0)
+    return remaining
+
+
 def _resolve_git_common_dir(
     root: Path,
     environment: Mapping[str, str],
     *,
     extra_args: tuple[str, ...] = (),
+    timeout: float | None = None,
 ) -> Path | None:
-    """``git -C root rev-parse --git-common-dir``, resolved; ``None`` if git refuses."""
-    try:
-        completed = _git(root, (*extra_args, "rev-parse", "--git-common-dir"), environment)
-    except _WorkspaceError:
-        return None
+    """``git -C root rev-parse --git-common-dir``, resolved; ``None`` if git refuses.
+
+    N1: ``timeout`` bounds this one git call -- previously unset, so a
+    wedged git here (used to bind the Engine arm's internal deliver
+    worktree) could block the harvest's poll loop indefinitely. A timeout
+    itself is not caught here: the caller shares one deadline across several
+    of these calls and needs to know a git process actually ran past it,
+    not have that folded into the same "git refused" outcome as a clean
+    rev-parse failure.
+    """
+    completed = _git(root, (*extra_args, "rev-parse", "--git-common-dir"), environment, timeout=timeout)
     raw = Path(os.fsdecode(completed.stdout).removesuffix("\n"))
     try:
         return (raw if raw.is_absolute() else (root / raw)).resolve()
@@ -1291,7 +1326,12 @@ def _resolve_git_common_dir(
 
 
 def _engine_worktree_bound(
-    state: _WorkspaceState, candidate: Path, environment: Mapping[str, str]
+    state: _WorkspaceState,
+    candidate: Path,
+    environment: Mapping[str, str],
+    *,
+    own_common: Path,
+    deadline: float | None = None,
 ) -> tuple[bool, str]:
     """I4b: verify ``candidate`` is THIS attempt's own Engine deliver worktree.
 
@@ -1307,18 +1347,22 @@ def _engine_worktree_bound(
     scopes ``safe.directory`` to that one resolved path, exactly as the
     harvest itself does -- never ``*``, never global config. ``state.worktree``
     needs no such override: the maintainer created it.
+
+    ``own_common`` (N8) is resolved once by the caller (``_engine_worktree``)
+    for all candidates, not re-resolved here per candidate. ``deadline``
+    (N1) is the single instant shared across the whole line harvest
+    (binding and the patch build); the remaining time toward it bounds this
+    candidate's own ``git-common-dir`` resolution.
     """
-    own_common = _resolve_git_common_dir(state.worktree, environment)
-    if own_common is None:
-        return False, (
-            f"engine arm: cannot resolve this attempt's own git-common-dir "
-            f"to verify {candidate}"
+    try:
+        candidate_common = _resolve_git_common_dir(
+            candidate,
+            environment,
+            extra_args=("-c", f"safe.directory={candidate.resolve()}"),
+            timeout=_remaining_or_expired(deadline),
         )
-    candidate_common = _resolve_git_common_dir(
-        candidate,
-        environment,
-        extra_args=("-c", f"safe.directory={candidate.resolve()}"),
-    )
+    except (_WorkspaceError, subprocess.TimeoutExpired):
+        return False, f"engine arm: cannot inspect candidate worktree {candidate}"
     if candidate_common is None:
         return False, f"engine arm: cannot inspect candidate worktree {candidate}"
     if candidate_common != own_common:
@@ -1329,8 +1373,21 @@ def _engine_worktree_bound(
     return True, ""
 
 
+def _engine_worktree_no_candidate_message(state: _WorkspaceState) -> str:
+    """N1: the ISOLATED profile has exactly one, cell-private search root
+    (``state.parent / "tmp"``), so naming it as "the cell TMPDIR" is
+    accurate; the LOCAL profile scans three roots
+    (``_engine_worktree_search_roots``), so the same wording would be false
+    -- name what was actually scanned instead.
+    """
+    if state.isolation is Isolation.ISOLATED:
+        return "engine arm: no satyrn-engine-* worktree found under the cell TMPDIR"
+    roots = ", ".join(os.fspath(root) for root in _engine_worktree_search_roots(state))
+    return f"engine arm: no satyrn-engine-* worktree found under any scanned root ({roots})"
+
+
 def _engine_worktree(
-    state: _WorkspaceState, environment: Mapping[str, str]
+    state: _WorkspaceState, environment: Mapping[str, str], *, deadline: float | None = None
 ) -> tuple[Path | None, str | None]:
     """The Engine arm's own transient deliver worktree, bound to this attempt.
 
@@ -1356,6 +1413,12 @@ def _engine_worktree(
     just because something foreign is also present would defeat the point of
     binding. Returns ``(worktree, None)`` on a bound match, or
     ``(None, reason)`` naming why nothing was accepted.
+
+    ``deadline`` (N1) is one ``time.monotonic()`` instant shared with the
+    patch build that follows a successful bind: the remaining time toward it
+    bounds every git call this function makes, and ``state.worktree``'s own
+    ``git-common-dir`` (N8) is resolved exactly once here, before the
+    candidate loop, rather than once per candidate.
     """
     candidates: list[Path] = []
     for tmp_root in _engine_worktree_search_roots(state):
@@ -1367,11 +1430,21 @@ def _engine_worktree(
             if (entry / "worktree").is_dir()
         )
     if not candidates:
-        return None, "engine arm: no satyrn-engine-* worktree found under the cell TMPDIR"
+        return None, _engine_worktree_no_candidate_message(state)
+    try:
+        own_common = _resolve_git_common_dir(
+            state.worktree, environment, timeout=_remaining_or_expired(deadline)
+        )
+    except (_WorkspaceError, subprocess.TimeoutExpired):
+        return None, "engine arm: git timed out resolving this attempt's own git-common-dir"
+    if own_common is None:
+        return None, "engine arm: cannot resolve this attempt's own git-common-dir"
     bound: list[Path] = []
     reasons: list[str] = []
     for candidate in candidates:
-        ok, detail = _engine_worktree_bound(state, candidate, environment)
+        ok, detail = _engine_worktree_bound(
+            state, candidate, environment, own_common=own_common, deadline=deadline
+        )
         if ok:
             bound.append(candidate)
         else:
@@ -1414,9 +1487,17 @@ def _run_command(
         line_state["crossed"] = crossing
         if line_patch is None:
             return
+        # N1: one deadline for the WHOLE line harvest -- binding the
+        # Engine arm's internal worktree and the patch build together --
+        # computed once, here, before either starts. Binding used to run
+        # its git calls unbounded and before the patch build's own deadline
+        # clock even started, so a wedged git there could stall the still-
+        # running cell's poll loop (the timeline writer, the budget
+        # tripwire feed) with nothing to cut it off.
+        harvest_deadline = time.monotonic() + LINE_HARVEST_TIMEOUT_S
         worktree_override: Path | None = None
         if engine_arm:
-            worktree_override, error = _engine_worktree(state, environment)
+            worktree_override, error = _engine_worktree(state, environment, deadline=harvest_deadline)
             if worktree_override is None:
                 line_state["error"] = error
                 return
@@ -1427,6 +1508,7 @@ def _run_command(
             timeout=LINE_HARVEST_TIMEOUT_S,
             worktree=worktree_override,
             total=True,
+            deadline=harvest_deadline,
         )
         line_state["written"] = wrote
         line_state["error"] = error

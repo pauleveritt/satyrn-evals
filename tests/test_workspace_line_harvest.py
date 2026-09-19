@@ -80,6 +80,7 @@ def _run(
     process: object | None = None,
     engine_arm: bool = False,
     state: workspace_module._WorkspaceState | None = None,
+    outer_timeout: float = 10.0,
 ) -> tuple[workspace_module.WorkspaceResult, Path]:
     state = state if state is not None else _default_state(tmp_path)
     transcript = tmp_path / "transcript.jsonl"
@@ -95,7 +96,7 @@ def _run(
         ("x",),
         state,
         {},
-        10.0,
+        outer_timeout,
         0.1,
         transcript=transcript,
         line_budget=line_budget,
@@ -200,12 +201,30 @@ def test_a_harvest_failure_is_recorded_and_the_cell_is_unaffected(
     assert not out.exists()
 
 
+_DUMMY_OWN_COMMON = Path("/dummy-common-dir")
+
+
+def _fake_own_common(monkeypatch: pytest.MonkeyPatch) -> None:
+    """N8/N1: `_engine_worktree` resolves ``state.worktree``'s own
+    git-common-dir once, itself, before consulting `_engine_worktree_bound`
+    per candidate -- so a test that fakes only the latter (no real git repo
+    at `state.worktree`) must also stub this one resolution, or it fails for
+    an unrelated reason (not a git repo) before the faked binding logic ever
+    runs."""
+    monkeypatch.setattr(
+        workspace_module,
+        "_resolve_git_common_dir",
+        lambda *_a, **_k: _DUMMY_OWN_COMMON,
+    )
+
+
 def _bind_everything(monkeypatch: pytest.MonkeyPatch) -> None:
     """I4b: fake every candidate as bound to this attempt (no real git)."""
+    _fake_own_common(monkeypatch)
     monkeypatch.setattr(
         workspace_module,
         "_engine_worktree_bound",
-        lambda _state, _candidate, _environment: (True, ""),
+        lambda _state, _candidate, _environment, **_kwargs: (True, ""),
     )
 
 
@@ -521,9 +540,10 @@ def _make_candidates(state: workspace_module._WorkspaceState, *names: str) -> li
 
 def _bind_only(monkeypatch: pytest.MonkeyPatch, *own: Path) -> None:
     """I4b: fake every candidate in ``own`` as bound; everything else foreign."""
+    _fake_own_common(monkeypatch)
     own_set = set(own)
 
-    def fake(_state: object, candidate: Path, _environment: object) -> tuple[bool, str]:
+    def fake(_state: object, candidate: Path, _environment: object, **_kwargs: object) -> tuple[bool, str]:
         if candidate in own_set:
             return True, ""
         return False, (
@@ -701,3 +721,145 @@ def test_local_profile_scans_the_engine_fallback_tmp_roots_too(
     assert seen["worktree"] == own
     assert result.line_patch_written is True
     assert out.read_text() == _BEFORE
+
+
+# --- N1: one deadline for the whole line harvest (binding + patch) --------
+
+
+class _FakeClock:
+    """A controllable stand-in for `time.monotonic`."""
+
+    def __init__(self, start: float = 0.0) -> None:
+        self.t = start
+
+    def __call__(self) -> float:
+        return self.t
+
+    def advance(self, seconds: float) -> None:
+        self.t += seconds
+
+
+def test_local_profile_no_candidate_message_names_the_scanned_roots(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """N1: only ISOLATED has a single, cell-private TMPDIR -- the LOCAL
+    profile scans three roots (ambient TMPDIR plus two fallbacks), so the
+    no-candidate message must not claim "the cell TMPDIR" when nothing like
+    that was searched."""
+    state = _default_state(tmp_path, isolation=Isolation.LOCAL)
+    # Isolate from any real satyrn-engine-* leftovers in the ambient TMPDIR
+    # or the real /tmp, /var/tmp fallbacks (a live system can easily have
+    # some from unrelated real runs).
+    primary = tmp_path / "primary-tmp"
+    fallback_one = tmp_path / "fallback-one"
+    fallback_two = tmp_path / "fallback-two"
+    for root in (primary, fallback_one, fallback_two):
+        root.mkdir()
+    monkeypatch.setattr(workspace_module.tempfile, "gettempdir", lambda: os.fspath(primary))
+    monkeypatch.setattr(
+        workspace_module, "_LOCAL_TMP_FALLBACKS", (fallback_one, fallback_two)
+    )
+
+    result, _out = _run(
+        tmp_path,
+        monkeypatch,
+        transcript_text=TOKEN_LINE + "\n",
+        line_budget=LineBudget(100, 48),
+        build=lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("must not reach the build")),
+        engine_arm=True,
+        state=state,
+    )
+    assert result.line_harvest_error is not None
+    assert "cell TMPDIR" not in result.line_harvest_error
+
+
+def test_a_hanging_git_call_during_binding_is_cut_off_within_the_bound(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """N1: `_resolve_git_common_dir` (used to bind the Engine arm's internal
+    worktree) used to call `_git` with no timeout at all. A wedged git there
+    must be cut off within the line harvest's own bound -- not hang the
+    still-running cell's poll loop indefinitely -- and the failure must
+    become a recorded `line_harvest_error`, never an uncaught exception."""
+    state = _default_state(tmp_path, isolation=Isolation.ISOLATED)
+    _make_candidates(state, "satyrn-engine-abc")
+    clock = _FakeClock()
+    monkeypatch.setattr(workspace_module.time, "monotonic", clock)
+
+    def hanging_git(root, args, environment, **kwargs):
+        timeout = kwargs.get("timeout")
+        # A wedged git: it consumes whatever timeout it was given (or, if
+        # unbounded, far more than the harvest's own ceiling) and then
+        # still fails to return.
+        clock.advance(timeout if timeout is not None else 999.0)
+        raise subprocess.TimeoutExpired(cmd="git", timeout=timeout or 0.0)
+
+    monkeypatch.setattr(workspace_module, "_git", hanging_git)
+
+    result, _out = _run(
+        tmp_path,
+        monkeypatch,
+        transcript_text=TOKEN_LINE + "\n",
+        line_budget=LineBudget(100, 48),
+        build=lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("must not reach the build")),
+        engine_arm=True,
+        state=state,
+        # Large outer timeout: the fake clock advances far more than a real
+        # 10s command timeout would tolerate, and this test is about the
+        # line harvest's OWN bound, not the command's.
+        outer_timeout=10_000.0,
+    )
+    assert result.line_crossed is not None
+    assert result.line_patch_written is False
+    assert result.line_harvest_error is not None
+    # Bound as a WHOLE: binding alone must not be allowed to burn more than
+    # the harvest's own ceiling, let alone leave it uncut.
+    assert clock.t <= workspace_module.LINE_HARVEST_TIMEOUT_S + 1.0
+
+
+def test_remaining_time_shrinks_across_binding_and_patch_calls(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """N1: binding and the patch build share ONE deadline instant for the
+    whole line harvest -- time binding spends must come out of what the
+    patch build gets, not be forgotten and re-granted a fresh full budget."""
+    state = _default_state(tmp_path, isolation=Isolation.ISOLATED)
+    (candidate,) = _make_candidates(state, "satyrn-engine-abc")
+    clock = _FakeClock()
+    monkeypatch.setattr(workspace_module.time, "monotonic", clock)
+
+    def slow_git(root, args, environment, **kwargs):
+        clock.advance(5.0)  # each binding git call "takes" 5 seconds
+        return subprocess.CompletedProcess(
+            args=["git", *args], returncode=0, stdout=b"/common\n", stderr=b""
+        )
+
+    monkeypatch.setattr(workspace_module, "_git", slow_git)
+
+    seen: dict[str, object] = {}
+
+    def build(worktree, base, env, *, exclude=(), timeout=None, extra_config=(), deadline=None):
+        seen["deadline"] = deadline
+        seen["worktree"] = Path(worktree)
+        return _capture(_BEFORE)
+
+    result, out = _run(
+        tmp_path,
+        monkeypatch,
+        transcript_text=TOKEN_LINE + "\n",
+        line_budget=LineBudget(100, 48),
+        build=build,
+        engine_arm=True,
+        state=state,
+        outer_timeout=10_000.0,
+    )
+    assert result.line_patch_written is True
+    assert seen["worktree"] == candidate
+    # Binding made two git calls (own-common, candidate-common) before the
+    # patch build ever ran, so the clock has already moved by the time the
+    # deadline is consulted -- yet the deadline INSTANT passed to the patch
+    # build is unchanged from the one computed at the very start of the
+    # harvest (clock was 0 then), proving it is the same shared deadline,
+    # not a fresh one recomputed after binding.
+    assert clock.t == 10.0
+    assert seen["deadline"] == workspace_module.LINE_HARVEST_TIMEOUT_S
