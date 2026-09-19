@@ -584,6 +584,48 @@ def test_grade_line_cli_writes_json_and_prints_the_summary(
     assert "| t | baseline | 1/1 |" in captured.out
 
 
+def test_grade_line_cli_exits_the_needs_review_code_when_a_row_needs_a_human_look(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """N5: a broken-record cell must not silently pass as exit 0 -- the CLI
+    still writes the full report, then exits a distinct, documented code."""
+    from satyrn_evals.line_grade import (
+        LINE_GRADE_NEEDS_REVIEW_EXIT_CODE,
+        LineGradeReport,
+        LineGradeRow,
+    )
+
+    def fake_report() -> LineGradeReport:
+        return LineGradeReport(
+            night="/n",
+            rows=(
+                LineGradeRow(
+                    "t-1", "t", "baseline", "BUDGET_EXCEEDED", None, None, None,
+                    "unavailable", "final", None,
+                    "broken record: BUDGET_EXCEEDED without a line crossing",
+                ),
+            ),
+        )
+
+    monkeypatch.setattr(cli_module, "grade_night", lambda *a, **kw: fake_report())
+    monkeypatch.setattr(cli_module, "refuse_project_grade_root", lambda grade_root: None)
+    night = tmp_path / "night"
+    night.mkdir()
+    grade_root = tmp_path / "grades"
+    grade_root.mkdir()
+    record_path = _record(tmp_path)
+    out_path = tmp_path / "out.json"
+    exit_code = main([
+        "grade-line", str(night), "--record", str(record_path),
+        "--grade-root", str(grade_root), "--out", str(out_path),
+    ])
+    assert exit_code == LINE_GRADE_NEEDS_REVIEW_EXIT_CODE
+    assert exit_code not in (0, 2, 3)
+    # The full report is still written and printed, not skipped:
+    assert out_path.exists()
+    assert "t-1" in capsys.readouterr().out
+
+
 def test_grade_line_cli_refuses_a_grade_root_under_a_python_project(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

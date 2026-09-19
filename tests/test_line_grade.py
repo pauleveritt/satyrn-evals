@@ -217,10 +217,11 @@ def test_every_attempt_code_is_classified_for_the_never_crossed_case() -> None:
     assert set(_NEVER_CROSSED_RULES) == set(AttemptCode)
 
 
-def test_an_unclassified_code_raises_rather_than_defaults() -> None:
-    """Belt-and-suspenders for the case the table test above pins: even if
-    a code slipped through unclassified, the runtime path must also refuse
-    to guess, naming the cell."""
+def test_an_unclassified_code_is_unavailable_with_a_named_reason_rather_than_raising() -> None:
+    """N5: an unclassified `AttemptCode` must never abort the whole night's
+    report (the same failure mode F5 removed for crashed grades). The cell
+    becomes a per-cell `unavailable` result with a reason naming the code,
+    not an uncaught `UsageError`."""
     assert AttemptCode.NO_PATCH in _NEVER_CROSSED_RULES
     trimmed = dict(_NEVER_CROSSED_RULES)
     del trimmed[AttemptCode.NO_PATCH]
@@ -229,10 +230,14 @@ def test_an_unclassified_code_raises_rather_than_defaults() -> None:
     original = line_grade_module._NEVER_CROSSED_RULES
     line_grade_module._NEVER_CROSSED_RULES = trimmed
     try:
-        with pytest.raises(SatyrnError, match="cell-x"):
-            _never_crossed_verdict(
-                AttemptCode.NO_PATCH, None, None, line_declared=False, name="cell-x"
-            )
+        verdict, reason = _never_crossed_verdict(
+            AttemptCode.NO_PATCH, None, None, line_declared=False, name="cell-x"
+        )
+        assert verdict == "unavailable"
+        assert reason is not None
+        assert "cell-x" in reason
+        assert "unclassified attempt code" in reason
+        assert "NO_PATCH" in reason
     finally:
         line_grade_module._NEVER_CROSSED_RULES = original
 
@@ -252,75 +257,73 @@ def test_an_unclassified_code_raises_rather_than_defaults() -> None:
 def test_infrastructure_codes_are_unavailable_when_never_crossed(code: AttemptCode) -> None:
     """These measured nothing about the model: excluded from the pass
     denominator, never scored as a model outcome."""
-    assert (
-        _never_crossed_verdict(code, None, None, line_declared=False, name="cell-x")
-        == "unavailable"
-    )
+    verdict, reason = _never_crossed_verdict(code, None, None, line_declared=False, name="cell-x")
+    assert verdict == "unavailable"
+    assert reason is None
 
 
 @pytest.mark.parametrize("code", [AttemptCode.NO_PATCH, AttemptCode.COMMAND_TIMEOUT, AttemptCode.REPEAT_LIMIT])
 def test_the_models_own_no_patch_outcomes_are_not_pass_when_never_crossed(code: AttemptCode) -> None:
     """The model's own outcome, with nothing to grade -- not infrastructure."""
-    assert (
-        _never_crossed_verdict(code, None, None, line_declared=False, name="cell-x")
-        == "not-pass"
-    )
+    assert _never_crossed_verdict(code, None, None, line_declared=False, name="cell-x") == ("not-pass", None)
 
 
 def test_a_deadline_in_the_command_phase_is_not_pass_when_never_crossed() -> None:
     """A command-phase whole-attempt deadline is the model's own stop, exactly
     like COMMAND_TIMEOUT -- not infrastructure."""
-    assert (
-        _never_crossed_verdict(
-            AttemptCode.DEADLINE_EXCEEDED, None, DeadlinePhase.COMMAND, line_declared=False, name="cell-x"
-        )
-        == "not-pass"
-    )
+    assert _never_crossed_verdict(
+        AttemptCode.DEADLINE_EXCEEDED, None, DeadlinePhase.COMMAND, line_declared=False, name="cell-x"
+    ) == ("not-pass", None)
 
 
 @pytest.mark.parametrize("phase", [DeadlinePhase.SETUP, DeadlinePhase.PRESERVATION, DeadlinePhase.GRADING, DeadlinePhase.CLEANUP])
 def test_a_deadline_outside_the_command_phase_is_unavailable_when_never_crossed(phase: DeadlinePhase) -> None:
     """Sibling to the command-phase case above: every other phase is the
     harness's own overhead, not the model's turn -- infrastructure."""
-    assert (
-        _never_crossed_verdict(AttemptCode.DEADLINE_EXCEEDED, None, phase, line_declared=False, name="cell-x")
-        == "unavailable"
-    )
+    verdict, reason = _never_crossed_verdict(AttemptCode.DEADLINE_EXCEEDED, None, phase, line_declared=False, name="cell-x")
+    assert verdict == "unavailable"
+    assert reason is None
 
 
 def test_budget_exceeded_never_crossed_with_a_declared_line_is_a_broken_record() -> None:
-    """The line budget is strictly below the attempt budget (`run_record`
+    """N5: the line budget is strictly below the attempt budget (`run_record`
     enforces it), so the line must trip before the attempt budget can -- a
     BUDGET_EXCEEDED cell that never crossed a declared line is a
-    contradiction, not a normal outcome."""
-    with pytest.raises(SatyrnError, match="cell-x"):
-        _never_crossed_verdict(
-            AttemptCode.BUDGET_EXCEEDED, None, None, line_declared=True, name="cell-x"
-        )
+    contradiction, not a normal outcome. It becomes a per-cell `unavailable`
+    result with a named reason, never an aborting raise (F5's failure mode)."""
+    verdict, reason = _never_crossed_verdict(
+        AttemptCode.BUDGET_EXCEEDED, None, None, line_declared=True, name="cell-x"
+    )
+    assert verdict == "unavailable"
+    assert reason is not None
+    assert "cell-x" in reason
+    assert "broken record" in reason
+    assert "BUDGET_EXCEEDED" in reason
 
 
 def test_budget_exceeded_never_crossed_with_no_declared_line_is_not_pass() -> None:
     """Sibling to the contradiction case above: when this run never declared
     a line at all, a BUDGET_EXCEEDED cell that never crossed is ordinary."""
-    assert (
-        _never_crossed_verdict(
-            AttemptCode.BUDGET_EXCEEDED, None, None, line_declared=False, name="cell-x"
-        )
-        == "not-pass"
-    )
+    assert _never_crossed_verdict(
+        AttemptCode.BUDGET_EXCEEDED, None, None, line_declared=False, name="cell-x"
+    ) == ("not-pass", None)
 
 
 def test_grade_cell_wires_line_declared_into_the_budget_contradiction_check(tmp_path: Path) -> None:
-    """End-to-end: `grade_cell` itself raises, not just the helper."""
+    """End-to-end: `grade_cell` itself turns the broken-record contradiction
+    into an `unavailable` row with a named reason, not a raise."""
     record = _record(
         outcome=AttemptOutcome.REFUSED, code=AttemptCode.BUDGET_EXCEEDED, verdict=None,
         patch_path=None, patch_digest=None, receipt_path=None,
     )
-    with pytest.raises(SatyrnError, match="t-1"):
-        grade_cell(
-            record, cell_dir=Path("/cells/t-1"), arm="baseline", grade_root=Path("/g"),
-            cache={}, grader=_FakeGrader({}), line_declared=True,
-        )
+    row = grade_cell(
+        record, cell_dir=Path("/cells/t-1"), arm="baseline", grade_root=Path("/g"),
+        cache={}, grader=_FakeGrader({}), line_declared=True,
+    )
+    assert row.line_verdict == "unavailable"
+    assert row.line_unavailable_reason is not None
+    assert "t-1" in row.line_unavailable_reason
+    assert "broken record" in row.line_unavailable_reason
 
 
 # --- grade_cell: crossed ---------------------------------------------------
@@ -517,6 +520,60 @@ def test_render_summary_with_no_unavailable_cells_says_so() -> None:
     rows = (LineGradeRow("a-1", "taskA", "baseline", "OK", "pass", None, None, "pass", "final"),)
     report = LineGradeReport(night="/n", rows=rows)
     assert "(none)" in render_summary(report)
+
+
+# --- render_summary: N5 broken records surface at the top, need a human ----
+
+
+def test_render_summary_puts_broken_records_in_a_top_heading_before_the_table() -> None:
+    """N5: a broken-record cell (unclassified code / BUDGET_EXCEEDED
+    contradiction) is not just another `unavailable` row -- it is listed
+    prominently at the top, under a heading that says a human needs to look,
+    ahead of the per-(task, arm) table."""
+    from satyrn_evals.line_grade import LineGradeReport, LineGradeRow
+
+    rows = (
+        LineGradeRow(
+            "a-1", "taskA", "baseline", "BUDGET_EXCEEDED", None, None, None,
+            "unavailable", "final", None, "broken record: BUDGET_EXCEEDED without a line crossing",
+        ),
+        LineGradeRow("a-2", "taskA", "baseline", "OK", "pass", None, None, "pass", "final"),
+    )
+    report = LineGradeReport(night="/n", rows=rows)
+    summary = render_summary(report)
+    heading_index = summary.index("NEEDS")
+    table_index = summary.index("| task | arm |")
+    assert heading_index < table_index
+    assert "a-1" in summary[heading_index:table_index]
+    assert "broken record" in summary[heading_index:table_index]
+
+
+def test_render_summary_needs_review_section_says_none_when_empty() -> None:
+    from satyrn_evals.line_grade import LineGradeReport, LineGradeRow
+
+    rows = (LineGradeRow("a-1", "taskA", "baseline", "OK", "pass", None, None, "pass", "final"),)
+    report = LineGradeReport(night="/n", rows=rows)
+    summary = render_summary(report)
+    heading_index = summary.index("NEEDS")
+    table_index = summary.index("| task | arm |")
+    assert "(none)" in summary[heading_index:table_index]
+
+
+def test_render_summary_broken_records_are_still_excluded_from_the_pass_denominator() -> None:
+    """A broken record is also, like any other `unavailable` cell, excluded
+    from both sides of the pass fraction."""
+    from satyrn_evals.line_grade import LineGradeReport, LineGradeRow
+
+    rows = (
+        LineGradeRow("a-1", "taskA", "baseline", "OK", "pass", None, None, "pass", "final"),
+        LineGradeRow(
+            "a-2", "taskA", "baseline", "BUDGET_EXCEEDED", None, None, None,
+            "unavailable", "final", None, "broken record: BUDGET_EXCEEDED without a line crossing",
+        ),
+    )
+    report = LineGradeReport(night="/n", rows=rows)
+    summary = render_summary(report)
+    assert "| taskA | baseline | 1/1 |" in summary
 
 
 # --- write_report / default_out_path / refuse_project_grade_root ----------

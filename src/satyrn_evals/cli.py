@@ -27,6 +27,7 @@ from satyrn_evals.launch_record import (
     model_server_checks,
 )
 from satyrn_evals.line_grade import (
+    LINE_GRADE_NEEDS_REVIEW_EXIT_CODE,
     default_out_path,
     grade_night,
     refuse_project_grade_root,
@@ -299,6 +300,12 @@ def main(argv: list[str] | None = None) -> int:
             out_path = Path(args.out) if args.out is not None else default_out_path(grade_root, night)
             write_report(report, out_path)
             print(render_summary(report))
+            # N5: a broken-record row (unclassified code, or a BUDGET_EXCEEDED
+            # cell that never crossed a declared line) must not exit clean --
+            # the full report is written and printed above either way, and
+            # this is the only signal a human needs to look at it directly.
+            if any(row.line_unavailable_reason is not None for row in report.rows):
+                return LINE_GRADE_NEEDS_REVIEW_EXIT_CODE
             return 0
         record = capture(
             repo=Path(args.repo),
@@ -535,7 +542,11 @@ regrade_p.add_argument(
 
 grade_line_p = sub.add_parser(
     "grade-line",
-    help="grade a night's harvested declared-line patches offline, per completed cell",
+    help=(
+        "grade a night's harvested declared-line patches offline, per completed cell; "
+        f"exits {LINE_GRADE_NEEDS_REVIEW_EXIT_CODE} (after writing the full report) when any "
+        "cell is a broken record needing a human look"
+    ),
 )
 grade_line_p.add_argument("night", help="night output directory (holds slots/ and one directory per arm)")
 grade_line_p.add_argument("--record", required=True, help="the run record the night was launched from")

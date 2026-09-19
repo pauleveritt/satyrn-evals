@@ -16,6 +16,16 @@ that walk.
 Engine cell's final verdict grades its delivered candidate, whose carried
 tests the Engine restores.
 
+A broken record -- a cell whose ``AttemptCode`` is not classified in
+``_NEVER_CROSSED_RULES``, or a ``BUDGET_EXCEEDED`` cell that never crossed a
+declared line (impossible, since the line budget sits strictly below the
+attempt budget) -- never aborts the night's report (the F5 failure mode).
+It becomes a per-cell ``line_verdict: "unavailable"`` row with a named
+``line_unavailable_reason``, excluded from the pass denominator like any
+other unavailable cell but listed first, under its own heading, in
+``render_summary``'s markdown. The CLI still writes the full report, then
+exits ``LINE_GRADE_NEEDS_REVIEW_EXIT_CODE`` when any such row exists.
+
 The offline grading mechanism -- write a reconstructed patch under a scratch
 grade root outside any Python project, run ``satyrn-evals grade`` in a fresh
 subprocess so the hidden suite's own pytest run can never collide with this
@@ -64,6 +74,15 @@ PROJECT_MARKERS = ("pyproject.toml", "pytest.ini", ".pytest.ini", "tox.ini", "se
 GradeCache = dict[str, dict]
 #: (task, patch text, grade root, scratch-folder name, cache) -> {"verdict", "reason"}
 Grader = Callable[[str, str, Path, str, GradeCache], dict]
+
+#: `satyrn-evals grade-line`'s exit code when the night's report holds at
+#: least one broken-record row (N5): an unclassified `AttemptCode`, or a
+#: BUDGET_EXCEEDED cell that never crossed a declared line -- a contradiction
+#: the harness itself could not explain. The full report is still written
+#: and printed; this exit code is the only signal that a human must look at
+#: it. Distinct from 0 (graded clean), 2 (usage error), 3 (operational
+#: error, from `SatyrnError.exit_code`).
+LINE_GRADE_NEEDS_REVIEW_EXIT_CODE = 4
 
 
 def project_markers(path: Path) -> list[Path]:
@@ -148,6 +167,11 @@ class LineGradeRow:
     line_verdict: str
     line_source: str
     line_harvest_error: str | None = None
+    #: N5: set only for a broken-record cell (unclassified AttemptCode, or a
+    #: BUDGET_EXCEEDED cell that never crossed a declared line) -- distinct
+    #: from an ordinary `line_harvest_error`, and the reason a human needs to
+    #: look at this cell specifically, surfaced at the top of the report.
+    line_unavailable_reason: str | None = None
 
     def to_json(self) -> dict:
         return asdict(self)
@@ -204,35 +228,40 @@ def _never_crossed_verdict(
     *,
     line_declared: bool,
     name: str,
-) -> str:
-    """The ``line_verdict`` for a cell that never crossed the declared line.
+) -> tuple[str, str | None]:
+    """The ``line_verdict`` for a cell that never crossed the declared line,
+    plus a broken-record reason (N5) when the shape is a contradiction the
+    harness itself cannot explain.
 
-    Raises rather than guessing when ``code`` is not in ``_NEVER_CROSSED_RULES``
-    (a new, unclassified ``AttemptCode``) or when the shape is a contradiction
-    (``BUDGET_EXCEEDED`` with a declared line that was somehow never crossed).
+    Never raises: aborting the whole night's report on one broken cell is
+    the exact failure mode the F5 fix removed for crashed grades. Instead,
+    an unclassified ``AttemptCode`` (not in ``_NEVER_CROSSED_RULES``) or a
+    ``BUDGET_EXCEEDED`` cell with a declared line that was somehow never
+    crossed becomes ``("unavailable", <reason naming the cell and the
+    contradiction>)`` -- excluded from the pass denominator like any other
+    unavailable cell, but surfaced separately at the top of the report as
+    needing a human look (``render_summary``), since neither shape is a
+    normal outcome.
     """
     rule = _NEVER_CROSSED_RULES.get(code)
     if rule is None:
-        raise UsageError(
-            f"grade-line: cell {name} has attempt code {code} -- "
-            "the never-crossed table does not classify it"
-        )
+        return "unavailable", f"cell {name}: unclassified attempt code {code}"
     if rule is _NeverCrossedRule.MODEL_VERDICT:
-        return verdict.value if verdict in (Verdict.PASS, Verdict.FAIL) else "not-pass"
+        return (verdict.value if verdict in (Verdict.PASS, Verdict.FAIL) else "not-pass"), None
     if rule is _NeverCrossedRule.NOT_PASS:
-        return "not-pass"
+        return "not-pass", None
     if rule is _NeverCrossedRule.UNAVAILABLE:
-        return "unavailable"
+        return "unavailable", None
     if rule is _NeverCrossedRule.DEADLINE:
-        return "not-pass" if deadline_phase is DeadlinePhase.COMMAND else "unavailable"
+        return ("not-pass" if deadline_phase is DeadlinePhase.COMMAND else "unavailable"), None
     # rule is _NeverCrossedRule.BUDGET
     if line_declared:
-        raise UsageError(
-            f"grade-line: cell {name} never crossed the declared line but ended "
-            "BUDGET_EXCEEDED -- the line budget is strictly below the attempt "
-            "budget, so the line must trip first; this record is broken"
+        return "unavailable", (
+            f"cell {name}: broken record: BUDGET_EXCEEDED without a line crossing -- "
+            "the line budget is strictly below the attempt budget, so the line "
+            "must trip first"
         )
-    return "not-pass"
+    return "not-pass", None
 
 
 def grade_cell(
@@ -270,10 +299,11 @@ def grade_cell(
 
     line_crossed = None if record.line_crossed is None else asdict(record.line_crossed)
 
+    line_unavailable_reason: str | None = None
     if record.line_crossed is None:
         line_source = "final"
         deadline_phase = record.deadline.phase if record.deadline is not None else None
-        line_verdict = _never_crossed_verdict(
+        line_verdict, line_unavailable_reason = _never_crossed_verdict(
             record.code, record.verdict, deadline_phase, line_declared=line_declared, name=name
         )
     else:
@@ -303,6 +333,7 @@ def grade_cell(
         line_verdict=line_verdict,
         line_source=line_source,
         line_harvest_error=record.line_harvest_error,
+        line_unavailable_reason=line_unavailable_reason,
     )
 
 
@@ -363,12 +394,23 @@ def render_summary(report: LineGradeReport) -> str:
     An ``unavailable`` cell measured nothing about the model (I3): it is
     excluded from both sides of the pass fraction, and the number excluded
     is stated per (task, arm) -- not left implicit in the attempt list below.
+
+    N5: a row with ``line_unavailable_reason`` set is a broken record (an
+    unclassified ``AttemptCode``, or a BUDGET_EXCEEDED cell that never
+    crossed a declared line) -- a contradiction the harness itself could not
+    explain, not an ordinary unavailable cell. It is still excluded from the
+    pass denominator like any other unavailable cell, but it is also listed
+    first, at the very top of the report, under a heading that says a human
+    needs to look, ahead of the per-(task, arm) table.
     """
     counts: dict[tuple[str, str], list[int]] = {}
     excluded: dict[tuple[str, str], int] = {}
     unavailable: list[str] = []
+    needs_review: list[tuple[str, str]] = []
     for row in report.rows:
         key = (row.task, row.arm)
+        if row.line_unavailable_reason is not None:
+            needs_review.append((row.attempt, row.line_unavailable_reason))
         if row.line_verdict == "unavailable":
             excluded[key] = excluded.get(key, 0) + 1
             unavailable.append(row.attempt)
@@ -380,13 +422,28 @@ def render_summary(report: LineGradeReport) -> str:
     lines = [
         f"# grade-line: {report.night}",
         "",
+        "## NEEDS HUMAN REVIEW",
+        "",
+        "Each cell below is a broken record: its shape is a contradiction "
+        "the harness itself could not explain (an unclassified attempt "
+        "code, or a BUDGET_EXCEEDED cell that never crossed a declared "
+        "line). It is excluded from the pass counts below like any other "
+        "unavailable cell, but needs a human to look at it directly.",
+        "",
+    ]
+    if needs_review:
+        lines.extend(f"- {attempt}: {reason}" for attempt, reason in sorted(needs_review))
+    else:
+        lines.append("(none)")
+    lines.append("")
+    lines.append(
         "line_verdict grades the raw tree at the crossing on both arms; an "
         "Engine cell's final verdict grades its delivered candidate, whose "
-        "carried tests the Engine restores.",
-        "",
-        "| task | arm | line pass | excluded (unavailable) |",
-        "| --- | --- | --- | --- |",
-    ]
+        "carried tests the Engine restores."
+    )
+    lines.append("")
+    lines.append("| task | arm | line pass | excluded (unavailable) |")
+    lines.append("| --- | --- | --- | --- |")
     for key in sorted(set(counts) | set(excluded)):
         task, arm = key
         passed, total = counts.get(key, [0, 0])
