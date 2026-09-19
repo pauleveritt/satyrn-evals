@@ -69,6 +69,13 @@ LINE_PATCH_NAME = "line.diff"
 #: Same ceiling as the tripped harvest (Ruling R-2's reasoning applies
 #: identically): a wedged git must never hold a still-running cell's harness
 #: thread open, and a slow harvest is a missing secondary, not a lost cell.
+#: F2: this is a TOTAL bound on one line harvest, not a per-git-call one --
+#: `build_cumulative_patch` makes four git calls, so `_harvest_patch` passes
+#: it as a `deadline` (session_patch.py's total-budget arithmetic) rather
+#: than as `timeout` (which the tripped harvest below still uses, per call,
+#: unchanged). The `_wait_or_trip` poll loop -- the budget tripwire feed, the
+#: timeline writer, the backstop check -- is blocked for at most this long
+#: while a line crossing is harvested, never up to 4x it.
 LINE_HARVEST_TIMEOUT_S = 30.0
 
 _GIT_SAFETY_CONFIG = (
@@ -1143,6 +1150,7 @@ def _harvest_patch(
     *,
     timeout: float,
     worktree: Path | None = None,
+    total: bool = False,
 ) -> tuple[bool, str | None]:
     """Write the cumulative diff of ``worktree`` (default ``state.worktree``)
     against ``state.base_sha`` to ``destination``.
@@ -1151,6 +1159,14 @@ def _harvest_patch(
     and is not an error (nothing changed yet); a raised git/OS failure writes
     nothing and reports its message rather than raising, so a harvest failure
     can never fail or alter the cell that asked for it.
+
+    ``total`` (F2): when true, ``timeout`` bounds the whole harvest (all four
+    of ``build_cumulative_patch``'s git calls together, via its ``deadline``
+    argument) rather than each git call individually (``timeout=``, today's
+    behaviour, unchanged -- the tripped harvest still asks for this). The
+    line harvest asks for the total form: it runs synchronously inside the
+    still-running cell's own poll loop, so a per-call ceiling repeated four
+    times could block that loop up to 4x longer than the ceiling's name says.
     """
     # Imported here, not at module scope: `session_patch` imports
     # `GIT_SAFETY_CONFIG` from this module, so a top-level import is a cycle.
@@ -1179,8 +1195,12 @@ def _harvest_patch(
             state.base_sha,
             environment,
             exclude=RESIDUE_EXCLUDES,
-            timeout=timeout,
             extra_config=extra_config,
+            **(
+                {"deadline": time.monotonic() + timeout}
+                if total
+                else {"timeout": timeout}
+            ),
         )
     except (OSError, subprocess.SubprocessError, ValueError) as exc:
         return False, f"{type(exc).__name__}: {exc}"
@@ -1399,6 +1419,7 @@ def _run_command(
             line_patch,
             timeout=LINE_HARVEST_TIMEOUT_S,
             worktree=worktree_override,
+            total=True,
         )
         line_state["written"] = wrote
         line_state["error"] = error

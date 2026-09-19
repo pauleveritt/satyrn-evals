@@ -4,6 +4,10 @@ Both or neither, positive, and strictly less than the attempt budget they
 sit inside. Absent means no line harvest and today's record shape, byte for
 byte -- `tests/test_census_records_frozen.py` proves every committed record
 still validates and is untouched by this addition.
+
+F2: `line_token_budget` must also sit at least `LINE_BUDGET_MARGIN_TOKENS`
+below `token_budget` -- one arm's per-turn output cap -- so a budget trip
+can never land inside the line harvest window.
 """
 
 import json
@@ -14,12 +18,15 @@ import pytest
 from satyrn_evals.budget import LineBudget
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
 from satyrn_evals.run_record import (
+    LINE_BUDGET_MARGIN_TOKENS,
     RunRecordError,
     gate,
     line_budget,
     load_run_record,
     new_record,
 )
+
+ARMS_ROOT = Path(__file__).resolve().parents[1] / "arms"
 
 GOOD = {
     "version": 1, "task": "agentclinic-repair-misleading-locus", "task_tree_sha256": "a" * 64,
@@ -74,10 +81,57 @@ def test_a_line_turn_budget_at_the_attempt_budget_is_refused(tmp_path: Path) -> 
         load_run_record(_write(tmp_path, line_token_budget=16000, line_turn_budget=48))
 
 
-def test_a_line_field_one_below_the_attempt_budget_passes(tmp_path: Path) -> None:
-    record = load_run_record(_write(tmp_path, line_token_budget=31999, line_turn_budget=47))
-    assert record.line_token_budget == 31999
+def test_a_line_turn_budget_one_below_the_attempt_turn_budget_passes(tmp_path: Path) -> None:
+    """The turn field alone, at its own strictly-less boundary -- the token
+    field stays at the margin boundary (below) so this isolates the turn
+    check from the token-margin check added for F2."""
+    record = load_run_record(_write(tmp_path, line_token_budget=16000, line_turn_budget=47))
+    assert record.line_turn_budget == 47
     gate(record, previous_result_committed=None)
+
+
+def test_a_line_token_budget_within_the_margin_of_token_budget_is_refused(
+    tmp_path: Path,
+) -> None:
+    """F2: 40,000 inside 48,000 (an 8,000 gap, half the margin) is refused --
+    a budget trip could otherwise fall inside the line harvest window."""
+    with pytest.raises(RunRecordError, match="margin|below"):
+        load_run_record(
+            _write(tmp_path, token_budget=48000, turn_budget=72, line_token_budget=40000, line_turn_budget=48)
+        )
+
+
+def test_a_line_token_budget_exactly_at_the_margin_validates(tmp_path: Path) -> None:
+    """F2: the intended comparison shape -- 32,000 / 48 inside 48,000 / 72 --
+    sits exactly `LINE_BUDGET_MARGIN_TOKENS` below `token_budget` and validates."""
+    assert LINE_BUDGET_MARGIN_TOKENS == 16000
+    record = load_run_record(
+        _write(tmp_path, token_budget=48000, turn_budget=72, line_token_budget=32000, line_turn_budget=48)
+    )
+    assert record.line_token_budget == 32000
+    gate(record, previous_result_committed=None)
+
+
+def test_a_line_token_budget_one_token_inside_the_margin_is_refused(tmp_path: Path) -> None:
+    with pytest.raises(RunRecordError, match="margin|below"):
+        load_run_record(
+            _write(tmp_path, token_budget=48000, turn_budget=72, line_token_budget=32001, line_turn_budget=48)
+        )
+
+
+def test_no_committed_arms_per_turn_output_cap_exceeds_the_named_margin() -> None:
+    """The record does not carry the arm's own cap, so `LINE_BUDGET_MARGIN_TOKENS`
+    stands in for it -- this fails the moment a committed arm's
+    `inference.max_tokens` would make that stand-in too small."""
+    arm_files = sorted(ARMS_ROOT.glob("*.json"))
+    assert arm_files, "no committed arm files found to scan"
+    for path in arm_files:
+        max_tokens = json.loads(path.read_text())["inference"]["max_tokens"]
+        assert max_tokens <= LINE_BUDGET_MARGIN_TOKENS, (
+            f"{path.name}: inference.max_tokens={max_tokens} exceeds "
+            f"LINE_BUDGET_MARGIN_TOKENS={LINE_BUDGET_MARGIN_TOKENS}; a line crossing could "
+            "then fall inside a single over-budget turn"
+        )
 
 
 def test_a_line_field_wrong_type_is_refused(tmp_path: Path) -> None:

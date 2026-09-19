@@ -47,6 +47,18 @@ DEFAULT_COMMAND_BACKSTOP_S = 1800
 DEADLINE_MARGIN_S = 300
 #: Concurrency the spec allows ("Concurrency, both arms"): the largest of 1, 2 or 3 the probe admits.
 K_VALUES = (1, 2, 3)
+#: F2: the record does not carry the arm's own per-turn output cap, so this
+#: is a named ceiling on it instead -- the largest `inference.max_tokens` any
+#: committed arm file uses (`tests/test_run_record_line.py` scans
+#: `arms/*.json` and fails if one ever exceeds it). A line crossing is harvested from the
+#: transcript line that reports it, mid-turn, while the cell keeps running;
+#: if `line_token_budget` sat within one turn's worth of tokens of
+#: `token_budget`, a single over-budget turn could cross the campaign budget
+#: (tripping teardown) in the same breath as the line, racing the harvest
+#: against the teardown it is supposed to run ahead of. Keeping the two at
+#: least one turn's output apart keeps the line a genuine waypoint before the
+#: trip, not a coin flip with it.
+LINE_BUDGET_MARGIN_TOKENS = 16_000
 #: Arms a record interleaves are joined with this separator in its ``arm`` field (Ruling 3).
 ARM_SEPARATOR = "+"
 STOP_RULE = "established infrastructure failure only"
@@ -169,6 +181,12 @@ def load_run_record(path: Path) -> RunRecord:
             raise RunRecordError(
                 f"run record {path}: line_token_budget and line_turn_budget must be "
                 "strictly less than the record's token_budget and turn_budget"
+            )
+        if body["token_budget"] - line_token < LINE_BUDGET_MARGIN_TOKENS:
+            raise RunRecordError(
+                f"run record {path}: line_token_budget must sit at least "
+                f"{LINE_BUDGET_MARGIN_TOKENS} tokens below token_budget -- a budget trip "
+                "must not be able to fall inside the line harvest window"
             )
     fields = {k: body[k] for k in _REQUIRED} | {k: body[k] for k in _OPTIONAL if k in body}
     fields["isolation"] = Isolation(body["isolation"])

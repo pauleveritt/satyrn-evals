@@ -8514,3 +8514,4 @@
 | src/satyrn_evals/line_grade.py | created in release-one; `grade_offline`/`PROJECT_MARKERS`/`project_markers` adapted from `evidence/2026-09-16-census/classify.py`'s `_grade` (frozen evidence, not imported) |
 | tests/test_line_grade.py | created in release-one |
 | tests/integration/test_line_grade.py | created in release-one |
+| tests/test_session_patch.py | created in release-one |

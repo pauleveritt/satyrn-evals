@@ -12,6 +12,7 @@ mode, and delete changes.
 import os
 import subprocess
 import tempfile
+import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -91,6 +92,7 @@ def build_cumulative_patch(
     exclude: Sequence[str] = (),
     timeout: float | None = None,
     extra_config: Sequence[str] = (),
+    deadline: float | None = None,
 ) -> PatchCapture:
     """Snapshot the whole tree as one cumulative patch from base_commit.
 
@@ -100,9 +102,18 @@ def build_cumulative_patch(
     environment for direct use, mirroring the session's own default of
     None meaning the caller's environment.
 
-    ``timeout`` is a per-git-call ceiling in seconds; None keeps today's
-    unbounded behaviour for the session and adapter callers. A tripped
-    teardown passes a bound so a wedged git can never hold a cell open.
+    ``timeout`` is a per-git-call ceiling in seconds, applied identically to
+    each of the four git calls below; None keeps today's unbounded behaviour
+    for the session and adapter callers. A tripped teardown passes a bound
+    so a wedged git can never hold a cell open -- unchanged by ``deadline``.
+
+    ``deadline`` (F2), when given, is a ``time.monotonic()`` instant that
+    bounds all four git calls *together* rather than each individually: the
+    per-call timeout passed to each one is however much of ``deadline``
+    remains when that call starts, and a deadline already passed before a
+    call starts raises ``subprocess.TimeoutExpired`` without starting it.
+    Mutually exclusive with ``timeout`` in practice -- a caller passes one or
+    the other, never both; ``deadline`` takes precedence if both are given.
 
     ``extra_config`` is forwarded to every git call as literal ``-c``
     arguments (e.g. a single ``safe.directory=<resolved path>`` scoped to
@@ -110,6 +121,15 @@ def build_cumulative_patch(
     Engine arm's own internal deliver worktree, created by the cell user).
     It is never a caller's job to widen this beyond one resolved path.
     """
+
+    def _call_timeout() -> float | None:
+        if deadline is None:
+            return timeout
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise subprocess.TimeoutExpired(cmd="git", timeout=0.0)
+        return remaining
+
     fd, index_path = tempfile.mkstemp(prefix="satyrn-session-index-")
     os.close(fd)
     os.unlink(index_path)  # read-tree creates it fresh
@@ -118,10 +138,10 @@ def build_cumulative_patch(
         "GIT_INDEX_FILE": index_path,
     }
     try:
-        _git(worktree, env, "read-tree", base_commit, timeout=timeout, extra_config=extra_config)
+        _git(worktree, env, "read-tree", base_commit, timeout=_call_timeout(), extra_config=extra_config)
         _git(
             worktree, env, "add", "-N", "--all", "--", ".", *exclude,
-            timeout=timeout, extra_config=extra_config,
+            timeout=_call_timeout(), extra_config=extra_config,
         )
         patch_text = _git(
             worktree,
@@ -132,7 +152,7 @@ def build_cumulative_patch(
             "--no-ext-diff",
             "--no-textconv",
             base_commit,
-            timeout=timeout,
+            timeout=_call_timeout(),
             extra_config=extra_config,
         ).decode("utf-8", "surrogateescape")
         status_z = _git(
@@ -142,7 +162,7 @@ def build_cumulative_patch(
             "--porcelain",
             "--untracked-files=all",
             "-z",
-            timeout=timeout,
+            timeout=_call_timeout(),
             extra_config=extra_config,
         )
     finally:

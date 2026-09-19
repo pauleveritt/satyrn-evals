@@ -371,7 +371,9 @@ def test_attempt_takes_the_line_budget_from_the_run_record(tmp_path: Path, monke
         raise UsageError("stop here")
 
     monkeypatch.setattr(cli_module, "attempt", fake_attempt)
-    record = _record(tmp_path, line_token_budget=16000, line_turn_budget=24)
+    # F2: line_token_budget must sit LINE_BUDGET_MARGIN_TOKENS below
+    # token_budget, so this record's own token_budget is raised to fit.
+    record = _record(tmp_path, token_budget=40000, line_token_budget=16000, line_turn_budget=24)
     assert main(["attempt", "format_number", "--run-record", str(record), "--", *PI]) == 2
     assert seen["line_budget"] == LineBudget(output_tokens=16000, turns=24)
 
@@ -379,7 +381,7 @@ def test_attempt_takes_the_line_budget_from_the_run_record(tmp_path: Path, monke
 def test_run_takes_the_line_budget_from_the_run_record(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     seen: dict[str, object] = {}
     monkeypatch.setattr(cli_module, "run", lambda **kwargs: seen.update(kwargs))
-    record = _record(tmp_path, line_token_budget=16000, line_turn_budget=24)
+    record = _record(tmp_path, token_budget=40000, line_token_budget=16000, line_turn_budget=24)
     assert main(["run", "format_number", "--n", "4", "--run-record", str(record), "--", *PI]) == 0
     assert seen["line_budget"] == LineBudget(output_tokens=16000, turns=24)
 

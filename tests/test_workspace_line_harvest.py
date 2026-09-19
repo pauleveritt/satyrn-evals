@@ -10,6 +10,7 @@ worktree, not the Evals one.
 
 import os
 import subprocess
+import time
 from pathlib import Path
 
 import pytest
@@ -109,7 +110,7 @@ def test_crossing_the_token_line_harvests_at_the_crossing_not_the_final_tree(
 ) -> None:
     tree = {"text": _BEFORE}
 
-    def build(worktree, base, env, *, exclude=(), timeout=None, extra_config=()):
+    def build(worktree, base, env, *, exclude=(), timeout=None, extra_config=(), deadline=None):
         return _capture(tree["text"])
 
     process = _KeepsRunningProcess(exit_after=3)
@@ -220,7 +221,7 @@ def test_the_engine_arm_harvest_reads_its_own_internal_worktree(
 
     seen: dict[str, Path] = {}
 
-    def build(worktree, base, env, *, exclude=(), timeout=None, extra_config=()):
+    def build(worktree, base, env, *, exclude=(), timeout=None, extra_config=(), deadline=None):
         seen["worktree"] = Path(worktree)
         return _capture(_BEFORE)
 
@@ -255,7 +256,7 @@ def test_the_engine_arm_harvest_trusts_only_its_own_internal_worktree(
 
     seen: dict[str, object] = {}
 
-    def build(worktree, base, env, *, exclude=(), timeout=None, extra_config=()):
+    def build(worktree, base, env, *, exclude=(), timeout=None, extra_config=(), deadline=None):
         seen["worktree"] = Path(worktree)
         seen["extra_config"] = tuple(extra_config)
         return _capture(_BEFORE)
@@ -283,7 +284,7 @@ def test_a_baseline_harvest_never_widens_safe_directory(
     internal worktree."""
     seen: dict[str, object] = {}
 
-    def build(worktree, base, env, *, exclude=(), timeout=None, extra_config=()):
+    def build(worktree, base, env, *, exclude=(), timeout=None, extra_config=(), deadline=None):
         seen["extra_config"] = tuple(extra_config)
         return _capture(_BEFORE)
 
@@ -292,6 +293,52 @@ def test_a_baseline_harvest_never_widens_safe_directory(
     )
     assert seen["extra_config"] == ()
     assert result.line_patch_written is True
+
+
+def test_the_line_harvest_passes_a_total_deadline_not_a_per_call_timeout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """F2: `build_cumulative_patch` makes four git calls; passing
+    `LINE_HARVEST_TIMEOUT_S` as `timeout=` (applied to each of the four)
+    would let the wait loop block up to 4x longer than the ceiling's name
+    says. `_harvest_patch(total=True)` must instead pass a `deadline=`
+    computed once, and never also pass `timeout=`."""
+    seen: dict[str, object] = {}
+    before = time.monotonic()
+
+    def build(worktree, base, env, *, exclude=(), timeout=None, extra_config=(), deadline=None):
+        seen["timeout"] = timeout
+        seen["deadline"] = deadline
+        return _capture(_BEFORE)
+
+    result, out = _run(
+        tmp_path, monkeypatch, transcript_text=TOKEN_LINE + "\n", line_budget=LineBudget(100, 48), build=build,
+    )
+    assert seen["timeout"] is None
+    deadline = seen["deadline"]
+    assert isinstance(deadline, float)
+    assert before < deadline <= before + workspace_module.LINE_HARVEST_TIMEOUT_S + 1.0
+    assert result.line_patch_written is True
+
+
+def test_the_tripped_harvest_still_passes_a_per_call_timeout_unchanged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Sibling of the test above: F2 must not touch the tripped harvest's
+    existing per-call-timeout behaviour."""
+    seen: dict[str, object] = {}
+
+    def build(worktree, base, env, *, exclude=(), timeout=None, extra_config=(), deadline=None):
+        seen["timeout"] = timeout
+        seen["deadline"] = deadline
+        return _capture(_BEFORE)
+
+    monkeypatch.setattr("satyrn_evals.session_patch.build_cumulative_patch", build)
+    state = _default_state(tmp_path)
+    out = tmp_path / "tripped.diff"
+    workspace_module._harvest_tripped(state, {}, out)
+    assert seen["timeout"] == workspace_module.TRIPPED_HARVEST_TIMEOUT_S
+    assert seen["deadline"] is None
 
 
 def _base(tmp_path: Path) -> Path:
@@ -499,7 +546,7 @@ def test_several_candidates_with_exactly_one_own_is_accepted(
 
     seen: dict[str, Path] = {}
 
-    def build(worktree, base, env, *, exclude=(), timeout=None, extra_config=()):
+    def build(worktree, base, env, *, exclude=(), timeout=None, extra_config=(), deadline=None):
         seen["worktree"] = Path(worktree)
         return _capture(_BEFORE)
 
@@ -585,7 +632,7 @@ def test_local_profile_scans_the_engine_fallback_tmp_roots_too(
 
     seen: dict[str, Path] = {}
 
-    def build(worktree, base, env, *, exclude=(), timeout=None, extra_config=()):
+    def build(worktree, base, env, *, exclude=(), timeout=None, extra_config=(), deadline=None):
         seen["worktree"] = Path(worktree)
         return _capture(_BEFORE)
 
