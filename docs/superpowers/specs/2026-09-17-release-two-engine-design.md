@@ -135,7 +135,11 @@ premise is not met today:
    contract changes, and both arms run the record's budget. The route proof
    hid the opposite: the Engine self-stopped near 32,100 tokens while
    Baseline ran to 48,000, so a candidate the Engine delivered was graded as
-   a pass where Baseline at the same count tripped the wire.
+   a pass where Baseline at the same count tripped the wire. `derive` is
+   given the record's budget plus a fixed headroom (`DERIVE_TOKEN_HEADROOM`,
+   `DERIVE_TURN_HEADROOM` in `attempt_engine.py`), so the Engine's own
+   contract-budget enforcement can never bind at or before the harness's
+   stop -- the harness alone ends an over-budget cell, on both arms.
 
 ## 6. What the Engine refuses to attempt
 

@@ -65,6 +65,26 @@ CHECKOUT_LOG_NAME = "engine-checkout.txt"
 #: before the harness kills the command, so the Engine writes its receipt and
 #: leaves its candidate rather than dying with no evidence.
 DELIVER_MARGIN_SECONDS = 60
+#: How far above the record's token/turn budget `derive`'s own contract sits
+#: (design §5 item 5). Parity: the record's `token_budget`/`turn_budget` are
+#: the harness's own tripwire (`attempt.py`'s `AttemptBudget`, wired through
+#: `SATYRN_TOKEN_BUDGET`/`SATYRN_TURN_BUDGET`); passing them to `derive`
+#: verbatim lets the Engine's own contract-budget enforcement bind at, or
+#: before, the harness's stop -- a race the harness must always win, or a
+#: cell that exhausted budget could convert into a delivered, graded
+#: candidate that a Baseline cell at the same budget could not also get
+#: (two integration tests pin this: `test_an_isolated_engine_cell_stopped_by_
+#: the_harness_leaves_no_model_running`, `test_an_engine_cell_under_the_
+#: engines_own_budget_is_stopped_by_the_harness_alone`). The margin covers
+#: one maximal turn -- `DERIVE_TOKEN_HEADROOM` is the arm's per-turn
+#: output-token cap (`arms/engine-ornith15-9b.json`'s `max_tokens: 16000`) --
+#: plus `DERIVE_TURN_HEADROOM` extra turns, so the Engine's own counter can
+#: never reach the record's budget before the harness's teardown does. This
+#: headroom is applied only when building `derive_argv`'s contract budget,
+#: never when validating or refusing a record's budget (`read_budget`,
+#: `_read_positive` stay exactly as strict as before).
+DERIVE_TOKEN_HEADROOM = 16_000
+DERIVE_TURN_HEADROOM = 2
 _CONTRACT_PREFIX = "satyrn-engine: contract "
 
 
@@ -129,7 +149,8 @@ def derive_argv(
 ) -> list[str]:
     return [
         *_engine(args, no_sync), "derive", "--repo", os.fspath(worktree),
-        "--token-budget", str(token_budget), "--turn-budget", str(turn_budget), "--", request,
+        "--token-budget", str(token_budget + DERIVE_TOKEN_HEADROOM),
+        "--turn-budget", str(turn_budget + DERIVE_TURN_HEADROOM), "--", request,
     ]
 
 
@@ -173,7 +194,10 @@ def read_budget(environment: Mapping[str, str]) -> tuple[int, int]:
     Same rule as the backstop: absent, unparseable, or non-positive is an
     AdapterError, never a default. The Engine must have no stop the record
     does not name (maintainer ruling 2026-09-18), so the product's 32,000/48
-    must never leak into an eval cell through a missing variable.
+    must never leak into an eval cell through a missing variable. The values
+    returned here are the record's own budget, exactly as validated; the
+    ``DERIVE_TOKEN_HEADROOM``/``DERIVE_TURN_HEADROOM`` margin is added only
+    where `derive_argv` builds the contract's argv, never here.
     """
     return (
         _read_positive(TOKEN_BUDGET_ENV, "the output-token limit", environment),

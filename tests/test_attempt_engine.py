@@ -16,6 +16,8 @@ from satyrn_evals.attempt import COMMAND_BACKSTOP_ENV, TOKEN_BUDGET_ENV, TURN_BU
 from satyrn_evals.attempt_engine import (
     CHECKOUT_LOG_NAME,
     DELIVER_MARGIN_SECONDS,
+    DERIVE_TOKEN_HEADROOM,
+    DERIVE_TURN_HEADROOM,
     ENGINE_REPO_ENV,
     RECEIPT_NAME,
     AdapterError,
@@ -67,10 +69,35 @@ def test_derive_and_deliver_are_the_implement_invocations() -> None:
     engine = ["/bin/uv", "run", "--project", str(ENGINE), "satyrn-engine"]
     assert derive_argv(args, WORKTREE, "Create calc/helpers.py", token_budget=48000, turn_budget=72) == [
         *engine, "derive", "--repo", str(WORKTREE),
-        "--token-budget", "48000", "--turn-budget", "72", "--", "Create calc/helpers.py"]
+        "--token-budget", str(48000 + DERIVE_TOKEN_HEADROOM), "--turn-budget", str(72 + DERIVE_TURN_HEADROOM),
+        "--", "Create calc/helpers.py"]
     assert deliver_argv(args, WORKTREE, CONTRACT, backstop_s=4800) == [
         *engine, "deliver", "--repo", str(WORKTREE), "--timeout", str(4800 - DELIVER_MARGIN_SECONDS), str(CONTRACT),
         "--", *engine, "attempt", "--model=omlx/m", "--", str(CONTRACT)]
+
+
+def test_derive_argv_carries_the_records_budget_plus_headroom_not_the_raw_budget() -> None:
+    """The Engine's own contract must never bind at or before the harness's stop
+    (design §5 item 5; race confirmed by the two integration tests this fixes).
+    """
+    args = parse_args(["--model", "omlx/m", "--engine-repo", str(ENGINE), "--uv-bin", "/bin/uv"], {})
+    argv = derive_argv(args, WORKTREE, "req", token_budget=16_000, turn_budget=48)
+    token_index = argv.index("--token-budget") + 1
+    turn_index = argv.index("--turn-budget") + 1
+    assert argv[token_index] == str(16_000 + DERIVE_TOKEN_HEADROOM)
+    assert argv[turn_index] == str(48 + DERIVE_TURN_HEADROOM)
+    assert argv[token_index] != "16000"
+    assert argv[turn_index] != "48"
+
+
+def test_the_derive_headroom_constants_cover_one_maximal_turn_plus_two_turns() -> None:
+    """Literal, not a re-derivation (same rule as the deliver-margin test above).
+
+    16,000 is the arm's per-turn output-token cap (``arms/engine-ornith15-9b.json``
+    ``max_tokens``); 2 turns is the task author's stated starting margin.
+    """
+    assert DERIVE_TOKEN_HEADROOM == 16_000
+    assert DERIVE_TURN_HEADROOM == 2
 
 
 def test_the_deliver_margin_is_sixty_seconds() -> None:
@@ -200,6 +227,23 @@ def test_main_derives_delivers_checks_out_the_candidate_and_harvests(seam: Path,
     assert calls[2] == ["git", *GIT_SAFETY_CONFIG, "checkout", "-q", "--detach", COMMIT]
     assert json.loads((seam / RECEIPT_NAME).read_text())["candidate_commit"] == COMMIT
     assert (seam / "patch.diff").read_text() == f"harvested {BASE}\n"
+
+
+def test_main_derives_with_the_records_budget_plus_headroom_not_the_raw_env_budget(
+    seam: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The env carries the record's raw budget (48000/72, the `seam` fixture);
+    the derive call on the wire must carry it plus headroom, matching what
+    `derive_argv` alone already proves -- this pins that `main` does not
+    bypass `derive_argv` or apply the headroom twice."""
+    calls, run = _fake_run(0, {"code": "OK", "candidate_commit": COMMIT})
+    monkeypatch.setattr(attempt_engine.subprocess, "run", run)
+    assert main(["--model", "omlx/m"]) == 0
+    derive_call = next(call for call in calls if "derive" in call)
+    token_index = derive_call.index("--token-budget") + 1
+    turn_index = derive_call.index("--turn-budget") + 1
+    assert derive_call[token_index] == str(48000 + DERIVE_TOKEN_HEADROOM)
+    assert derive_call[turn_index] == str(72 + DERIVE_TURN_HEADROOM)
 
 
 def test_main_without_a_candidate_checks_out_nothing_and_still_writes_the_patch(
