@@ -100,6 +100,38 @@ def test_a_non_zero_grade_exit_with_no_receipt_is_unavailable(
     assert "boom" in result["reason"] or "1" in result["reason"]
 
 
+def test_a_non_zero_grade_exit_with_a_fresh_unavailable_receipt_is_the_real_reason(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`satyrn-evals grade` exits 3 for a legitimate refusal (PatchRejected,
+    e.g. "patch touches non-source path: coverage.json") after writing a
+    well-formed receipt.json with verdict "unavailable" and the real reason
+    (grade.py's `except (PatchRejected, ApplyError, OracleError, HookError)`
+    branch, cli.py:65-69/275-276 maps Verdict.UNAVAILABLE to exit 3). That
+    is not a crash: the cell's row should carry the real reason, not a
+    synthesized "grade exited 3" crash message."""
+    import satyrn_evals.line_grade as line_grade_module
+
+    reason = "patch touches non-source path: coverage.json"
+
+    def fake_run(argv: list[str], *, cwd: Path, **_k: object) -> _FakeCompleted:
+        (Path(cwd) / "receipt.json").write_text(
+            json.dumps({"verdict": "unavailable", "reason": reason})
+        )
+        return _FakeCompleted(3, stderr="PatchRejected: " + reason)
+
+    monkeypatch.setattr(line_grade_module.subprocess, "run", fake_run)
+    result = line_grade_module.grade_offline("t", "diff", tmp_path, "cell-refusal", {})
+    assert result["verdict"] == "unavailable"
+    assert reason in result["reason"]
+    assert "3" in result["reason"]
+    # Not the crash path: no RuntimeError wrapper, and the receipt's own
+    # reason text appears verbatim (the exit code may be appended, but the
+    # reason is not truncated/replaced by a synthesized crash message).
+    assert "RuntimeError" not in result["reason"]
+    assert result["reason"].startswith(reason)
+
+
 def test_a_non_zero_grade_exit_is_unavailable_even_with_a_stale_receipt_present(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

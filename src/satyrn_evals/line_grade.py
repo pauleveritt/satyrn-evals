@@ -112,6 +112,39 @@ def project_markers(path: Path) -> list[Path]:
     ]
 
 
+def _read_legitimate_refusal(receipt_path: Path) -> str | None:
+    """The reason from a receipt this invocation itself wrote, if -- and
+    only if -- it reports ``verdict: unavailable`` with a reason: a
+    legitimate refusal (``PatchRejected`` etc, caught inside ``grade()``'s
+    own try/except and written to the receipt before the CLI maps
+    ``Verdict.UNAVAILABLE`` to exit 3 -- ``src/satyrn_evals/cli.py:65-69``
+    (``_EXIT_CODES``) and ``:275-276`` (``return
+    _EXIT_CODES[receipt.verdict]``)), not a crash.
+
+    Freshness: ``grade_offline`` always ``rmtree``s and recreates ``folder``
+    before invoking the subprocess (just above in this function), so any
+    ``receipt.json`` found here can only have been written by *this*
+    invocation -- there is no separate mtime/nonce to compare because
+    nothing stale can exist in a freshly emptied directory. A receipt that
+    fails to parse, is not a dict, or does not itself carry
+    ``verdict: unavailable`` with a non-empty ``reason`` is never trusted
+    here: it falls through to the crash path
+    (``test_a_non_zero_grade_exit_is_unavailable_even_with_a_stale_receipt_present``
+    pins exactly this -- a receipt present but not shaped this way must
+    still report the crash, not the receipt's own claim).
+    """
+    if not receipt_path.is_file():
+        return None
+    try:
+        receipt = json.loads(receipt_path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(receipt, dict) or receipt.get("verdict") != "unavailable":
+        return None
+    reason = receipt.get("reason")
+    return reason if isinstance(reason, str) and reason else None
+
+
 def grade_offline(
     task: str, patch: str, grade_root: Path, name: str, cache: GradeCache, *, tasks_root: Path | None = None
 ) -> dict:
@@ -149,10 +182,18 @@ def grade_offline(
             env={**os.environ, "UV_OFFLINE": "1", "TMPDIR": os.fspath(folder)},
         )
         if completed.returncode != 0:
-            tail = (completed.stderr or completed.stdout or "").strip()[-500:]
-            raise RuntimeError(f"grade exited {completed.returncode}: {tail}" if tail else f"grade exited {completed.returncode}")
-        receipt = json.loads((folder / "receipt.json").read_text())
-        result = {"verdict": receipt["verdict"], "reason": (receipt.get("reason") or "")[:200]}
+            refusal_reason = _read_legitimate_refusal(folder / "receipt.json")
+            if refusal_reason is None:
+                tail = (completed.stderr or completed.stdout or "").strip()[-500:]
+                raise RuntimeError(f"grade exited {completed.returncode}: {tail}" if tail else f"grade exited {completed.returncode}")
+            # A legitimate refusal (PatchRejected etc): `grade` exited
+            # non-zero, but the receipt it wrote before exiting already
+            # carries the real reason -- return that verbatim (plus the
+            # exit code), not a synthesized crash message.
+            result = {"verdict": "unavailable", "reason": f"{refusal_reason} (grade exited {completed.returncode})"[:200]}
+        else:
+            receipt = json.loads((folder / "receipt.json").read_text())
+            result = {"verdict": receipt["verdict"], "reason": (receipt.get("reason") or "")[:200]}
     except (OSError, subprocess.SubprocessError, json.JSONDecodeError, KeyError, RuntimeError) as exc:
         # A crashed grade, a missing receipt, or an unreadable one must never
         # raise out of here: the cell is unavailable, not a lost night's
