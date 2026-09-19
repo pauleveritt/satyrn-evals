@@ -441,7 +441,7 @@ def test_a_route_proof_record_runs_the_committed_engine_arm_on_its_export(tmp_pa
     ) == 3  # the fake spawn raised: interrupted
     assert seen == ["engine"]
     spec = json.loads((tmp_path / "runs" / "route-proof" / SLOTS_DIR / "00.spec.json").read_text())
-    commit = "2cccef11331db91d5c277d4c85cc0c761861d6ca"
+    commit = "0a6e5df05f921a1e7a0c2b5e1697e86a96a3ecce"
     assert spec["command"] == [
         "satyrn-evals-attempt-engine", "--engine-repo", f"/Users/Shared/satyrn-cells/engine-{commit}",
         "--model", "omlx/Ornith-1.5-9B-MLX-8bit",
