@@ -25,7 +25,7 @@ from satyrn_evals.arms import load_arm
 from satyrn_evals.attempt import attempt
 from satyrn_evals.attempt_engine import RECEIPT_NAME
 from satyrn_evals.attempt_record import AttemptCode
-from satyrn_evals.budget import AttemptBudget
+from satyrn_evals.budget import AttemptBudget, LineBudget
 from satyrn_evals.cell import (
     CELL_PATH_PREFIX_ENV,
     CELLS_ROOT,
@@ -40,7 +40,10 @@ from satyrn_evals.cell_engine import (
     verify_export,
 )
 from satyrn_evals.hygiene import overlay_digests
+from satyrn_evals.launch import SLOTS_DIR
+from satyrn_evals.line_grade import grade_night, render_summary
 from satyrn_evals.patch import parse_patch_paths
+from satyrn_evals.run_record import RunRecord
 from satyrn_evals.verdict import Verdict
 
 pytestmark = pytest.mark.integration
@@ -193,6 +196,87 @@ def test_an_isolated_engine_cells_line_crossing_is_harvested_from_its_own_worktr
     assert sorted(parse_patch_paths(line_patch.read_text())) == [
         "calc/core.py", "calc/format.py", "calc/helpers.py",
     ]
+
+
+def test_the_declared_line_is_harvested_and_graded_by_the_real_grader_on_both_arms(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, cell_scratch: Path
+) -> None:
+    """Permanent end-to-end row for the declared-line feature (release two):
+    both arms (Baseline and the Engine arm from the pinned export), under
+    ``Isolation.ISOLATED`` with the real cell user (as every other isolated-
+    arm test in this file), a declared line the fake model crosses
+    (``fake_pi_build.py``'s ``line-cross`` mode, added in 0302e0b), then
+    ``line_grade.grade_night`` with the REAL grader on the bundled calc-build
+    task -- no faked grader seam.
+
+    Driven through ``attempt()`` directly, not the launcher (``launch
+    RECORD``): the launcher's own default-tier fixtures build a frozen,
+    git-tracked record and arm files with a live model-server preflight,
+    every seam faked (``test_launch_record.py``'s ``_facts``/``_record``) --
+    reusing them for a REAL two-cell isolated run would mean fighting the
+    frozen/drift/model-server gates for no benefit, since ``attempt()`` is
+    the one function both the launcher's own ``spawn()`` and this test call
+    into. The remaining link -- the launcher puts a record's declared line
+    onto every spawned slot spec -- is covered separately by N6's
+    ``test_a_declared_line_reaches_every_spawned_slot_spec``
+    (``tests/test_launch_record.py``). What this test adds beyond both of
+    those and the existing per-arm line-harvest tests above: one assembled
+    night with real cells from BOTH arms, graded together by the real
+    offline grader, proving the whole harvest -> grade-line chain produces
+    a passing per-(task, arm) row with nothing excluded.
+    """
+    _cell_pi(cell_scratch, monkeypatch, "line-cross")
+    line = LineBudget(output_tokens=2_000, turns=40)
+    night = tmp_path / "night"
+
+    baseline_record = attempt(
+        task="calc-build", tasks_root=TASKS, output=night / "baseline", command=_baseline(), timeout=120,
+        budget=CAMPAIGN, isolation=Isolation.ISOLATED, line_budget=line,
+    )
+    assert baseline_record.line_crossed is not None
+    assert baseline_record.line_harvest_error is None, baseline_record.message
+
+    engine_command = _engine_arm(cell_scratch)
+    engine_record = attempt(
+        task="calc-build", tasks_root=TASKS, output=night / "engine", command=engine_command, timeout=300,
+        budget=CAMPAIGN, isolation=Isolation.ISOLATED, line_budget=line,
+    )
+    assert engine_record.line_crossed is not None
+    assert engine_record.line_harvest_error is None, engine_record.message
+
+    records = {"baseline": baseline_record, "engine": engine_record}
+    for arm, record in records.items():
+        assert record.attempt_dir is not None
+        line_patch = night / arm / record.attempt_dir / "line.diff"
+        assert line_patch.exists() and line_patch.read_text().strip(), arm
+
+    # Assemble the night's slots the way the launcher's own spawn()/write_ledger
+    # would (launch.read_slots is what grade_night reuses to enumerate them).
+    (night / SLOTS_DIR).mkdir(parents=True)
+    for index, (arm, record) in enumerate(records.items()):
+        (night / SLOTS_DIR / f"{index:02d}.json").write_text(
+            json.dumps({"slot": index, "arm": arm, "attempt_dir": record.attempt_dir, "code": record.code.value})
+        )
+
+    run_record = RunRecord(
+        version=1, task="calc-build", task_tree_sha256="0" * 64, arm="baseline+engine", model="omlx/fixture",
+        condition="cold", n=1, mode="batch", max_minutes=60, stop_rule="infrastructure only",
+        decision_rule="fisher", previous_result=None,
+        token_budget=CAMPAIGN.output_tokens, turn_budget=CAMPAIGN.turns,
+        isolation="isolated", purpose="development",
+        line_token_budget=line.output_tokens, line_turn_budget=line.turns,
+    )
+    report = grade_night(night, run_record, tmp_path / "grades", tasks_root=TASKS)
+    by_arm = {row.arm: row for row in report.rows}
+    assert set(by_arm) == {"baseline", "engine"}
+    for arm, row in by_arm.items():
+        assert row.line_crossed is not None, arm
+        assert row.line_harvest_error is None, (arm, row.line_harvest_error)
+        assert row.line_verdict == "pass", (arm, row.line_verdict)
+
+    summary = render_summary(report)
+    assert "| calc-build | baseline | 1/1 | 0 |" in summary
+    assert "| calc-build | engine | 1/1 | 0 |" in summary
 
 
 def test_the_engine_export_is_made_once_and_runs_as_the_cell_user(cell_scratch: Path, capsys: pytest.CaptureFixture[str]) -> None:
