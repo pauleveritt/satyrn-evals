@@ -316,4 +316,103 @@ def test_preflight_for_the_engine_arm_checks_its_export(
     assert main(["launch", "--preflight", record, "--arm", str(ENGINE_ARM), "--no-hunt"]) == 0
     monkeypatch.setattr(cli_module, "arm_export_problems", lambda arm: [f"export for {arm.arm} is missing"])
     assert main(["launch", "--preflight", record, "--arm", str(ENGINE_ARM), "--no-hunt"]) == 1
-    assert "launch preflight FAILED: export for engine is missing" in capsys.readouterr().err
+    assert "launch preflight FAILED: engine: export for engine is missing" in capsys.readouterr().err
+
+
+# --- Two-arm records: every arm the record runs must be preflighted, not just args.arm[0] ---
+
+
+def _two_arm_record(tmp_path: Path, **over: object) -> str:
+    return _record(tmp_path, arm="baseline+engine", purpose="development", **over)
+
+
+def _failing_engine_self_test(monkeypatch: pytest.MonkeyPatch) -> None:
+    """task self-test clean; engine self-test always reports a problem, so a
+    preflight that never calls it (the defect) looks clean by omission."""
+    monkeypatch.setattr(cli_module, "task_self_test", lambda task_dir, manifest: TaskSelfTest([], {}))
+    monkeypatch.setattr(
+        cli_module, "engine_self_test", lambda *a, **k: TaskSelfTest(["the engine self-test is red"], {"ran": True})
+    )
+
+
+def test_preflight_runs_the_engine_self_test_for_a_two_arm_record_baseline_first(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _no_model_server_problems(monkeypatch)
+    _failing_engine_self_test(monkeypatch)
+    monkeypatch.setattr(cli_module, "preflight_cell", lambda **kw: CellPreflight([], {"pi_version": "0.85.1"}))
+    monkeypatch.setattr(cli_module, "arm_export_problems", lambda arm: [])
+    record = _two_arm_record(tmp_path)
+    exit_code = main([
+        "launch", "--preflight", record, "--arm", str(ARM), "--arm", str(ENGINE_ARM), "--no-hunt",
+    ])
+    assert exit_code == 1
+    captured = capsys.readouterr()
+    assert "launch preflight FAILED: engine engine self-test: the engine self-test is red" in captured.err
+    body = json.loads(captured.out)
+    assert body["engine_engine_self_test"] == {"ran": True}
+
+
+def test_preflight_runs_the_engine_self_test_for_a_two_arm_record_engine_first(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The order of --arm flags must not matter."""
+    _no_model_server_problems(monkeypatch)
+    _failing_engine_self_test(monkeypatch)
+    monkeypatch.setattr(cli_module, "preflight_cell", lambda **kw: CellPreflight([], {"pi_version": "0.85.1"}))
+    monkeypatch.setattr(cli_module, "arm_export_problems", lambda arm: [])
+    record = _two_arm_record(tmp_path)
+    exit_code = main([
+        "launch", "--preflight", record, "--arm", str(ENGINE_ARM), "--arm", str(ARM), "--no-hunt",
+    ])
+    assert exit_code == 1
+    captured = capsys.readouterr()
+    assert "launch preflight FAILED: engine engine self-test: the engine self-test is red" in captured.err
+    body = json.loads(captured.out)
+    assert body["engine_engine_self_test"] == {"ran": True}
+
+
+def test_preflight_refuses_a_two_arm_record_given_only_one_arm(tmp_path: Path) -> None:
+    record = _two_arm_record(tmp_path)
+    assert main(["launch", "--preflight", record, "--arm", str(ARM)]) == 2
+
+
+def test_preflight_refuses_an_arm_file_not_in_the_record(tmp_path: Path) -> None:
+    """A single-arm ``baseline`` record given the ``engine`` arm file is refused."""
+    record = _record(tmp_path)
+    assert main(["launch", "--preflight", record, "--arm", str(ENGINE_ARM)]) == 2
+
+
+def test_preflight_refuses_a_duplicate_arm_flag(tmp_path: Path) -> None:
+    record = _two_arm_record(tmp_path)
+    assert main(["launch", "--preflight", record, "--arm", str(ARM), "--arm", str(ARM)]) == 2
+
+
+def test_preflight_reports_disagreeing_pi_pins_as_a_problem(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _no_model_server_problems(monkeypatch)
+    _clean_self_tests(monkeypatch)
+    monkeypatch.setattr(cli_module, "preflight_cell", lambda **kw: CellPreflight([], {"pi_version": "0.85.1"}))
+    monkeypatch.setattr(cli_module, "arm_export_problems", lambda arm: [])
+    engine_body = json.loads(ENGINE_ARM.read_text())
+    engine_body["pins"]["pi"] = "0.99.9"
+    mismatched_engine_arm = tmp_path / "engine-mismatched.json"
+    mismatched_engine_arm.write_text(json.dumps(engine_body))
+    record = _two_arm_record(tmp_path)
+    exit_code = main([
+        "launch", "--preflight", record, "--arm", str(ARM), "--arm", str(mismatched_engine_arm), "--no-hunt",
+    ])
+    assert exit_code == 1
+    assert "the arms pin different pi versions: 0.85.1, 0.99.9" in capsys.readouterr().err
+
+
+def test_preflight_still_behaves_as_before_for_a_single_arm_record(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _no_model_server_problems(monkeypatch)
+    _clean_self_tests(monkeypatch)
+    monkeypatch.setattr(cli_module, "preflight_cell", lambda **kw: CellPreflight([], {"pi_version": "0.85.1"}))
+    monkeypatch.setattr(cli_module, "arm_export_problems", lambda arm: [])
+    record = _record(tmp_path)
+    assert main(["launch", "--preflight", record, "--arm", str(ARM), "--no-hunt"]) == 0

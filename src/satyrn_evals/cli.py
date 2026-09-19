@@ -321,54 +321,75 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _launch_preflight(args: argparse.Namespace) -> int:
-    """The isolated sitting's cell checks; the JSON report goes to stdout, each problem to stderr."""
+    """The isolated sitting's cell checks, for every arm the record runs; the JSON report goes to stdout, each problem to stderr."""
     record = load_run_record(Path(args.preflight))
     if record.isolation is not Isolation.ISOLATED:
         raise RunRecordError(f"launch --preflight checks the cell user; {args.preflight} is a local record")
     if not args.arm:
-        raise UsageError("launch --preflight needs --arm ARM.json")
-    arm = load_arm(Path(args.arm[0]))
-    if arm.arm not in record_arms(record) or arm.model != record.model:
+        raise UsageError("launch --preflight needs --arm ARM.json, one per arm the record runs")
+    names = record_arms(record)
+    loaded: dict[str, object] = {}
+    for arm_path in args.arm:
+        arm = load_arm(Path(arm_path))
+        if arm.arm in loaded:
+            raise RunRecordError(f"--arm names {arm.arm} twice")
+        if arm.model != record.model:
+            raise RunRecordError(
+                f"arm file {arm_path} is {arm.arm} on {arm.model}; the record is {record.arm} on {record.model}"
+            )
+        loaded[arm.arm] = arm
+    if sorted(loaded) != sorted(names):
         raise RunRecordError(
-            f"arm file {args.arm} is {arm.arm} on {arm.model}; the record is {record.arm} on {record.model}"
+            f"the record runs {record.arm}; the --arm files are {'+'.join(sorted(loaded)) or 'none'}"
         )
+    # Canonical, record-declared order: the order of --arm flags on the command
+    # line must not matter to what gets checked or how it is keyed below.
+    arms = [loaded[name] for name in names]
     tasks_root = Path(args.tasks_root)
     report = preflight_cell(
-        pinned_pi=arm.pins.pi,
+        pinned_pi=arms[0].pins.pi,
         protected=(Path.cwd(), tasks_root, Path.home()),
         tasks_root=tasks_root,
         hunt_root=None if args.no_hunt else "/",
     )
-    problems = [*report.problems, *arm_export_problems(arm)]
+    problems = list(report.problems)
+    pins = {arm.pins.pi for arm in arms}
+    if len(pins) != 1:
+        problems.append(f"the arms pin different pi versions: {', '.join(sorted(pins))}")
+    for name, arm in zip(names, arms, strict=True):
+        problems += [f"{name}: {problem}" for problem in arm_export_problems(arm)]
     checked: dict[str, object] = dict(report.checked)
     # The task's own self-test, and the Engine's derived self-test, on the base
-    # and the known-good state: the check the void night lacked, run here so the
-    # operator can preflight every record before the night (this path does not
-    # gate the record's chain, so all three records can be checked up front).
+    # and the known-good state: the check the void night lacked, run here for
+    # every arm the record runs so the operator can preflight every record
+    # before the night (this path does not gate the record's chain, so all
+    # three records can be checked up front).
     task_dir = resolve_task(record.task, tasks_root=tasks_root)
     manifest = load_manifest(task_dir)
     _, contract_text = resolve_contract(manifest, record.rung)
     task_check = task_self_test(task_dir, manifest)
     problems += [f"task self-test: {problem}" for problem in task_check.problems]
     checked["task_self_test"] = task_check.checked
-    export = arm_export(arm)
-    if export is not None:
+    for name, arm in zip(names, arms, strict=True):
+        export = arm_export(arm)
+        if export is None:
+            continue
         engine_check = engine_self_test(
             task_dir, manifest,
             engine=("uv", "run", "--no-sync", "--project", os.fspath(export), "satyrn-engine"),
             request=contract_text, token_budget=record.token_budget, turn_budget=record.turn_budget,
         )
-        problems += [f"engine self-test: {problem}" for problem in engine_check.problems]
-        checked["engine_self_test"] = engine_check.checked
+        problems += [f"{name} engine self-test: {problem}" for problem in engine_check.problems]
+        checked[f"{name}_engine_self_test"] = engine_check.checked
     if not os.environ.get(CELL_PATH_PREFIX_ENV):
         # Same check, same skip rule as `launch_record`'s: a real preflight run
         # never carries the test PATH seam (flagged just below when it does),
         # so this only ever skips there, never for a record this path accepts.
-        server_problems, checked["model_server"] = model_server_checks([arm], record.isolation)
+        server_problems, checked["model_server"] = model_server_checks(arms, record.isolation)
         problems += server_problems
     if os.environ.get(CELL_PATH_PREFIX_ENV):
         problems.append(f"{CELL_PATH_PREFIX_ENV} is set; it is a test seam, never a sitting's PATH")
-    print(json.dumps({"record": args.preflight, "arm": args.arm[0], "problems": problems, **checked}, indent=2))
+    print(json.dumps({"record": args.preflight, "arm": args.arm, "problems": problems, **checked}, indent=2))
     for problem in problems:
         print(f"launch preflight FAILED: {problem}", file=sys.stderr)
     return 1 if problems else 0
