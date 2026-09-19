@@ -26,6 +26,13 @@ from satyrn_evals.launch_record import (
     launch_record,
     model_server_checks,
 )
+from satyrn_evals.line_grade import (
+    default_out_path,
+    grade_night,
+    refuse_project_grade_root,
+    render_summary,
+    write_report,
+)
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, load_manifest, resolve_task
 from satyrn_evals.qualify import qualify
 from satyrn_evals.rescore import regrade_attempt, summarize_output
@@ -281,6 +288,18 @@ def main(argv: list[str] | None = None) -> int:
                     file=sys.stderr,
                 )
             return 0
+        if args.command == "grade-line":
+            grade_root = Path(args.grade_root)
+            refuse_project_grade_root(grade_root)
+            grade_root.mkdir(parents=True, exist_ok=True)
+            night = Path(args.night)
+            run_record = load_run_record(Path(args.record))
+            tasks_root = Path(args.tasks_root) if args.tasks_root is not None else None
+            report = grade_night(night, run_record, grade_root, tasks_root=tasks_root)
+            out_path = Path(args.out) if args.out is not None else default_out_path(grade_root, night)
+            write_report(report, out_path)
+            print(render_summary(report))
+            return 0
         record = capture(
             repo=Path(args.repo),
             fix_sha=args.revert,
@@ -512,6 +531,28 @@ regrade_p.add_argument(
     "--tasks-root",
     default=str(DEFAULT_TASKS_ROOT),
     help="task root (default: bundled tasks)",
+)
+
+grade_line_p = sub.add_parser(
+    "grade-line",
+    help="grade a night's harvested declared-line patches offline, per completed cell",
+)
+grade_line_p.add_argument("night", help="night output directory (holds slots/ and one directory per arm)")
+grade_line_p.add_argument("--record", required=True, help="the run record the night was launched from")
+grade_line_p.add_argument(
+    "--grade-root",
+    required=True,
+    help="scratch root for offline grading; must not sit under a Python project",
+)
+grade_line_p.add_argument(
+    "--out",
+    default=None,
+    help="write the JSON report here (default: <grade-root>/grade-line-<night>.json)",
+)
+grade_line_p.add_argument(
+    "--tasks-root",
+    default=None,
+    help="task root for the offline grade (default: bundled tasks)",
 )
 
 session_p = sub.add_parser(

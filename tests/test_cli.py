@@ -526,6 +526,77 @@ def test_launch_preflight_asks_the_model_server_check_about_this_arm(
     assert seen == {"arms": ["Ornith-1.5-9B-MLX-8bit"], "isolation": Isolation.ISOLATED}
 
 
+# --- Part C: grade-line ---
+
+
+def _fake_report() -> object:
+    from satyrn_evals.line_grade import LineGradeReport, LineGradeRow
+
+    return LineGradeReport(
+        night="/n",
+        rows=(LineGradeRow("t-1", "t", "baseline", "OK", "pass", None, None, "pass", "final"),),
+    )
+
+
+def test_grade_line_cli_wires_night_record_and_grade_root_through(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen: dict[str, object] = {}
+
+    def fake_grade_night(night: Path, record: object, grade_root: Path, **kw: object) -> object:
+        seen["night"] = night
+        seen["record"] = record
+        seen["grade_root"] = grade_root
+        return _fake_report()
+
+    monkeypatch.setattr(cli_module, "grade_night", fake_grade_night)
+    monkeypatch.setattr(cli_module, "refuse_project_grade_root", lambda grade_root: None)
+    night = tmp_path / "night"
+    night.mkdir()
+    grade_root = tmp_path / "grades"
+    record_path = _record(tmp_path)
+    assert main(["grade-line", str(night), "--record", str(record_path), "--grade-root", str(grade_root)]) == 0
+    assert seen["night"] == night
+    assert seen["grade_root"] == grade_root
+    assert seen["record"].task == "format_number"
+
+
+def test_grade_line_cli_writes_json_and_prints_the_summary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(cli_module, "grade_night", lambda *a, **kw: _fake_report())
+    monkeypatch.setattr(cli_module, "refuse_project_grade_root", lambda grade_root: None)
+    night = tmp_path / "night"
+    night.mkdir()
+    grade_root = tmp_path / "grades"
+    grade_root.mkdir()
+    record_path = _record(tmp_path)
+    out_path = tmp_path / "out.json"
+    assert main([
+        "grade-line", str(night), "--record", str(record_path),
+        "--grade-root", str(grade_root), "--out", str(out_path),
+    ]) == 0
+    body = json.loads(out_path.read_text())
+    assert body["rows"][0]["attempt"] == "t-1"
+    captured = capsys.readouterr()
+    assert "| t | baseline | 1/1 |" in captured.out
+
+
+def test_grade_line_cli_refuses_a_grade_root_under_a_python_project(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        cli_module, "grade_night", lambda *a, **kw: pytest.fail("must not grade under a project's own pytest config")
+    )
+    night = tmp_path / "night"
+    night.mkdir()
+    grade_root = tmp_path / "grades"
+    grade_root.mkdir()
+    (grade_root / "pyproject.toml").write_text("[project]\n")
+    record_path = _record(tmp_path)
+    assert main(["grade-line", str(night), "--record", str(record_path), "--grade-root", str(grade_root)]) == 2
+
+
 def test_launch_preflight_skips_the_model_server_check_on_the_fake_pi_seam(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
