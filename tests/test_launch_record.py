@@ -70,6 +70,27 @@ def test_a_clean_admission_record_reaches_its_first_cell_with_the_records_settin
     assert result["arms"]["baseline"]["finished"] == 0 and result["cells"] == []
 
 
+def test_a_declared_line_reaches_every_spawned_slot_spec(tmp_path: Path) -> None:
+    """N6: `record.line_token_budget`/`line_turn_budget` are the only wiring
+    a real night uses to reach the cell -- nothing else in the launcher
+    reads them into a spawned slot's spec. A record that declares a line
+    must have it on the spec; a record that does not must carry neither key
+    (pinned here as both present and null, matching what `spawn()` writes
+    unconditionally, never omitted)."""
+    record = _record(tmp_path, line_token_budget=16000, line_turn_budget=24)
+    assert _launch(tmp_path, record, _facts()) == 3  # the fake spawn raised: interrupted
+    spec = json.loads((tmp_path / "runs" / "depth-3" / SLOTS_DIR / "00.spec.json").read_text())
+    assert (spec["line_token_budget"], spec["line_turn_budget"]) == (16000, 24)
+
+
+def test_a_record_without_a_declared_line_spawns_no_line_budget(tmp_path: Path) -> None:
+    record = _record(tmp_path)
+    assert _launch(tmp_path, record, _facts()) == 3  # the fake spawn raised: interrupted
+    spec = json.loads((tmp_path / "runs" / "depth-3" / SLOTS_DIR / "00.spec.json").read_text())
+    assert spec["line_token_budget"] is None
+    assert spec["line_turn_budget"] is None
+
+
 @pytest.mark.parametrize(
     ("over", "message"),
     [
