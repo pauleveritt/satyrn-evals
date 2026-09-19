@@ -17,10 +17,12 @@ from satyrn_evals.attempt_record import (
 )
 from satyrn_evals.budget import LineCrossing
 from satyrn_evals.errors import SatyrnError
+from satyrn_evals.launch import INFRASTRUCTURE_CODES, infrastructure_reason
 from satyrn_evals.line_grade import (
     _NEVER_CROSSED_RULES,
     GradeCache,
     _never_crossed_verdict,
+    _NeverCrossedRule,
     default_out_path,
     grade_cell,
     grade_night,
@@ -215,6 +217,38 @@ def test_every_attempt_code_is_classified_for_the_never_crossed_case() -> None:
     """Pins the table: a new `AttemptCode` member with no entry here must
     fail this test, not silently default to `not-pass` (I3)."""
     assert set(_NEVER_CROSSED_RULES) == set(AttemptCode)
+
+
+def test_never_crossed_unavailable_codes_match_launch_infrastructure_codes() -> None:
+    """N4: `_NEVER_CROSSED_RULES` duplicates `launch.INFRASTRUCTURE_CODES`
+    with nothing tying them together -- a code added to or removed from one
+    table but not the other must fail this test, not silently diverge."""
+    unavailable_codes = {
+        code for code, rule in _NEVER_CROSSED_RULES.items() if rule is _NeverCrossedRule.UNAVAILABLE
+    }
+    assert unavailable_codes == INFRASTRUCTURE_CODES
+
+
+@pytest.mark.parametrize("phase", list(DeadlinePhase))
+def test_deadline_phase_rule_matches_launch_infrastructure_reason(phase: DeadlinePhase) -> None:
+    """N4: `_never_crossed_verdict`'s DEADLINE_EXCEEDED phase rule duplicates
+    `launch.infrastructure_reason`'s deadline-phase rule -- tied together
+    here so the two can never silently diverge on which phase is the
+    model's own command-phase stop versus harness overhead."""
+    verdict, _ = _never_crossed_verdict(
+        AttemptCode.DEADLINE_EXCEEDED, None, phase, line_declared=False, name="cell-x"
+    )
+    is_infrastructure_here = verdict == "unavailable"
+    is_infrastructure_in_launch = (
+        infrastructure_reason(
+            {
+                "code": "DEADLINE_EXCEEDED", "slot": 0, "arm": "baseline",
+                "message": "m", "deadline_phase": phase.value,
+            }
+        )
+        is not None
+    )
+    assert is_infrastructure_here == is_infrastructure_in_launch
 
 
 def test_an_unclassified_code_is_unavailable_with_a_named_reason_rather_than_raising() -> None:
