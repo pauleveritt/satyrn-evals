@@ -641,6 +641,151 @@ def test_grade_line_cli_refuses_a_grade_root_under_a_python_project(
     assert main(["grade-line", str(night), "--record", str(record_path), "--grade-root", str(grade_root)]) == 2
 
 
+# --- grade-sensitivity ------------------------------------------------------
+
+
+def _fake_sensitivity_report(*, task: str = "t", arm: str = "baseline", passed: bool = True) -> object:
+    from satyrn_evals.sensitivity_grade import CellSensitivity, SensitivityReport
+
+    return SensitivityReport(
+        night="/n",
+        cells=(
+            CellSensitivity(
+                attempt="t-1", task=task, arm=arm, code="OK",
+                delivered_pass=passed, delivered_pass_stripped=passed,
+            ),
+        ),
+    )
+
+
+def test_grade_sensitivity_cli_wires_night_record_and_grade_root_through(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen: dict[str, object] = {}
+
+    def fake_grade_night_sensitivity(night: Path, record: object, grade_root: Path, **kw: object) -> object:
+        seen["night"] = night
+        seen["record"] = record
+        seen["grade_root"] = grade_root
+        return _fake_sensitivity_report()
+
+    monkeypatch.setattr(cli_module, "grade_night_sensitivity", fake_grade_night_sensitivity)
+    monkeypatch.setattr(cli_module, "refuse_project_grade_root", lambda grade_root: None)
+    night = tmp_path / "night"
+    night.mkdir()
+    grade_root = tmp_path / "grades"
+    record_path = _record(tmp_path)
+    assert main([
+        "grade-sensitivity", str(night), "--record", str(record_path), "--grade-root", str(grade_root),
+    ]) == 0
+    assert seen["night"] == night
+    assert seen["grade_root"] == grade_root
+    assert seen["record"].task == "format_number"
+
+
+def test_grade_sensitivity_cli_writes_json_and_prints_the_table(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(cli_module, "grade_night_sensitivity", lambda *a, **kw: _fake_sensitivity_report())
+    monkeypatch.setattr(cli_module, "refuse_project_grade_root", lambda grade_root: None)
+    night = tmp_path / "night"
+    night.mkdir()
+    grade_root = tmp_path / "grades"
+    grade_root.mkdir()
+    record_path = _record(tmp_path)
+    out_path = tmp_path / "out.json"
+    assert main([
+        "grade-sensitivity", str(night), "--record", str(record_path),
+        "--grade-root", str(grade_root), "--out", str(out_path),
+    ]) == 0
+    body = json.loads(out_path.read_text())
+    assert body["cells"][0]["attempt"] == "t-1"
+    captured = capsys.readouterr()
+    assert "delivered_pass" in captured.out
+    assert "1/1" in captured.out
+
+
+def test_grade_sensitivity_cli_refuses_a_grade_root_under_a_python_project(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        cli_module, "grade_night_sensitivity",
+        lambda *a, **kw: pytest.fail("must not grade under a project's own pytest config"),
+    )
+    night = tmp_path / "night"
+    night.mkdir()
+    grade_root = tmp_path / "grades"
+    grade_root.mkdir()
+    (grade_root / "pyproject.toml").write_text("[project]\n")
+    record_path = _record(tmp_path)
+    assert main([
+        "grade-sensitivity", str(night), "--record", str(record_path), "--grade-root", str(grade_root),
+    ]) == 2
+
+
+def test_grade_sensitivity_cli_record2_without_combine_is_a_usage_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(cli_module, "grade_night_sensitivity", lambda *a, **kw: _fake_sensitivity_report())
+    monkeypatch.setattr(cli_module, "refuse_project_grade_root", lambda grade_root: None)
+    night = tmp_path / "night"
+    night.mkdir()
+    grade_root = tmp_path / "grades"
+    grade_root.mkdir()
+    record_path = _record(tmp_path)
+    assert main([
+        "grade-sensitivity", str(night), "--record", str(record_path), "--grade-root", str(grade_root),
+        "--record2", str(record_path),
+    ]) == 2
+
+
+def test_grade_sensitivity_cli_combine_sums_two_parts_and_checks_combinable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    reports = [
+        _fake_sensitivity_report(passed=True),
+        _fake_sensitivity_report(passed=False),
+    ]
+    calls: list[Path] = []
+
+    def fake_grade_night_sensitivity(night: Path, record: object, grade_root: Path, **kw: object) -> object:
+        calls.append(night)
+        return reports[len(calls) - 1]
+
+    combinable_calls: list[tuple[object, object]] = []
+    monkeypatch.setattr(cli_module, "grade_night_sensitivity", fake_grade_night_sensitivity)
+    monkeypatch.setattr(cli_module, "refuse_project_grade_root", lambda grade_root: None)
+    monkeypatch.setattr(
+        cli_module, "check_combinable",
+        lambda a, b: combinable_calls.append((a, b)),
+    )
+    night = tmp_path / "night"
+    night.mkdir()
+    night2 = tmp_path / "night2"
+    night2.mkdir()
+    grade_root = tmp_path / "grades"
+    grade_root.mkdir()
+    record_path = _record(tmp_path)
+    part2_dir = tmp_path / "part2"
+    part2_dir.mkdir()
+    record_path2 = _record(part2_dir)
+    exit_code = main([
+        "grade-sensitivity", str(night), "--record", str(record_path), "--grade-root", str(grade_root),
+        "--combine", str(night2), "--record2", str(record_path2),
+    ])
+    assert exit_code == 0
+    assert calls == [night, night2]
+    assert len(combinable_calls) == 1
+    captured = capsys.readouterr()
+    assert "## A" in captured.out
+    assert "## B" in captured.out
+    assert "## A+B" in captured.out
+    # Part A alone: 1/1; part B alone: 0/1; combined: 1/2.
+    assert "1/1" in captured.out
+    assert "0/1" in captured.out
+    assert "1/2" in captured.out
+
+
 def test_launch_preflight_skips_the_model_server_check_on_the_fake_pi_seam(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

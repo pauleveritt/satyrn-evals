@@ -54,6 +54,17 @@ from satyrn_evals.run_record import (
 from satyrn_evals.run_record import (
     line_budget as record_line_budget,
 )
+from satyrn_evals.sensitivity_grade import (
+    check_combinable,
+    combine_summaries,
+    grade_night_sensitivity,
+)
+from satyrn_evals.sensitivity_grade import (
+    default_out_path as default_sensitivity_out_path,
+)
+from satyrn_evals.sensitivity_grade import render_report as render_sensitivity_report
+from satyrn_evals.sensitivity_grade import summarize as summarize_sensitivity
+from satyrn_evals.sensitivity_grade import write_report as write_sensitivity_report
 from satyrn_evals.session import run_session
 from satyrn_evals.session_grader import SessionGrader
 from satyrn_evals.session_manifest import DEFAULT_SESSION_SPEC
@@ -307,6 +318,8 @@ def main(argv: list[str] | None = None) -> int:
             if any(row.line_unavailable_reason is not None for row in report.rows):
                 return LINE_GRADE_NEEDS_REVIEW_EXIT_CODE
             return 0
+        if args.command == "grade-sensitivity":
+            return _grade_sensitivity(args)
         record = capture(
             repo=Path(args.repo),
             fix_sha=args.revert,
@@ -393,6 +406,39 @@ def _launch_preflight(args: argparse.Namespace) -> int:
     for problem in problems:
         print(f"launch preflight FAILED: {problem}", file=sys.stderr)
     return 1 if problems else 0
+
+
+def _grade_sensitivity(args: argparse.Namespace) -> int:
+    """The pre-registered sensitivity reading for one night, or -- with
+    ``--combine``/``--record2`` -- two parts of the same task/rung/arms/
+    budgets, summed. ``--out`` names only the first part's JSON report; a
+    combined run's second part always writes to its own default path
+    alongside it, so the two never collide."""
+    grade_root = Path(args.grade_root)
+    refuse_project_grade_root(grade_root)
+    grade_root.mkdir(parents=True, exist_ok=True)
+    night = Path(args.night)
+    run_record = load_run_record(Path(args.record))
+    tasks_root = Path(args.tasks_root) if args.tasks_root is not None else None
+    report = grade_night_sensitivity(night, run_record, grade_root, tasks_root=tasks_root)
+    out_path = Path(args.out) if args.out is not None else default_sensitivity_out_path(grade_root, night)
+    write_sensitivity_report(report, out_path)
+    groups_a = summarize_sensitivity(report)
+    parts: list[tuple[str, dict]] = [("A", groups_a)]
+    if args.combine is not None:
+        if args.record2 is None:
+            raise UsageError("grade-sensitivity --combine NIGHT2 needs --record2 RECORD2")
+        night2 = Path(args.combine)
+        run_record2 = load_run_record(Path(args.record2))
+        check_combinable(run_record, run_record2)
+        report2 = grade_night_sensitivity(night2, run_record2, grade_root, tasks_root=tasks_root)
+        write_sensitivity_report(report2, default_sensitivity_out_path(grade_root, night2))
+        groups_b = summarize_sensitivity(report2)
+        parts = [("A", groups_a), ("B", groups_b), ("A+B", combine_summaries(groups_a, groups_b))]
+    elif args.record2 is not None:
+        raise UsageError("grade-sensitivity --record2 needs --combine NIGHT2")
+    print(render_sensitivity_report(parts))
+    return 0
 
 
 def _record_new(args: argparse.Namespace) -> int:
@@ -585,6 +631,44 @@ grade_line_p.add_argument(
     "--tasks-root",
     default=None,
     help="task root for the offline grade (default: bundled tasks)",
+)
+
+grade_sensitivity_p = sub.add_parser(
+    "grade-sensitivity",
+    help=(
+        "the pre-registered sensitivity reading: delivered_pass vs. delivered_pass "
+        "after stripping every non-source path the grader names in a refusal, "
+        "per completed cell, with the exact one-sided Fisher p (Engine > Baseline)"
+    ),
+)
+grade_sensitivity_p.add_argument("night", help="night output directory (holds slots/ and one directory per arm)")
+grade_sensitivity_p.add_argument("--record", required=True, help="the run record the night was launched from")
+grade_sensitivity_p.add_argument(
+    "--grade-root",
+    required=True,
+    help="scratch root for offline grading; must not sit under a Python project",
+)
+grade_sensitivity_p.add_argument(
+    "--out",
+    default=None,
+    help="write the first part's JSON report here (default: <grade-root>/grade-sensitivity-<night>.json)",
+)
+grade_sensitivity_p.add_argument(
+    "--tasks-root",
+    default=None,
+    help="task root for the offline grade (default: bundled tasks)",
+)
+grade_sensitivity_p.add_argument(
+    "--combine",
+    default=None,
+    metavar="NIGHT2",
+    help="a second night's output directory to sum with the first (same task/rung/arms/budgets; requires --record2)",
+)
+grade_sensitivity_p.add_argument(
+    "--record2",
+    default=None,
+    metavar="RECORD2",
+    help="the run record --combine's night was launched from",
 )
 
 session_p = sub.add_parser(
