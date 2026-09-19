@@ -682,6 +682,84 @@ def test_several_own_candidates_are_ambiguous_and_refused(
     assert "engine" in result.line_harvest_error
 
 
+# --- N13: _engine_worktree_bound against real git, not stubbed ------------
+
+
+def _init_repo(path: Path, environment: dict[str, str]) -> None:
+    """A real, minimal git repository with one commit -- no `_git` stubbing."""
+    path.mkdir(parents=True, exist_ok=True)
+    (path / "f.txt").write_text("x\n")
+    workspace_module._git(path, ("init", "-q"), environment)
+    workspace_module._git(path, ("add", "-A"), environment)
+    commit_env = {**environment, **workspace_module._FIXED_GIT_ENV}
+    workspace_module._git(path, ("commit", "-q", "-m", "seed"), commit_env)
+
+
+@pytest.mark.integration
+def test_a_genuinely_foreign_worktree_is_refused_while_an_own_worktree_beside_it_is_accepted(
+    tmp_path: Path,
+) -> None:
+    """N13: `_engine_worktree_bound` is stubbed (`_bind_only`/`_bind_everything`)
+    in every other test in this file. This one uses real git throughout: a
+    linked worktree created by ``git worktree add`` from a DIFFERENT
+    repository, placed where the glob finds it (I4a/I4b), must be refused
+    and named -- not accepted just because it has the right shape and name
+    -- while an own worktree, created by ``git worktree add`` from this
+    attempt's own ``state.worktree``, sitting right beside it in the same
+    scanned directory, is accepted.
+
+    Marked, not default tier (the default-tier subprocess tripwire in
+    conftest.py blocks any real ``git`` spawn): four real git repos/commands
+    (init x2, worktree add x2, plus the resolutions inside
+    `_engine_worktree_bound`/`_engine_worktree`) are well over what the
+    audit-hook tripwire allows outside the ``integration`` marker."""
+    environment = dict(os.environ)
+    state = _default_state(tmp_path, isolation=Isolation.ISOLATED)
+    _init_repo(state.worktree, environment)
+
+    engine_tmp = state.parent / "tmp"
+    engine_tmp.mkdir()
+
+    # Own: git-worktree-add'd from this attempt's own worktree, so it shares
+    # state.worktree's git-common-dir -- exactly how satyrn-engine creates
+    # its deliver worktree (from context.root, the cwd the harness gave it).
+    own = engine_tmp / "satyrn-engine-own" / "worktree"
+    own.parent.mkdir(parents=True)
+    workspace_module._git(state.worktree, ("worktree", "add", "--detach", os.fspath(own)), environment)
+
+    # Foreign: a completely separate repository (its own git-common-dir),
+    # git-worktree-add'd into a directory with the exact same glob shape.
+    foreign_repo = tmp_path / "foreign-repo"
+    _init_repo(foreign_repo, environment)
+    foreign = engine_tmp / "satyrn-engine-foreign" / "worktree"
+    foreign.parent.mkdir(parents=True)
+    workspace_module._git(foreign_repo, ("worktree", "add", "--detach", os.fspath(foreign)), environment)
+
+    own_common = workspace_module._resolve_git_common_dir(state.worktree, environment)
+    assert own_common is not None
+
+    # The negative case, directly: the foreign worktree is refused, named.
+    ok, detail = workspace_module._engine_worktree_bound(
+        state, foreign, environment, own_common=own_common
+    )
+    assert ok is False
+    assert str(foreign) in detail
+    assert "foreign" in detail
+
+    # Sibling: the own worktree, beside it, is accepted.
+    ok2, detail2 = workspace_module._engine_worktree_bound(
+        state, own, environment, own_common=own_common
+    )
+    assert (ok2, detail2) == (True, "")
+
+    # And end to end, through the real candidate search over both: exactly
+    # the own worktree is selected -- the foreign one beside it is scanned
+    # but never trusted.
+    resolved, error = workspace_module._engine_worktree(state, environment)
+    assert resolved == own
+    assert error is None
+
+
 def test_local_profile_scans_the_engine_fallback_tmp_roots_too(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
