@@ -12,12 +12,15 @@ from satyrn_evals.attempt_record import (
     AttemptCode,
     AttemptOutcome,
     AttemptRecord,
+    DeadlinePhase,
     write_attempt_record,
 )
 from satyrn_evals.budget import LineCrossing
 from satyrn_evals.errors import SatyrnError
 from satyrn_evals.line_grade import (
+    _NEVER_CROSSED_RULES,
     GradeCache,
+    _never_crossed_verdict,
     default_out_path,
     grade_cell,
     grade_night,
@@ -100,6 +103,121 @@ def test_never_crossed_with_an_unavailable_verdict_is_not_pass() -> None:
     record = _record(verdict=Verdict.UNAVAILABLE)
     row = grade_cell(record, cell_dir=Path("/cells/t-1"), arm="baseline", grade_root=Path("/g"), cache={}, grader=_FakeGrader({}))
     assert row.line_verdict == "not-pass"
+
+
+# --- _never_crossed_verdict: infrastructure never becomes a model outcome --
+
+
+def test_every_attempt_code_is_classified_for_the_never_crossed_case() -> None:
+    """Pins the table: a new `AttemptCode` member with no entry here must
+    fail this test, not silently default to `not-pass` (I3)."""
+    assert set(_NEVER_CROSSED_RULES) == set(AttemptCode)
+
+
+def test_an_unclassified_code_raises_rather_than_defaults() -> None:
+    """Belt-and-suspenders for the case the table test above pins: even if
+    a code slipped through unclassified, the runtime path must also refuse
+    to guess, naming the cell."""
+    assert AttemptCode.NO_PATCH in _NEVER_CROSSED_RULES
+    trimmed = dict(_NEVER_CROSSED_RULES)
+    del trimmed[AttemptCode.NO_PATCH]
+    import satyrn_evals.line_grade as line_grade_module
+
+    original = line_grade_module._NEVER_CROSSED_RULES
+    line_grade_module._NEVER_CROSSED_RULES = trimmed
+    try:
+        with pytest.raises(SatyrnError, match="cell-x"):
+            _never_crossed_verdict(
+                AttemptCode.NO_PATCH, None, None, line_declared=False, name="cell-x"
+            )
+    finally:
+        line_grade_module._NEVER_CROSSED_RULES = original
+
+
+@pytest.mark.parametrize(
+    "code",
+    [
+        AttemptCode.PATCH_INVALID,
+        AttemptCode.TRANSCRIPT_MISSING,
+        AttemptCode.TRANSCRIPT_EMPTY,
+        AttemptCode.WORKSPACE_FAILED,
+        AttemptCode.MODEL_ERROR,
+        AttemptCode.CLEANUP_FAILED,
+        AttemptCode.GRADE_FAILED,
+    ],
+)
+def test_infrastructure_codes_are_unavailable_when_never_crossed(code: AttemptCode) -> None:
+    """These measured nothing about the model: excluded from the pass
+    denominator, never scored as a model outcome."""
+    assert (
+        _never_crossed_verdict(code, None, None, line_declared=False, name="cell-x")
+        == "unavailable"
+    )
+
+
+@pytest.mark.parametrize("code", [AttemptCode.NO_PATCH, AttemptCode.COMMAND_TIMEOUT, AttemptCode.REPEAT_LIMIT])
+def test_the_models_own_no_patch_outcomes_are_not_pass_when_never_crossed(code: AttemptCode) -> None:
+    """The model's own outcome, with nothing to grade -- not infrastructure."""
+    assert (
+        _never_crossed_verdict(code, None, None, line_declared=False, name="cell-x")
+        == "not-pass"
+    )
+
+
+def test_a_deadline_in_the_command_phase_is_not_pass_when_never_crossed() -> None:
+    """A command-phase whole-attempt deadline is the model's own stop, exactly
+    like COMMAND_TIMEOUT -- not infrastructure."""
+    assert (
+        _never_crossed_verdict(
+            AttemptCode.DEADLINE_EXCEEDED, None, DeadlinePhase.COMMAND, line_declared=False, name="cell-x"
+        )
+        == "not-pass"
+    )
+
+
+@pytest.mark.parametrize("phase", [DeadlinePhase.SETUP, DeadlinePhase.PRESERVATION, DeadlinePhase.GRADING, DeadlinePhase.CLEANUP])
+def test_a_deadline_outside_the_command_phase_is_unavailable_when_never_crossed(phase: DeadlinePhase) -> None:
+    """Sibling to the command-phase case above: every other phase is the
+    harness's own overhead, not the model's turn -- infrastructure."""
+    assert (
+        _never_crossed_verdict(AttemptCode.DEADLINE_EXCEEDED, None, phase, line_declared=False, name="cell-x")
+        == "unavailable"
+    )
+
+
+def test_budget_exceeded_never_crossed_with_a_declared_line_is_a_broken_record() -> None:
+    """The line budget is strictly below the attempt budget (`run_record`
+    enforces it), so the line must trip before the attempt budget can -- a
+    BUDGET_EXCEEDED cell that never crossed a declared line is a
+    contradiction, not a normal outcome."""
+    with pytest.raises(SatyrnError, match="cell-x"):
+        _never_crossed_verdict(
+            AttemptCode.BUDGET_EXCEEDED, None, None, line_declared=True, name="cell-x"
+        )
+
+
+def test_budget_exceeded_never_crossed_with_no_declared_line_is_not_pass() -> None:
+    """Sibling to the contradiction case above: when this run never declared
+    a line at all, a BUDGET_EXCEEDED cell that never crossed is ordinary."""
+    assert (
+        _never_crossed_verdict(
+            AttemptCode.BUDGET_EXCEEDED, None, None, line_declared=False, name="cell-x"
+        )
+        == "not-pass"
+    )
+
+
+def test_grade_cell_wires_line_declared_into_the_budget_contradiction_check(tmp_path: Path) -> None:
+    """End-to-end: `grade_cell` itself raises, not just the helper."""
+    record = _record(
+        outcome=AttemptOutcome.REFUSED, code=AttemptCode.BUDGET_EXCEEDED, verdict=None,
+        patch_path=None, patch_digest=None, receipt_path=None,
+    )
+    with pytest.raises(SatyrnError, match="t-1"):
+        grade_cell(
+            record, cell_dir=Path("/cells/t-1"), arm="baseline", grade_root=Path("/g"),
+            cache={}, grader=_FakeGrader({}), line_declared=True,
+        )
 
 
 # --- grade_cell: crossed ---------------------------------------------------
@@ -258,6 +376,24 @@ def test_render_summary_lists_unavailable_cells(tmp_path: Path) -> None:
     summary = render_summary(report)
     assert "a-1" in summary.split("## unavailable")[1]
     assert "a-2" not in summary.split("## unavailable")[1]
+
+
+def test_render_summary_excludes_unavailable_cells_from_the_pass_denominator() -> None:
+    """An `unavailable` cell measured nothing: it must not inflate either
+    side of a (task, arm) pass fraction, and the count excluded must be
+    stated (I3)."""
+    from satyrn_evals.line_grade import LineGradeReport, LineGradeRow
+
+    rows = (
+        LineGradeRow("a-1", "taskA", "baseline", "OK", "pass", None, None, "pass", "final"),
+        LineGradeRow("a-2", "taskA", "baseline", "OK", None, None, None, "unavailable", "final", "boom"),
+    )
+    report = LineGradeReport(night="/n", rows=rows)
+    summary = render_summary(report)
+    assert "| taskA | baseline | 1/1 |" in summary
+    assert "1/2" not in summary
+    # The per-(task, arm) exclusion count is stated, not just the attempt list:
+    assert "1" in summary.split("| taskA | baseline |")[1].split("\n")[0]
 
 
 def test_render_summary_with_no_unavailable_cells_says_so() -> None:

@@ -35,9 +35,15 @@ import subprocess
 import sys
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
+from enum import Enum, auto
 from pathlib import Path
 
-from satyrn_evals.attempt_record import AttemptRecord, load_attempt_record
+from satyrn_evals.attempt_record import (
+    AttemptCode,
+    AttemptRecord,
+    DeadlinePhase,
+    load_attempt_record,
+)
 from satyrn_evals.errors import UsageError
 from satyrn_evals.launch import read_slots
 from satyrn_evals.run_record import RunRecord, record_arms
@@ -133,6 +139,88 @@ class LineGradeRow:
         return asdict(self)
 
 
+class _NeverCrossedRule(Enum):
+    """How a never-crossed cell's ``line_verdict`` is derived from its
+    ``AttemptCode``. Never a silent default (I3): every rule is named."""
+
+    #: OK: the record's own pass/fail verdict; any other verdict (e.g. a
+    #: receipt that itself came back UNAVAILABLE) falls back to "not-pass".
+    MODEL_VERDICT = auto()
+    #: The model's own outcome, with no patch to grade -- never infrastructure.
+    NOT_PASS = auto()
+    #: The cell measured nothing about the model: excluded from the pass
+    #: denominator, reported separately, never scored as a model outcome.
+    UNAVAILABLE = auto()
+    #: DEADLINE_EXCEEDED: the command phase is the model's own stop (like
+    #: COMMAND_TIMEOUT); every other phase is the harness's own overhead.
+    DEADLINE = auto()
+    #: BUDGET_EXCEEDED: cannot coexist with "never crossed" once a line is
+    #: declared for this run -- the line budget is strictly below the
+    #: attempt budget (`run_record.load_run_record`), so the line must trip
+    #: first. A record shaped this way is broken, not merely unlucky.
+    BUDGET = auto()
+
+
+#: Every `AttemptCode` member, classified for the "never crossed the
+#: declared line" case (`grade_cell`'s ``final`` branch). Pinned by
+#: ``test_every_attempt_code_is_classified_for_the_never_crossed_case``:
+#: a new code with no entry here is a bug, not a silent "not-pass"
+#: (AGENTS.md: infrastructure stops, model outcomes never do).
+_NEVER_CROSSED_RULES: dict[AttemptCode, _NeverCrossedRule] = {
+    AttemptCode.OK: _NeverCrossedRule.MODEL_VERDICT,
+    AttemptCode.NO_PATCH: _NeverCrossedRule.NOT_PASS,
+    AttemptCode.COMMAND_TIMEOUT: _NeverCrossedRule.NOT_PASS,
+    AttemptCode.REPEAT_LIMIT: _NeverCrossedRule.NOT_PASS,
+    AttemptCode.BUDGET_EXCEEDED: _NeverCrossedRule.BUDGET,
+    AttemptCode.PATCH_INVALID: _NeverCrossedRule.UNAVAILABLE,
+    AttemptCode.TRANSCRIPT_MISSING: _NeverCrossedRule.UNAVAILABLE,
+    AttemptCode.TRANSCRIPT_EMPTY: _NeverCrossedRule.UNAVAILABLE,
+    AttemptCode.WORKSPACE_FAILED: _NeverCrossedRule.UNAVAILABLE,
+    AttemptCode.MODEL_ERROR: _NeverCrossedRule.UNAVAILABLE,
+    AttemptCode.CLEANUP_FAILED: _NeverCrossedRule.UNAVAILABLE,
+    AttemptCode.GRADE_FAILED: _NeverCrossedRule.UNAVAILABLE,
+    AttemptCode.DEADLINE_EXCEEDED: _NeverCrossedRule.DEADLINE,
+}
+
+
+def _never_crossed_verdict(
+    code: AttemptCode,
+    verdict: Verdict | None,
+    deadline_phase: DeadlinePhase | None,
+    *,
+    line_declared: bool,
+    name: str,
+) -> str:
+    """The ``line_verdict`` for a cell that never crossed the declared line.
+
+    Raises rather than guessing when ``code`` is not in ``_NEVER_CROSSED_RULES``
+    (a new, unclassified ``AttemptCode``) or when the shape is a contradiction
+    (``BUDGET_EXCEEDED`` with a declared line that was somehow never crossed).
+    """
+    rule = _NEVER_CROSSED_RULES.get(code)
+    if rule is None:
+        raise UsageError(
+            f"grade-line: cell {name} has attempt code {code} -- "
+            "the never-crossed table does not classify it"
+        )
+    if rule is _NeverCrossedRule.MODEL_VERDICT:
+        return verdict.value if verdict in (Verdict.PASS, Verdict.FAIL) else "not-pass"
+    if rule is _NeverCrossedRule.NOT_PASS:
+        return "not-pass"
+    if rule is _NeverCrossedRule.UNAVAILABLE:
+        return "unavailable"
+    if rule is _NeverCrossedRule.DEADLINE:
+        return "not-pass" if deadline_phase is DeadlinePhase.COMMAND else "unavailable"
+    # rule is _NeverCrossedRule.BUDGET
+    if line_declared:
+        raise UsageError(
+            f"grade-line: cell {name} never crossed the declared line but ended "
+            "BUDGET_EXCEEDED -- the line budget is strictly below the attempt "
+            "budget, so the line must trip first; this record is broken"
+        )
+    return "not-pass"
+
+
 def grade_cell(
     record: AttemptRecord,
     *,
@@ -141,12 +229,18 @@ def grade_cell(
     grade_root: Path,
     cache: GradeCache,
     grader: Grader = grade_offline,
+    line_declared: bool = False,
 ) -> LineGradeRow:
     """One cell's row: the tripped verdict (if it tripped) and the new
     ``line_verdict``/``line_source``, following the rule set in the design:
 
-    - never crossed the line -> the cell's final verdict (pass/fail), or
-      ``not-pass`` when it was refused with none; ``line_source: "final"``.
+    - never crossed the line -> ``_never_crossed_verdict`` classifies the
+      cell's own ``AttemptCode`` explicitly (the model's final verdict, a
+      model-side ``not-pass``, or an infrastructure ``unavailable`` --
+      never guessed); ``line_source: "final"``. ``line_declared`` names
+      whether this run declared a line at all, for the one code
+      (``BUDGET_EXCEEDED``) that cannot coexist with "never crossed" once
+      it has.
     - crossed the line -> grade ``line.diff`` offline; ``not-pass`` when the
       harvest wrote nothing (empty patch); ``line_source: "harvested"``.
     - a harvest error -> ``unavailable``, ``line_source: "harvested"``.
@@ -164,8 +258,9 @@ def grade_cell(
 
     if record.line_crossed is None:
         line_source = "final"
-        line_verdict = (
-            record.verdict.value if record.verdict in (Verdict.PASS, Verdict.FAIL) else "not-pass"
+        deadline_phase = record.deadline.phase if record.deadline is not None else None
+        line_verdict = _never_crossed_verdict(
+            record.code, record.verdict, deadline_phase, line_declared=line_declared, name=name
         )
     else:
         line_source = "harvested"
@@ -226,6 +321,7 @@ def grade_night(
         grader = make_grader(tasks_root)
     finished = read_slots(night)
     known_arms = set(record_arms(record))
+    line_declared = record.line_token_budget is not None
     cache: GradeCache = {}
     rows: list[LineGradeRow] = []
     for _index, slot in sorted(finished.items()):
@@ -238,7 +334,8 @@ def grade_night(
         attempt_record = load_attempt_record(cell_dir / "attempt.json")
         rows.append(
             grade_cell(
-                attempt_record, cell_dir=cell_dir, arm=arm, grade_root=grade_root, cache=cache, grader=grader
+                attempt_record, cell_dir=cell_dir, arm=arm, grade_root=grade_root, cache=cache,
+                grader=grader, line_declared=line_declared,
             )
         )
     return LineGradeReport(night=os.fspath(night), rows=tuple(rows))
@@ -247,20 +344,35 @@ def grade_night(
 def render_summary(report: LineGradeReport) -> str:
     """Per-(task, arm) ``line_verdict == "pass"`` counts with denominators,
     never pooled, plus the cells whose harvested line verdict is
-    ``unavailable``."""
+    ``unavailable``.
+
+    An ``unavailable`` cell measured nothing about the model (I3): it is
+    excluded from both sides of the pass fraction, and the number excluded
+    is stated per (task, arm) -- not left implicit in the attempt list below.
+    """
     counts: dict[tuple[str, str], list[int]] = {}
+    excluded: dict[tuple[str, str], int] = {}
     unavailable: list[str] = []
     for row in report.rows:
         key = (row.task, row.arm)
+        if row.line_verdict == "unavailable":
+            excluded[key] = excluded.get(key, 0) + 1
+            unavailable.append(row.attempt)
+            continue
         entry = counts.setdefault(key, [0, 0])
         entry[1] += 1
         if row.line_verdict == "pass":
             entry[0] += 1
-        if row.line_verdict == "unavailable":
-            unavailable.append(row.attempt)
-    lines = [f"# grade-line: {report.night}", "", "| task | arm | line pass |", "| --- | --- | --- |"]
-    for (task, arm), (passed, total) in sorted(counts.items()):
-        lines.append(f"| {task} | {arm} | {passed}/{total} |")
+    lines = [
+        f"# grade-line: {report.night}",
+        "",
+        "| task | arm | line pass | excluded (unavailable) |",
+        "| --- | --- | --- | --- |",
+    ]
+    for key in sorted(set(counts) | set(excluded)):
+        task, arm = key
+        passed, total = counts.get(key, [0, 0])
+        lines.append(f"| {task} | {arm} | {passed}/{total} | {excluded.get(key, 0)} |")
     lines.append("")
     lines.append("## unavailable")
     if unavailable:
