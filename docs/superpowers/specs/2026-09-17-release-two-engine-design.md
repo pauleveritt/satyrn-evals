@@ -184,6 +184,34 @@ Go criterion for the comparison: the steer fires in 3 of 4 own-green cells
 and the model stops within three turns in 2 of those 3; a resume produces a
 tool call in 2 of 3. Below that, the design returns here.
 
+### 7a. What three route proofs found, and two rulings (2026-09-19)
+
+Reported beside one another, never pooled, all excluded from every
+denominator. The 2026-09-18 night is void (the Engine's self-test could not go
+green on the task tree). The second night, at engine `2cccef1`: the steer fired
+at own-green in 4 of 4 claim-task cells and every resume produced a tool call
+(4 of 4); counted from the first steer, as pre-registered, 1 of 4 cells stopped
+within three turns, so the go criterion is not met; counted from the last
+steer, 3 of 4. The work after the steer was lint cleanup on trees that already
+passed the hidden suite. All four final trees pass; three held a pass state
+inside the line. Three clean stops were discarded by a pipe defect, fixed and
+confirmed live at `0a6e5df` (two cells, both candidate-created, both pass,
+receipts exact). Own-green arrives late: 28,499 to 47,559 output tokens.
+
+Maintainer's rulings, verbatim in the ledger: **the steer stays a nudge with
+sharper text** (engine `78ab87d` adds `just` recipes, removing unused code,
+tidying or refactoring, and a final check to the forbidden list, and the
+sentence "Editing a passing tree can only break it."); and **the line is
+measured directly**: a record declares `line_token_budget` and
+`line_turn_budget`, the harness harvests the patch when a cell first crosses
+either, without disturbing the cell, and `satyrn-evals grade-line` grades it
+offline. `line_verdict` grades the raw tree at the crossing on both arms; an
+Engine cell's final verdict grades its delivered candidate, whose carried
+tests the Engine restores. The per-arm line pass count is always read with its
+exclusion column, and a pilot sizes the exclusion rate before any deciding
+night. The transcript replay stays a secondary: it drops bash-made source
+changes (11 of 45 census cells).
+
 ## 8. The comparison, sized at the R0 sitting
 
 Inputs from the census: Baseline within the line 1 of 9 on run-record-gate
