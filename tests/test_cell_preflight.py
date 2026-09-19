@@ -20,6 +20,7 @@ from satyrn_evals.cell_preflight import (
 )
 from satyrn_evals.cli import main
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
+from satyrn_evals.task_selftest import TaskSelfTest
 
 CELL_UID = 560
 REPO = Path(__file__).resolve().parent.parent
@@ -260,6 +261,13 @@ def _no_model_server_problems(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
+def _clean_self_tests(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The task and Engine self-tests have their own fake-first tests in
+    test_task_selftest.py; here they are clean, so `--preflight` spawns nothing."""
+    monkeypatch.setattr(cli_module, "task_self_test", lambda task_dir, manifest: TaskSelfTest([], {}))
+    monkeypatch.setattr(cli_module, "engine_self_test", lambda *a, **k: TaskSelfTest([], {}))
+
+
 def test_preflight_passes_a_clean_cell_and_prints_the_report(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -271,6 +279,7 @@ def test_preflight_passes_a_clean_cell_and_prints_the_report(
 
     monkeypatch.setattr(cli_module, "preflight_cell", clean)
     _no_model_server_problems(monkeypatch)
+    _clean_self_tests(monkeypatch)
     assert main(["launch", "--preflight", _record(tmp_path), "--arm", str(ARM), "--no-hunt"]) == 0
     assert json.loads(capsys.readouterr().out)["problems"] == []
     assert seen["pinned_pi"] == "0.85.1" and seen["hunt_root"] is None
@@ -280,6 +289,7 @@ def test_preflight_fails_on_a_cell_problem_or_the_test_path_seam(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     _no_model_server_problems(monkeypatch)
+    _clean_self_tests(monkeypatch)
     monkeypatch.setattr(cli_module, "preflight_cell", lambda **kw: CellPreflight(["the cell can read /x"], {}))
     assert main(["launch", "--preflight", _record(tmp_path), "--arm", str(ARM)]) == 1
     assert "launch preflight FAILED: the cell can read /x" in capsys.readouterr().err
@@ -299,6 +309,7 @@ def test_preflight_for_the_engine_arm_checks_its_export(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     _no_model_server_problems(monkeypatch)
+    _clean_self_tests(monkeypatch)
     monkeypatch.setattr(cli_module, "preflight_cell", lambda **kw: CellPreflight([], {"pi_version": "0.85.1"}))
     record = _record(tmp_path, arm="engine", purpose="route-proof")
     monkeypatch.setattr(cli_module, "arm_export_problems", lambda arm: [])

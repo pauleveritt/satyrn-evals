@@ -285,3 +285,30 @@ def test_the_ledger_keeps_every_sitting_and_refuses_another_record(tmp_path: Pat
     assert ledger["status"] == "complete" and [s["slot"] for s in ledger["slots"]] == [0, 1, 2, 3]
     with pytest.raises(UsageError, match="belongs to another record"):
         check_night(tmp_path, {**identity, "record_sha256": "2" * 64})
+
+
+def test_the_ledger_refuses_a_resume_when_the_arm_digest_changed(tmp_path: Path) -> None:
+    """The 2026-09-18 harness finding: the launcher resumed a completed night and
+    reported complete while the arm had been re-pinned underneath it. The arm file's
+    bytes are part of the night's identity, so a changed arm refuses the resume."""
+    identity = {"record_sha256": "1" * 64, "arm_sha256": {"engine": "a" * 64}}
+    clock = Clock()
+    done = _launch(tmp_path, Spawner(tmp_path, clock), clock, k=2)
+    write_ledger(tmp_path, identity=identity, sitting={"started": "s1", "k": 2}, outcome=done)
+    check_night(tmp_path, identity)
+    with pytest.raises(UsageError, match="arm_sha256"):
+        check_night(tmp_path, {**identity, "arm_sha256": {"engine": "b" * 64}})
+
+
+def test_a_resume_that_runs_no_cell_appends_no_sitting(tmp_path: Path) -> None:
+    """A re-run whose slots are all finished runs zero cells; it must not append a
+    sitting, or a no-op resume reads as a new launch and can hide a mixed-arm one."""
+    identity = {"record_sha256": "1" * 64, "arm_sha256": {"engine": "a" * 64}}
+    clock = Clock()
+    done = _launch(tmp_path, Spawner(tmp_path, clock), clock, k=2)
+    write_ledger(tmp_path, identity=identity, sitting={"started": "s1", "k": 2}, outcome=done)
+    noop = _launch(tmp_path, Spawner(tmp_path, clock), clock, k=2)
+    assert noop.finished == [] and noop.replaced == []
+    write_ledger(tmp_path, identity=identity, sitting={"started": "s2", "k": 2}, outcome=noop)
+    ledger = json.loads((tmp_path / LEDGER_NAME).read_text())
+    assert [s["started"] for s in ledger["sittings"]] == ["s1"]

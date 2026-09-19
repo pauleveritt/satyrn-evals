@@ -390,7 +390,13 @@ def launch_record(
         return 1
 
     night = runs_root / record_path.stem
-    identity = {"record_sha256": _sha256(record_path)}
+    identity = {
+        "record_sha256": _sha256(record_path),
+        # The arm files' bytes are part of the night's identity: a resume whose
+        # arm was re-pinned must refuse, or a partly finished night would mix
+        # cells from two engines under one record with no warning.
+        "arm_sha256": {name: _sha256(path) for name, (path, _) in arms.items()},
+    }
     check_night(night, identity)
     pinned = {record_path: identity["record_sha256"], **{path: _sha256(path) for path, _ in arms.values()}}
     tree = record.task_tree_sha256

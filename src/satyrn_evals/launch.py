@@ -155,7 +155,14 @@ def write_atomically(path: Path, body: dict[str, object]) -> None:
 
 
 def write_ledger(night: Path, *, identity: dict, sitting: dict, outcome: LaunchOutcome) -> None:
-    """Append this sitting to ``launch.json`` and restate the slots every sitting has finished."""
+    """Append this sitting to ``launch.json`` and restate the slots every sitting has finished.
+
+    A resume that runs no cell -- every slot already finished, nothing replaced
+    -- is not a sitting: appending one would make a no-op re-run read as a new
+    launch and, on a partly finished night, could hide a mixed-arm resume.
+    """
+    if outcome.status is Status.COMPLETE and not outcome.finished and not outcome.replaced:
+        return
     path = night / LEDGER_NAME
     ledger = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {**identity, "sittings": [], "replaced": []}
     ledger["sittings"].append({**sitting, "ended": _now(), "status": outcome.status, "reason": outcome.reason})

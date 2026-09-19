@@ -9,13 +9,13 @@ import sys
 from pathlib import Path
 
 from satyrn_evals.arms import load_arm
-from satyrn_evals.attempt import attempt
+from satyrn_evals.attempt import attempt, resolve_contract
 from satyrn_evals.attempt_record import AttemptCode, AttemptOutcome
 from satyrn_evals.budget import AttemptBudget
 from satyrn_evals.capture import capture
 from satyrn_evals.capture_record import CaptureOutcome
 from satyrn_evals.cell import CELL_PATH_PREFIX_ENV, Isolation
-from satyrn_evals.cell_engine import arm_export_problems, export_engine
+from satyrn_evals.cell_engine import arm_export, arm_export_problems, export_engine
 from satyrn_evals.cell_preflight import preflight_cell
 from satyrn_evals.census import build_arg_parser as build_census_parser
 from satyrn_evals.census import run_cli as run_census
@@ -26,7 +26,7 @@ from satyrn_evals.launch_record import (
     launch_record,
     model_server_checks,
 )
-from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, resolve_task
+from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, load_manifest, resolve_task
 from satyrn_evals.qualify import qualify
 from satyrn_evals.rescore import regrade_attempt, summarize_output
 from satyrn_evals.run import run
@@ -47,6 +47,7 @@ from satyrn_evals.session import run_session
 from satyrn_evals.session_grader import SessionGrader
 from satyrn_evals.session_manifest import DEFAULT_SESSION_SPEC
 from satyrn_evals.session_record import SessionCode
+from satyrn_evals.task_selftest import engine_self_test, task_self_test
 from satyrn_evals.verdict import Verdict
 from satyrn_evals.workspace import DEFAULT_TIMEOUT
 
@@ -306,6 +307,25 @@ def _launch_preflight(args: argparse.Namespace) -> int:
     )
     problems = [*report.problems, *arm_export_problems(arm)]
     checked: dict[str, object] = dict(report.checked)
+    # The task's own self-test, and the Engine's derived self-test, on the base
+    # and the known-good state: the check the void night lacked, run here so the
+    # operator can preflight every record before the night (this path does not
+    # gate the record's chain, so all three records can be checked up front).
+    task_dir = resolve_task(record.task, tasks_root=tasks_root)
+    manifest = load_manifest(task_dir)
+    _, contract_text = resolve_contract(manifest, record.rung)
+    task_check = task_self_test(task_dir, manifest)
+    problems += [f"task self-test: {problem}" for problem in task_check.problems]
+    checked["task_self_test"] = task_check.checked
+    export = arm_export(arm)
+    if export is not None:
+        engine_check = engine_self_test(
+            task_dir, manifest,
+            engine=("uv", "run", "--no-sync", "--project", os.fspath(export), "satyrn-engine"),
+            request=contract_text, token_budget=record.token_budget, turn_budget=record.turn_budget,
+        )
+        problems += [f"engine self-test: {problem}" for problem in engine_check.problems]
+        checked["engine_self_test"] = engine_check.checked
     if not os.environ.get(CELL_PATH_PREFIX_ENV):
         # Same check, same skip rule as `launch_record`'s: a real preflight run
         # never carries the test PATH seam (flagged just below when it does),

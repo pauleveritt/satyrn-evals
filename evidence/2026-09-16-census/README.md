@@ -155,6 +155,12 @@ Harm is zero in all 39 cells. The night-2 design's first draft said "5 of
   produced a tool call (a thin denominator); both docs-linter cells passed inside 32,000 tokens
   against Baseline's 1 of 6 (n = 2, a hint at most). A second route proof on the fixed harness is
   reported beside this one.
+- **The second route proof is excluded from every comparison denominator too,** at engine
+  `2cccef1`, on the same three claim tasks and the same budgets:
+  `records/2026-09-19-route-proof-engine-selfhost-run-record-gate.json` (n = 2),
+  `…-selfhost-docs-linter.json` (n = 2) and `…-selfhost-cell-loop.json` (n = 3), `--purpose
+  route-proof`, read for behaviour only. It is **reported beside the void 2026-09-18 night above,
+  never in its place**, and the row above is unchanged.
 
 ## Recompute
 

@@ -214,13 +214,13 @@ def test_a_cut_census_task_carries_no_authored_disclosure() -> None:
         assert "authored" not in (body.get("generator") or {})
 
 
-# The three route-proof records (2026-09-17-release-two-engine.md, operator section;
-# progress.md, "Operator: route-proof record 1 frozen"). All three are frozen in the
-# tree now, so the first guard below binds on them rather than skipping. The shape
-# was fixed before any file landed, so it cannot drift between the ledger and what
-# shipped. Each launched record leaves a `.result.json` beside it; the second guard
-# excludes that companion from the "no fourth record" check and the third pins it to
-# one of the three records.
+# The route-proof records. Two nights: the void 2026-09-18 night (records dated
+# 2026-09-17) and the second proof (records dated 2026-09-19, engine 2cccef1).
+# The void night is excluded from every denominator and reported beside the
+# second; the second is excluded the same way. The shape was fixed before any
+# file landed, so it cannot drift between the ledger and what shipped. Each
+# launched record leaves a `.result.json` beside it; the exclusion test drops
+# that companion and the result test pins it to one of the records.
 ROUTE_PROOF_N = {
     "records/2026-09-17-route-proof-engine-selfhost-run-record-gate.json": 2,
     "records/2026-09-17-route-proof-engine-selfhost-docs-linter.json": 2,
@@ -231,77 +231,91 @@ ROUTE_PROOF_AUTHORITY = (
     "2026-09-17-release-two-engine-design.md section 7 on 2026-09-17; these cells are "
     "read for behaviour only and are excluded from every comparison denominator"
 )
+ROUTE_PROOF_2_N = {
+    "records/2026-09-19-route-proof-engine-selfhost-run-record-gate.json": 2,
+    "records/2026-09-19-route-proof-engine-selfhost-docs-linter.json": 2,
+    "records/2026-09-19-route-proof-engine-selfhost-cell-loop.json": 3,
+}
+ROUTE_PROOF_2_AUTHORITY = (
+    "maintainer: the second route proof, engine 2cccef1, on the claim tasks, approved "
+    "2026-09-18; these cells are read for behaviour only and are excluded from every "
+    "comparison denominator, and are reported beside the void 2026-09-18 night"
+)
+ROUTE_PROOF_NIGHTS: dict[str, dict[str, int]] = {
+    "2026-09-17": ROUTE_PROOF_N,
+    "2026-09-19": ROUTE_PROOF_2_N,
+}
+ROUTE_PROOF_AUTHORITIES = {
+    "2026-09-17": ROUTE_PROOF_AUTHORITY,
+    "2026-09-19": ROUTE_PROOF_2_AUTHORITY,
+}
 ROUTE_PROOF_DECISION_RULE = (
     "section 7 go criterion, behaviour only, no outcome: the steer fires in 3 of 4 "
     "own-green cells and the model stops within three turns in 2 of those 3; a resume "
     "produces a tool call in 2 of 3. Below that, the design returns to the maintainer."
 )
+_ALL_ROUTE_PROOF_RECORDS = {
+    path for expected in ROUTE_PROOF_NIGHTS.values() for path in expected
+}
 
 
 def test_a_route_proof_record_would_carry_the_designs_parameters_when_frozen() -> None:
-    """PRE-REGISTRATION, not a pass: as of this commit none of the three route-proof
-    records exists (ledger: "issued, checked, and deliberately NOT committed" -- the
-    operator ran `record new` and `launch --preflight`/`--check` on all three, then
-    removed the files, leaving the tree clean, because the chain and the sequencing
-    decision are not this dispatch's to freeze). A reader must not mistake the
-    `pytest.skip` below for a pass: it means the guard has nothing to check yet, not
-    that the records are correct. The moment the operator commits any of the three,
-    this test binds on it and checks the whole frozen shape section 7 and Ruling 11
-    fix: task, rung, arm, n, k, purpose, isolation, mode, the budgets, the backstop
-    arithmetic, and the two exclusion markers (authority, decision_rule)."""
-    existing = [path for path in ROUTE_PROOF_N if (ROOT / path).is_file()]
-    if not existing:
-        pytest.skip(
-            "no route-proof record is committed yet (pre-registered guard; this is "
-            "not a pass -- see progress.md, 'issued, checked, and deliberately NOT "
-            "committed')"
-        )
-    for path in existing:
-        record = json.loads((ROOT / path).read_text())
-        task = Path(path).stem.removeprefix("2026-09-17-route-proof-engine-")
-        assert record["task"] == task
-        assert record["rung"] == "R1-plan"
-        assert record["arm"] == "engine"
-        assert record["n"] == ROUTE_PROOF_N[path]
-        assert record["k"] == 3
-        assert record["purpose"] == "route-proof"
-        assert record["isolation"] == "isolated"
-        assert record["mode"] == "batch"
-        assert record["max_minutes"] == 120
-        assert record["command_backstop_s"] == 4_800
-        assert record["command_backstop_s"] + 300 <= record["max_minutes"] * 60
-        assert record["token_budget"] == 48_000
-        assert record["turn_budget"] == 72
-        assert "2026-09-17-release-two-engine-design.md" in record["authority"]
-        assert "approved" in record["authority"] and "2026-09-17" in record["authority"]
-        assert "excluded from every comparison denominator" in record["authority"]
-        assert record["authority"] == ROUTE_PROOF_AUTHORITY
-        assert "section 7" in record["decision_rule"] or "§7" in record["decision_rule"]
-        assert "behaviour only" in record["decision_rule"] and "no outcome" in record["decision_rule"]
-        assert record["decision_rule"] == ROUTE_PROOF_DECISION_RULE
+    """Both nights' records bind on the same frozen shape: task, rung, arm, n, k,
+    purpose, isolation, mode, the budgets, the backstop arithmetic, and the two
+    exclusion markers (authority, decision_rule). The authority differs per night
+    and is pinned exactly. This is not vacuous while a night has no record: the
+    exclusion test below is unconditional."""
+    existing = {
+        date: [path for path in expected if (ROOT / path).is_file()]
+        for date, expected in ROUTE_PROOF_NIGHTS.items()
+    }
+    if not any(existing.values()):
+        pytest.skip("no route-proof record is committed yet (pre-registered guard; this is not a pass)")
+    for date, paths in existing.items():
+        for path in paths:
+            record = json.loads((ROOT / path).read_text())
+            task = Path(path).stem.removeprefix(f"{date}-route-proof-engine-")
+            assert record["task"] == task
+            assert record["rung"] == "R1-plan"
+            assert record["arm"] == "engine"
+            assert record["n"] == ROUTE_PROOF_NIGHTS[date][path]
+            assert record["k"] == 3
+            assert record["purpose"] == "route-proof"
+            assert record["isolation"] == "isolated"
+            assert record["mode"] == "batch"
+            assert record["max_minutes"] == 120
+            assert record["command_backstop_s"] == 4_800
+            assert record["command_backstop_s"] + 300 <= record["max_minutes"] * 60
+            assert record["token_budget"] == 48_000
+            assert record["turn_budget"] == 72
+            assert record["authority"] == ROUTE_PROOF_AUTHORITIES[date]
+            assert "excluded from every comparison denominator" in record["authority"]
+            assert "section 7" in record["decision_rule"] or "§7" in record["decision_rule"]
+            assert "behaviour only" in record["decision_rule"] and "no outcome" in record["decision_rule"]
+            assert record["decision_rule"] == ROUTE_PROOF_DECISION_RULE
 
 
-def test_no_route_proof_record_exists_outside_the_three_named_paths() -> None:
-    """NOT conditional -- this is the half of the guard that is live today, and the
-    reason the guard above is not vacuous in the meantime: a fourth record, a
-    misnamed one, or a stray `route-proof` file is caught the moment it lands, before
-    any of the three expected records exists.
+def test_no_route_proof_record_exists_outside_the_named_paths() -> None:
+    """NOT conditional -- a fourth record, a misnamed one, or a stray `route-proof`
+    file is caught the moment it lands, on either night.
 
     A launched record leaves its `.result.json` beside it; that companion is a
     result, not a fourth record, so it is excluded here and pinned by its own
     sibling below."""
     found = {
         f"records/{p.name}"
-        for p in RECORDS.glob("2026-09-17-route-proof-engine-*.json")
+        for date in ROUTE_PROOF_NIGHTS
+        for p in RECORDS.glob(f"{date}-route-proof-engine-*.json")
         if not p.name.endswith(".result.json")
     }
-    assert found <= set(ROUTE_PROOF_N)
+    assert found <= _ALL_ROUTE_PROOF_RECORDS
 
 
 def test_every_route_proof_result_belongs_to_one_of_the_named_records() -> None:
     """The sibling of the exclusion above: a result file is not silently ignored --
-    it must be the result of exactly one of the three pre-registered records, so a
+    it must be the result of one of the pre-registered records, on either night, so a
     stray or misnamed result is still caught."""
-    for result in RECORDS.glob("2026-09-17-route-proof-engine-*.result.json"):
-        record = result.with_name(result.name.removesuffix(".result.json") + ".json")
-        assert f"records/{record.name}" in ROUTE_PROOF_N
+    for date in ROUTE_PROOF_NIGHTS:
+        for result in RECORDS.glob(f"{date}-route-proof-engine-*.result.json"):
+            record = result.with_name(result.name.removesuffix(".result.json") + ".json")
+            assert f"records/{record.name}" in _ALL_ROUTE_PROOF_RECORDS
