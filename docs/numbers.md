@@ -114,8 +114,17 @@ stopping. It is a nudge by design; release one's cell 511653 fixed its last
 failing case five turns after its own suite went green.
 
 **Pass state at the 32,000-token / 48-turn line, harvested** (secondary; the
-raw tree at the crossing on both arms, read with its exclusion column):
-PENDING — filled from `satyrn-evals grade-line` when the grading finishes.
+raw tree at the crossing on both arms, or the final verdict for a cell that
+never crossed; always read with its exclusion column):
+
+| task | Baseline, passing at the line | excluded | Engine | excluded |
+|---|---|---|---|---|
+| run-record-gate, parts A and B | 16 of 18 | 6 | 22 of 24 | 0 |
+| docs-linter | 11 of 12 | 0 | 9 of 11 | 1 |
+
+Both arms mostly hold a passing tree at the line; this reading cannot show a
+finishing remedy working and is not the claim. The excluded cells are trees
+the grader refuses for a stray non-source file, six of seven on Baseline.
 
 ## Disclosures
 
