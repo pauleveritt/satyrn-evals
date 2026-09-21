@@ -79,3 +79,22 @@ def test_check_manifest_names_a_missing_file(tmp_path: Path) -> None:
 def test_check_manifest_names_a_commit_mismatch(tmp_path: Path) -> None:
     out = _synced(tmp_path)
     assert any("engine_commit" in problem for problem in check_manifest(out, "b" * 40))
+
+
+def test_check_manifest_names_a_missing_manifest(tmp_path: Path) -> None:
+    out = tmp_path / "_engine"
+    out.mkdir()
+    problems = check_manifest(out, "a" * 40)
+    assert len(problems) == 1
+    assert "manifest" in problems[0]
+
+
+def test_check_manifest_names_a_wrong_file_set(tmp_path: Path) -> None:
+    out = _synced(tmp_path)
+    manifest = json.loads((out / "manifest.json").read_text())
+    manifest["files"]["extra.md"] = manifest["files"].pop("usage.md")
+    (out / "manifest.json").write_text(json.dumps(manifest))
+    problems = check_manifest(out, "a" * 40)
+    assert len(problems) == 1
+    assert "extra.md" in problems[0]
+    assert "usage.md" in problems[0]
