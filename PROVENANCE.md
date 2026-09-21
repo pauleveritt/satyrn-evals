@@ -8519,3 +8519,4 @@
 | src/satyrn_evals/sensitivity_grade.py | created in release-one |
 | tests/test_sensitivity_grade.py | created in release-one |
 | docs/numbers.md | created in release-one |
+| docs/superpowers/specs/2026-09-21-docs-site-design.md | created in release-one |
