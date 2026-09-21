@@ -8530,3 +8530,4 @@
 | docs/superpowers/plans/2026-09-21-workspace-seam.md | created in release-one |
 | tools/engine_sync.py | created in release-one |
 | tests/test_engine_sync.py | created in release-one |
+| tests/integration/test_engine_sync.py | created in release-one |

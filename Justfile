@@ -19,6 +19,14 @@ docs:
 docs-serve:
     uv run --group docs zensical serve
 
+# Fetch satyrn-engine at the commit the Engine arm pins, into ../satyrn-engine.
+fetch-engine:
+    uv run python -m tools.engine_sync fetch
+
+# Sync the pinned engine's docs into the committed _engine/ copy and its provenance rows.
+sync-engine:
+    uv run python -m tools.engine_sync sync
+
 # The marked tier: real Git, task materialization, oracle execution. Not in CI.
 integration:
     uv run pytest -m integration -q
