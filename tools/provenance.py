@@ -49,6 +49,7 @@ def record_source(root: Path, source: str, paths: list[str]) -> None:
     Unlike ``record_imported``/``record_new``, this is idempotent: the sync
     runs on every re-pin, and a doubled row would be a lie about a single file.
     """
+    paths = list(dict.fromkeys(paths))
     for rel in paths:
         if not (root / rel).exists():
             raise FileNotFoundError(rel)
@@ -116,7 +117,11 @@ def main(argv: list[str]) -> int:
                 print(f"no provenance: {rel}")
             return 1 if missing else 0
         case _:
-            print("usage: provenance.py record --sha SHA PATH... | new PATH... | check", file=sys.stderr)
+            print(
+                "usage: provenance.py record --sha SHA PATH... | record --source SOURCE PATH... "
+                "| new PATH... | check",
+                file=sys.stderr,
+            )
             return 2
     return 0
 

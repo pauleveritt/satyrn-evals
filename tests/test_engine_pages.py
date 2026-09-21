@@ -7,6 +7,11 @@ from tools.engine_sync import MANIFEST_NAME
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "site"
 INCLUDE = re.compile(r'--8<--\s+"([^"]+)"')
+PAGE_INCLUDES = {
+    "engine.md": "_engine/README.md",
+    "engine-usage.md": "_engine/usage.md",
+    "engine-glossary.md": "_engine/glossary.md",
+}
 
 
 def _manifest() -> dict:
@@ -22,6 +27,12 @@ def test_every_engine_include_is_in_the_manifest() -> None:
         if target.startswith("_engine/")
     }
     assert targets == named
+
+
+def test_each_engine_page_includes_its_own_document() -> None:
+    for name, target in PAGE_INCLUDES.items():
+        targets = INCLUDE.findall((SITE / name).read_text())
+        assert target in targets, f"{name} should include {target}"
 
 
 def test_engine_pages_banner_names_the_manifest_commit() -> None:

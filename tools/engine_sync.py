@@ -13,6 +13,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -45,8 +46,8 @@ def load_arm(path: Path) -> Mapping:
 
 def engine_pin(arm: Mapping) -> str:
     pin = arm.get("pins", {}).get("engine_commit")
-    if not isinstance(pin, str) or not pin:
-        raise EngineSyncError("the arm pins no engine_commit")
+    if not isinstance(pin, str) or not re.fullmatch(r"[0-9a-f]{40}", pin):
+        raise EngineSyncError("the arm's engine_commit is not a 40-hex commit sha")
     return pin
 
 
@@ -73,9 +74,15 @@ def check_manifest(
 ) -> list[str]:
     manifest_path = engine_dir / MANIFEST_NAME
     try:
-        manifest = json.loads(manifest_path.read_text())
+        text = manifest_path.read_text()
     except OSError:
         return [f"no manifest at {manifest_path}"]
+    try:
+        manifest = json.loads(text)
+    except json.JSONDecodeError:
+        return [f"{manifest_path}: manifest is not valid JSON"]
+    if not isinstance(manifest, dict):
+        return [f"{manifest_path}: manifest is not an object"]
     problems: list[str] = []
     if manifest.get("engine_commit") != expected_commit:
         problems.append(
@@ -90,8 +97,16 @@ def check_manifest(
         problems.append(f"{manifest_path}: files are {sorted(files)}, expected {sorted(wanted)}")
     for dest, source in docs:
         entry = files.get(dest)
-        if not isinstance(entry, dict) or entry.get("source") != source:
+        if entry is None:
+            # An absent entry is already named by the wrong-file-set problem.
             continue
+        if not isinstance(entry, dict):
+            problems.append(f"{manifest_path}: {dest} has no source mapping, expected {source!r}")
+            continue
+        if entry.get("source") != source:
+            problems.append(
+                f"{manifest_path}: {dest} has source {entry.get('source')!r}, expected {source!r}"
+            )
         path = engine_dir / dest
         if not path.is_file():
             problems.append(f"{path} is missing")
@@ -112,10 +127,11 @@ def head_commit(engine_repo: Path) -> str:
 
 def fetch_engine(dest: Path, commit: str, *, repository: str = DEFAULT_ENGINE_URL) -> Path:
     if dest.exists():
-        if head_commit(dest) == commit:
+        actual = head_commit(dest)
+        if actual == commit:
             return dest
         raise EngineSyncError(
-            f"{dest} is at {head_commit(dest)}, not the pinned {commit}; remove it deliberately"
+            f"{dest} is at {actual}, not the pinned {commit}; remove it deliberately"
         )
     dest.parent.mkdir(parents=True, exist_ok=True)
     cloned = subprocess.run(
@@ -141,8 +157,9 @@ def sync_engine(
     repository: str = DEFAULT_ENGINE_URL,
     record_provenance: bool = True,
 ) -> dict:
-    if head_commit(engine_repo) != commit:
-        raise EngineSyncError(f"{engine_repo} is not at the pinned {commit}")
+    actual = head_commit(engine_repo)
+    if actual != commit:
+        raise EngineSyncError(f"{engine_repo} is at {actual}, not the pinned {commit}")
     manifest = build_manifest(engine_repo, commit, repository=repository)
     engine_dir.mkdir(parents=True, exist_ok=True)
     for dest, source in ENGINE_DOCS:
@@ -176,14 +193,16 @@ def _engine_repo(argument: str | None, root: Path) -> Path:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="engine_sync")
     sub = parser.add_subparsers(dest="command", required=True)
+    default_url = os.environ.get("SATYRN_ENGINE_URL", DEFAULT_ENGINE_URL)
     fetch = sub.add_parser("fetch", help="clone the pinned engine commit into a checkout")
     fetch.add_argument("--arm", default=os.fspath(DEFAULT_ARM))
     fetch.add_argument("--engine-repo", default=None)
-    fetch.add_argument("--url", default=DEFAULT_ENGINE_URL)
+    fetch.add_argument("--url", default=default_url)
     sync = sub.add_parser("sync", help="copy the pinned engine's docs into the committed _engine/ copy")
     sync.add_argument("--arm", default=os.fspath(DEFAULT_ARM))
     sync.add_argument("--engine-repo", default=None)
     sync.add_argument("--output", default=os.fspath(DEFAULT_OUTPUT))
+    sync.add_argument("--url", default=default_url)
     args = parser.parse_args(sys.argv[1:] if argv is None else argv)
     root = Path.cwd()
     try:
@@ -193,7 +212,7 @@ def main(argv: list[str] | None = None) -> int:
             fetch_engine(engine_repo, commit, repository=args.url)
             print(f"export SATYRN_ENGINE_REPO={engine_repo}")
             return 0
-        manifest = sync_engine(engine_repo, root / args.output, commit)
+        manifest = sync_engine(engine_repo, root / args.output, commit, repository=args.url)
         print(f"synced {len(manifest['files'])} engine docs at {commit} into {root / args.output}")
         return 0
     except EngineSyncError as exc:

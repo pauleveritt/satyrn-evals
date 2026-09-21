@@ -197,3 +197,9 @@ disagree about which engine they describe.
 5. **Site build without the engine.** Because the copy is committed, `just
    docs` never needs the engine; `just fetch-engine` is only for running evals
    or refreshing the copy.
+6. **The included engine text keeps its repo-relative links.** The verbatim
+   `_engine/README.md` links to `docs/glossary.md` and `LICENSE`, which do not
+   resolve on the site; its bytes are pinned and are not rewritten. The
+   page-level links added in section 7 (back to the numbers page, the engine
+   repository, and the glossary) are the remedy; rewriting included bytes is
+   out of scope.

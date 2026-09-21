@@ -34,6 +34,12 @@ def test_engine_pin_refuses_an_arm_without_a_pin() -> None:
         engine_pin({"pins": {}})
 
 
+def test_engine_pin_refuses_a_pin_that_is_not_a_commit_sha() -> None:
+    for pin in ("   ", "abc123", "z" * 40, "a" * 39):
+        with pytest.raises(EngineSyncError, match="engine_commit"):
+            engine_pin({"pins": {"engine_commit": pin}})
+
+
 def test_build_manifest_hashes_each_document(tmp_path: Path) -> None:
     manifest = build_manifest(_fake_engine(tmp_path / "engine"), "a" * 40)
     assert set(manifest["files"]) == {"README.md", "usage.md", "glossary.md"}
@@ -98,3 +104,32 @@ def test_check_manifest_names_a_wrong_file_set(tmp_path: Path) -> None:
     assert len(problems) == 1
     assert "extra.md" in problems[0]
     assert "usage.md" in problems[0]
+
+
+def test_check_manifest_names_a_wrong_source_and_still_checks_the_digest(tmp_path: Path) -> None:
+    out = _synced(tmp_path)
+    manifest = json.loads((out / "manifest.json").read_text())
+    manifest["files"]["usage.md"]["source"] = "docs/elsewhere.md"
+    (out / "manifest.json").write_text(json.dumps(manifest))
+    (out / "usage.md").write_text("tampered\n")
+    problems = check_manifest(out, "a" * 40)
+    assert any("source" in problem for problem in problems)
+    assert any("digest" in problem for problem in problems)
+
+
+def test_check_manifest_names_corrupt_json(tmp_path: Path) -> None:
+    out = tmp_path / "_engine"
+    out.mkdir()
+    (out / "manifest.json").write_text("{not json")
+    problems = check_manifest(out, "a" * 40)
+    assert len(problems) == 1
+    assert "JSON" in problems[0]
+
+
+def test_check_manifest_names_a_non_object_manifest(tmp_path: Path) -> None:
+    out = tmp_path / "_engine"
+    out.mkdir()
+    (out / "manifest.json").write_text(json.dumps(["not", "an", "object"]))
+    problems = check_manifest(out, "a" * 40)
+    assert len(problems) == 1
+    assert "object" in problems[0]
