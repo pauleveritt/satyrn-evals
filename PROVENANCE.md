@@ -8527,3 +8527,4 @@
 | site/lessons.md | created in release-one |
 | tests/test_docs_site.py | created in release-one |
 | docs/superpowers/specs/2026-09-21-workspace-seam-design.md | created in release-one |
+| docs/superpowers/plans/2026-09-21-workspace-seam.md | created in release-one |
