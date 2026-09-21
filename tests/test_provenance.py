@@ -92,3 +92,22 @@ def test_check_does_not_walk_claude_worktrees(tmp_path: Path) -> None:
     (root / ".claude" / "worktrees" / "release-one" / "src").mkdir(parents=True)
     (root / ".claude" / "worktrees" / "release-one" / "src" / "d.py").write_text("w = 4\n")
     assert check(root) == []
+
+
+def test_check_names_a_site_file_without_a_row(tmp_path: Path) -> None:
+    root = _tree(tmp_path)
+    record_imported(root, SHA, ["src/pkg/a.py"])
+    record_new(root, ["tools/b.py"])
+    (root / "site").mkdir()
+    (root / "site" / "index.md").write_text("# hi\n")
+    assert check(root) == ["site/index.md"]
+
+
+def test_check_does_not_name_a_site_file_once_recorded(tmp_path: Path) -> None:
+    root = _tree(tmp_path)
+    record_imported(root, SHA, ["src/pkg/a.py"])
+    record_new(root, ["tools/b.py"])
+    (root / "site").mkdir()
+    (root / "site" / "index.md").write_text("# hi\n")
+    record_new(root, ["site/index.md"])
+    assert check(root) == []

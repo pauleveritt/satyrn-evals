@@ -101,3 +101,24 @@ def test_twelve_results_passes(tmp_path: Path) -> None:
     for i in range(12):
         (root / f"docs/results/r{i}.md").write_text("```\nx\n```\n")
     assert check(root) == []
+
+
+def test_site_page_trailing_whitespace_fails(tmp_path: Path) -> None:
+    root = _docs(tmp_path)
+    (root / "site").mkdir()
+    (root / "site" / "index.md").write_text("a \nb\n")
+    assert check(root) == ["site/index.md:1: trailing whitespace"]
+
+
+def test_site_page_blank_last_line_fails(tmp_path: Path) -> None:
+    root = _docs(tmp_path)
+    (root / "site").mkdir()
+    (root / "site" / "index.md").write_text("a\n\n")
+    assert check(root) == ["site/index.md: blank line at EOF"]
+
+
+def test_a_clean_site_page_passes(tmp_path: Path) -> None:
+    root = _docs(tmp_path)
+    (root / "site").mkdir()
+    (root / "site" / "index.md").write_text("a\n")
+    assert check(root) == []

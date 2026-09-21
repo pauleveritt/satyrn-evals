@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 TAG = "pre-release-one-2026-09-13"
-TRACKED_DIRS = ("src", "tests", "scripts", "tools", "arms", "docs", "packages", ".github")
+TRACKED_DIRS = ("src", "tests", "scripts", "tools", "arms", "docs", "site", "packages", ".github")
 TRACKED_FILES = (".claude/settings.json",)
 TRACKED_ROOT_SUFFIXES = (".md", ".toml", ".py")
 TRACKED_ROOT_NAMES = ("Justfile", "LICENSE", ".gitignore", ".gitattributes")

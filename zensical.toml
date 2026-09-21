@@ -1,0 +1,17 @@
+[project]
+site_name = "Satyrn"
+docs_dir = "site"
+site_dir = "_build"
+nav = [
+  { "Home" = "index.md" },
+  { "The numbers" = "numbers.md" },
+  { "Release one — the stated negative" = "release-one-negative.md" },
+  { "Lessons" = "lessons.md" },
+]
+
+[project.markdown_extensions]
+pymdownx.snippets = {}
+
+[project.validation]
+invalid_links = true
+invalid_link_anchors = true

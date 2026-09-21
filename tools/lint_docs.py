@@ -22,7 +22,7 @@ def _lines(path: Path) -> list[str]:
 
 def _whitespace(root: Path) -> list[str]:
     failures: list[str] = []
-    paths = sorted({*root.glob("*.md"), *root.glob("docs/**/*.md")})
+    paths = sorted({*root.glob("*.md"), *root.glob("docs/**/*.md"), *root.glob("site/**/*.md")})
     for path in paths:
         if not path.is_file():
             continue

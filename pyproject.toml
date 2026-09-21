@@ -30,6 +30,9 @@ dev = [
     "ruff>=0.12.8",
     "pyrefly>=1.1.1",
 ]
+docs = [
+    "zensical==0.0.63",
+]
 
 [tool.pytest.ini_options]
 norecursedirs = [".claude", "src/satyrn_evals/tasks", "tests/data", "tests/integration/data"]
