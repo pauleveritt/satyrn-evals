@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 TAG = "pre-release-one-2026-09-13"
-TRACKED_DIRS = ("src", "tests", "scripts", "tools", "arms", "docs", "site", "packages", ".github")
+TRACKED_DIRS = ("src", "tests", "scripts", "tools", "arms", "docs", "site", "_engine", "packages", ".github")
 TRACKED_FILES = (".claude/settings.json",)
 TRACKED_ROOT_SUFFIXES = (".md", ".toml", ".py")
 TRACKED_ROOT_NAMES = ("Justfile", "LICENSE", ".gitignore", ".gitattributes")
@@ -41,6 +41,28 @@ def record_imported(root: Path, sha: str, paths: list[str]) -> None:
 
 def record_new(root: Path, paths: list[str]) -> None:
     _append(root, paths, "created in release-one")
+
+
+def record_source(root: Path, source: str, paths: list[str]) -> None:
+    """One row per path with an arbitrary source; replaces existing rows for those paths.
+
+    Unlike ``record_imported``/``record_new``, this is idempotent: the sync
+    runs on every re-pin, and a doubled row would be a lie about a single file.
+    """
+    for rel in paths:
+        if not (root / rel).exists():
+            raise FileNotFoundError(rel)
+    wanted = set(paths)
+    path = _rows_file(root)
+    kept = [
+        line
+        for line in path.read_text().splitlines()
+        if not (line.startswith("| ") and line.split("|")[1].strip() in wanted)
+    ]
+    with path.open("w") as handle:
+        handle.write("\n".join(kept) + "\n")
+        for rel in paths:
+            handle.write(f"| {rel} | {source} |\n")
 
 
 def recorded(root: Path) -> set[str]:
@@ -86,6 +108,8 @@ def main(argv: list[str]) -> int:
             record_imported(root, sha, paths)
         case ["new", *paths] if paths:
             record_new(root, paths)
+        case ["record", "--source", source, *paths] if paths:
+            record_source(root, source, paths)
         case ["check"]:
             missing = check(root)
             for rel in missing:

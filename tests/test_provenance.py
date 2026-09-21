@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from tools.provenance import check, record_imported, record_new
+from tools.provenance import check, record_imported, record_new, record_source
 
 SHA = "8633149" + "0" * 33
 
@@ -111,3 +111,31 @@ def test_check_does_not_name_a_site_file_once_recorded(tmp_path: Path) -> None:
     (root / "site" / "index.md").write_text("# hi\n")
     record_new(root, ["site/index.md"])
     assert check(root) == []
+
+
+def test_recording_a_source_writes_the_source_verbatim(tmp_path: Path) -> None:
+    root = _tree(tmp_path)
+    (root / "_engine").mkdir()
+    (root / "_engine" / "usage.md").write_text("engine bytes\n")
+    record_source(root, "satyrn-engine @ " + "a" * 40, ["_engine/usage.md"])
+    assert f"| _engine/usage.md | satyrn-engine @ {'a' * 40} |" in (root / "PROVENANCE.md").read_text()
+
+
+def test_recording_a_source_twice_leaves_one_row_per_path(tmp_path: Path) -> None:
+    root = _tree(tmp_path)
+    (root / "_engine").mkdir()
+    (root / "_engine" / "usage.md").write_text("engine bytes\n")
+    record_source(root, "satyrn-engine @ " + "a" * 40, ["_engine/usage.md"])
+    record_source(root, "satyrn-engine @ " + "b" * 40, ["_engine/usage.md"])
+    text = (root / "PROVENANCE.md").read_text()
+    assert text.count("| _engine/usage.md |") == 1
+    assert f"satyrn-engine @ {'b' * 40}" in text
+
+
+def test_check_names_an_engine_file_without_a_row(tmp_path: Path) -> None:
+    root = _tree(tmp_path)
+    record_imported(root, SHA, ["src/pkg/a.py"])
+    record_new(root, ["tools/b.py"])
+    (root / "_engine").mkdir()
+    (root / "_engine" / "usage.md").write_text("engine bytes\n")
+    assert check(root) == ["_engine/usage.md"]
