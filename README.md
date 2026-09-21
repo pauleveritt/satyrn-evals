@@ -4,6 +4,10 @@ Proves, from retained evidence, whether the Satyrn engine keeps a small local
 model on track better than bare Pi. Start with `BRIEF.md`, then `ROADMAP.md`,
 then `docs/superpowers/specs/2026-09-13-release-one-design.md`.
 
+**The result:** `docs/numbers.md` — the release-two comparison, pre-registered
+and read once (Engine 16 of 24 against Baseline 2 of 24 on the primary task),
+with where it did not help and what it costs. `STATE.md` has the reading order.
+
     uv sync
     just gates
 

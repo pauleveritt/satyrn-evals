@@ -121,6 +121,8 @@ and the completion gate with their cells. `ROADMAP.md` holds the phase rows.
 ## Reading order for someone new
 
 1. This page, then `BRIEF.md` (goal and invariants) and `ROADMAP.md` (status).
+   For the release-two result, read `docs/numbers.md` first: the claim, the
+   pre-registered test, where the Engine did not help, and what it costs.
 2. `docs/superpowers/specs/2026-09-15-release-one-outcome.md` — what happened;
    then `docs/superpowers/specs/2026-09-15-release-two-r0-constraints.md` and the
    census design (`docs/superpowers/specs/2026-09-15-release-two-census-design.md`)
