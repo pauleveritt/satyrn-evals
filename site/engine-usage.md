@@ -6,4 +6,4 @@ Synced from `satyrn-engine` `78ab87dbab3381dd585986c43fd49e6e4974f6b6`; do not e
 
 See also [The numbers](numbers.md) and the [satyrn-engine repository](https://github.com/pauleveritt/satyrn-engine).
 
---8<-- "_engine/usage.md"
+--8<-- "_engine/rendered/usage.md"

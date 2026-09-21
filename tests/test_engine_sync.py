@@ -5,11 +5,14 @@ import pytest
 
 from tools.engine_sync import (
     ENGINE_DOCS,
+    RENDERED_DIR,
+    TRANSFORM_VERSION,
     EngineSyncError,
     build_manifest,
     check_manifest,
     engine_pin,
     load_arm,
+    render_myst,
     sha256,
 )
 
@@ -45,6 +48,8 @@ def test_build_manifest_hashes_each_document(tmp_path: Path) -> None:
     assert set(manifest["files"]) == {"README.md", "usage.md", "glossary.md"}
     assert manifest["files"]["usage.md"]["source"] == "docs/usage.md"
     assert manifest["files"]["usage.md"]["sha256"] == sha256(tmp_path / "engine" / "docs" / "usage.md")
+    assert manifest["files"]["usage.md"]["rendered_sha256"]
+    assert manifest["transform"] == TRANSFORM_VERSION
     assert manifest["engine_commit"] == "a" * 40
 
 
@@ -60,8 +65,11 @@ def _synced(tmp_path: Path) -> Path:
     manifest = build_manifest(engine, "a" * 40)
     out = tmp_path / "_engine"
     out.mkdir()
+    (out / RENDERED_DIR).mkdir()
     for dest, source in ENGINE_DOCS:
-        (out / dest).write_bytes((engine / source).read_bytes())
+        data = (engine / source).read_bytes()
+        (out / dest).write_bytes(data)
+        (out / RENDERED_DIR / dest).write_bytes(render_myst(data.decode()).encode())
     (out / "manifest.json").write_text(json.dumps(manifest))
     return out
 
@@ -133,3 +141,73 @@ def test_check_manifest_names_a_non_object_manifest(tmp_path: Path) -> None:
     problems = check_manifest(out, "a" * 40)
     assert len(problems) == 1
     assert "object" in problems[0]
+
+
+def test_check_manifest_names_a_changed_rendered_file(tmp_path: Path) -> None:
+    out = _synced(tmp_path)
+    (out / RENDERED_DIR / "usage.md").write_text("tampered\n")
+    assert any("rendered" in problem for problem in check_manifest(out, "a" * 40))
+
+
+def test_check_manifest_names_a_missing_rendered_file(tmp_path: Path) -> None:
+    out = _synced(tmp_path)
+    (out / RENDERED_DIR / "glossary.md").unlink()
+    assert any("rendered" in problem for problem in check_manifest(out, "a" * 40))
+
+
+def test_check_manifest_names_a_wrong_transform(tmp_path: Path) -> None:
+    out = _synced(tmp_path)
+    manifest = json.loads((out / "manifest.json").read_text())
+    manifest["transform"] = "some-other-transform"
+    (out / "manifest.json").write_text(json.dumps(manifest))
+    assert any("transform" in problem for problem in check_manifest(out, "a" * 40))
+
+
+def test_render_myst_strips_term_roles() -> None:
+    assert render_myst("the {term}`engine` runs\n") == "the engine runs\n"
+
+
+def test_render_myst_strips_doc_roles() -> None:
+    assert render_myst("see {doc}`usage` for more\n") == "see usage for more\n"
+
+
+def test_render_myst_turns_rst_literals_into_code_spans() -> None:
+    assert render_myst("run ``/implement`` now\n") == "run `/implement` now\n"
+
+
+def test_render_myst_leaves_triple_backtick_fences_alone() -> None:
+    source = "```console\n$ run ``literal``\n```\n"
+    assert render_myst(source) == source
+
+
+def test_render_myst_leaves_ordinary_prose_and_tables_alone() -> None:
+    source = "| a | b |\n|---|---|\n| 1 | 2 |\n\nplain text\n"
+    assert render_myst(source) == source
+
+
+def test_render_myst_renders_a_glossary_block() -> None:
+    source = (
+        "```{glossary}\n"
+        "alpha\n"
+        "  The first ``letter`` in the {term}`alphabet`.\n"
+        "\n"
+        "beta\n"
+        "  The second.\n"
+        "```\n"
+    )
+    assert render_myst(source) == (
+        "**alpha**\n"
+        "\n"
+        "The first `letter` in the alphabet.\n"
+        "\n"
+        "**beta**\n"
+        "\n"
+        "The second.\n"
+    )
+
+
+def test_the_committed_rendered_copy_is_the_transform_of_the_committed_source() -> None:
+    for dest, _ in ENGINE_DOCS:
+        source = (ROOT / "_engine" / dest).read_text()
+        rendered = (ROOT / "_engine" / RENDERED_DIR / dest).read_text()
+        assert render_myst(source) == rendered

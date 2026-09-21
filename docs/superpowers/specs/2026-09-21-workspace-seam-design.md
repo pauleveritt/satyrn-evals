@@ -51,37 +51,59 @@ Confirmed by building a throwaway Zensical `0.0.63` project in
 
 ## 4. The workspace: fetch the arm's pin
 
-The engine stays a **sibling checkout**. `just fetch-engine` wraps a new
-`satyrn-evals fetch-engine` subcommand that:
+The engine stays a **sibling checkout**. `just fetch-engine` wraps
+`uv run python -m tools.engine_sync fetch` (the module `tools/engine_sync.py`),
+which:
 
-1. reads `pins.engine_commit` from `arms/engine-ornith15-9b.json` (reusing
-   `satyrn_evals.arms`);
+1. reads `pins.engine_commit` from `arms/engine-ornith15-9b.json` and requires
+   a 40-hex commit sha (`engine_pin`). The plan's ruling replaced the earlier
+   intent to reuse `satyrn_evals.arms` with this pin-shape validation: the sync
+   tool owns its own arm parsing and imports nothing from the harness package;
 2. clones `https://github.com/pauleveritt/satyrn-engine.git` into
    `$SATYRN_ENGINE_REPO` when set, else `../satyrn-engine` relative to the
-   evals root, and checks out the pinned commit detached;
+   evals root, then checks out the pinned commit detached;
 3. is idempotent: an existing checkout already at the pin is left alone; one
    at another commit is refused with the two shas named;
 4. prints the path and the `export SATYRN_ENGINE_REPO=…` line.
 
 A sibling, not `.engine/` inside the evals tree, because an in-tree clone would
 be collected by pytest, ruff, and pyrefly unless four configs grew excludes.
-The fetch is shallow: `git init`, `git remote add`, `git fetch --depth 1 origin
-<sha>`, `git checkout FETCH_HEAD`, so it pulls one commit, not the history.
-The remote is `$SATYRN_ENGINE_URL` when set, else the URL above.
+The delivered fetch is a `git clone` followed by `git checkout --detach <sha>`;
+the earlier plan's shallow `git fetch --depth 1 origin <sha>` was not delivered.
+The remote is `$SATYRN_ENGINE_URL` when set, else the URL above; that URL is
+transport only and never enters the committed manifest (section 5).
 
 ## 5. The sync: a committed, digest-tested copy
 
-`just sync-engine` wraps a `satyrn-evals sync-engine` subcommand that reads
+`just sync-engine` wraps `uv run python -m tools.engine_sync sync`, which reads
 `$SATYRN_ENGINE_REPO` (default `../satyrn-engine`), refuses unless its `HEAD`
-equals the arm's pin, copies three files into a committed root directory, and
-writes a manifest:
+equals the arm's pin, refuses if any of the three docs is dirty in the working
+tree, and writes two committed copies under the repo root: the verbatim engine
+bytes and a rendered Markdown copy.
 
 ```
 _engine/README.md
 _engine/usage.md
 _engine/glossary.md
+_engine/rendered/README.md
+_engine/rendered/usage.md
+_engine/rendered/glossary.md
 _engine/manifest.json
 ```
+
+The dirty-pathspec refusal (`git status --porcelain -- README.md
+docs/usage.md docs/glossary.md`) is what makes the verbatim copy faithful: a
+clean tree at the pinned commit is byte-identical to the commit, so the sync
+can hash and copy the working tree without moving off it.
+
+The engine's docs are MyST/Sphinx markup that Zensical does not render. The
+pure function `render_myst(text) -> str` (no subprocess) converts them to
+Markdown for the site under the versioned transform
+`TRANSFORM_VERSION = "myst-to-markdown-v1"`: `{term}`x`` and `{doc}`x`` become
+their plain text; RST `` ``x`` `` inline literals become Markdown `x` code spans
+(token-aware, so triple-backtick code fences are untouched); and a fenced
+`{glossary}` block becomes bold-term paragraphs, one per glossary entry.
+Ordinary prose, GFM tables, and code fences pass through unchanged.
 
 `manifest.json`:
 
@@ -89,37 +111,53 @@ _engine/manifest.json
 {
   "engine_commit": "78ab87dbab3381dd585986c43fd49e6e4974f6b6",
   "source_repository": "https://github.com/pauleveritt/satyrn-engine.git",
+  "transform": "myst-to-markdown-v1",
   "files": {
-    "README.md": {"source": "README.md", "sha256": "..."},
-    "usage.md": {"source": "docs/usage.md", "sha256": "..."},
-    "glossary.md": {"source": "docs/glossary.md", "sha256": "..."}
+    "README.md": {"source": "README.md", "sha256": "...", "rendered_sha256": "..."},
+    "usage.md": {"source": "docs/usage.md", "sha256": "...", "rendered_sha256": "..."},
+    "glossary.md": {"source": "docs/glossary.md", "sha256": "...", "rendered_sha256": "..."}
   }
 }
 ```
 
-The three source paths are fixed; the flattening (`docs/usage.md` to
-`usage.md`) is deliberate, so the site's includes are short and stable.
-`_engine/` is committed and is the record of what the site shows; the sync is
-the only thing that writes it, and it writes the `PROVENANCE.md` rows for its
-outputs (section 8) so a sync is complete on its own.
+`source_repository` is always the canonical engine URL (the engine's identity),
+never the `--url`/`$SATYRN_ENGINE_URL` value a mirror used for transport; the
+`sync` subcommand has no `--url`. The three source paths are fixed; the
+flattening (`docs/usage.md` to `usage.md`) is deliberate, so the site's
+includes are short and stable. `_engine/` is committed and is the record of
+what the site shows; the sync is the only thing that writes it, and it writes
+the `PROVENANCE.md` rows for its outputs (section 8) so a sync is complete on
+its own. `check_manifest` verifies each verbatim file against `sha256` and each
+`_engine/rendered/<dest>` against `rendered_sha256`, and names a wrong
+`transform`.
 
 ## 6. Tests
 
 Default tier (`tests/test_engine_sync.py`, no subprocess):
 
 - the manifest's `engine_commit` equals the committed arm's `engine_commit`;
-- every manifest file exists at `_engine/<name>` and its sha256 matches;
-- every `--8<-- "_engine/…"` target in `site/**/*.md` is named in the
+- every manifest file exists at `_engine/<name>` with a matching `sha256`, and
+  its rendered copy exists at `_engine/rendered/<name>` with a matching
+  `rendered_sha256`;
+- re-running `render_myst` on each committed `_engine/<name>` equals the
+  committed `_engine/rendered/<name>` (reproducibility);
+- known-answer fixtures pin `render_myst` on each construct: `{term}`/`{doc}`
+  roles, RST inline literals, a `{glossary}` block, and a code fence that must
+  survive untouched;
+- every `--8<-- "_engine/rendered/…"` target in `site/**/*.md` is named in the
   manifest, and every manifest file is included by some page;
 - each engine page's banner commit equals the manifest's commit;
 - pure helpers over a fixture tree: `build_manifest` hashes what it is given,
   and `check_manifest` names a file whose bytes changed, a file that is
-  missing, and a manifest whose commit is not the arm's.
+  missing, a rendered file whose bytes changed, a manifest whose commit is not
+  the arm's, and a manifest whose transform is wrong.
 
 Integration tier (`tests/integration/test_engine_sync.py`, marked): when a
 checkout at the pin is present (`SATYRN_ENGINE_REPO` or `../satyrn-engine`),
-re-sync into a temporary directory and compare digests to `_engine/`; skipped
-with the reason when no checkout is present.
+re-sync into a temporary directory, check the manifest, and assert the fresh
+manifest equals the committed `_engine/manifest.json`; a local git fixture
+dirties a synced doc and asserts the sync refuses it. Both skip with the reason
+when no checkout is present.
 
 The existing `tests/test_docs_site.py` already asserts every include target
 exists against the repo root, so `_engine/…` targets are covered there too.
@@ -130,14 +168,15 @@ Three pages, each front matter, a one-line banner, and one include:
 
 | page | include | nav title |
 |---|---|---|
-| `site/engine.md` | `_engine/README.md` | The engine |
-| `site/engine-usage.md` | `_engine/usage.md` | Using the engine |
-| `site/engine-glossary.md` | `_engine/glossary.md` | Glossary |
+| `site/engine.md` | `_engine/rendered/README.md` | The engine |
+| `site/engine-usage.md` | `_engine/rendered/usage.md` | Using the engine |
+| `site/engine-glossary.md` | `_engine/rendered/glossary.md` | Glossary |
 
 The banner is `Synced from satyrn-engine <commit>; do not edit here.` The
 commit in each banner is checked against the manifest, so the banner cannot
 drift. The pages link back to the engine repository and to the numbers page.
-The record pages are unchanged.
+The verbatim `_engine/<name>` files remain the record but are not included; the
+pages publish their `_engine/rendered/<name>` copies.
 
 ## 8. Provenance and gates
 
@@ -153,8 +192,11 @@ uv run python tools/provenance.py record --source "satyrn-engine @ 78ab87d…" _
 one per path, so re-running the sync is idempotent and never doubles a row.
 `provenance.py`'s `TRACKED_DIRS` gains `_engine`, so `check` enforces the rows.
 `sync-engine` calls the same function, so the rows appear without a second
-command. Tests: a source row is written verbatim; recording twice leaves one
-row per path; `check` names an `_engine/` file without a row.
+command. It records one row per `_engine/<dest>` (`satyrn-engine @ <commit>`),
+one per `_engine/rendered/<dest>` (`rendered from satyrn-engine @ <commit> by
+tools/engine_sync.py (myst-to-markdown-v1)`), and the manifest row. Tests: a
+source row is written verbatim; recording twice leaves one row per path;
+`check` names an `_engine/` file without a row.
 
 `just gates` is unchanged in shape: `just docs` builds the committed copy
 offline, and the new default-tier test runs under `just pytest`. Nothing in
@@ -185,9 +227,10 @@ disagree about which engine they describe.
    included, because the boundary cannot be crossed. The digest test and the
    arm-derived pin are what keep the copy honest; if the maintainer later
    prefers no copy, the fallback is link-only, which loses the verbatim text.
-2. **The shallow fetch of a specific sha** relies on the server allowing
-   `git fetch --depth 1 origin <sha>`; GitHub does. If it ever fails, the
-   fallback is a full clone then checkout, with the same refusal rules.
+2. **The fetch is a full clone then a detached checkout.** It pulls the
+   repository history, not one commit; the earlier shallow-fetch plan was not
+   delivered. A checkout already at the pin is reused, and one at another
+   commit is refused with the two shas named.
 3. **`_engine/` is inside the repo but outside the record's rules.** It is not
    whitespace-checked and not in `docs/`; its integrity is the manifest test,
    not `lint_docs`. This is intentional for verbatim bytes.
@@ -197,9 +240,16 @@ disagree about which engine they describe.
 5. **Site build without the engine.** Because the copy is committed, `just
    docs` never needs the engine; `just fetch-engine` is only for running evals
    or refreshing the copy.
-6. **The included engine text keeps its repo-relative links.** The verbatim
-   `_engine/README.md` links to `docs/glossary.md` and `LICENSE`, which do not
-   resolve on the site; its bytes are pinned and are not rewritten. The
-   page-level links added in section 7 (back to the numbers page, the engine
-   repository, and the glossary) are the remedy; rewriting included bytes is
-   out of scope.
+6. **The included engine text keeps its repo-relative links.** The rendered
+   `_engine/rendered/README.md` still links to `docs/glossary.md` and
+   `LICENSE`, which do not resolve on the site; the transform does not rewrite
+   links. The page-level links added in section 7 (back to the numbers page,
+   the engine repository, and the glossary) are the remedy; rewriting included
+   bytes is out of scope.
+7. **The transform is a pinned pure function.** `render_myst` is offline, has
+   known-answer tests, and the manifest records `transform` plus a
+   `rendered_sha256` per file, so a change to the transform shows up as a
+   manifest diff and must be re-synced deliberately. It covers the constructs
+   the three engine docs use (`{term}`, `{doc}`, RST literals, the `{glossary}`
+   block); a new MyST construct in a future engine doc is unhandled until the
+   transform is extended.

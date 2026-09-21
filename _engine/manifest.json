@@ -2,17 +2,21 @@
   "engine_commit": "78ab87dbab3381dd585986c43fd49e6e4974f6b6",
   "files": {
     "README.md": {
+      "rendered_sha256": "56fcca41f648ce0fd730b00baf2fade8ed05f6cda569bf51b809b7c32a708097",
       "sha256": "56fcca41f648ce0fd730b00baf2fade8ed05f6cda569bf51b809b7c32a708097",
       "source": "README.md"
     },
     "glossary.md": {
+      "rendered_sha256": "d2361cda0cf9c15b6cd5e22212f6426536b6f2fdc6b12ed1fc970e3577e23252",
       "sha256": "e4efe8078227c3ef50787b63e861c6d6061c188cd79abd282c183d501a6559d7",
       "source": "docs/glossary.md"
     },
     "usage.md": {
+      "rendered_sha256": "154dcc9bab51b876b5b09de9612a6aefffec1e1cb58ed66aba2dbca6421fc3f5",
       "sha256": "8c796fcd69c0c43eed52363bd755400e547cb2a1871fa07a1bf9d35392beca71",
       "source": "docs/usage.md"
     }
   },
-  "source_repository": "https://github.com/pauleveritt/satyrn-engine.git"
+  "source_repository": "https://github.com/pauleveritt/satyrn-engine.git",
+  "transform": "myst-to-markdown-v1"
 }

@@ -2,15 +2,15 @@ import json
 import re
 from pathlib import Path
 
-from tools.engine_sync import MANIFEST_NAME
+from tools.engine_sync import MANIFEST_NAME, RENDERED_DIR
 
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "site"
 INCLUDE = re.compile(r'--8<--\s+"([^"]+)"')
 PAGE_INCLUDES = {
-    "engine.md": "_engine/README.md",
-    "engine-usage.md": "_engine/usage.md",
-    "engine-glossary.md": "_engine/glossary.md",
+    "engine.md": f"_engine/{RENDERED_DIR}/README.md",
+    "engine-usage.md": f"_engine/{RENDERED_DIR}/usage.md",
+    "engine-glossary.md": f"_engine/{RENDERED_DIR}/glossary.md",
 }
 
 
@@ -19,7 +19,7 @@ def _manifest() -> dict:
 
 
 def test_every_engine_include_is_in_the_manifest() -> None:
-    named = {f"_engine/{dest}" for dest in _manifest()["files"]}
+    named = {f"_engine/{RENDERED_DIR}/{dest}" for dest in _manifest()["files"]}
     targets = {
         target
         for page in SITE.glob("**/*.md")
