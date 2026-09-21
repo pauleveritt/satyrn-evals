@@ -5,6 +5,9 @@ site_dir = "_build"
 nav = [
   { "Home" = "index.md" },
   { "The numbers" = "numbers.md" },
+  { "The engine" = "engine.md" },
+  { "Using the engine" = "engine-usage.md" },
+  { "Glossary" = "engine-glossary.md" },
   { "Release one — the stated negative" = "release-one-negative.md" },
   { "Lessons" = "lessons.md" },
 ]
