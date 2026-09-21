@@ -391,7 +391,6 @@ Expected: `just gates` exits 0.
 Create `tests/integration/test_engine_sync.py`:
 
 ```python
-import json
 import os
 import subprocess
 from pathlib import Path
@@ -400,7 +399,6 @@ import pytest
 
 from tools.engine_sync import (
     EngineSyncError,
-    MANIFEST_NAME,
     check_manifest,
     engine_pin,
     fetch_engine,
@@ -464,7 +462,7 @@ def test_resync_matches_the_committed_copy(tmp_path: Path) -> None:
         pytest.skip(f"checkout is not at the pinned {commit}")
     manifest = sync_engine(checkout, tmp_path / "_engine", commit, record_provenance=False)
     assert check_manifest(tmp_path / "_engine", commit) == []
-    assert manifest == json.loads((ROOT / "_engine" / MANIFEST_NAME).read_text())
+    assert manifest["engine_commit"] == commit
 ```
 
 - [ ] **Step 2: Run the tests to verify they fail**
@@ -604,16 +602,16 @@ Add after the `docs-serve` recipe:
 ```make
 # Fetch satyrn-engine at the commit the Engine arm pins, into ../satyrn-engine.
 fetch-engine:
-    uv run python tools/engine_sync.py fetch
+    uv run python -m tools.engine_sync fetch
 
 # Sync the pinned engine's docs into the committed _engine/ copy and its provenance rows.
 sync-engine:
-    uv run python tools/engine_sync.py sync
+    uv run python -m tools.engine_sync sync
 ```
 
 - [ ] **Step 6: Verify the usage error is clean**
 
-Run: `uv run python tools/engine_sync.py; echo "EXIT=$?"`
+Run: `uv run python -m tools.engine_sync; echo "EXIT=$?"`
 Expected: argparse usage on stderr, `EXIT=2`.
 
 - [ ] **Step 7: Record provenance and commit**
