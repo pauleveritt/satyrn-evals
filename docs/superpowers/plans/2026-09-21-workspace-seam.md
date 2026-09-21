@@ -453,7 +453,7 @@ def _checkout() -> Path | None:
     return candidate if (candidate / ".git").exists() else None
 
 
-def test_resync_matches_the_committed_copy(tmp_path: Path) -> None:
+def test_resync_produces_a_clean_manifest(tmp_path: Path) -> None:
     checkout = _checkout()
     if checkout is None:
         pytest.skip("no satyrn-engine checkout")
