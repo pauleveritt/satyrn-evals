@@ -1,0 +1,451 @@
+diff --git a/PROVENANCE.md b/PROVENANCE.md
+new file mode 100644
+index 0000000..6ad2d2f
+--- /dev/null
++++ b/PROVENANCE.md
+@@ -0,0 +1,6 @@
++# Provenance
++
++| path | source |
++|---|---|
++| scripts/preflight_quiet.py | created in release-one |
++| tests/test_preflight_quiet.py | created in release-one |
+diff --git a/scripts/preflight_quiet.py b/scripts/preflight_quiet.py
+new file mode 100644
+index 0000000..b65c729
+--- /dev/null
++++ b/scripts/preflight_quiet.py
+@@ -0,0 +1,203 @@
++#!/usr/bin/env python3
++"""Certify the machine is quiet before a timed run: load, busy processes, decode rate.
++
++Three pure parsers read a snapshot each -- the load average, a `ps` listing,
++and the oMLX server log -- and `certificate` combines what they found into a
++single report. `main` wires the parsers to the real machine by default, but
++takes all four readings through keyword-only callables so a caller (the
++acceptance suite included) can inject readings without spawning anything.
++"""
++
++import argparse
++import json
++import os
++import re
++import subprocess
++from collections.abc import Callable, Iterable, Sequence
++from dataclasses import dataclass, field
++
++DEFAULT_CEILING = 0.5
++DEFAULT_CPU_FLOOR = 20.0
++DEFAULT_FLOOR_TOK_S = 30.0
++DEFAULT_LAST = 20
++IGNORE_PREFIXES = (
++    "/sbin/",
++    "/usr/sbin/",
++    "/usr/libexec/",
++    "/System/",
++    "/usr/local/bin/omlx-",
++    "omlx-",
++    "/Applications/oMLX.app/",
++)
++
++_LOG_RE = re.compile(
++    r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3} - omlx\.server - INFO - .* - "
++    r"Chat completion: model=(?P<model>[^,]+), (?P<tokens>\d+) tokens in "
++    r"(?P<seconds>[\d.]+)s \((?P<rate>[\d.]+) tok/s\), prompt: (?P<prompt>\d+),"
++)
++
++
++@dataclass(frozen=True, slots=True)
++class Process:
++    pid: int
++    comm: str
++    cpu: float
++
++
++@dataclass(frozen=True, slots=True)
++class Rate:
++    tok_s: float
++    completions: int
++    tokens: int
++    seconds: float
++
++
++@dataclass(frozen=True, slots=True)
++class Certificate:
++    problems: tuple[str, ...]
++    record: dict[str, object] = field(default_factory=dict)
++
++    def as_dict(self) -> dict[str, object]:
++        return {"problems": list(self.problems), "inputs": self.record}
++
++
++def load_problem(loadavg: tuple[float, float, float], cores: int, *, ceiling: float) -> str | None:
++    """Compare the one-minute load figure against `ceiling * cores`."""
++    one, _five, _fifteen = loadavg
++    threshold = ceiling * cores
++    if one <= threshold:
++        return None
++    return f"load {one:.1f} > {threshold:.1f} ({cores} cores)"
++
++
++def busy_processes(
++    ps_stdout: str, *, cpu_floor: float, ignore_prefixes: Sequence[str]
++) -> list[Process]:
++    """Parse `ps -axo pid,pcpu,comm` output into the processes above the floor."""
++    busy: list[Process] = []
++    for line in ps_stdout.splitlines():
++        fields = line.strip().split(maxsplit=2)
++        if len(fields) != 3:
++            continue
++        pid_text, cpu_text, comm = fields
++        try:
++            pid = int(pid_text)
++            cpu = float(cpu_text)
++        except ValueError:
++            continue
++        if not comm:
++            continue
++        if cpu <= cpu_floor:
++            continue
++        if any(comm.startswith(prefix) for prefix in ignore_prefixes):
++            continue
++        busy.append(Process(pid=pid, comm=comm, cpu=cpu))
++    return busy
++
++
++def decode_rate(log_lines: Iterable[str], *, model: str, last: int) -> Rate | None:
++    """Token-weighted decode rate over the last `last` completions for `model`."""
++    completions: list[tuple[int, float]] = []
++    for line in log_lines:
++        match = _LOG_RE.match(line)
++        if match is None or match.group("model") != model:
++            continue
++        completions.append((int(match.group("tokens")), float(match.group("seconds"))))
++    if len(completions) < last:
++        return None
++    window = completions[-last:]
++    tokens = sum(t for t, _ in window)
++    seconds = sum(s for _, s in window)
++    return Rate(tok_s=tokens / seconds, completions=last, tokens=tokens, seconds=seconds)
++
++
++def certificate(
++    load: str | None,
++    busy: Sequence[Process],
++    rate: Rate | None,
++    *,
++    floor_tok_s: float,
++    model: str,
++    last: int,
++) -> Certificate:
++    """Combine the three readings into the ordered problem list and its record."""
++    problems: list[str] = []
++    if load is not None:
++        problems.append(load)
++    for process in busy:
++        problems.append(f"busy: {process.comm} pid {process.pid} at {process.cpu:.1f}% cpu")
++    if rate is None:
++        problems.append(f"decode: fewer than {last} completions for {model}")
++    elif rate.tok_s < floor_tok_s:
++        problems.append(
++            f"decode {rate.tok_s:.1f} tok/s < {floor_tok_s:.1f} over last {rate.completions} completions"
++        )
++    record: dict[str, object] = {
++        "load": load,
++        "busy": [{"pid": p.pid, "comm": p.comm, "cpu": p.cpu} for p in busy],
++        "decode": None
++        if rate is None
++        else {
++            "tok_s": rate.tok_s,
++            "completions": rate.completions,
++            "tokens": rate.tokens,
++            "seconds": rate.seconds,
++        },
++        "floor_tok_s": floor_tok_s,
++        "model": model,
++        "last": last,
++    }
++    return Certificate(problems=tuple(problems), record=record)
++
++
++def _read_ps() -> str:
++    return subprocess.run(
++        ["ps", "-axo", "pid,pcpu,comm"], check=True, capture_output=True, text=True
++    ).stdout
++
++
++def _read_log() -> Iterable[str]:
++    log_path = os.environ.get("OMLX_SERVER_LOG", "")
++    if not log_path:
++        return []
++    with open(log_path, encoding="utf-8") as handle:
++        return handle.read().splitlines()
++
++
++def _cores() -> int:
++    return os.cpu_count() or 1
++
++
++def main(
++    argv: Sequence[str] | None = None,
++    *,
++    loadavg: Callable[[], tuple[float, float, float]] = os.getloadavg,
++    cores: Callable[[], int] = _cores,
++    read_ps: Callable[[], str] = _read_ps,
++    read_log: Callable[[], Iterable[str]] = _read_log,
++) -> int:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--model", required=True)
++    parser.add_argument("--ceiling", type=float, default=DEFAULT_CEILING)
++    parser.add_argument("--cpu-floor", type=float, default=DEFAULT_CPU_FLOOR)
++    parser.add_argument("--floor-tok-s", type=float, default=DEFAULT_FLOOR_TOK_S)
++    parser.add_argument("--last", type=int, default=DEFAULT_LAST)
++    args = parser.parse_args(argv)
++
++    load = load_problem(loadavg(), cores(), ceiling=args.ceiling)
++    busy = busy_processes(read_ps(), cpu_floor=args.cpu_floor, ignore_prefixes=IGNORE_PREFIXES)
++    rate = decode_rate(read_log(), model=args.model, last=args.last)
++    cert = certificate(
++        load,
++        busy,
++        rate,
++        floor_tok_s=args.floor_tok_s,
++        model=args.model,
++        last=args.last,
++    )
++    print(json.dumps(cert.as_dict()))
++    return 0 if not cert.problems else 1
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/tests/test_preflight_quiet.py b/tests/test_preflight_quiet.py
+new file mode 100644
+index 0000000..c61d518
+--- /dev/null
++++ b/tests/test_preflight_quiet.py
+@@ -0,0 +1,224 @@
++"""Acceptance suite for the machine-quiet preflight.
++
++Written before `scripts/preflight_quiet.py` exists. It imports from
++`preflight_quiet` with `scripts` on the path, and drives the CLI through
++its injected callables rather than through a process, so it obeys the
++no-subprocess rule of the default tier.
++"""
++
++import json
++import sys
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
++
++from preflight_quiet import (  # noqa: E402, I001
++    IGNORE_PREFIXES,
++    Process,
++    Rate,
++    busy_processes,
++    certificate,
++    decode_rate,
++    load_problem,
++    main,
++)
++
++
++MODEL = "Ornith-1.5-9B-MLX-8bit"
++
++
++def _log_line(model: str, tokens: int, seconds: float, rate: float) -> str:
++    return (
++        f"2026-09-17 21:14:02,004 - omlx.server - INFO - [-] - "
++        f"Chat completion: model={model}, {tokens} tokens in {seconds:.2f}s "
++        f"({rate:.1f} tok/s), prompt: 5000, finish_reason=stop, "
++        f"max_tokens=16000, request_max_tokens=16000"
++    )
++
++
++# --- Parsers: known-good and known-bad input ---------------------------
++
++
++def test_load_problem_known_good_reports_the_overage() -> None:
++    assert load_problem((9.5, 3.0, 2.0), 8, ceiling=0.5) == "load 9.5 > 4.0 (8 cores)"
++
++
++def test_load_problem_known_bad_quiet_load_is_none() -> None:
++    assert load_problem((1.0, 3.0, 2.0), 8, ceiling=0.5) is None
++
++
++def test_busy_processes_known_good_snapshot() -> None:
++    snapshot = "\n".join(
++        [
++            "  PID  %CPU COMM",
++            "  501  55.3 /usr/local/bin/mything",
++        ]
++    )
++    found = busy_processes(snapshot, cpu_floor=20.0, ignore_prefixes=IGNORE_PREFIXES)
++    assert found == [Process(pid=501, comm="/usr/local/bin/mything", cpu=55.3)]
++
++
++def test_busy_processes_known_bad_lines_are_skipped() -> None:
++    snapshot = "\n".join(
++        [
++            "  PID  %CPU COMM",
++            "",
++            "not a process line",
++            "   1   0.0 /sbin/launchd",
++        ]
++    )
++    assert busy_processes(snapshot, cpu_floor=-1.0, ignore_prefixes=()) == [
++        Process(pid=1, comm="/sbin/launchd", cpu=0.0)
++    ]
++
++
++def test_decode_rate_known_good_lines() -> None:
++    lines = [_log_line(MODEL, 900, 10.0, 90.0)] * 3
++    rate = decode_rate(lines, model=MODEL, last=3)
++    assert rate == Rate(tok_s=90.0, completions=3, tokens=2700, seconds=30.0)
++
++
++def test_decode_rate_known_bad_lines_are_not_completions() -> None:
++    lines = [
++        "",
++        "2026-09-17 21:14:02,004 - omlx.access - INFO - [-] - GET /health 200",
++        "Chat completion: model=" + MODEL + ", 900 tokens in 10.00s (90.0 tok/s), prompt: 5000,",
++    ]
++    assert decode_rate(lines, model=MODEL, last=1) is None
++
++
++# --- Thresholds: at the edge and across it ------------------------------
++
++
++def test_load_problem_at_ceiling_is_quiet() -> None:
++    assert load_problem((4.0, 0.0, 0.0), 8, ceiling=0.5) is None
++
++
++def test_load_problem_just_above_ceiling_is_a_problem() -> None:
++    assert load_problem((4.1, 0.0, 0.0), 8, ceiling=0.5) == "load 4.1 > 4.0 (8 cores)"
++
++
++def test_busy_processes_at_cpu_floor_is_quiet() -> None:
++    snapshot = "  501  20.0 /usr/local/bin/mything"
++    assert busy_processes(snapshot, cpu_floor=20.0, ignore_prefixes=()) == []
++
++
++def test_busy_processes_just_above_cpu_floor_is_busy() -> None:
++    snapshot = "  501  20.1 /usr/local/bin/mything"
++    found = busy_processes(snapshot, cpu_floor=20.0, ignore_prefixes=())
++    assert found == [Process(pid=501, comm="/usr/local/bin/mything", cpu=20.1)]
++
++
++def test_certificate_rate_at_floor_is_quiet() -> None:
++    rate = Rate(tok_s=30.0, completions=20, tokens=6000, seconds=200.0)
++    cert = certificate(None, [], rate, floor_tok_s=30.0, model=MODEL, last=20)
++    assert cert.problems == ()
++
++
++def test_certificate_rate_just_below_floor_is_a_problem() -> None:
++    rate = Rate(tok_s=29.9, completions=20, tokens=598, seconds=20.0)
++    cert = certificate(None, [], rate, floor_tok_s=30.0, model=MODEL, last=20)
++    assert cert.problems == ("decode 29.9 tok/s < 30.0 over last 20 completions",)
++
++
++# --- Ignore list, both ways ---------------------------------------------
++
++
++def test_busy_processes_ignore_prefix_excludes_the_process() -> None:
++    snapshot = "  501  55.3 /sbin/launchd"
++    assert busy_processes(snapshot, cpu_floor=20.0, ignore_prefixes=IGNORE_PREFIXES) == []
++
++
++def test_busy_processes_non_ignored_prefix_is_included() -> None:
++    snapshot = "  501  55.3 /usr/local/bin/mything"
++    found = busy_processes(snapshot, cpu_floor=20.0, ignore_prefixes=IGNORE_PREFIXES)
++    assert found == [Process(pid=501, comm="/usr/local/bin/mything", cpu=55.3)]
++
++
++# --- Token weighting -----------------------------------------------------
++
++
++def test_decode_rate_is_token_weighted_not_the_mean_of_rates() -> None:
++    lines = [
++        _log_line(MODEL, 32, 1.0, 32.0),
++        _log_line(MODEL, 8000, 80.0, 100.0),
++    ]
++    rate = decode_rate(lines, model=MODEL, last=2)
++    assert rate is not None
++    mean_of_rates = (32.0 + 100.0) / 2
++    weighted = (32 + 8000) / (1.0 + 80.0)
++    assert rate.tok_s == weighted
++    assert rate.tok_s != mean_of_rates
++
++
++# --- Fewer than N completions ---------------------------------------------
++
++
++def test_decode_rate_returns_none_when_fewer_than_last() -> None:
++    lines = [_log_line(MODEL, 900, 10.0, 90.0)]
++    assert decode_rate(lines, model=MODEL, last=2) is None
++
++
++# --- Certificate JSON shape and ordering ----------------------------------
++
++
++def test_certificate_as_dict_json_shape_round_trips() -> None:
++    busy = [Process(pid=501, comm="/usr/local/bin/mything", cpu=55.3)]
++    rate = Rate(tok_s=90.0, completions=3, tokens=2700, seconds=30.0)
++    cert = certificate(
++        "load 9.5 > 4.0 (8 cores)", busy, rate, floor_tok_s=30.0, model=MODEL, last=3
++    )
++    payload = cert.as_dict()
++    round_tripped = json.loads(json.dumps(payload))
++    assert round_tripped == payload
++    assert set(payload) == {"problems", "inputs"}
++    inputs = payload["inputs"]
++    assert set(inputs) == {"load", "busy", "decode", "floor_tok_s", "model", "last"}
++    assert inputs["busy"] == [{"pid": 501, "comm": "/usr/local/bin/mything", "cpu": 55.3}]
++    assert set(inputs["decode"]) == {"tok_s", "completions", "tokens", "seconds"}
++
++
++def test_certificate_problem_ordering_is_load_then_busy_then_decode() -> None:
++    busy = [
++        Process(pid=1, comm="/usr/local/bin/a", cpu=25.0),
++        Process(pid=2, comm="/usr/local/bin/b", cpu=99.9),
++    ]
++    cert = certificate(
++        "load 9.5 > 4.0 (8 cores)", busy, None, floor_tok_s=30.0, model=MODEL, last=20
++    )
++    assert cert.problems == (
++        "load 9.5 > 4.0 (8 cores)",
++        "busy: /usr/local/bin/a pid 1 at 25.0% cpu",
++        "busy: /usr/local/bin/b pid 2 at 99.9% cpu",
++        f"decode: fewer than 20 completions for {MODEL}",
++    )
++
++
++# --- CLI exit codes --------------------------------------------------------
++
++
++def test_main_returns_zero_when_the_machine_is_quiet(capsys) -> None:
++    lines = [_log_line(MODEL, 900, 10.0, 90.0)] * 20
++    code = main(
++        ["--model", MODEL],
++        loadavg=lambda: (1.0, 1.0, 1.0),
++        cores=lambda: 8,
++        read_ps=lambda: "  PID  %CPU COMM",
++        read_log=lambda: lines,
++    )
++    assert code == 0
++    payload = json.loads(capsys.readouterr().out)
++    assert payload["problems"] == []
++
++
++def test_main_returns_one_when_there_are_problems(capsys) -> None:
++    code = main(
++        ["--model", MODEL],
++        loadavg=lambda: (99.0, 1.0, 1.0),
++        cores=lambda: 8,
++        read_ps=lambda: "  PID  %CPU COMM",
++        read_log=lambda: [],
++    )
++    assert code == 1
++    payload = json.loads(capsys.readouterr().out)
++    assert payload["problems"] != []

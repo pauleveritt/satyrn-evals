@@ -1,0 +1,44 @@
+{
+  "arm": "engine",
+  "settings_verified_by": "scripts/preflight_settings.py",
+  "argv": [
+    "satyrn-evals-attempt-engine",
+    "--engine-repo",
+    "/Users/Shared/satyrn-cells/engine-8049d739799c8b40978e0cbc3d76a1beb49e1bd1"
+  ],
+  "tools": [
+    "read",
+    "bash",
+    "edit",
+    "write",
+    "self_test"
+  ],
+  "model": "omlx/Ornith-1.5-9B-MLX-8bit",
+  "server_model": "Ornith-1.5-9B-MLX-8bit",
+  "pins": {
+    "pi": "0.85.1",
+    "engine_commit": "8049d739799c8b40978e0cbc3d76a1beb49e1bd1",
+    "digests": {
+      "engine.ts": "0f581ffeed8931fb0f656f6df7d547ad14893eb2c3edd1d8e203b819d4b2f9d1",
+      "mutator.ts": "d34ed2d44342db67739bf0b9458d6773b2b2d3a21aacde36ad4635ec82e88a52",
+      "scope.ts": "2eab1e01e01a34fdf42ec3e0555adadc7863f170fe6e71bc5ab2a42a3711049a",
+      "bounds.ts": "9fe674f671f328c1ba7bbe20b4cbb40016a92596a49166478d937d7c8cd67eb6",
+      "runner.ts": "31d8bb743b60e4c00caffdc1e7103ea0604ced1f77a2826c8ed0502424decf3f",
+      "orchestrator.ts": "dd296557cf4643cb63753dfe96c1cc4d0004aec7e3aebf4aeed47a4cdcba8a0d",
+      "paths.ts": "9c5822fd01789cd44a648925285b85423b34cf6d1bdbef5e8d9d661fc9cc40bc"
+    }
+  },
+  "inference": {
+    "context_window": 262144,
+    "max_tokens": 16000,
+    "compaction_enabled": true,
+    "compaction_reserve_tokens": 16384,
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "top_k": 20,
+    "min_p": 0.0,
+    "presence_penalty": 0.0,
+    "repetition_penalty": 1.0,
+    "declares_reasoning": true
+  }
+}

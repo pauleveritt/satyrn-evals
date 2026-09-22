@@ -1,0 +1,30 @@
+{
+  "name": "selfhost-cell-loop",
+  "base": "22342400cba9dbd91c8c2eb7abc2aea228bc15a7",
+  "good": "2ad30ab8d320af68c6ee5edf55029927689f8c36",
+  "files": [
+    "src/satyrn_evals/launch.py"
+  ],
+  "hidden": [
+    "tests/test_launch.py"
+  ],
+  "plan": {
+    "path": "docs/superpowers/plans/2026-09-14-phase-2c-launcher-loop.md",
+    "heading": "### Task 2: The cell loop",
+    "commit": "9b4a8a8466c9ffdddfa6363975f329f8ece9dec2"
+  },
+  "formats": "Every string below is matched literally by the acceptance suite, so match it exactly. Status members have the lowercase values `complete`, `capped`, `infrastructure` and `interrupted`, and Slot.name is the index as two digits (`03`). plan_slots gives slot i the arm arms[i % len(arms)], n slots per arm. INFRASTRUCTURE_CODES is WORKSPACE_FAILED, CLEANUP_FAILED, GRADE_FAILED, TRANSCRIPT_MISSING, TRANSCRIPT_EMPTY, MODEL_ERROR and PATCH_INVALID; every other code (OK, NO_PATCH, COMMAND_TIMEOUT, BUDGET_EXCEEDED, REPEAT_LIMIT) is a model outcome and never stops the night. infrastructure_reason(result) returns `slot <NN> (<arm>): <code>: <message>` for an infrastructure code, `slot <NN> (<arm>): DEADLINE_EXCEEDED in <deadline_phase>: <message>` for DEADLINE_EXCEEDED whose deadline_phase is not `command`, and None otherwise (for example `slot 03 (engine): DEADLINE_EXCEEDED in grading: m`). A cell writes its result to slot_path(night, slot), `<night>/slots/<NN>.json`; read_slots returns only files named exactly `<NN>.json`, keyed by int index. launch_cells: finished slots (those with a result file) never run again; at the start of a launch each finished slot whose result has an infrastructure reason is renamed to `<NN>.replaced-<M>.json` (M counts from 1), appended to outcome.replaced as its result plus a `replaced_because` key holding the reason, and runs again. Pending slots start in index order while fewer than k run; call drift() immediately before each spawn, and a non-None answer stops the night with status infrastructure and reason `preflight drift: <answer>`. A slot starts only when (clock() - launch start) + cell_seconds is not greater than max_seconds; otherwise nothing new starts, running cells finish, and when slots remain the status is capped with a reason containing `<count> slot(s) wait` (count is the slots not started). Poll running cells each tick, sleeping poll_interval between ticks; a cell that exits appends its result dict to outcome.finished in the order cells finish. The first infrastructure result stops the night: status infrastructure, reason from infrastructure_reason, no new slot starts, and running cells are left to finish. A cell process that exits with no result file stops the night with the reason `slot <NN> (<arm>): the cell process exited <exit code> without an attempt record`. A clean finish is status complete with reason None. SignalAbort or KeyboardInterrupt raised anywhere in the loop (including from sleep) is never re-raised: call terminate() once on each running cell, poll until they exit or grace seconds pass on clock, call kill() only on cells still running, and return status interrupted with a reason containing the exception's type name. write_ledger writes `<night>/launch.json`: on first write the identity keys plus `sittings: []` and `replaced: []`; each call appends to sittings the sitting dict plus `status` and `reason` (and an `ended` timestamp), extends replaced with outcome.replaced, sets top-level `status` and `reason`, and sets `slots` to every finished slot result in index order. check_night(night, identity) does nothing when there is no ledger and raises UsageError containing `belongs to another record` when any identity key's value differs from the ledger's.",
+  "broken": {
+    "src/satyrn_evals/launch.py": "\"\"\"known-broken fixture stub: importable, behaviorally incomplete.\"\"\"\n\nfrom dataclasses import dataclass, field\nfrom enum import StrEnum\nfrom pathlib import Path\n\nLEDGER_NAME = \"launch.json\"\nSLOTS_DIR = \"slots\"\nINFRASTRUCTURE_CODES: frozenset[str] = frozenset()\n\n\nclass Status(StrEnum):\n    COMPLETE = \"complete\"\n    CAPPED = \"capped\"\n    INFRASTRUCTURE = \"infrastructure\"\n    INTERRUPTED = \"interrupted\"\n\n\n@dataclass(frozen=True, slots=True)\nclass Slot:\n    index: int\n    arm: str\n\n    @property\n    def name(self) -> str:\n        return \"\"\n\n\n@dataclass(slots=True)\nclass LaunchOutcome:\n    status: Status\n    reason: str | None\n    finished: list[dict] = field(default_factory=list)\n    replaced: list[dict] = field(default_factory=list)\n\n\ndef plan_slots(arms, n):\n    return []\n\n\ndef slot_path(night: Path, slot: Slot) -> Path:\n    return night\n\n\ndef infrastructure_reason(result: dict) -> str | None:\n    return None\n\n\ndef read_slots(night: Path) -> dict[int, dict]:\n    return {}\n\n\ndef write_ledger(night: Path, *, identity: dict, sitting: dict, outcome: LaunchOutcome) -> None:\n    return None\n\n\ndef check_night(night: Path, identity: dict) -> None:\n    return None\n\n\ndef launch_cells(**kwargs) -> LaunchOutcome:\n    return LaunchOutcome(Status.COMPLETE, None)\n"
+  },
+  "oracle_env": {
+    "PYTHONPATH": "src"
+  },
+  "prompt_edits": [
+    {
+      "old": "A cell writes its result to slot_path(night, slot), `<night>/slots/<NN>.json`;",
+      "new": "Before any cell starts, `launch_cells` creates `<night>/slots/` (with parents as needed). A result is a slot file at slot_path(night, slot), `<night>/slots/<NN>.json`;",
+      "reason": "R0 §1.2 validity run 2026-09-16: the prompt-only solution failed 17 of 22 hidden tests because the hidden fake cell writes slot_path(night, slot) without creating <night>/slots/, while the known-good launch_cells creates it; the prompt did not determine that structural choice"
+    }
+  ]
+}

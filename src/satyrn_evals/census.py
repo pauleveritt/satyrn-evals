@@ -1,6 +1,6 @@
 """The V16 pathology census: offline, arm-neutral, and never voids a cell.
 
-`archive/2026-09-07-pre-reset/docs/superpowers/specs/2026-09-07-v16-pathology-census-design.md`
+`git show pre-release-one-2026-09-13:archive/2026-09-07-pre-reset/docs/superpowers/specs/2026-09-07-v16-pathology-census-design.md`
 is the confirmed design; this module implements its sections 2-4. Where V10
 (`pathology.py`) marks a whole transcript ``measured: false`` on one
 unrecognised event -- blinding it on exactly the cells worth reading -- the
@@ -19,7 +19,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
-from satyrn_evals.adapters.pi_implementer import TRANSCRIPT_NAME
 from satyrn_evals.pathology import count_transcript
 
 type PathologyName = Literal[
@@ -51,7 +50,7 @@ PATHOLOGY_NAMES: tuple[PathologyName, ...] = (
 #: product does -- adding a real tool means adding its name here, not
 #: reworking the detector.
 KNOWN_TOOL_NAMES = frozenset(
-    {"read", "bash", "edit", "write", "run_tests", "run_self_test"}
+    {"read", "bash", "edit", "write", "run_tests", "run_self_test", "self_test"}
 )
 
 _SCHEMA_REFUSAL_MARKER = "Validation failed for tool"
@@ -451,13 +450,10 @@ def _census_one_transcript(
 
 def census_root(root: Path) -> list[CellCensus]:
     """Walk one RUNS_ROOT: every `schedule.json` builds batch context, then
-    every retained transcript becomes one `CellCensus`. Both names the two
-    routes write are discovered -- the Baseline attempt's `transcript.txt`
-    and the packet route's `harness/.satyrn-implementer-transcript.jsonl`
-    (the adapter's `TRANSCRIPT_NAME`); a census blind to the second returns
-    zero cells on a packet-route root. Never raises on a missing or
-    malformed schedule/preflight -- those degrade to `None` fields, not a
-    refusal (spec §3)."""
+    every retained transcript becomes one `CellCensus`. Discovers the
+    Baseline attempt's `transcript.txt` under the root. Never raises on a
+    missing or malformed schedule/preflight -- those degrade to `None`
+    fields, not a refusal (spec §3)."""
     contexts: dict[Path, _BatchContext] = {}
     for schedule_path in sorted(root.rglob("schedule.json")):
         label = _batch_label(root, schedule_path.parent)
@@ -466,10 +462,6 @@ def census_root(root: Path) -> list[CellCensus]:
         )
     cells: list[CellCensus] = []
     for transcript_path in sorted(root.rglob("transcript.txt")):
-        cells.append(
-            _census_one_transcript(transcript_path, root=root, contexts=contexts)
-        )
-    for transcript_path in sorted(root.rglob(TRANSCRIPT_NAME)):
         cells.append(
             _census_one_transcript(transcript_path, root=root, contexts=contexts)
         )

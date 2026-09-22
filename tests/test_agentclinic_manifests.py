@@ -7,7 +7,6 @@ refuses any hidden-task contract containing an overlay name at load
 """
 
 import json
-import shutil
 from pathlib import Path
 
 import pytest
@@ -27,7 +26,6 @@ FORBIDDEN = ("overlay", "test_acceptance.py", "overlay/test_acceptance.py")
 #: before. tests/integration/test_agentclinic_gate.py imports this list rather
 #: than repeating it, so the two tiers cannot disagree about what is qualified.
 QUALIFIED: list[tuple[str, str]] = [
-    ("depth-3", "R3"),
     ("misleading-locus", "R3"),
     ("misleading-locus", "R1"),
 ]
@@ -77,24 +75,22 @@ def test_contract_names_the_recorded_failing_check(state: str) -> None:
         assert "failing check" in manifest.contract
 
 
-def test_manifest_whose_contract_names_overlay_is_refused(tmp_path: Path) -> None:
+def test_manifest_whose_contract_names_overlay_is_refused(tmp_hidden_task: Path) -> None:
     """End-to-end refusal at load: a hidden-task contract naming a grader-only
     path must raise ManifestError from load_manifest itself.
 
-    The poisoned task dir is a real copy (not symlinks): the overlay path
-    must resolve as a real directory so the ONLY defect is the contract, and
-    the refusal comes from the contract-name check, not the overlay-symlink
-    guard.
+    The task is the synthetic hidden task from ``tests/conftest.py``, never a
+    copy of a bundled one: a bundled overlay copied into pytest's temp
+    directory is an answer key on disk, and on 2026-09-14 a hunting model read
+    exactly that copy (spec, "What the evidence settled"). Its overlay is a
+    real directory, so the ONLY defect is the contract.
     """
-    src = resolve_task("agentclinic-repair-plausible-wrong-fix")
-    data = json.loads((src / "manifest.json").read_text())
-    data["contract"] = "the failure is in test_acceptance.py — fix it"
-    root = tmp_path / "tasks"
-    target = root / data["name"]
-    shutil.copytree(src, target)
-    (target / "manifest.json").write_text(json.dumps(data))
+    manifest_path = tmp_hidden_task / "manifest.json"
+    data = json.loads(manifest_path.read_text())
+    data["contract"] = "the failure is in tests/test_hidden.py — fix it"
+    manifest_path.write_text(json.dumps(data))
     with pytest.raises(ManifestError, match="contract names grader-only path"):
-        load_manifest(target)
+        load_manifest(tmp_hidden_task)
 
 
 @pytest.mark.parametrize("state", STATES)
@@ -129,39 +125,16 @@ def test_all_manifests_share_identical_expected_test_ids() -> None:
 # task's hidden overlay against that task's own base/ and reading the failing
 # set from the oracle hook's record. The derivation, and the command that
 # recomputes it, are in
-# docs/superpowers/research/2026-09-05-v11a-r1-derivation.md.
+# docs/superpowers/research/2026-09-05-v11a-r1-derivation.md on the tagged
+# tree (git show
+# pre-release-one-2026-09-13:archive/2026-09-07-pre-reset/docs/superpowers/research/2026-09-05-v11a-r1-derivation.md).
 
 DERIVED_FAILING_NAMES: dict[str, tuple[str, ...]] = {
-    "depth-2": (
-        "test_home_html_element_declares_english_language",
-        "test_complaints_board_preserves_the_shared_layout",
-        "test_post_complaint_redirects_to_complaints_board",
-    ),
-    "depth-3": (
-        "test_home_html_element_declares_english_language",
-        "test_complaints_board_preserves_the_shared_layout",
-        "test_complaint_model_contract_is_preserved",
-        "test_post_complaint_redirects_to_complaints_board",
-    ),
-    # The two collection-abort states collect nothing, so they have no
-    # failing function names; their derived evidence is the abort message.
-    "framing-2": (),
-    "framing-2-edit": (),
     "misleading-locus": ("test_posted_complaint_appears_on_complaints_board",),
-    "plausible-wrong-fix": ("test_post_complaint_redirects_to_complaints_board",),
 }
 
 DERIVED_ASSERTION_TEXT: dict[str, tuple[str, ...]] = {
-    "depth-2": ("'NoneType' object has no attribute 'casefold'", "assert 307 == 303"),
-    "depth-3": (
-        "'NoneType' object has no attribute 'casefold'",
-        "assert None is not None",
-        "assert 307 == 303",
-    ),
-    "framing-2": ("ModuleNotFoundError: No module named 'models'",),
-    "framing-2-edit": ("module 'models' has no attribute 'complaints'",),
     "misleading-locus": ("Codex acceptance test",),
-    "plausible-wrong-fix": ("assert 307 == 303",),
 }
 
 
@@ -171,12 +144,7 @@ DERIVED_ASSERTION_TEXT: dict[str, tuple[str, ...]] = {
 #: `specs/` vendored into `base/` -- reversed by V11a to keep `base/`
 #: byte-identical -- and they keep the trim's set until that slice runs.
 EXPECTED_RUNGS = {
-    "depth-2": {"R0", "R1", "R1b", "R3"},
-    "depth-3": {"R0", "R1", "R1b", "R3"},
     "misleading-locus": {"R0", "R1", "R1b", "R3"},
-    "plausible-wrong-fix": {"R0", "R1", "R1b", "R3"},
-    "framing-2": {"R1", "R3"},
-    "framing-2-edit": {"R1", "R3"},
 }
 
 
@@ -205,21 +173,6 @@ def test_every_contract_distinguishes_public_and_absent_acceptance_suites(
         assert "uv run python -m pytest tests/" in text, (state, label)
         assert "acceptance suite" in text, (state, label)
         assert "not present in this workspace" in text, (state, label)
-
-
-def test_framing_2_edit_contracts_do_not_falsely_blame_app_import() -> None:
-    """Only the absent acceptance suite observes the legacy module attribute."""
-    manifest = load_manifest(resolve_task("agentclinic-repair-framing-2-edit"))
-    for label, text in {"default": manifest.contract, **manifest.contracts}.items():
-        assert "models.complaints" in text, label
-        assert "importing the app raises" not in text, label
-        assert "repair the app's import" not in text, label
-
-
-def test_plausible_wrong_fix_contracts_do_not_claim_recording_is_broken() -> None:
-    manifest = load_manifest(resolve_task("agentclinic-repair-plausible-wrong-fix"))
-    for label, text in {"default": manifest.contract, **manifest.contracts}.items():
-        assert "complaint is recorded" not in text, label
 
 
 @pytest.mark.parametrize("state", STATES)
@@ -369,3 +322,43 @@ def test_misleading_locus_known_broken_touches_only_the_board_template() -> None
     task_dir = resolve_task("agentclinic-repair-misleading-locus")
     patch = (task_dir / "fixtures" / "known-broken.patch").read_text()
     assert parse_patch_paths(patch) == ("templates/complaints.html",)
+
+
+#: Design section 4: R2 is R1 plus pytest's own explanation of the third
+#: failure, the line R1 strips (`tasks/KNOWN_DEFECTS.md`, depth-3).
+R2_EXPLANATION = "assert None is not None, where None = first.timestamp.tzinfo"
+
+
+def test_depth_3_ships_r2_and_keeps_r1() -> None:
+    manifest = load_manifest(resolve_task("agentclinic-repair-depth-3"))
+    assert set(manifest.contracts) == {"R0", "R1", "R1b", "R2", "R3"}
+
+
+def test_r2_is_r1_with_the_tzinfo_explanation_and_nothing_else() -> None:
+    """Ruling 4: R2 - R1 is one fact. If anything else differs, the information
+    diagnosis the census tests is no longer isolated."""
+    manifest = load_manifest(resolve_task("agentclinic-repair-depth-3"))
+    r1, r2 = manifest.contracts["R1"], manifest.contracts["R2"]
+    assert R2_EXPLANATION in r2
+    assert R2_EXPLANATION not in r1
+    assert r2.replace(", where None = first.timestamp.tzinfo", "", 1) == r1
+
+
+def test_r2_does_not_name_the_file_or_the_fix() -> None:
+    """The added fact is pytest's assertion text, not a location (section 4)."""
+    r2 = load_manifest(resolve_task("agentclinic-repair-depth-3")).contracts["R2"]
+    assert "models.py" not in r2
+    assert "timezone-aware" not in r2
+
+
+def test_the_default_contract_is_still_r3() -> None:
+    manifest = load_manifest(resolve_task("agentclinic-repair-depth-3"))
+    assert manifest.contract == manifest.contracts["R3"]
+
+
+def test_the_census_rung_map_names_six_tasks_that_exist() -> None:
+    from satyrn_evals.qualify import CENSUS_TASKS
+
+    assert len(CENSUS_TASKS) == 6
+    for task, rung in CENSUS_TASKS.items():
+        assert rung in load_manifest(resolve_task(task)).contracts, task

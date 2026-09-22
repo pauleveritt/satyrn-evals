@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "task": "selfhost-speed-probe",
+  "task_tree_sha256": "dbb752affe8df090fa8594e8f046383c3ac57e6657fbb7c6181f31331270df28",
+  "arm": "baseline",
+  "model": "omlx/Ornith-1.5-9B-MLX-8bit",
+  "condition": "cold",
+  "n": 6,
+  "mode": "batch",
+  "max_minutes": 240,
+  "stop_rule": "established infrastructure failure only",
+  "decision_rule": "none for outcomes: release-two admission is decided in section 8 of 2026-09-15-release-two-census-design.md from the classified table, not from a pass count",
+  "previous_result": "records/2026-09-16-census-selfhost-cell-loop.result.json",
+  "token_budget": 48000,
+  "turn_budget": 72,
+  "isolation": "isolated",
+  "purpose": "admission",
+  "k": 3,
+  "rung": "R1-plan",
+  "authority": "maintainer-approved census, spec 2026-09-15-release-two-census-design.md",
+  "command_backstop_s": 3000
+}

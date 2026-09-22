@@ -88,3 +88,77 @@ def test_capture_reports_renames_as_delete_plus_add(tmp_path: Path) -> None:
     assert {"renamed.txt", "kept.txt"} <= set(capture.changed_paths)
     assert any(line.startswith("D ") for line in capture.status_lines)
     assert any(line.startswith(" A") for line in capture.status_lines)
+
+
+def test_harvest_excludes_runtime_residue_and_keeps_new_files(tmp_path: Path) -> None:
+    from satyrn_evals.session_patch import RESIDUE_EXCLUDES
+
+    repo, base = _repo(tmp_path)
+    (repo / "new_module.py").write_text("x = 1\n")
+    for residue in (".pytest_cache/v/cache/lastfailed", "pkg/__pycache__/m.cpython-314.pyc", ".ruff_cache/0.1/x", ".venv/bin/python"):
+        (repo / residue).parent.mkdir(parents=True, exist_ok=True)
+        (repo / residue).write_text("residue\n")
+    harvested = build_cumulative_patch(repo, base, exclude=RESIDUE_EXCLUDES).patch_text
+    assert "new_module.py" in harvested
+    assert not any(name in harvested for name in (".pytest_cache", "__pycache__", ".ruff_cache", ".venv"))
+    swept = build_cumulative_patch(repo, base).patch_text
+    assert ".pytest_cache" in swept  # sibling: the session path's default is unchanged
+
+
+def test_harvest_excludes_the_mutators_atomic_replace_temp_file(tmp_path: Path) -> None:
+    """F4: satyrn-engine's ``_atomic_replace`` (mutation.py ~623-646 at
+    0a6e5df) writes each edit through ``.<name>.satyrn-<16 hex>.tmp`` before
+    ``os.replace``-ing it over the real file. A harvest that lands mid-write
+    must not sweep that temp file into the patch -- but an ordinary dotfile
+    the model itself created is still harvested, so the exclusion must name
+    this exact shape, not every dotfile."""
+    from satyrn_evals.session_patch import RESIDUE_EXCLUDES
+
+    repo, base = _repo(tmp_path)
+    (repo / "mid_write.py").write_text("x = 1\n")
+    (repo / ".mid_write.py.satyrn-0123456789abcdef.tmp").write_text("partial\n")
+    (repo / ".env").write_text("ORDINARY=1\n")  # an ordinary dotfile the model created
+    harvested = build_cumulative_patch(repo, base, exclude=RESIDUE_EXCLUDES).patch_text
+    assert "mid_write.py" in harvested
+    assert ".env" in harvested
+    assert ".satyrn-" not in harvested
+
+
+def test_harvest_survives_a_commit_inside_the_worktree(tmp_path: Path) -> None:
+    repo, base = _repo(tmp_path)
+    (repo / "edited.txt").write_text("edited v2\n")
+    (repo / "committed.txt").write_text("committed\n")
+    (repo / "loose.txt").write_text("untracked\n")
+    _git(repo, "add", "edited.txt", "committed.txt")
+    _git(repo, "-c", "user.name=m", "-c", "user.email=m@m", "commit", "-qm", "model commit")
+    assert _git(repo, "diff", "HEAD").stdout == b""  # what the old harvest saw
+    capture = build_cumulative_patch(repo, base)
+    assert capture.changed_paths == ("committed.txt", "edited.txt", "loose.txt")
+
+
+def test_harvest_never_runs_repository_config_hooks_or_fsmonitor(tmp_path: Path) -> None:
+    """F1/R10: a cell that writes fsmonitor/hooks config into the shared
+    seed repository must not get the maintainer's harvest to run it."""
+    repo, base = _repo(tmp_path)
+    marker = tmp_path / "pwned"
+    fsmonitor_script = tmp_path / "fsmonitor.sh"
+    fsmonitor_script.write_text(f'#!/bin/sh\ntouch "{marker}"\nprintf "1\\n"\n')
+    fsmonitor_script.chmod(0o755)
+    hooks_dir = tmp_path / "evil-hooks"
+    hooks_dir.mkdir()
+    post_checkout = hooks_dir / "post-checkout"
+    post_checkout.write_text(f'#!/bin/sh\ntouch "{marker}"\n')
+    post_checkout.chmod(0o755)
+    _git(repo, "config", "core.fsmonitor", str(fsmonitor_script))
+    _git(repo, "config", "core.hooksPath", str(hooks_dir))
+    _mutate(repo)
+    capture = build_cumulative_patch(repo, base)
+    assert not marker.exists(), "harvest ran repository-config hooks/fsmonitor"
+    # success sibling: the harvest still reports the same changes
+    assert "edited v2" in capture.patch_text
+    assert capture.changed_paths == (
+        "edited.txt",
+        "gone.txt",
+        "mode.sh",
+        "untracked.txt",
+    )

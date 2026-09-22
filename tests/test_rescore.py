@@ -23,7 +23,12 @@ from satyrn_evals.manifest import (
     resolve_task,
 )
 from satyrn_evals.receipt import Receipt
-from satyrn_evals.rescore import compute_pathology, regrade_attempt, summarize_output
+from satyrn_evals.rescore import (
+    compute_evidence,
+    compute_pathology,
+    regrade_attempt,
+    summarize_output,
+)
 from satyrn_evals.summary import ABORTED_NAME, SUMMARY_NAME
 from satyrn_evals.verdict import Verdict
 
@@ -982,6 +987,137 @@ def test_regrade_reclassification_is_idempotent(tmp_path: Path) -> None:
     cell = _refusal_cell(tmp_path / "run", "cell-1", _OOM_TRANSCRIPT)
     assert regrade_attempt(cell, tasks_root=DEFAULT_TASKS_ROOT) is not None
     assert regrade_attempt(cell, tasks_root=DEFAULT_TASKS_ROOT) is None
+
+
+def _partial_leak(payload: str) -> str:
+    """A timed-out cell's transcript: the leak is read, the session never settled.
+
+    The turn closes but there is no ``agent_end``, so pathology reads it
+    ``partial`` -- an unmeasured shape the evidence scan must still cover.
+    (A cut *open* turn is measured now; see the 2026-09-18 truncation rule.)
+    """
+    return "\n".join(_leaky_transcript(payload).splitlines()[:-2]) + "\n"
+
+
+def test_evidence_scans_a_timed_out_hidden_cell_that_pathology_cannot_measure(tmp_path: Path) -> None:
+    output, task_dir, manifest = _hidden_setup(tmp_path)
+    name, rec, receipt = _pathology_cell(output, "hidden-task-1", task="hidden-task", transcript=_partial_leak(_HIDDEN_OVERLAY))
+    timed_out = replace(
+        rec, outcome=AttemptOutcome.REFUSED, code=AttemptCode.COMMAND_TIMEOUT, command_exit=None,
+        verdict=None, receipt_path=None, patch_path=None, patch_digest=None,
+    )
+    cells = [(name, timed_out, receipt)]
+    assert compute_pathology(output, cells, task_dir=task_dir, manifest=manifest)[name]["measured"] is False
+    block = compute_evidence(output, cells, task_dir=task_dir, manifest=manifest)[name]
+    assert block["transcript"] is True and block["overlay_windows"] == 1
+    assert block["timeline"] is False
+
+
+def test_evidence_for_a_clean_hidden_cell_reports_zero_windows(tmp_path: Path) -> None:
+    output, task_dir, manifest = _hidden_setup(tmp_path)
+    cells = [_pathology_cell(output, "hidden-task-1", task="hidden-task", transcript=_GOOD_TRANSCRIPT)]
+    assert compute_evidence(output, cells, task_dir=task_dir, manifest=manifest)["hidden-task-1"]["overlay_windows"] == 0
+
+
+def test_evidence_says_when_a_cell_has_no_transcript_and_reads_a_timeline_when_present(tmp_path: Path) -> None:
+    output, task_dir, manifest = _visible_setup(tmp_path)
+    absent = _pathology_cell(output, "format_number-1", transcript=None)
+    present = _pathology_cell(output, "format_number-2", transcript=_GOOD_TRANSCRIPT)
+    (output / "format_number-2" / "timeline.jsonl").write_text(
+        '{"at": 1.0, "event": "start", "toolCallId": "b", "toolName": "bash"}\n', encoding="utf-8"
+    )
+    blocks = compute_evidence(output, [absent, present], task_dir=task_dir, manifest=manifest)
+    assert blocks["format_number-1"] == {"transcript": False}
+    assert blocks["format_number-2"]["timeline"] is True
+    assert blocks["format_number-2"]["unfinished_commands"] == 1
+    assert blocks["format_number-2"]["overlay_windows"] is None
+
+
+def _mutation_transcript(path: str) -> str:
+    """One turn whose single write lands on ``path``."""
+    return "\n".join([
+        '{"type": "session", "version": 3, "cwd": "/w"}',
+        '{"type": "turn_start"}',
+        json.dumps({"type": "message_end", "message": {
+            "role": "assistant", "usage": {"output": 100}, "content": []}}),
+        json.dumps({"type": "tool_execution_start", "toolCallId": "w1",
+                    "toolName": "write", "args": {"path": path, "content": "x\n"}}),
+        json.dumps({"type": "tool_execution_end", "toolCallId": "w1",
+                    "toolName": "write",
+                    "result": {"content": [{"type": "text", "text": ""}]}}),
+    ])
+
+
+def test_evidence_passes_the_manifests_source_paths_to_the_mutation_rule(
+    tmp_path: Path,
+) -> None:
+    """Both directions: a write inside ``manifest.source_paths`` makes
+    ``exploration_turns`` a number; a write outside it stays null. The
+    bundled format_number task declares ``source_paths: ["solution.py"]``."""
+    output, task_dir, manifest = _visible_setup(tmp_path)
+    inside = _pathology_cell(
+        output, "format_number-1",
+        transcript=_mutation_transcript("solution.py"),
+    )
+    outside = _pathology_cell(
+        output, "format_number-2",
+        transcript=_mutation_transcript("notes.txt"),
+    )
+    blocks = compute_evidence(
+        output, [inside, outside], task_dir=task_dir, manifest=manifest
+    )
+    assert blocks["format_number-1"]["exploration_turns"] == 0
+    assert blocks["format_number-2"]["exploration_turns"] is None
+
+
+def _agent_end_transcript() -> str:
+    """One turn that ends on its own, with an ``agent_end`` in the stream."""
+    return "\n".join([
+        '{"type": "session", "version": 3, "cwd": "/w"}',
+        '{"type": "turn_start"}',
+        json.dumps({"type": "message_end", "message": {
+            "role": "assistant", "usage": {"output": 100}, "content": []}}),
+        json.dumps({"type": "tool_execution_start", "toolCallId": "b1",
+                    "toolName": "bash", "args": {"command": "ls"}}),
+        json.dumps({"type": "tool_execution_end", "toolCallId": "b1",
+                    "toolName": "bash",
+                    "result": {"content": [{"type": "text", "text": ""}]}}),
+        '{"type": "agent_end"}',
+    ])
+
+
+def test_evidence_nulls_self_stop_only_for_a_cell_the_harness_cut(tmp_path: Path) -> None:
+    """Ruling R-3, wired through the record: a cell the harness stopped -- a
+    cut code with no command exit -- leaves an ``agent_end`` as tear-down
+    residue, so ``compute_evidence`` passes ``cut=True`` and ``self_stop`` is
+    null. A normal-exit over-budget cell (``command_exit`` is not None) was
+    not cut: its ``agent_end`` is a genuine self-stop and is recorded. The OK
+    cell is the control (both directions)."""
+    output, task_dir, manifest = _visible_setup(tmp_path)
+    ok_name = "format_number-1"
+    ok = _pathology_cell(output, ok_name, transcript=_agent_end_transcript())
+    cut_name = "format_number-2"
+    cut = _pathology_cell(output, cut_name, transcript=_agent_end_transcript())
+    cut_rec = replace(
+        cut[1], outcome=AttemptOutcome.REFUSED, code=AttemptCode.BUDGET_EXCEEDED,
+        command_exit=None, verdict=None, receipt_path=None,
+    )
+    write_attempt_record(output / cut_name / "attempt.json", cut_rec)
+    normal_name = "format_number-3"
+    normal = _pathology_cell(output, normal_name, transcript=_agent_end_transcript())
+    normal_rec = replace(
+        normal[1], outcome=AttemptOutcome.REFUSED, code=AttemptCode.BUDGET_EXCEEDED,
+        command_exit=0, verdict=None, receipt_path=None,
+    )
+    write_attempt_record(output / normal_name / "attempt.json", normal_rec)
+    blocks = compute_evidence(
+        output,
+        [ok, (cut_name, cut_rec, None), (normal_name, normal_rec, None)],
+        task_dir=task_dir, manifest=manifest,
+    )
+    assert blocks[ok_name]["self_stop"] == {"turn": 1, "output_tokens": 100}
+    assert blocks[cut_name]["self_stop"] is None
+    assert blocks[normal_name]["self_stop"] == {"turn": 1, "output_tokens": 100}
 
 
 def test_regrade_reverts_a_reclassification_the_rule_no_longer_supports(

@@ -1,0 +1,15 @@
+{
+  "name": "calc-build",
+  "contract": "Create calc/helpers.py with add_all(xs) returning the sum, create calc/format.py with render(n) returning n with thousands separators, and make total(xs) in calc/core.py return add_all(xs).",
+  "oracle": ["python", "-m", "pytest", "-p", "satyrn_evals.oracle_hook"],
+  "expected_test_ids": [
+    "tests/test_core.py::test_total",
+    "tests/test_format.py::test_render"
+  ],
+  "source_paths": ["calc"],
+  "source_dirs": ["calc"],
+  "fixtures": {
+    "known_good": "fixtures/known-good.patch",
+    "known_broken": "fixtures/known-broken.patch"
+  }
+}

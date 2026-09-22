@@ -34,10 +34,12 @@ from pathlib import Path
 from types import FrameType
 
 from satyrn_evals.attempt import DEFAULT_TIMEOUT, attempt, resolve_contract
+from satyrn_evals.budget import AttemptBudget, LineBudget
+from satyrn_evals.cell import Isolation
 from satyrn_evals.deadline import validate_attempt_timeout
 from satyrn_evals.errors import OverlayError, SatyrnError, UsageError
 from satyrn_evals.manifest import load_manifest, resolve_task
-from satyrn_evals.rescore import compute_pathology, pathology_context
+from satyrn_evals.rescore import compute_evidence, compute_pathology, pathology_context
 from satyrn_evals.summary import (
     ABORTED_NAME,
     SUMMARY_NAME,
@@ -132,6 +134,7 @@ def _write_aborted(
             payload.pop("attempt_timeout")
         if payload["deadline_provenance"] is None:
             payload.pop("deadline_provenance")
+        payload.pop("evidence")  # the abort marker is a tally; evidence is the summary's
         if pathology is None:
             payload.pop("pathology")  # binder failed: error names it
         data.update(payload)
@@ -152,6 +155,9 @@ def run(
     rung: str | None = None,
     max_repeated_calls: int | None = None,
     attempt_timeout: float | None = None,
+    budget: AttemptBudget | None = None,
+    isolation: Isolation = Isolation.LOCAL,
+    line_budget: LineBudget | None = None,
 ) -> Summary:
     if n < 1:
         raise UsageError("run requires a positive --n")
@@ -190,6 +196,12 @@ def run(
                 )
                 if attempt_timeout is not None:
                     attempt_kwargs["attempt_timeout"] = attempt_timeout
+                if budget is not None:
+                    attempt_kwargs["budget"] = budget
+                if isolation is Isolation.ISOLATED:
+                    attempt_kwargs["isolation"] = isolation
+                if line_budget is not None:
+                    attempt_kwargs["line_budget"] = line_budget
                 record = attempt(**attempt_kwargs)  # type: ignore[arg-type]
                 if record.attempt_dir is None:
                     raise RuntimeError(
@@ -242,10 +254,19 @@ def run(
         overlay=overlay,
         visible_texts=visible_texts,
     )
+    evidence = compute_evidence(
+        output,
+        cells,
+        task_dir=task_dir,
+        manifest=manifest,
+        overlay=overlay,
+        visible_texts=visible_texts,
+    )
     summary = compute_summary(
         cells,
         oracle_visibility=manifest.oracle_visibility,
         pathology=pathology,
+        evidence=evidence,
     )
     output.mkdir(parents=True, exist_ok=True)
     stale = output / ABORTED_NAME

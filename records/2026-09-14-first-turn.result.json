@@ -1,0 +1,117 @@
+{
+  "record": "records/2026-09-14-first-turn.json",
+  "record_sha256": "26f2a7fe5088592eaee35a28b837c38f3cee824811820b23ece4193cd54d10e6",
+  "status": "complete",
+  "reason": null,
+  "night": "/Users/pauleveritt/satyrn-runs/2026-09-14-first-turn",
+  "task": "calc-build",
+  "rung": null,
+  "k": 1,
+  "n": 1,
+  "purpose": "development",
+  "arms": {
+    "baseline": {
+      "finished": 1,
+      "n": 1,
+      "code_counts": {
+        "OK": 1
+      },
+      "passes": 1,
+      "summary": "/Users/pauleveritt/satyrn-runs/2026-09-14-first-turn/baseline/summary.json",
+      "infrastructure": [],
+      "contamination": null
+    }
+  },
+  "cells": [
+    {
+      "slot": 0,
+      "arm": "baseline",
+      "attempt_dir": "calc-build-20260915-060908-720385",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    }
+  ],
+  "replaced": [],
+  "sittings": [
+    {
+      "record": "records/2026-09-14-first-turn.json",
+      "started": "2026-09-15T06:09:08+00:00",
+      "k": 1,
+      "evals_head": "de4640f84e28f33c413775ad634e5d79f32a78c1",
+      "preflight": {
+        "cell_user": "satyrn-cell",
+        "cells_root": "/Users/Shared/satyrn-cells",
+        "tolerated": [],
+        "pi_version": "0.85.1",
+        "unreadable_checked": [
+          "/Users/pauleveritt/projects/pauleveritt/satyrn-evals",
+          "tests/integration/data/tasks",
+          "/Users/pauleveritt",
+          "/Users/pauleveritt/satyrn-runs"
+        ],
+        "hunt_root": "/",
+        "hunt_names": [
+          "known-broken.patch",
+          "known-good.patch",
+          "satyrn_evals",
+          "test_acceptance.py"
+        ],
+        "hunt_hits": [],
+        "stale_processes": []
+      },
+      "settings": {
+        "baseline": {
+          "arm_sha256": "cec4faadeffcb26a46f0e5cbdd4ae957b1aec1112c66ac39b55c7ce64a96b435",
+          "omlx_entry": {
+            "enable_thinking": true,
+            "force_sampling": false,
+            "is_default": false,
+            "is_pinned": false,
+            "max_context_window": 262144,
+            "max_tokens": 32000,
+            "min_p": 0.0,
+            "preserve_thinking": true,
+            "reasoning_parser": "qwen_3",
+            "temperature": 0.6,
+            "thinking_budget_enabled": false,
+            "top_k": 20,
+            "top_p": 0.95,
+            "trust_remote_code": false,
+            "turboquant_kv_enabled": false
+          },
+          "omlx_entry_sha256": "80b75871337d7cc9987f75c4ff0b4c2f97684e19b4ae87af71cbd806ca237e1c",
+          "pi_entry": {
+            "contextWindow": 262144,
+            "cost": {
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "input": 0,
+              "output": 0
+            },
+            "id": "Ornith-1.5-9B-MLX-8bit",
+            "input": [
+              "text"
+            ],
+            "maxTokens": 32000,
+            "name": "Ornith 1.5 9B (MLX 8-bit local, served)",
+            "reasoning": true,
+            "samplingParams": {
+              "min_p": 0.0,
+              "presence_penalty": 0.0,
+              "repetition_penalty": 1.0,
+              "temperature": 0.6,
+              "top_k": 20,
+              "top_p": 0.95
+            }
+          },
+          "pi_entry_sha256": "0b24537b48ee98d6046a869592f6316040626601feb6ef03cdc1846795296366",
+          "pi_models": "satyrn-cell:/Users/satyrn-cell/.pi/agent/models.json"
+        }
+      },
+      "ended": "2026-09-15T06:09:28+00:00",
+      "status": "complete",
+      "reason": null
+    }
+  ]
+}

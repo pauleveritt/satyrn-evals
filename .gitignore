@@ -6,6 +6,7 @@ __pycache__/
 .ruff_cache/
 .pyrefly_cache/
 docs/_build/
+_build/
 node_modules/
 
 # Local workspace state

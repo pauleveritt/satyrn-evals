@@ -1,0 +1,146 @@
+{
+  "record": "records/2026-09-17-route-proof-engine-selfhost-docs-linter.json",
+  "record_sha256": "9f6a0cf7074d387f357032711ccfd4c1fd9a18ca962b72c61d17c295bba4e2a8",
+  "status": "complete",
+  "reason": null,
+  "night": "/Users/pauleveritt/satyrn-runs/2026-09-17-route-proof-engine-selfhost-docs-linter",
+  "task": "selfhost-docs-linter",
+  "rung": "R1-plan",
+  "k": 3,
+  "n": 2,
+  "purpose": "route-proof",
+  "arms": {
+    "engine": {
+      "finished": 2,
+      "n": 2,
+      "code_counts": {
+        "OK": 2
+      },
+      "passes": 2,
+      "summary": "/Users/pauleveritt/satyrn-runs/2026-09-17-route-proof-engine-selfhost-docs-linter/engine/summary.json",
+      "infrastructure": [],
+      "contamination": {
+        "graded": 2,
+        "flagged": 0,
+        "clean": 2,
+        "unmeasured": 0
+      }
+    }
+  },
+  "cells": [
+    {
+      "slot": 0,
+      "arm": "engine",
+      "attempt_dir": "selfhost-docs-linter-20260918-175121-710818",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 1,
+      "arm": "engine",
+      "attempt_dir": "selfhost-docs-linter-20260918-175121-770123",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    }
+  ],
+  "replaced": [],
+  "sittings": [
+    {
+      "record": "records/2026-09-17-route-proof-engine-selfhost-docs-linter.json",
+      "started": "2026-09-18T17:51:21+00:00",
+      "k": 3,
+      "evals_head": "8ab193916b20209d88e4d45330ccdeb09fe4eade",
+      "preflight": {
+        "cell_user": "satyrn-cell",
+        "cells_root": "/Users/Shared/satyrn-cells",
+        "tolerated": [],
+        "pi_version": "0.85.1",
+        "unreadable_checked": [
+          "/Users/pauleveritt/projects/pauleveritt/satyrn-evals",
+          "/Users/pauleveritt/projects/pauleveritt/satyrn-evals/src/satyrn_evals/tasks",
+          "/Users/pauleveritt",
+          "/Users/pauleveritt/satyrn-runs"
+        ],
+        "hunt_root": "/",
+        "hunt_names": [
+          "known-broken.patch",
+          "known-good.patch",
+          "satyrn_evals",
+          "test_acceptance.py",
+          "test_doc_caps.py",
+          "test_hook_guard.py",
+          "test_launch.py",
+          "test_phase1_home.py",
+          "test_phase2_board.py",
+          "test_phase3_add.py",
+          "test_phase4_resolve_reopen.py",
+          "test_preflight_quiet.py",
+          "test_review.py",
+          "test_run_record.py",
+          "test_speed_probe.py"
+        ],
+        "hunt_hits": [],
+        "stale_processes": []
+      },
+      "model_server": {
+        "Ornith-1.5-9B-MLX-8bit": {
+          "base_url": "http://127.0.0.1:8001"
+        }
+      },
+      "settings": {
+        "engine": {
+          "arm_sha256": "a1f4e853c407c3c383d3e47229a514885edb714351a00be37cfee96308551406",
+          "omlx_entry": {
+            "enable_thinking": true,
+            "force_sampling": false,
+            "is_default": false,
+            "is_pinned": false,
+            "max_context_window": 262144,
+            "max_tokens": 16000,
+            "min_p": 0.0,
+            "preserve_thinking": true,
+            "reasoning_parser": "qwen_3",
+            "temperature": 0.6,
+            "thinking_budget_enabled": false,
+            "top_k": 20,
+            "top_p": 0.95,
+            "trust_remote_code": false,
+            "turboquant_kv_enabled": false
+          },
+          "omlx_entry_sha256": "fd0c3ca5d182bb720e559cdf70b4dd9294beb92119559b47046190d70b4c94bd",
+          "pi_entry": {
+            "contextWindow": 262144,
+            "cost": {
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "input": 0,
+              "output": 0
+            },
+            "id": "Ornith-1.5-9B-MLX-8bit",
+            "input": [
+              "text"
+            ],
+            "maxTokens": 16000,
+            "name": "Ornith 1.5 9B (MLX 8-bit local, served)",
+            "reasoning": true,
+            "samplingParams": {
+              "min_p": 0.0,
+              "presence_penalty": 0.0,
+              "repetition_penalty": 1.0,
+              "temperature": 0.6,
+              "top_k": 20,
+              "top_p": 0.95
+            }
+          },
+          "pi_entry_sha256": "ab238d1883f4a4bf150d0f4e55dedd8adf8292ff647eefe593a063d3b51eba23",
+          "pi_models": "satyrn-cell:/Users/satyrn-cell/.pi/agent/models.json"
+        }
+      },
+      "ended": "2026-09-18T18:13:15+00:00",
+      "status": "complete",
+      "reason": null
+    }
+  ]
+}

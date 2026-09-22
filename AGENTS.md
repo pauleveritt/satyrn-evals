@@ -1,70 +1,42 @@
 # Working in this repository
 
-Read `AGENTS.md`, `BRIEF.md`, and `ROADMAP.md` at the start of work. Then
-read the named current design and the relevant section of its plan. Do not
-preload historical material.
+Read `STATE.md` (what exists, what is proven, what is decided), `BRIEF.md`, `ROADMAP.md`, and
+`docs/superpowers/specs/2026-09-15-release-two-r0-constraints.md`. Release two
+is concluded: `docs/numbers.md` holds the result. The release-one
+design (`docs/superpowers/specs/2026-09-13-release-one-design.md`) and its
+phase plans are evidence for a named question, never guidance. The tag
+`pre-release-one-2026-09-13` on `main` holds everything before this tree; it
+too is evidence for a named question, never guidance.
 
-The archive is evidence, never operating guidance. When a concrete question
-needs it, search one named area with `rg --no-ignore archive/...`; ordinary
-`rg` intentionally excludes it. `archive/README.md` maps original paths and
-explains how to recover original line citations.
+**Unattended is for building; attended is for deciding and spending.** An
+agent executing a plan implements its tasks, commits at task boundaries, and
+stops at anything the plan did not foresee: an underspecified task, a task
+that fails acceptance twice, a red gate whose fix is not in the plan, or any
+step that wants inference. It never merges, never pushes, never runs a model
+outside `satyrn-evals launch` with a frozen record, and never writes a result
+or review file except through `satyrn-evals launch` and `tools/review.py`.
 
-Keep the executable-command engine seam. Persist an attempt's patch and
-transcript before grading or cleanup. Grade from hook-written evidence, never
-stdout or exit status; the hook-path spoofing limit is stated in the current
-trust-boundaries topic. State denominators and missingness. Make causal claims
-only with controls that isolate the proposed cause. Re-score retained evidence
-offline. Freeze execution conditions before a budgeted run.
+The default test tier uses no model, network, or subprocess; the tripwire in
+`tests/conftest.py` enforces it. Every refusal test has a sibling success test.
+Grade from hook-written evidence, never stdout or exit status. State
+denominators and missingness. Count events from `tool_execution_start`, one
+per call — never `grep -c`. Read a gate's exit code; never pipe a gate.
 
-The default test tier uses no model, network, or subprocess. Keep its planted
-subprocess tripwire; run marked integration checks when a change needs real
-Git, materialization, an attempt command, or an oracle. Give every refusal
-test a sibling success test.
+**Evidence has a harness.** Every design decision -- an Engine target, a
+ceiling task, a budget, a claim -- names the evidence it rests on and the
+harness commit that produced it. When a harness defect is found (a leak, a
+cutoff, a harvest or grading bug, wrong sampling, a prompt defect), list
+every decision whose evidence that defect could have produced, mark each one
+unconfirmed in the ledger, and build nothing on an unconfirmed decision until
+it is re-derived on the fixed harness. No Engine component is designed before
+admission on the comparison's own harness has classified why Baseline fails
+(information, ambiguity, capability, budget, finishing), and no remedy is
+built before an offline estimate on retained cells says it can clear the
+threshold (`docs/lessons.md`, "We built the remedy for the failures we
+saw"). **Going faster shortens building, never the order:** harness
+validity, then diagnosed admission, then the counterfactual, then the build.
 
-Any comparison follows `BRIEF.md`'s comparison policy: declare the outcome and
-cost questions before the run, disclose an informed selection rather than hide
-it, carry a power figure's test and assumptions, keep checkpoints to execution
-integrity, treat outcome-shaped signals as measurements rather than stop
-triggers, and never restart from zero by default.
-
-**The instrument is not the work.** Instrument improvement is always
-available, always verifiable, and always produces a green gate and a commit,
-while finding a pathology is uncertain and often ends in "no change". Left
-alone that gradient runs one way, so three rules bind it.
-
-**Currency.** Do not open an investigation on a pathology whose only evidence
-predates the shipping revision of the component it targets. Compare the
-evidence's recorded digest against `HEAD` **before** measuring — one command.
-On 2026-09-09 three consecutive cycles characterised a loop breaker that a
-landed commit had already fixed, because nobody ran that command.
-
-**Declare what each piece of work produced**, and cap one of the answers:
-*remedy tested live*, *remedy proposed and refused*, or **instrument only**.
-**Two consecutive instrument-only pieces stop the loop** and require a live run
-before another opens. The overnight run of 2026-09-08/09 was four in a row and
-ended with no remedy enabled and none tested.
-
-**Instrument work is a tax, not a product.** It is permitted when it blocks the
-measurement in hand, it is recorded as debt rather than as the work's result,
-and **if the fix is larger than the measurement it unblocks, stop and ask**.
-Each such fix is individually justified; the failure is cumulative, and only a
-count catches it.
-
-Optimize development for useful feedback within 10–15 minutes. Start with a
-deterministic reproducer, then one bounded attempt, then two attempts per
-matched configuration on one relevant qualified task; a broader confirmation
-run needs its own plan. Treat small runs as triage, never success-rate or
-causal evidence. Declare budgets and stop rules before spending: infrastructure
-failure stops remaining launches, while an ordinary failed repair remains a
-counted observation. Turn each expensive failure's deterministic component into
-a cheap regression test, and measure setup, command, and grading durations
-before proposing infrastructure optimization.
-
-Make normal, reviewable changes directly. Do not run model inference or create
-commits unless requested. Do not invent a spec or plan for a trivial change;
-use a current design and plan when the work needs one. An authorization remains
-in force for its stated scope.
-
-Use Sol for iterative implementation reviews and recommendations. Reserve Astra
-for a final acceptance review after the focused checks pass, unless the user
-explicitly asks for an earlier Astra gate.
+**The instrument is not the work.** Two consecutive instrument-only pieces stop
+the loop; a token run does not restart it. If a fix is larger than the
+measurement it unblocks, stop and ask. Every file here has a row in
+`PROVENANCE.md`; `just gates` fails if one does not.

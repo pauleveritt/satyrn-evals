@@ -1,0 +1,14 @@
+--- a/solution.py
++++ b/solution.py
+@@ -1,3 +1,11 @@
+ def existing() -> str:
+     """The base behavior the session must preserve."""
+     return "base"
++
++
++def feature_a() -> str:
++    return "wrong"
++
++
++def feature_b() -> str:
++    return "b"

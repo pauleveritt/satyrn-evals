@@ -1,0 +1,70 @@
+{
+  "task": "selfhost-docs-linter",
+  "patch_digest": "418cdd51b308476cd74fc83748925585daa1e1a1a16b47acd51f8dfea3b3c27e",
+  "verdict": "pass",
+  "reason": "",
+  "evidence": {
+    "executed_test_ids": [
+      "test_doc_caps.py::test_a_clean_tree_has_no_failures",
+      "test_doc_caps.py::test_a_spec_over_400_lines_fails_and_a_long_plan_does_not",
+      "test_doc_caps.py::test_an_unlisted_directory_under_docs_fails",
+      "test_doc_caps.py::test_gitkeep_does_not_count_toward_the_result_cap",
+      "test_doc_caps.py::test_result_at_exactly_120_lines_passes",
+      "test_doc_caps.py::test_result_over_120_lines_fails",
+      "test_doc_caps.py::test_result_with_a_fence_and_under_cap_passes",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails",
+      "test_doc_caps.py::test_roadmap_at_exactly_150_lines_passes",
+      "test_doc_caps.py::test_roadmap_over_150_lines_fails",
+      "test_doc_caps.py::test_spec_at_exactly_400_lines_passes",
+      "test_doc_caps.py::test_the_skip_list_is_relative_to_root_not_absolute",
+      "test_doc_caps.py::test_thirteen_results_fail",
+      "test_doc_caps.py::test_trailing_whitespace_and_blank_last_line_fail",
+      "test_doc_caps.py::test_twelve_results_passes"
+    ],
+    "outcomes": {
+      "test_doc_caps.py::test_a_clean_tree_has_no_failures": "passed",
+      "test_doc_caps.py::test_roadmap_over_150_lines_fails": "passed",
+      "test_doc_caps.py::test_result_over_120_lines_fails": "passed",
+      "test_doc_caps.py::test_result_without_a_fenced_recompute_block_fails": "passed",
+      "test_doc_caps.py::test_result_with_a_fence_and_under_cap_passes": "passed",
+      "test_doc_caps.py::test_thirteen_results_fail": "passed",
+      "test_doc_caps.py::test_a_spec_over_400_lines_fails_and_a_long_plan_does_not": "passed",
+      "test_doc_caps.py::test_an_unlisted_directory_under_docs_fails": "passed",
+      "test_doc_caps.py::test_trailing_whitespace_and_blank_last_line_fail": "passed",
+      "test_doc_caps.py::test_the_skip_list_is_relative_to_root_not_absolute": "passed",
+      "test_doc_caps.py::test_gitkeep_does_not_count_toward_the_result_cap": "passed",
+      "test_doc_caps.py::test_roadmap_at_exactly_150_lines_passes": "passed",
+      "test_doc_caps.py::test_result_at_exactly_120_lines_passes": "passed",
+      "test_doc_caps.py::test_spec_at_exactly_400_lines_passes": "passed",
+      "test_doc_caps.py::test_twelve_results_passes": "passed"
+    },
+    "counts": {
+      "passed": 15,
+      "failed": 0,
+      "error": 0,
+      "skipped": 0
+    }
+  },
+  "contamination": {
+    "visibility": "hidden",
+    "checks": [
+      {
+        "check": "grader_content_in_patch",
+        "outcome": "clean",
+        "evidence": []
+      }
+    ]
+  },
+  "resolved_versions": {
+    "coverage": "7.16.1",
+    "iniconfig": "2.3.0",
+    "packaging": "26.3",
+    "pluggy": "1.6.0",
+    "pygments": "2.21.0",
+    "pyrefly": "1.3.0",
+    "pytest": "9.1.1",
+    "pytest-cov": "7.1.0",
+    "pyyaml": "6.0.3",
+    "ruff": "0.16.7"
+  }
+}

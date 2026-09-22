@@ -1,0 +1,154 @@
+{
+  "record": "records/2026-09-17-census2-selfhost-cell-loop.json",
+  "record_sha256": "ec416917f6693415e5611da323064785bd99df00a3b9fca85056070ee2f6b9e7",
+  "status": "complete",
+  "reason": null,
+  "night": "/Users/pauleveritt/satyrn-runs/2026-09-17-census2-selfhost-cell-loop",
+  "task": "selfhost-cell-loop",
+  "rung": "R1-plan",
+  "k": 3,
+  "n": 3,
+  "purpose": "admission",
+  "arms": {
+    "baseline": {
+      "finished": 3,
+      "n": 3,
+      "code_counts": {
+        "NO_PATCH": 2,
+        "BUDGET_EXCEEDED": 1
+      },
+      "passes": 0,
+      "summary": "/Users/pauleveritt/satyrn-runs/2026-09-17-census2-selfhost-cell-loop/baseline/summary.json",
+      "infrastructure": [],
+      "contamination": {
+        "graded": 0,
+        "flagged": 0,
+        "clean": 0,
+        "unmeasured": 0
+      }
+    }
+  },
+  "cells": [
+    {
+      "slot": 0,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-cell-loop-20260917-043153-225004",
+      "code": "NO_PATCH",
+      "verdict": null,
+      "infrastructure": false
+    },
+    {
+      "slot": 1,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-cell-loop-20260917-043153-352753",
+      "code": "BUDGET_EXCEEDED",
+      "verdict": null,
+      "infrastructure": false
+    },
+    {
+      "slot": 2,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-cell-loop-20260917-043153-507079",
+      "code": "NO_PATCH",
+      "verdict": null,
+      "infrastructure": false
+    }
+  ],
+  "replaced": [],
+  "sittings": [
+    {
+      "record": "records/2026-09-17-census2-selfhost-cell-loop.json",
+      "started": "2026-09-17T04:31:52+00:00",
+      "k": 3,
+      "evals_head": "98ee4a39695a545363b10cad7319e935f99c44df",
+      "preflight": {
+        "cell_user": "satyrn-cell",
+        "cells_root": "/Users/Shared/satyrn-cells",
+        "tolerated": [],
+        "pi_version": "0.85.1",
+        "unreadable_checked": [
+          "/Users/pauleveritt/projects/pauleveritt/satyrn-evals",
+          "/Users/pauleveritt/projects/pauleveritt/satyrn-evals/src/satyrn_evals/tasks",
+          "/Users/pauleveritt",
+          "/Users/pauleveritt/satyrn-runs"
+        ],
+        "hunt_root": "/",
+        "hunt_names": [
+          "known-broken.patch",
+          "known-good.patch",
+          "satyrn_evals",
+          "test_acceptance.py",
+          "test_doc_caps.py",
+          "test_hook_guard.py",
+          "test_launch.py",
+          "test_phase1_home.py",
+          "test_phase2_board.py",
+          "test_phase3_add.py",
+          "test_phase4_resolve_reopen.py",
+          "test_review.py",
+          "test_run_record.py",
+          "test_speed_probe.py"
+        ],
+        "hunt_hits": [],
+        "stale_processes": []
+      },
+      "model_server": {
+        "Ornith-1.5-9B-MLX-8bit": {
+          "base_url": "http://127.0.0.1:8001"
+        }
+      },
+      "settings": {
+        "baseline": {
+          "arm_sha256": "e5936f49e2c5d1d9dad732c3adec8d0bde438835f520a15bb3ab4bb12ed9df79",
+          "omlx_entry": {
+            "enable_thinking": true,
+            "force_sampling": false,
+            "is_default": false,
+            "is_pinned": false,
+            "max_context_window": 262144,
+            "max_tokens": 16000,
+            "min_p": 0.0,
+            "preserve_thinking": true,
+            "reasoning_parser": "qwen_3",
+            "temperature": 0.6,
+            "thinking_budget_enabled": false,
+            "top_k": 20,
+            "top_p": 0.95,
+            "trust_remote_code": false,
+            "turboquant_kv_enabled": false
+          },
+          "omlx_entry_sha256": "fd0c3ca5d182bb720e559cdf70b4dd9294beb92119559b47046190d70b4c94bd",
+          "pi_entry": {
+            "contextWindow": 262144,
+            "cost": {
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "input": 0,
+              "output": 0
+            },
+            "id": "Ornith-1.5-9B-MLX-8bit",
+            "input": [
+              "text"
+            ],
+            "maxTokens": 16000,
+            "name": "Ornith 1.5 9B (MLX 8-bit local, served)",
+            "reasoning": true,
+            "samplingParams": {
+              "min_p": 0.0,
+              "presence_penalty": 0.0,
+              "repetition_penalty": 1.0,
+              "temperature": 0.6,
+              "top_k": 20,
+              "top_p": 0.95
+            }
+          },
+          "pi_entry_sha256": "ab238d1883f4a4bf150d0f4e55dedd8adf8292ff647eefe593a063d3b51eba23",
+          "pi_models": "satyrn-cell:/Users/satyrn-cell/.pi/agent/models.json"
+        }
+      },
+      "ended": "2026-09-17T05:07:19+00:00",
+      "status": "complete",
+      "reason": null
+    }
+  ]
+}

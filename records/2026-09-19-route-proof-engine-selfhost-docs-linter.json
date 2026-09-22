@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "task": "selfhost-docs-linter",
+  "task_tree_sha256": "a8c1aaf0e2d5136be35ed6e5d2bf49cb88e06e15c7217ed0b481edfbd090b1c6",
+  "arm": "engine",
+  "model": "omlx/Ornith-1.5-9B-MLX-8bit",
+  "condition": "cold",
+  "n": 2,
+  "mode": "batch",
+  "max_minutes": 120,
+  "stop_rule": "established infrastructure failure only",
+  "decision_rule": "section 7 go criterion, behaviour only, no outcome: the steer fires in 3 of 4 own-green cells and the model stops within three turns in 2 of those 3; a resume produces a tool call in 2 of 3. Below that, the design returns to the maintainer.",
+  "previous_result": "records/2026-09-19-route-proof-engine-selfhost-run-record-gate.result.json",
+  "token_budget": 48000,
+  "turn_budget": 72,
+  "isolation": "isolated",
+  "purpose": "route-proof",
+  "k": 3,
+  "rung": "R1-plan",
+  "authority": "maintainer: the second route proof, engine 2cccef1, on the claim tasks, approved 2026-09-18; these cells are read for behaviour only and are excluded from every comparison denominator, and are reported beside the void 2026-09-18 night",
+  "command_backstop_s": 4800
+}

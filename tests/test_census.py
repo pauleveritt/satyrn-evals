@@ -1,6 +1,6 @@
 """The V16 pathology census: detectors, aggregation, and the no-void rule.
 
-`archive/2026-09-07-pre-reset/docs/superpowers/specs/2026-09-07-v16-pathology-census-design.md`
+`git show pre-release-one-2026-09-13:archive/2026-09-07-pre-reset/docs/superpowers/specs/2026-09-07-v16-pathology-census-design.md`
 is the confirmed design. Default tier: no model, no network, no subprocess --
 every fixture here is a synthetic transcript built in-process.
 """
@@ -509,31 +509,6 @@ def test_a_run_self_test_call_is_not_an_unknown_tool() -> None:
     ]
 
     assert detect_unknown_tool(events) == 0
-
-
-# --- packet-route discovery (V2b cause 2) -------------------------------------
-
-
-def test_census_root_discovers_the_packet_route_transcript(tmp_path: Path) -> None:
-    harness = tmp_path / "run" / "harness"
-    harness.mkdir(parents=True)
-    (harness / ".satyrn-implementer-transcript.jsonl").write_text(
-        json.dumps({"type": "session", "version": 3, "cwd": "/x"}) + "\n"
-        + json.dumps(
-            {
-                "type": "tool_execution_start",
-                "toolCallId": "c1",
-                "toolName": "run_self_test",
-                "args": {},
-            }
-        )
-        + "\n"
-    )
-
-    cells = census_root(tmp_path)
-
-    assert len(cells) == 1
-    assert cells[0].unknown_tool == 0
 
 
 def test_a_rejected_edit_does_not_reset_the_stall_run() -> None:

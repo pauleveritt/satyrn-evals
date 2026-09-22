@@ -1,12 +1,12 @@
 """The Baseline attempt adapter: bare Pi behind the Evals attempt seam.
 
 One `pi --print --mode json` turn against the workspace Evals allocated,
-its stream-JSON written to ``SATYRN_ATTEMPT_TRANSCRIPT`` and the tracked
+its stream-JSON written to ``SATYRN_ATTEMPT_TRANSCRIPT`` and the cumulative
 diff harvested into ``SATYRN_ATTEMPT_PATCH`` after pi exits. Derived from
-the wrapper recorded in
-`docs/superpowers/research/2026-09-03-local-pings-reprobe-protocol.md`,
-with the deliberate changes recorded in
-`docs/superpowers/research/2026-09-05-v11b-adapter-derivation.md`.
+the wrapper recorded on the tagged tree
+(`git show pre-release-one-2026-09-13:archive/2026-09-07-pre-reset/docs/superpowers/research/2026-09-03-local-pings-reprobe-protocol.md`),
+with the deliberate changes recorded on the tagged tree
+(`git show pre-release-one-2026-09-13:archive/2026-09-07-pre-reset/docs/superpowers/research/2026-09-05-v11b-adapter-derivation.md`).
 
 **The adapter takes no ``--rung``.** The rung reaches it as the contract
 text Evals exports in ``SATYRN_TASK_CONTRACT`` (`attempt.py:109-112`).
@@ -20,15 +20,15 @@ flag; the V8 smoke lost a run to exactly that at 0.84.4, and engine commit
 2026-09-10 (usage-error paths only, no inference) before repinning every
 arm to it -- the behavior is unchanged.
 
-Stated limits, neither of them papered over:
+The harvest's scope, fixed by the incident that named it (Ruling 2):
 
-- **``git diff HEAD`` drops files the model created with ``write``.**
-  Untracked files are invisible to it. That is harmless on pure-edit
-  repair and fatal for build shapes and for `framing-2`. ``git add -A``
-  is **not** the fix: it would sweep a model's ``uv run pytest`` residue
-  into the patch and trip the allowlist check. Creation-capable capture
-  is a V12 entry gate, so a task that needs it must not be measured on
-  this adapter.
+- **The harvest is the cumulative diff from the workspace base commit**
+  (`SATYRN_WORKSPACE_BASE_SHA`), untracked files included and runtime
+  residue excluded, so a model `git commit` hides nothing (2026-09-14:
+  four cells scored `NO_PATCH` under `git diff HEAD`).
+
+Stated limit, not papered over:
+
 - **The diff is harvested only after pi exits**, so a cell killed by the
   attempt timeout retains no intermediate patch. Report that beside
   retained-patch production; never read a completion floor under this
@@ -36,6 +36,7 @@ Stated limits, neither of them papered over:
 """
 
 import os
+import re
 import subprocess
 import sys
 from collections.abc import Mapping
@@ -43,13 +44,19 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from satyrn_evals.arms import KNOWN_TOOLS
+from satyrn_evals.cell import Isolation, cell_command, isolation_from, model_environment
 from satyrn_evals.errors import UsageError
+from satyrn_evals.session_patch import RESIDUE_EXCLUDES, build_cumulative_patch
 
-#: The three variables Evals exports around an attempt command
-#: (`attempt.py:109-112`). A default-tier test pins them to that module.
+#: The four variables Evals exports around an attempt command --
+#: ``TASK_CONTRACT_ENV``, ``PATCH_ENV``, ``TRANSCRIPT_ENV`` and
+#: ``BASE_SHA_ENV`` (`attempt.py`'s own constants of the same names). A
+#: default-tier test pins them to that module.
 CONTRACT_ENV = "SATYRN_TASK_CONTRACT"
 PATCH_ENV = "SATYRN_ATTEMPT_PATCH"
 TRANSCRIPT_ENV = "SATYRN_ATTEMPT_TRANSCRIPT"
+BASE_SHA_ENV = "SATYRN_WORKSPACE_BASE_SHA"
+_OBJECT_ID = re.compile(r"\A(?:[0-9a-f]{40}|[0-9a-f]{64})\Z")
 
 #: The Baseline arm's declared tool surface (`arms/baseline.json`).
 DEFAULT_TOOLS: tuple[str, ...] = ("read", "bash", "edit", "write")
@@ -150,6 +157,23 @@ def build_pi_argv(args: AdapterArgs, prompt: str) -> list[str]:
     ]
 
 
+def pi_command(args: AdapterArgs, prompt: str, environment: Mapping[str, str], worktree: Path) -> list[str]:
+    """The pi argv, run as the cell user when the harness exported the isolated profile.
+
+    Under isolation Pi sees only the cell environment (`cell.cell_environment`):
+    its own home, PATH, TMPDIR and uv project environment, never the
+    maintainer's. The transcript still reaches the file this adapter opened,
+    through the inherited stdout.
+    """
+    command = build_pi_argv(args, prompt)
+    try:
+        if isolation_from(environment) is Isolation.LOCAL:
+            return command
+        return cell_command(command, cwd=worktree, environment=model_environment(environment))
+    except ValueError as exc:
+        raise AdapterError(str(exc)) from exc
+
+
 def read_prompt(environment: Mapping[str, str]) -> str:
     """The model-visible contract Evals exported, refusing an empty one.
 
@@ -191,22 +215,30 @@ def clean_pi_environment(environment: Mapping[str, str]) -> dict[str, str]:
     return cleaned
 
 
-def harvest_patch() -> str:
-    """The tracked diff of the workspace, as a unified patch.
+def read_base_sha(environment: Mapping[str, str]) -> str:
+    """The workspace base commit Evals exported, refusing anything else."""
+    sha = environment.get(BASE_SHA_ENV, "")
+    if not _OBJECT_ID.match(sha):
+        raise AdapterError(f"{BASE_SHA_ENV} must name the workspace base commit, got {sha!r}")
+    return sha
 
-    ``git diff HEAD`` and nothing wider: see this module's stated limits.
-    A git failure refuses rather than returning "", because an empty
-    patch is a *legible* outcome downstream (`NO_PATCH`) and would hide
-    the fault.
+
+def harvest_patch(worktree: Path, base_sha: str) -> str:
+    """Everything the attempt changed since the base commit, as one patch.
+
+    The session path's temporary-index diff: committed, modified and
+    untracked files all appear, so a model ``git commit`` hides nothing.
+    Runtime residue is excluded. A git failure refuses rather than returning
+    "", because an empty patch is a legible outcome (`NO_PATCH`).
     """
-    completed = subprocess.run(
-        ["git", "diff", "HEAD"], capture_output=True, text=True, check=False
-    )
-    if completed.returncode != 0:
-        raise AdapterError(
-            f"git diff HEAD failed ({completed.returncode}): {completed.stderr.strip()}"
-        )
-    return completed.stdout
+    try:
+        capture = build_cumulative_patch(worktree, base_sha, os.environ, exclude=RESIDUE_EXCLUDES)
+    except subprocess.CalledProcessError as exc:
+        detail = os.fsdecode(exc.stderr or b"").strip()
+        raise AdapterError(f"harvest against {base_sha} failed ({exc.returncode}): {detail}") from exc
+    except OSError as exc:
+        raise AdapterError(f"harvest against {base_sha} failed: {exc}") from exc
+    return capture.patch_text
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -221,7 +253,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(list(sys.argv[1:] if argv is None else argv))
     prompt = read_prompt(os.environ)
     patch_path, transcript_path = read_artifact_paths(os.environ)
-    command = build_pi_argv(args, prompt)
+    base_sha = read_base_sha(os.environ)
+    command = pi_command(args, prompt, os.environ, Path.cwd())
     with open(transcript_path, "wb") as transcript:
         completed = subprocess.run(
             command,
@@ -230,7 +263,7 @@ def main(argv: list[str] | None = None) -> int:
             check=False,
             env=clean_pi_environment(os.environ),
         )
-    patch_path.write_text(harvest_patch(), encoding="utf-8")
+    patch_path.write_text(harvest_patch(Path.cwd(), base_sha), encoding="utf-8")
     return completed.returncode
 
 

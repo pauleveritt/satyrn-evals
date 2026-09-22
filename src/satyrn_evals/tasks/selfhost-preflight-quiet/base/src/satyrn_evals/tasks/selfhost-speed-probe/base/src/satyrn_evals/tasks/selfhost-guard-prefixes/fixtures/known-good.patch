@@ -1,0 +1,23 @@
+diff --git a/tools/hooks/guard.py b/tools/hooks/guard.py
+index e3e088ee5e3831106df842f3c0b71cd5eaa7dc55..aeefef9995081ebb3764e1e33a4b53e873ef4474 100644
+--- a/tools/hooks/guard.py
++++ b/tools/hooks/guard.py
+@@ -13,7 +13,17 @@ _SEGMENT_SPLIT = re.compile(r"[;&|\n]")
+ # "pi" must LEAD its segment (only whitespace / "(" may precede it) — not
+ # merely appear as a bare word anywhere in it — so "ls pi -p" (pi as an
+ # argument to ls) and "grep -rn pi docs" do not count as a "pi" invocation.
+-_PI_LEAD = re.compile(r"^[\s(]*pi\b")
++# A single known wrapper token may sit between the lead and "pi" itself:
++# "uv run", "env" (with optional K=V assignments), "time", "timeout <arg>",
++# "sudo", "nohup", or an opening "$(" / backtick — this repository's and
++# the shell's habitual ways of wrapping a command without changing what it
++# invokes.
++_PI_LEAD = re.compile(
++    r"^[\s(]*"
++    r"(?:\$\(\s*|`\s*)?"
++    r"(?:(?:uv\s+run|env(?:\s+\w+=\S+)*|time|timeout\s+\S+|sudo|nohup)\s+)?"
++    r"pi\b"
++)
+ # The print flag as its own token, anywhere later in the same segment (other
+ # flags/args may sit between "pi" and it).
+ _PRINT_FLAG = re.compile(r"(?:^|\s)(?:-p|--print)\b")

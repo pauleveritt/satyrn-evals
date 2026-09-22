@@ -1,0 +1,2184 @@
+[
+ {
+  "task": "agentclinic-repair-depth-3",
+  "group": "decision",
+  "attempt": "971281",
+  "code": "COMMAND_TIMEOUT",
+  "actual": "not-pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  }
+ },
+ {
+  "task": "agentclinic-repair-depth-3",
+  "group": "decision",
+  "attempt": "021584",
+  "code": "BUDGET_EXCEEDED",
+  "actual": "not-pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  }
+ },
+ {
+  "task": "agentclinic-repair-depth-3",
+  "group": "decision",
+  "attempt": "082295",
+  "code": "OK",
+  "actual": "not-pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": 23,
+   "tokens": 23230,
+   "verdict": "fail",
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": 23,
+   "tokens": 23230,
+   "verdict": "fail",
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": 23,
+   "tokens": 23230,
+   "verdict": "fail",
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": 23,
+   "tokens": 23230,
+   "verdict": "fail",
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  }
+ },
+ {
+  "task": "agentclinic-repair-depth-3",
+  "group": "decision",
+  "attempt": "700050",
+  "code": "BUDGET_EXCEEDED",
+  "actual": "not-pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-run-record-gate",
+  "group": "decision",
+  "attempt": "388294",
+  "code": "BUDGET_EXCEEDED",
+  "actual": "not-pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-run-record-gate",
+  "group": "decision",
+  "attempt": "448568",
+  "code": "BUDGET_EXCEEDED",
+  "actual": "not-pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-run-record-gate",
+  "group": "decision",
+  "attempt": "519278",
+  "code": "BUDGET_EXCEEDED",
+  "actual": "not-pass",
+  "committed_unmeasured": [
+   "skipped bash writer at turn 29",
+   "skipped bash writer at turn 30",
+   "skipped bash writer at turn 31"
+  ],
+  "T1 own-green (first)": {
+   "turn": 35,
+   "tokens": 23522,
+   "verdict": "unavailable",
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": 41,
+   "tokens": 24927,
+   "verdict": "unavailable",
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": 35,
+   "tokens": 23522,
+   "verdict": "unavailable",
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": 35,
+   "tokens": 23522,
+   "verdict": "unavailable",
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": 36,
+   "tokens": 23701,
+   "verdict": "unavailable",
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": 41,
+   "tokens": 24927,
+   "verdict": "unavailable",
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-run-record-gate",
+  "group": "decision",
+  "attempt": "028222",
+  "code": "BUDGET_EXCEEDED",
+  "actual": "not-pass",
+  "committed_unmeasured": [
+   "skipped bash writer at turn 29"
+  ],
+  "T1 own-green (first)": {
+   "turn": 33,
+   "tokens": 21594,
+   "verdict": "fail",
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": 34,
+   "tokens": 21712,
+   "verdict": "fail",
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": 34,
+   "tokens": 21712,
+   "verdict": "fail",
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": 35,
+   "tokens": 22108,
+   "verdict": "fail",
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": 34,
+   "tokens": 21712,
+   "verdict": "fail",
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": 48,
+   "tokens": 24938,
+   "verdict": "fail",
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-docs-linter",
+  "group": "decision",
+  "attempt": "147562",
+  "code": "BUDGET_EXCEEDED",
+  "actual": "not-pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": 32,
+   "tokens": 30992,
+   "verdict": "unavailable",
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": 33,
+   "tokens": 31132,
+   "verdict": "unavailable",
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": 33,
+   "tokens": 31132,
+   "verdict": "unavailable",
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": 33,
+   "tokens": 31132,
+   "verdict": "unavailable",
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": 36,
+   "tokens": 31836,
+   "verdict": "unavailable",
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-docs-linter",
+  "group": "decision",
+  "attempt": "204433",
+  "code": "OK",
+  "actual": "pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": 35,
+   "tokens": 21708,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": 40,
+   "tokens": 25077,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": 40,
+   "tokens": 25077,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": 40,
+   "tokens": 25077,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": 38,
+   "tokens": 24689,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": 47,
+   "tokens": 27780,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": 28,
+   "tokens": 18711,
+   "verdict": "pass",
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-docs-linter",
+  "group": "decision",
+  "attempt": "270586",
+  "code": "BUDGET_EXCEEDED",
+  "actual": "not-pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-docs-linter",
+  "group": "decision",
+  "attempt": "970283",
+  "code": "BUDGET_EXCEEDED",
+  "actual": "not-pass",
+  "committed_unmeasured": [
+   "skipped bash writer at turn 29",
+   "skipped bash writer at turn 37",
+   "skipped bash writer at turn 38",
+   "unverified-rescue: bash at turns 6, 7, 8, 18, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 32, 33, 34, 35, 36, 37, 38"
+  ],
+  "T1 own-green (first)": {
+   "turn": 40,
+   "tokens": 27892,
+   "verdict": "pass",
+   "change": "rescue"
+  },
+  "T2 first whole-suite green": {
+   "turn": 47,
+   "tokens": 29673,
+   "verdict": "pass",
+   "change": "rescue"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": 46,
+   "tokens": 29293,
+   "verdict": "pass",
+   "change": "rescue"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": 46,
+   "tokens": 29293,
+   "verdict": "pass",
+   "change": "rescue"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": 46,
+   "tokens": 29293,
+   "verdict": "pass",
+   "change": "rescue"
+  },
+  "T5 last green within budget": {
+   "turn": 47,
+   "tokens": 29673,
+   "verdict": "pass",
+   "change": "rescue"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": 39,
+   "tokens": 27773,
+   "verdict": "pass",
+   "change": "rescue"
+  }
+ },
+ {
+  "task": "selfhost-guard-prefixes",
+  "group": "decision",
+  "attempt": "812248",
+  "code": "OK",
+  "actual": "pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": 2,
+   "tokens": 1600,
+   "verdict": "pass",
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-guard-prefixes",
+  "group": "decision",
+  "attempt": "870439",
+  "code": "OK",
+  "actual": "pass",
+  "committed_unmeasured": [
+   "fidelity: harness pass, replay unavailable"
+  ],
+  "T1 own-green (first)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-guard-prefixes",
+  "group": "decision",
+  "attempt": "937944",
+  "code": "OK",
+  "actual": "pass",
+  "committed_unmeasured": [
+   "fidelity: harness pass, replay fail"
+  ],
+  "T1 own-green (first)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-guard-prefixes",
+  "group": "decision",
+  "attempt": "424626",
+  "code": "OK",
+  "actual": "pass",
+  "committed_unmeasured": [
+   "fidelity: harness pass, replay fail"
+  ],
+  "T1 own-green (first)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-review-script",
+  "group": "decision",
+  "attempt": "688090",
+  "code": "OK",
+  "actual": "pass",
+  "committed_unmeasured": [
+   "skipped bash writer at turn 15"
+  ],
+  "T1 own-green (first)": {
+   "turn": 18,
+   "tokens": 8309,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": 24,
+   "tokens": 9533,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": 24,
+   "tokens": 9533,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": 24,
+   "tokens": 9533,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": 24,
+   "tokens": 9533,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": 6,
+   "tokens": 3833,
+   "verdict": "pass",
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-review-script",
+  "group": "decision",
+  "attempt": "746232",
+  "code": "OK",
+  "actual": "pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": 10,
+   "tokens": 3822,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": 16,
+   "tokens": 5530,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": 16,
+   "tokens": 5530,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": 16,
+   "tokens": 5530,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": 16,
+   "tokens": 5530,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": 16,
+   "tokens": 5530,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": 8,
+   "tokens": 3491,
+   "verdict": "pass",
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-review-script",
+  "group": "decision",
+  "attempt": "816670",
+  "code": "OK",
+  "actual": "pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": 17,
+   "tokens": 7138,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": 27,
+   "tokens": 8774,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": 27,
+   "tokens": 8774,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": 27,
+   "tokens": 8774,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": 29,
+   "tokens": 9410,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": 6,
+   "tokens": 2858,
+   "verdict": "pass",
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-review-script",
+  "group": "decision",
+  "attempt": "501161",
+  "code": "OK",
+  "actual": "pass",
+  "committed_unmeasured": [
+   "skipped bash writer at turn 11",
+   "skipped bash writer at turn 18"
+  ],
+  "T1 own-green (first)": {
+   "turn": 23,
+   "tokens": 8828,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": 23,
+   "tokens": 8828,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": 28,
+   "tokens": 10107,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": 28,
+   "tokens": 10107,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": 28,
+   "tokens": 10107,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": 28,
+   "tokens": 10107,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": 21,
+   "tokens": 8339,
+   "verdict": "pass",
+   "change": "none"
+  }
+ },
+ {
+  "task": "agentclinic-repair-depth-2",
+  "group": "decision",
+  "attempt": "523251",
+  "code": "OK",
+  "actual": "pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": 7,
+   "tokens": 3134,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": 7,
+   "tokens": 3134,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": 7,
+   "tokens": 3134,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": 6,
+   "tokens": 3057,
+   "verdict": "pass",
+   "change": "none"
+  }
+ },
+ {
+  "task": "agentclinic-repair-depth-2",
+  "group": "decision",
+  "attempt": "575297",
+  "code": "OK",
+  "actual": "pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": 8,
+   "tokens": 3636,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": 8,
+   "tokens": 3636,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": 8,
+   "tokens": 3636,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": 7,
+   "tokens": 3517,
+   "verdict": "pass",
+   "change": "none"
+  }
+ },
+ {
+  "task": "agentclinic-repair-depth-2",
+  "group": "decision",
+  "attempt": "634454",
+  "code": "OK",
+  "actual": "pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": 13,
+   "tokens": 4281,
+   "verdict": "pass",
+   "change": "none"
+  }
+ },
+ {
+  "task": "agentclinic-repair-depth-2",
+  "group": "decision",
+  "attempt": "616367",
+  "code": "OK",
+  "actual": "pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": 9,
+   "tokens": 3009,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": 9,
+   "tokens": 3009,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": 9,
+   "tokens": 3009,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": 8,
+   "tokens": 2882,
+   "verdict": "pass",
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-run-record-gate",
+  "group": "nights-2026-09-14",
+  "attempt": "490384",
+  "code": "BUDGET_EXCEEDED",
+  "actual": "not-pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-run-record-gate",
+  "group": "nights-2026-09-14",
+  "attempt": "549012",
+  "code": "BUDGET_EXCEEDED",
+  "actual": "not-pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-run-record-gate",
+  "group": "nights-2026-09-14",
+  "attempt": "618278",
+  "code": "BUDGET_EXCEEDED",
+  "actual": "not-pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-run-record-gate",
+  "group": "nights-2026-09-14",
+  "attempt": "511653",
+  "code": "BUDGET_EXCEEDED",
+  "actual": "not-pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": 34,
+   "tokens": 24834,
+   "verdict": "fail",
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": 34,
+   "tokens": 24834,
+   "verdict": "fail",
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": 47,
+   "tokens": 31449,
+   "verdict": "pass",
+   "change": "rescue"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": 39,
+   "tokens": 28181,
+   "verdict": "pass",
+   "change": "rescue"
+  }
+ },
+ {
+  "task": "selfhost-guard-prefixes",
+  "group": "nights-2026-09-14",
+  "attempt": "249635",
+  "code": "BUDGET_EXCEEDED",
+  "actual": "not-pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-guard-prefixes",
+  "group": "nights-2026-09-14",
+  "attempt": "305323",
+  "code": "BUDGET_EXCEEDED",
+  "actual": "not-pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-guard-prefixes",
+  "group": "nights-2026-09-14",
+  "attempt": "372105",
+  "code": "OK",
+  "actual": "pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": 2,
+   "tokens": 3278,
+   "verdict": "pass",
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-guard-prefixes",
+  "group": "nights-2026-09-14",
+  "attempt": "309486",
+  "code": "OK",
+  "actual": "pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": 2,
+   "tokens": 2101,
+   "verdict": "pass",
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-review-script",
+  "group": "nights-2026-09-14",
+  "attempt": "714610",
+  "code": "OK",
+  "actual": "not-pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": 15,
+   "tokens": 7479,
+   "verdict": "unavailable",
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": 16,
+   "tokens": 7623,
+   "verdict": "unavailable",
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": 20,
+   "tokens": 8702,
+   "verdict": "unavailable",
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": 16,
+   "tokens": 7623,
+   "verdict": "unavailable",
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": 20,
+   "tokens": 8702,
+   "verdict": "unavailable",
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-review-script",
+  "group": "nights-2026-09-14",
+  "attempt": "770940",
+  "code": "OK",
+  "actual": "not-pass",
+  "committed_unmeasured": [
+   "fidelity: harness unavailable, replay pass",
+   "unverified-rescue: bash at turns 1, 5, 6, 9, 15, 17, 18"
+  ],
+  "T1 own-green (first)": {
+   "turn": 18,
+   "tokens": 7541,
+   "verdict": "pass",
+   "change": "rescue"
+  },
+  "T2 first whole-suite green": {
+   "turn": 18,
+   "tokens": 7541,
+   "verdict": "pass",
+   "change": "rescue"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": 18,
+   "tokens": 7541,
+   "verdict": "pass",
+   "change": "rescue"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": 21,
+   "tokens": 9078,
+   "verdict": "pass",
+   "change": "rescue"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": 21,
+   "tokens": 9078,
+   "verdict": "pass",
+   "change": "rescue"
+  },
+  "T5 last green within budget": {
+   "turn": 31,
+   "tokens": 12312,
+   "verdict": "pass",
+   "change": "rescue"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": 10,
+   "tokens": 3749,
+   "verdict": "pass",
+   "change": "rescue"
+  }
+ },
+ {
+  "task": "selfhost-review-script",
+  "group": "nights-2026-09-14",
+  "attempt": "840545",
+  "code": "OK",
+  "actual": "not-pass",
+  "committed_unmeasured": [
+   "fidelity: harness unavailable, replay pass",
+   "unverified-rescue: bash at turns 1"
+  ],
+  "T1 own-green (first)": {
+   "turn": 12,
+   "tokens": 5203,
+   "verdict": "pass",
+   "change": "rescue"
+  },
+  "T2 first whole-suite green": {
+   "turn": 23,
+   "tokens": 8084,
+   "verdict": "pass",
+   "change": "rescue"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": 27,
+   "tokens": 8493,
+   "verdict": "pass",
+   "change": "rescue"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": 27,
+   "tokens": 8493,
+   "verdict": "pass",
+   "change": "rescue"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": 15,
+   "tokens": 6128,
+   "verdict": "pass",
+   "change": "rescue"
+  },
+  "T5 last green within budget": {
+   "turn": 27,
+   "tokens": 8493,
+   "verdict": "pass",
+   "change": "rescue"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": 7,
+   "tokens": 3786,
+   "verdict": "pass",
+   "change": "rescue"
+  }
+ },
+ {
+  "task": "selfhost-review-script",
+  "group": "nights-2026-09-14",
+  "attempt": "624725",
+  "code": "OK",
+  "actual": "not-pass",
+  "committed_unmeasured": [
+   "fidelity: harness unavailable, replay fail"
+  ],
+  "T1 own-green (first)": {
+   "turn": 14,
+   "tokens": 7992,
+   "verdict": "fail",
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": 19,
+   "tokens": 10706,
+   "verdict": "fail",
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": 14,
+   "tokens": 7992,
+   "verdict": "fail",
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": 19,
+   "tokens": 10706,
+   "verdict": "fail",
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": 19,
+   "tokens": 10706,
+   "verdict": "fail",
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": 20,
+   "tokens": 11471,
+   "verdict": "fail",
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  }
+ },
+ {
+  "task": "agentclinic-repair-depth-3",
+  "group": "engine",
+  "attempt": "808698",
+  "code": "BUDGET_EXCEEDED",
+  "actual": "not-pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-run-record-gate",
+  "group": "engine",
+  "attempt": "296145",
+  "code": "BUDGET_EXCEEDED",
+  "actual": "not-pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  }
+ },
+ {
+  "task": "selfhost-docs-linter",
+  "group": "engine",
+  "attempt": "859943",
+  "code": "BUDGET_EXCEEDED",
+  "actual": "not-pass",
+  "committed_unmeasured": [
+   "unverified-rescue: bash at turns 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12"
+  ],
+  "T1 own-green (first)": {
+   "turn": 34,
+   "tokens": 27954,
+   "verdict": "pass",
+   "change": "rescue"
+  },
+  "T2 first whole-suite green": {
+   "turn": 37,
+   "tokens": 28577,
+   "verdict": "pass",
+   "change": "rescue"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": 37,
+   "tokens": 28577,
+   "verdict": "pass",
+   "change": "rescue"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": 37,
+   "tokens": 28577,
+   "verdict": "pass",
+   "change": "rescue"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": 37,
+   "tokens": 28577,
+   "verdict": "pass",
+   "change": "rescue"
+  },
+  "T5 last green within budget": {
+   "turn": 37,
+   "tokens": 28577,
+   "verdict": "pass",
+   "change": "rescue"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": 28,
+   "tokens": 25213,
+   "verdict": "pass",
+   "change": "rescue"
+  }
+ },
+ {
+  "task": "agentclinic-repair-misleading-locus",
+  "group": "engine",
+  "attempt": "117091",
+  "code": "OK",
+  "actual": "pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": 5,
+   "tokens": 1738,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": 5,
+   "tokens": 1738,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": 5,
+   "tokens": 1738,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": 4,
+   "tokens": 1546,
+   "verdict": "pass",
+   "change": "none"
+  }
+ },
+ {
+  "task": "agentclinic-repair-misleading-locus",
+  "group": "engine",
+  "attempt": "172304",
+  "code": "OK",
+  "actual": "pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": 4,
+   "tokens": 910,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": 4,
+   "tokens": 910,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": 4,
+   "tokens": 910,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": 3,
+   "tokens": 874,
+   "verdict": "pass",
+   "change": "none"
+  }
+ },
+ {
+  "task": "agentclinic-repair-misleading-locus",
+  "group": "engine",
+  "attempt": "140540",
+  "code": "OK",
+  "actual": "pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": 9,
+   "tokens": 2254,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": 9,
+   "tokens": 2254,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": 9,
+   "tokens": 2254,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": 8,
+   "tokens": 2126,
+   "verdict": "pass",
+   "change": "none"
+  }
+ },
+ {
+  "task": "agentclinic-repair-misleading-locus",
+  "group": "engine",
+  "attempt": "201516",
+  "code": "OK",
+  "actual": "pass",
+  "committed_unmeasured": [],
+  "T1 own-green (first)": {
+   "turn": 4,
+   "tokens": 583,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T2 first whole-suite green": {
+   "turn": 4,
+   "tokens": 583,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T3 green after 1 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T3 green after 2 non-editing turn(s)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T4 green re-confirmed (no source edit since previous green)": {
+   "turn": null,
+   "tokens": null,
+   "verdict": null,
+   "change": "none"
+  },
+  "T5 last green within budget": {
+   "turn": 4,
+   "tokens": 583,
+   "verdict": "pass",
+   "change": "none"
+  },
+  "T6 oracle: first hidden-pass turn": {
+   "turn": 3,
+   "tokens": 540,
+   "verdict": "pass",
+   "change": "none"
+  }
+ }
+]

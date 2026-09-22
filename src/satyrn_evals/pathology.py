@@ -47,11 +47,33 @@ EVENT_TYPES = frozenset(
 # unknown_event` at the first call -- the vocabulary was blind to the tool
 # the route exists to exercise. Like `tool_execution_update` it is
 # recognised and counted as an ordinary execution.
-TOOL_NAMES = frozenset({"read", "bash", "edit", "write", "run_self_test"})
+# `self_test` added in Phase 2a: the engine's `/implement` child registers
+# the runner under that name (satyrn-engine Phase 1 Ruling 1, Task 9).
+TOOL_NAMES = frozenset({"read", "bash", "edit", "write", "run_self_test", "self_test"})
 FILE_TOOLS = frozenset({"read", "edit", "write"})
 WRITE_TOOLS = frozenset({"edit", "write"})
 SHELL_TOOLS = frozenset({"bash"})
 RUNNER_NAMES = frozenset({"pytest"})
+
+#: The engine's guard-firing entries (satyrn-engine Phase 1 Task 2,
+#: `budget.GUARD_KINDS`), each a `pi.appendEntry` custom entry the stream
+#: carries as `entry_appended` (Phase 1 Ruling 7). Counted as nothing here;
+#: `cell_evidence` counts them. `self_test_enforced` added in Phase 3b (the
+#: Engine's own run when the model stops untested); `self_test_detected` added
+#: 2026-09-18 (the Engine detects pytest's summary line in a bash result and
+#: runs its own self-test once). `self_test_redirected` is the retired Phase 3b
+#: redirect, kept so already-committed route-proof transcripts still classify.
+#: Without any of them every cell where it fires would read `unknown_event`.
+GUARD_KINDS = frozenset(
+    {
+        "loop_broken", "scope_refused", "symbol_preserved", "command_bounded", "command_timed_out",
+        "self_test_redirected", "self_test_detected", "self_test_enforced",
+        # Release two: the finish-on-green steer (design §2) and the runaway
+        # resume (design §3). Without them every cell where either fires
+        # reads `unknown_event` and the record is void.
+        "finish_nudged", "runaway_resumed",
+    }
+)
 
 type PathologyReason = Literal[
     "absent", "empty", "unparseable", "unsupported_version",
@@ -65,6 +87,8 @@ class CellPathology:
 
     measured: bool
     reason: PathologyReason | None = None
+    truncated: bool = False
+    invalid_tool_calls: int = 0
     tool_calls: dict[str, int] = field(default_factory=dict)
     repeats: int = 0
     churn: int = 0
@@ -79,6 +103,8 @@ class CellPathology:
             return {"measured": False, "reason": self.reason}
         return {
             "measured": True,
+            "truncated": self.truncated,
+            "invalid_tool_calls": self.invalid_tool_calls,
             "tool_calls": dict(self.tool_calls),
             "repeats": self.repeats,
             "churn": self.churn,
@@ -135,9 +161,10 @@ def count_transcript(text: str, *, had_patch: bool) -> CellPathology:
         return _unmeasured("multi_session")
     if (reason := _vocabulary_ok(events)) is not None:
         return _unmeasured(reason)
-    if (reason := _structure_ok(events)) is not None:
-        return _unmeasured(reason)
-    return _count(events, had_patch=had_patch)
+    structure, truncated = _structure_ok(events)
+    if structure is not None:
+        return _unmeasured(structure)
+    return _count(events, had_patch=had_patch, truncated=truncated)
 
 
 def decoded_scan_text(text: str) -> str:
@@ -214,107 +241,148 @@ def _vocabulary_ok(events: list[dict]) -> PathologyReason | None:
             entry = event.get("entry")
             if not isinstance(entry, dict) or not isinstance(entry.get("customType"), str):
                 return "malformed"
-            if entry["customType"] != "loop_broken":
+            if entry["customType"] not in GUARD_KINDS:
                 return "unknown_event"
     return None
 
 
-def _structure_ok(events: list[dict]) -> PathologyReason | None:
+def _structure_ok(events: list[dict]) -> tuple[PathologyReason | None, bool]:
+    """(reason, truncated): ``None`` means well-formed; ``truncated`` marks a cut final turn.
+
+    A budget- or backstop-stopped cell is killed mid-turn, so its transcript
+    ends with one open ``turn_start``, no ``agent_end``, and at most the one
+    tool call that was in flight. That is **measured**, with the truncation
+    recorded on the block -- not malformed. Every other imbalance (a second
+    open turn, an end with no start, an unpaired start outside the final
+    turn, an ``agent_end`` in a truncated document) is still malformed.
+    """
     types = [e.get("type") for e in events]
     turns = types.count("turn_start")
-    if turns < 1 or types.count("turn_end") != turns:
-        return "malformed"
+    ends = types.count("turn_end")
+    if turns < 1 or ends not in (turns, turns - 1):
+        return "malformed", False
+    truncated = ends == turns - 1
     # R4 (amended 2026-09-05): the turn markers strictly alternate,
     # turn_start/turn_end/turn_start/turn_end -- no nesting and no
     # reversal. An explicit open/closed state rejects a turn_start while a
-    # turn is open and a turn_end while none is open; count equality above
-    # then guarantees the document ends closed.
+    # turn is open and a turn_end while none is open; with the count above,
+    # the document ends closed, or open by exactly the truncated final turn.
     open_turn = False
     for event in events:
         match event.get("type"):
             case "turn_start":
                 if open_turn:
-                    return "malformed"  # nested start: not alternating
+                    return "malformed", truncated  # nested start: not alternating
                 open_turn = True
             case "turn_end":
                 if not open_turn:
-                    return "malformed"  # no open turn: reversal/double end
+                    return "malformed", truncated  # no open turn: reversal/double end
                 open_turn = False
+    if open_turn != truncated:
+        return "malformed", truncated
     first_turn = types.index("turn_start")
-    last_turn_end = max(i for i, t in enumerate(types) if t == "turn_end")
+    last_turn_end = max((i for i, t in enumerate(types) if t == "turn_end"), default=-1)
+    last_boundary = len(types) - 1 if truncated else last_turn_end
     for i, event in enumerate(events):
         if event.get("type") in (
             "tool_execution_start",
             "tool_execution_end",
-        ) and (i < first_turn or i > last_turn_end):
-            return "malformed"
-    starts: dict[str, dict] = {}
+        ) and (i < first_turn or i > last_boundary):
+            return "malformed", truncated
+    starts: dict[str, tuple[int, dict]] = {}
     seen: set[str] = set()
-    for event in events:
+    for index, event in enumerate(events):
         match event.get("type"):
             case "tool_execution_start":
                 call_id = event.get("toolCallId")
                 # Uniqueness is document-scoped (spec §2 R5, §0 S2): a
                 # call id reused after its pair completed is malformed.
                 if not isinstance(call_id, str) or call_id in seen:
-                    return "malformed"
+                    return "malformed", truncated
                 args = event.get("args")
                 if not isinstance(args, dict):
-                    return "malformed"
-                if event["toolName"] in FILE_TOOLS and not isinstance(
-                    args.get("path"), str
-                ):
-                    return "malformed"
-                starts[call_id] = event
+                    return "malformed", truncated
+                # A file-tool start whose args are a mapping but carry no
+                # string ``path`` is a call pi REFUSED (it never executed);
+                # it is counted as invalid, not treated as corruption. See
+                # `_invalid_file_call`.
+                starts[call_id] = (index, event)
                 seen.add(call_id)
             case "tool_execution_end":
                 call_id = event.get("toolCallId")
                 if not isinstance(call_id, str):
-                    return "malformed"
+                    return "malformed", truncated
                 start = starts.get(call_id)
                 if start is None:
-                    return "malformed"
+                    return "malformed", truncated
                 # R5 (amended 2026-09-05): the paired end carries the same
                 # toolName as its start; a mismatch is a corrupted stream
                 # (S1), never a clean count.
-                if event.get("toolName") != start.get("toolName"):
-                    return "malformed"
+                if event.get("toolName") != start[1].get("toolName"):
+                    return "malformed", truncated
                 starts.pop(call_id)
     if starts:
-        return "malformed"
-    ends = [i for i, e in enumerate(events) if e.get("type") == "agent_end"]
-    if not ends:
-        return "partial"
-    if len(ends) > 1:
-        return "malformed"
-    remainder = events[ends[0] + 1 :]
+        # Only the tool call in flight when the process was killed may be
+        # unpaired, and only in the truncated final turn.
+        if not truncated or len(starts) != 1:
+            return "malformed", truncated
+        if next(iter(starts.values()))[0] < last_turn_end:
+            return "malformed", truncated
+    ends_idx = [i for i, e in enumerate(events) if e.get("type") == "agent_end"]
+    if truncated:
+        if ends_idx:
+            return "malformed", truncated
+        return None, True
+    if not ends_idx:
+        return "partial", False
+    if len(ends_idx) > 1:
+        return "malformed", False
+    remainder = events[ends_idx[0] + 1 :]
     if len(remainder) > 1 or any(
         event.get("type") != "agent_settled" for event in remainder
     ):
-        return "malformed"
-    return None
+        return "malformed", False
+    return None, False
 
 
-def _count(events: list[dict], *, had_patch: bool) -> CellPathology:
+def _invalid_file_call(event: dict) -> bool:
+    """A file-tool start whose args lack a string ``path``.
+
+    pi refused the call (its paired end carries a validation error), so it
+    never executed. It is counted as ``invalid_tool_calls`` and contributes to
+    none of ``tool_calls``, ``repeats``, ``churn``, ``noop_edits`` or
+    ``workspace_escapes`` -- counting it would manufacture an execution from a
+    call that did nothing (2026-09-08 ruling). ``_structure_ok`` guarantees
+    ``args`` is a mapping, so only the ``path`` is checked here.
+    """
+    return event["toolName"] in FILE_TOOLS and not isinstance(
+        (event.get("args") or {}).get("path"), str
+    )
+
+
+def _count(events: list[dict], *, had_patch: bool, truncated: bool = False) -> CellPathology:
     """Eight count axes over a well-formed document (spec §3.1-3.8).
 
     Called only on documents that passed R1-R6, so structural guarantees
-    hold here: starts pair uniquely with ends, and every file-tool
-    execution carries a string ``args.path`` (R5).
+    hold here: starts pair uniquely with ends (or one is the truncated
+    in-flight call), and every file-tool execution carries a string
+    ``args.path`` unless it is an invalid call, counted separately.
     """
     starts = [e for e in events if e.get("type") == "tool_execution_start"]
+    invalid = [e for e in starts if _invalid_file_call(e)]
+    valid = [e for e in starts if not _invalid_file_call(e)]
     tool_calls: dict[str, int] = {}
-    for event in starts:
+    for event in valid:
         name = event["toolName"]
         tool_calls[name] = tool_calls.get(name, 0) + 1
     identity = Counter(
         (event["toolName"], json.dumps(event.get("args"), sort_keys=True))
-        for event in starts
+        for event in valid
     )
     repeats = sum(count - 1 for count in identity.values())
     last_payload: dict[str, str] = {}
     churn = 0
-    for event in starts:
+    for event in valid:
         if event["toolName"] not in WRITE_TOOLS:
             continue
         args = event.get("args") or {}
@@ -325,12 +393,12 @@ def _count(events: list[dict], *, had_patch: bool) -> CellPathology:
             # path's comparison baseline.
             continue
         payload = json.dumps(args[payload_key], sort_keys=True)
-        path = args["path"]  # R5 guarantees a string path on file tools
+        path = args["path"]  # a valid file tool carries a string path
         if path in last_payload and payload != last_payload[path]:
             churn += 1
         last_payload[path] = payload
     noop_edits = 0
-    for event in starts:
+    for event in valid:
         if event["toolName"] != "edit":
             continue
         edits = (event.get("args") or {}).get("edits")
@@ -356,7 +424,7 @@ def _count(events: list[dict], *, had_patch: bool) -> CellPathology:
     )
     escapes = sum(
         1
-        for event in starts
+        for event in valid
         if event["toolName"] in FILE_TOOLS
         and _escapes(events[0]["cwd"], (event.get("args") or {})["path"])
     )
@@ -368,6 +436,8 @@ def _count(events: list[dict], *, had_patch: bool) -> CellPathology:
     )
     return CellPathology(
         measured=True,
+        truncated=truncated,
+        invalid_tool_calls=len(invalid),
         tool_calls=tool_calls,
         repeats=repeats,
         churn=churn,
@@ -380,11 +450,22 @@ def _count(events: list[dict], *, had_patch: bool) -> CellPathology:
 
 
 def _terminal_turn(events: list[dict]) -> tuple[int, int] | None:
-    """(turn_start index, turn_end index) of the final turn."""
-    end_idx = max(i for i, e in enumerate(events) if e.get("type") == "turn_end")
-    start_idx = max(
-        i for i, e in enumerate(events[:end_idx]) if e.get("type") == "turn_start"
+    """(turn_start index, turn_end index) of the final turn; ``None`` when no turn closed.
+
+    A truncated transcript whose only turn was cut has no ``turn_end``; the
+    terminal-turn counts are then zero rather than a crash.
+    """
+    end_idx = max(
+        (i for i, e in enumerate(events) if e.get("type") == "turn_end"), default=None
     )
+    if end_idx is None:
+        return None
+    start_idx = max(
+        (i for i, e in enumerate(events[:end_idx]) if e.get("type") == "turn_start"),
+        default=None,
+    )
+    if start_idx is None:
+        return None
     return start_idx, end_idx
 
 

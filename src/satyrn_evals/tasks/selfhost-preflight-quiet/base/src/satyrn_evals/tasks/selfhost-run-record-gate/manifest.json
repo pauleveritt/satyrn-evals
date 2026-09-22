@@ -1,0 +1,100 @@
+{
+  "name": "selfhost-run-record-gate",
+  "contract": "Task 8: The run-record gate\n\nFiles:\n- Create: `src/satyrn_evals/run_record.py`, `tests/`\n- Modify: `src/satyrn_evals/cli.py` (add `launch --check RECORD`)\n\nInterfaces:\n- Produces: `RunRecord` (frozen dataclass), `load_run_record(path: Path) -> RunRecord` (raises `RunRecordError`, which you define in `src/satyrn_evals/run_record.py` as a subclass of the existing `UsageError`, imported from `errors.py`; `errors.py` is already correct and is not one of the files you may change, so add nothing to it; the exception names the first missing or ill-typed field), `gate(record: RunRecord, *, previous_result_committed: bool | None) -> None` (raises `RunRecordError` on any refusal), and the CLI `satyrn-evals launch --check RECORD.json` (exit 0 on pass, usage exit code on refusal). Phase 2 adds the cell loop behind the same subcommand.\n\nRecord schema (all required):\n\nValidation rules. `load_run_record` enforces these as it reads the file, raising `RunRecordError`: `condition` is `cold` or `warm`; `mode` is `attended` or `batch`; `task_tree_sha256` is 64 lowercase hex; `stop_rule` and `decision_rule` are non-empty. `gate` then enforces the cadence on an already-loaded record, raising `RunRecordError`: `attended` is n ≤ 8 and `max_minutes` ≤ 60, `batch` is n ≤ 12 and `max_minutes` ≤ 720; and when `previous_result` is a path, `previous_result_committed` must be `True` (the CLI computes it; the pure gate is told).\n\nStep 1: Failing tests\n\nStep 2: Run to verify failure\n\n`uv run pytest tests/ -q` → FAIL, `No module named 'satyrn_evals.run_record'`\n\nStep 3: Implement\n\nFirst check the base class: `grep -n \"^class UsageError\" src/satyrn_evals/errors.py` — it exists in the imported `errors.py`; if its name differs, use the class the imported `cli.py` maps to the usage exit code and adjust the test's import to match. Then `src/satyrn_evals/run_record.py`:\n\nThen in `cli.py`, add a `launch` subcommand next to `census` with one flag, `--check RECORD`, that loads the record, computes `previous_result_committed` by running `git ls-files --error-unmatch <path>` via `subprocess.run` only when `previous_result` is not null, calls `gate`, prints `launch: record accepted` and returns 0; any `RunRecordError` follows the CLI's existing usage-error path. Without `--check`, `launch` prints `launch: cells are Phase 2; use --check` and returns the usage exit code.\n\nStep 4: Tests pass; CLI check\n\n`uv run pytest tests/ tests/test_cli.py -q` → passed. Write `/tmp/rec.json` with the GOOD body and run `uv run satyrn-evals launch --check /tmp/rec.json; echo \"EXIT: $?\"` → `launch: record accepted`, `EXIT: 0`. Then `uv run pytest -q > /tmp/p0-t8.log 2>&1; echo \"EXIT: $?\"` → 0 (the tripwire proves the `--check` path spawned nothing in the default tier: `previous_result` is null in every default-tier test).\n\nStep 5: Record and commit\n\nMessage formats the acceptance suite asserts, match them exactly: The record is one JSON object whose fields are all required, in this order and with these JSON types: `version` (integer), `task` (string), `task_tree_sha256` (string), `arm` (string), `model` (string), `condition` (string), `n` (integer), `mode` (string), `max_minutes` (integer), `stop_rule` (string), `decision_rule` (string), `previous_result` (null or a string path). RunRecordError's text is what its acceptance suite matches, by exact substring in most cases and by these two exact phrases in the strict cases -- match them exactly. When the parsed JSON is not an object (for example it parses to null or to a bare number), the message contains the exact phrase `not a JSON object`. When a required field is present but the wrong Python type for its column above, the message contains the exact phrase `<field> has the wrong type`, with `<field>` replaced by that field's schema name (for example `n has the wrong type` when n is a string instead of an int). When mode is neither attended nor batch, the message contains the exact phrase `mode must be attended or batch`. When stop_rule or decision_rule is empty or all whitespace, the message contains the exact phrase `<field> is empty` (for example `stop_rule is empty`). Every other refusal's message only needs to mention, somewhere, the name of the field or mode it concerns (a missing field names that field; an attended- or batch-cap refusal says \"attended\" or \"batch\"; a bad digest names task_tree_sha256; an uncommitted result names previous_result; a bad condition names condition), and a message about a file that could not be read or parsed should include that file's path. Malformed JSON syntax (not merely the wrong shape) is refused too, with a message including the path.\n",
+  "contracts": {
+    "R1-plan": "Task 8: The run-record gate\n\nFiles:\n- Create: `src/satyrn_evals/run_record.py`, `tests/`\n- Modify: `src/satyrn_evals/cli.py` (add `launch --check RECORD`)\n\nInterfaces:\n- Produces: `RunRecord` (frozen dataclass), `load_run_record(path: Path) -> RunRecord` (raises `RunRecordError`, which you define in `src/satyrn_evals/run_record.py` as a subclass of the existing `UsageError`, imported from `errors.py`; `errors.py` is already correct and is not one of the files you may change, so add nothing to it; the exception names the first missing or ill-typed field), `gate(record: RunRecord, *, previous_result_committed: bool | None) -> None` (raises `RunRecordError` on any refusal), and the CLI `satyrn-evals launch --check RECORD.json` (exit 0 on pass, usage exit code on refusal). Phase 2 adds the cell loop behind the same subcommand.\n\nRecord schema (all required):\n\nValidation rules. `load_run_record` enforces these as it reads the file, raising `RunRecordError`: `condition` is `cold` or `warm`; `mode` is `attended` or `batch`; `task_tree_sha256` is 64 lowercase hex; `stop_rule` and `decision_rule` are non-empty. `gate` then enforces the cadence on an already-loaded record, raising `RunRecordError`: `attended` is n ≤ 8 and `max_minutes` ≤ 60, `batch` is n ≤ 12 and `max_minutes` ≤ 720; and when `previous_result` is a path, `previous_result_committed` must be `True` (the CLI computes it; the pure gate is told).\n\nStep 1: Failing tests\n\nStep 2: Run to verify failure\n\n`uv run pytest tests/ -q` → FAIL, `No module named 'satyrn_evals.run_record'`\n\nStep 3: Implement\n\nFirst check the base class: `grep -n \"^class UsageError\" src/satyrn_evals/errors.py` — it exists in the imported `errors.py`; if its name differs, use the class the imported `cli.py` maps to the usage exit code and adjust the test's import to match. Then `src/satyrn_evals/run_record.py`:\n\nThen in `cli.py`, add a `launch` subcommand next to `census` with one flag, `--check RECORD`, that loads the record, computes `previous_result_committed` by running `git ls-files --error-unmatch <path>` via `subprocess.run` only when `previous_result` is not null, calls `gate`, prints `launch: record accepted` and returns 0; any `RunRecordError` follows the CLI's existing usage-error path. Without `--check`, `launch` prints `launch: cells are Phase 2; use --check` and returns the usage exit code.\n\nStep 4: Tests pass; CLI check\n\n`uv run pytest tests/ tests/test_cli.py -q` → passed. Write `/tmp/rec.json` with the GOOD body and run `uv run satyrn-evals launch --check /tmp/rec.json; echo \"EXIT: $?\"` → `launch: record accepted`, `EXIT: 0`. Then `uv run pytest -q > /tmp/p0-t8.log 2>&1; echo \"EXIT: $?\"` → 0 (the tripwire proves the `--check` path spawned nothing in the default tier: `previous_result` is null in every default-tier test).\n\nStep 5: Record and commit\n\nMessage formats the acceptance suite asserts, match them exactly: The record is one JSON object whose fields are all required, in this order and with these JSON types: `version` (integer), `task` (string), `task_tree_sha256` (string), `arm` (string), `model` (string), `condition` (string), `n` (integer), `mode` (string), `max_minutes` (integer), `stop_rule` (string), `decision_rule` (string), `previous_result` (null or a string path). RunRecordError's text is what its acceptance suite matches, by exact substring in most cases and by these two exact phrases in the strict cases -- match them exactly. When the parsed JSON is not an object (for example it parses to null or to a bare number), the message contains the exact phrase `not a JSON object`. When a required field is present but the wrong Python type for its column above, the message contains the exact phrase `<field> has the wrong type`, with `<field>` replaced by that field's schema name (for example `n has the wrong type` when n is a string instead of an int). When mode is neither attended nor batch, the message contains the exact phrase `mode must be attended or batch`. When stop_rule or decision_rule is empty or all whitespace, the message contains the exact phrase `<field> is empty` (for example `stop_rule is empty`). Every other refusal's message only needs to mention, somewhere, the name of the field or mode it concerns (a missing field names that field; an attended- or batch-cap refusal says \"attended\" or \"batch\"; a bad digest names task_tree_sha256; an uncommitted result names previous_result; a bad condition names condition), and a message about a file that could not be read or parsed should include that file's path. Malformed JSON syntax (not merely the wrong shape) is refused too, with a message including the path.\n"
+  },
+  "oracle": [
+    "env",
+    "PYTHONPATH=src",
+    "python",
+    "-m",
+    "pytest",
+    "-p",
+    "satyrn_evals.oracle_hook"
+  ],
+  "expected_test_ids": [
+    "test_run_record.py::test_a_complete_record_loads_and_passes_the_gate",
+    "test_run_record.py::test_a_missing_field_is_named",
+    "test_run_record.py::test_run_record_error_is_a_usage_error",
+    "test_run_record.py::test_attended_caps_are_enforced[over0]",
+    "test_run_record.py::test_attended_caps_are_enforced[over1]",
+    "test_run_record.py::test_batch_allows_twelve_and_twelve_hours",
+    "test_run_record.py::test_batch_refuses_thirteen",
+    "test_run_record.py::test_a_bad_digest_is_refused",
+    "test_run_record.py::test_a_previous_result_must_be_committed",
+    "test_run_record.py::test_an_unknown_condition_is_refused",
+    "test_run_record.py::test_warm_condition_loads_and_passes_the_gate",
+    "test_run_record.py::test_a_non_object_record_is_refused[null]",
+    "test_run_record.py::test_a_non_object_record_is_refused[5]",
+    "test_run_record.py::test_malformed_json_is_refused",
+    "test_run_record.py::test_a_wrong_typed_field_is_refused",
+    "test_run_record.py::test_an_unknown_mode_is_refused",
+    "test_run_record.py::test_an_empty_rule_field_is_refused[stop_rule]",
+    "test_run_record.py::test_an_empty_rule_field_is_refused[decision_rule]",
+    "test_run_record.py::test_launch_without_check_is_a_usage_error",
+    "test_run_record.py::test_launch_check_accepts_a_good_record"
+  ],
+  "source_paths": [
+    "src/satyrn_evals/run_record.py",
+    "src/satyrn_evals/cli.py",
+    "tests"
+  ],
+  "ignored_paths": [
+    "PROVENANCE.md"
+  ],
+  "public_suite": [
+    "uv",
+    "run",
+    "pytest",
+    "-q"
+  ],
+  "fixtures": {
+    "known_good": "fixtures/known-good.patch",
+    "known_broken": "fixtures/known-broken.patch"
+  },
+  "grader_overlay": "overlay",
+  "oracle_visibility": "hidden",
+  "provenance": {
+    "repo": "https://github.com/pauleveritt/satyrn-evals.git",
+    "base_sha": "cc9ab53107a8862a84843b1c3030274503d53d0b",
+    "fix_sha": "b253c993539c9bca3cb5103bbd5ac159350ae9d3"
+  },
+  "generator": {
+    "tool": "tools/cut_task.py",
+    "rung": "R1-plan",
+    "files": [
+      "src/satyrn_evals/run_record.py",
+      "src/satyrn_evals/cli.py"
+    ],
+    "hidden": [
+      "tests/test_run_record.py"
+    ],
+    "plan": {
+      "path": "docs/superpowers/plans/2026-09-13-phase-0-restart.md",
+      "heading": "### Task 8: The run-record gate",
+      "commit": "73ec17217a38b9730c9d34d47c0a5163d9c421e7"
+    },
+    "prompt_edits": [
+      {
+        "old": "`load_run_record(path: Path) -> RunRecord` (raises `RunRecordError`, a `UsageError` subclass from `errors.py`, naming the first missing or ill-typed field)",
+        "new": "`load_run_record(path: Path) -> RunRecord` (raises `RunRecordError`, which you define in `src/satyrn_evals/run_record.py` as a subclass of the existing `UsageError`, imported from `errors.py`; `errors.py` is already correct and is not one of the files you may change, so add nothing to it; the exception names the first missing or ill-typed field)",
+        "reason": "release-one admission: 5 of 9 cells put RunRecordError in errors.py, outside source_paths, and the patch was rejected (tasks/KNOWN_DEFECTS.md)"
+      },
+      {
+        "old": "Gate rules: `mode` is `attended` (n ≤ 8, `max_minutes` ≤ 60) or `batch` (n ≤ 12, `max_minutes` ≤ 720); `condition` is `cold` or `warm`; `task_tree_sha256` is 64 lowercase hex; `stop_rule` and `decision_rule` are non-empty; `previous_result` is `null` or a path — when a path, `previous_result_committed` must be `True` (the CLI computes it; the pure gate is told).",
+        "new": "Validation rules. `load_run_record` enforces these as it reads the file, raising `RunRecordError`: `condition` is `cold` or `warm`; `mode` is `attended` or `batch`; `task_tree_sha256` is 64 lowercase hex; `stop_rule` and `decision_rule` are non-empty. `gate` then enforces the cadence on an already-loaded record, raising `RunRecordError`: `attended` is n ≤ 8 and `max_minutes` ≤ 60, `batch` is n ≤ 12 and `max_minutes` ≤ 720; and when `previous_result` is a path, `previous_result_committed` must be `True` (the CLI computes it; the pure gate is told).",
+        "reason": "release-one admission: with errors.py allowed, 8 of 9 cells read every rule here as gate()'s and left load_run_record permissive, while the hidden suite asserts load_run_record refuses (tasks/KNOWN_DEFECTS.md)"
+      }
+    ]
+  },
+  "digests": {
+    "task_tree": "d2610cff5019cd6943e284c1ce4ad4932c6fcba2b89c9329e2614ce2109effb6",
+    "prompt": "21ce94898daefdf9bbf9e84fa2bb80a29dd9417dc47d1a0976f3bbda42c7a9e6"
+  },
+  "validity": {
+    "by": "deepseek-v4-flash",
+    "commit": "df33336645a10a009e79ff7bdcf0db9e9628b34b",
+    "passed": true
+  }
+}

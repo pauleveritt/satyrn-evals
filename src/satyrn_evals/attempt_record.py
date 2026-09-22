@@ -11,6 +11,7 @@ from dataclasses import asdict, dataclass, field
 from enum import Enum, StrEnum, auto
 from pathlib import Path
 
+from satyrn_evals.budget import LineCrossing
 from satyrn_evals.receipt import write_json_atomically
 from satyrn_evals.verdict import Verdict
 
@@ -77,6 +78,28 @@ class DeadlineProvenance:
 # expiry provenance only when that limit actually expires.
 _V12_FIELDS = frozenset({"attempt_timeout"})
 _V13_FIELDS = frozenset({"deadline"})
+# V14 records name the harvested tripped-worktree secondary (Ruling R-1).
+# Written only on a BUDGET_EXCEEDED record that has one; the verdict is a
+# day-after classifier output, never a run-record field. The field is additive
+# on whichever generation the record already is, so every earlier record's
+# field set -- and every committed result's cells -- still loads (Ruling 13).
+_V14_FIELDS = frozenset({"tripped_patch_path"})
+# V15: the declared-line harvest (release two). `line_crossed` is set
+# regardless of the record's own `code` -- a cell can cross the line and
+# still end at any outcome -- so it rides on every generation independently
+# of `tripped_patch_path`. Additive for the same reason as V14: every
+# earlier record's field set still loads.
+_V15_FIELDS = frozenset({"line_crossed", "line_patch_path", "line_harvest_error"})
+#: The only shapes `line_crossed`'s companions may take together: never
+#: crossed (nothing); crossed with nothing to say yet (a blank cumulative
+#: diff, no error); crossed with a harvested patch; crossed with a harvest
+#: failure. Never both a patch and an error (mutually exclusive outcomes).
+_V15_COMBOS: tuple[frozenset[str], ...] = (
+    frozenset(),
+    frozenset({"line_crossed"}),
+    frozenset({"line_crossed", "line_patch_path"}),
+    frozenset({"line_crossed", "line_harvest_error"}),
+)
 
 
 class AttemptOutcome(StrEnum):
@@ -95,6 +118,7 @@ class AttemptCode(StrEnum):
     WORKSPACE_FAILED = "WORKSPACE_FAILED"
     COMMAND_TIMEOUT = "COMMAND_TIMEOUT"
     REPEAT_LIMIT = "REPEAT_LIMIT"
+    BUDGET_EXCEEDED = "BUDGET_EXCEEDED"
     MODEL_ERROR = "MODEL_ERROR"
     CLEANUP_FAILED = "CLEANUP_FAILED"
     GRADE_FAILED = "GRADE_FAILED"
@@ -193,6 +217,16 @@ _ATTEMPT_POLICIES: dict[AttemptCode, _AttemptPolicy] = {
         _Presence.FORBIDDEN,
         _ArtifactPolicy.ANY,
     ),
+    AttemptCode.BUDGET_EXCEEDED: _AttemptPolicy(
+        # Over the run record's output-token or turn budget (spec "Budget,
+        # both arms"): a fail. Usually torn down live, so no exit code; a
+        # command seen over budget only in its last lines keeps its exit.
+        AttemptOutcome.REFUSED,
+        _Presence.OPTIONAL,
+        _Presence.REQUIRED,
+        _Presence.FORBIDDEN,
+        _ArtifactPolicy.ANY,
+    ),
     AttemptCode.MODEL_ERROR: _AttemptPolicy(
         # The inference substrate failed underneath a well-formed request,
         # so the cell measured nothing. The command itself ran and exited,
@@ -265,6 +299,10 @@ class AttemptRecord:
     attempt_dir: str | None = None
     deadline: DeadlineProvenance | None = None
     attempt_timeout: float | None = None
+    tripped_patch_path: str | None = None
+    line_crossed: LineCrossing | None = None
+    line_patch_path: str | None = None
+    line_harvest_error: str | None = None
     _legacy: bool = field(default=False, repr=False, compare=False, kw_only=True)
 
     def __post_init__(self) -> None:
@@ -382,6 +420,28 @@ class AttemptRecord:
             raise ValueError(f"{self.code} requires a verdict")
         if policy.verdict is _Presence.FORBIDDEN and self.verdict is not None:
             raise ValueError(f"{self.code} requires no verdict")
+        if self.tripped_patch_path is not None:
+            if self.code is not AttemptCode.BUDGET_EXCEEDED:
+                raise ValueError(f"{self.code} cannot carry a tripped_patch_path")
+            if not _nonempty_text(self.tripped_patch_path):
+                raise ValueError(
+                    "attempt record tripped_patch_path must be non-empty or null"
+                )
+        if self.line_crossed is not None and not isinstance(self.line_crossed, LineCrossing):
+            raise ValueError("attempt record line_crossed must be a LineCrossing or null")
+        if self.line_patch_path is not None and not _nonempty_text(self.line_patch_path):
+            raise ValueError("attempt record line_patch_path must be non-empty or null")
+        if self.line_harvest_error is not None and not _nonempty_text(self.line_harvest_error):
+            raise ValueError("attempt record line_harvest_error must be non-empty or null")
+        if self.line_crossed is None:
+            if self.line_patch_path is not None:
+                raise ValueError("attempt record line_patch_path requires line_crossed")
+            if self.line_harvest_error is not None:
+                raise ValueError("attempt record line_harvest_error requires line_crossed")
+        if self.line_patch_path is not None and self.line_harvest_error is not None:
+            raise ValueError(
+                "attempt record cannot both carry a line_patch_path and a line_harvest_error"
+            )
         if policy.receipt is _Presence.REQUIRED and self.receipt_path is None:
             raise ValueError(f"{self.code} requires a receipt path")
         if policy.receipt is _Presence.FORBIDDEN and self.receipt_path is not None:
@@ -406,6 +466,9 @@ class AttemptRecord:
                     {DeadlinePhase.PRESERVATION, DeadlinePhase.CLEANUP}
                 ),
                 AttemptCode.REPEAT_LIMIT: frozenset(
+                    {DeadlinePhase.PRESERVATION, DeadlinePhase.CLEANUP}
+                ),
+                AttemptCode.BUDGET_EXCEEDED: frozenset(
                     {DeadlinePhase.PRESERVATION, DeadlinePhase.CLEANUP}
                 ),
                 # A record written before cleanup keeps its independent
@@ -542,6 +605,17 @@ def write_attempt_record(path: Path, record: AttemptRecord) -> None:
         # field set exactly. A null rung with a digest still writes both.
         for name in _V11_FIELDS:
             data.pop(name, None)
+    if data.get("tripped_patch_path") is None:
+        data.pop("tripped_patch_path", None)
+    if data.get("line_crossed") is None:
+        data.pop("line_crossed", None)
+        data.pop("line_patch_path", None)
+        data.pop("line_harvest_error", None)
+    else:
+        if data.get("line_patch_path") is None:
+            data.pop("line_patch_path", None)
+        if data.get("line_harvest_error") is None:
+            data.pop("line_harvest_error", None)
     if legacy:
         for name in _V4_FIELDS:
             data.pop(name)
@@ -563,7 +637,9 @@ def load_attempt_record(path: Path) -> AttemptRecord:
     current_fields = v9_fields | _V11_FIELDS
     v12_fields = current_fields | _V12_FIELDS
     v13_fields = v12_fields | _V13_FIELDS
-    if fields not in {
+    v14_fields = v13_fields | _V14_FIELDS
+    v15_fields = v14_fields | _V15_FIELDS
+    generations = (
         legacy_fields,
         v4_fields,
         v7_fields,
@@ -571,10 +647,20 @@ def load_attempt_record(path: Path) -> AttemptRecord:
         current_fields,
         v12_fields,
         v13_fields,
+    )
+    # V14 and V15 are both additive: `tripped_patch_path` and the line-harvest
+    # trio each ride on whichever generation the record already is
+    # independently of one another, so every generation crossed with either
+    # combination is accepted. The removed `tripped_verdict` shape is not.
+    if fields not in {
+        generation | tripped | line
+        for generation in generations
+        for tripped in (frozenset(), _V14_FIELDS)
+        for line in _V15_COMBOS
     }:
         if missing := _LEGACY_FIELDS - fields:
             raise ValueError(f"attempt record missing a field: {sorted(missing)}")
-        if unexpected := fields - v13_fields:
+        if unexpected := fields - v15_fields:
             raise ValueError(
                 f"attempt record has unexpected fields: {sorted(unexpected)}"
             )
@@ -608,6 +694,15 @@ def load_attempt_record(path: Path) -> AttemptRecord:
         verdict = Verdict(data["verdict"]) if data.get("verdict") is not None else None
     except (KeyError, ValueError) as e:
         raise ValueError(f"bad verdict: {e}") from e
+    line_crossed: LineCrossing | None = None
+    if "line_crossed" in fields:
+        raw_crossing = data["line_crossed"]
+        if not isinstance(raw_crossing, dict):
+            raise ValueError("attempt record line_crossed is not an object")
+        try:
+            line_crossed = LineCrossing(**raw_crossing)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"invalid attempt record line_crossed: {exc}") from exc
     try:
         return AttemptRecord(
             version=data["version"],
@@ -631,6 +726,10 @@ def load_attempt_record(path: Path) -> AttemptRecord:
             attempt_dir=data.get("attempt_dir"),
             deadline=deadline,
             attempt_timeout=data.get("attempt_timeout"),
+            tripped_patch_path=data.get("tripped_patch_path"),
+            line_crossed=line_crossed,
+            line_patch_path=data.get("line_patch_path"),
+            line_harvest_error=data.get("line_harvest_error"),
             _legacy=legacy,
         )
     except (KeyError, TypeError, ValueError) as e:

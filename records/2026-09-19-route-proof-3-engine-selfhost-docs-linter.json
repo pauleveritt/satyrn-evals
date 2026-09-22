@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "task": "selfhost-docs-linter",
+  "task_tree_sha256": "a8c1aaf0e2d5136be35ed6e5d2bf49cb88e06e15c7217ed0b481edfbd090b1c6",
+  "arm": "engine",
+  "model": "omlx/Ornith-1.5-9B-MLX-8bit",
+  "condition": "cold",
+  "n": 2,
+  "mode": "batch",
+  "max_minutes": 120,
+  "stop_rule": "established infrastructure failure only",
+  "decision_rule": "confirmation only, behaviour and plumbing, no outcome: a cell that ends by a clean stop yields outcome candidate-created with a non-empty patch and a graded verdict, and its receipt's turns and output tokens equal the transcript's with budget.live_counter live. Any discarded clean stop or miscounted receipt returns the engine to the fix queue.",
+  "previous_result": "records/2026-09-19-route-proof-engine-selfhost-cell-loop.result.json",
+  "token_budget": 48000,
+  "turn_budget": 72,
+  "isolation": "isolated",
+  "purpose": "route-proof",
+  "k": 3,
+  "rung": "R1-plan",
+  "authority": "maintainer: 2026-09-18 evening authorization (run the overnight, re-dispatch fixes or a re-run yourself), recorded in .superpowers/sdd/2026-09-17-release-two-engine/maintainer-authorization-2026-09-19.md; confirmation proof at engine 0a6e5df after the discarded-candidate defect; excluded from every comparison denominator and reported beside the void night and the second route proof",
+  "command_backstop_s": 4800
+}

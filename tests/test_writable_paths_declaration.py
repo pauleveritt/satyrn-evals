@@ -28,7 +28,7 @@ FLEET: dict[str, tuple[str, ...]] = {
         "templates/*",
         "tests/*",
     ),
-    "agentclinic-phase2-guardrail-candidate": (
+    "agentclinic-repair-misleading-locus": (
         "app.py",
         "models.py",
         "templates/*",
@@ -36,30 +36,14 @@ FLEET: dict[str, tuple[str, ...]] = {
     ),
     "agentclinic-repair-depth-2": ("app.py", "models.py", "templates/*", "tests/*"),
     "agentclinic-repair-depth-3": ("app.py", "models.py", "templates/*", "tests/*"),
-    "agentclinic-repair-framing-2": ("app.py", "models.py", "templates/*", "tests/*"),
-    "agentclinic-repair-framing-2-edit": (
-        "app.py",
-        "models.py",
-        "templates/*",
-        "tests/*",
-    ),
-    "agentclinic-repair-misleading-locus": (
-        "app.py",
-        "models.py",
-        "templates/*",
-        "tests/*",
-    ),
-    "agentclinic-repair-plausible-wrong-fix": (
-        "app.py",
-        "models.py",
-        "templates/*",
-        "tests/*",
-    ),
-    "agentclinic-session-phased": ("app.py", "models.py", "templates/*", "tests/*"),
     "format_number": ("solution.py",),
-    "local-pings": ("src/svcs/_core.py",),
-    "session-mechanics": ("src/textkit/*",),
-    "session-ordering-regression": ("src/textkit/*",),
+    "selfhost-docs-linter": ("tools/lint_docs.py", "tests/*"),
+    "selfhost-guard-prefixes": ("tools/hooks/guard.py", "tests/*"),
+    "selfhost-review-script": ("tools/review.py", "tests/*"),
+    "selfhost-run-record-gate": ("src/satyrn_evals/run_record.py", "src/satyrn_evals/cli.py", "tests/*"),
+    "selfhost-cell-loop": ("src/satyrn_evals/launch.py", "tests/*"),
+    "selfhost-speed-probe": ("scripts/speed_probe.py", "ROADMAP.md", "tests/*"),
+    "selfhost-preflight-quiet": ("scripts/preflight_quiet.py", "tests/*"),
 }
 
 
@@ -89,18 +73,7 @@ def test_only_the_empty_skeleton_tasks_declare() -> None:
     declaring = [n for n in _shipped() if load_manifest(DEFAULT_TASKS_ROOT / n).source_dirs is not None]
     assert declaring == [
         "agentclinic-complaint-lifecycle",
-        "agentclinic-phase2-guardrail-candidate",
-        "agentclinic-session-phased",
     ]
-
-
-def test_the_probe_would_get_the_phased_task_wrong(tmp_path) -> None:
-    """The defect, reconstructed: without the declaration, ``templates`` is
-    an exact filename on an empty skeleton, so the test above can fail."""
-    task_dir = DEFAULT_TASKS_ROOT / "agentclinic-session-phased"
-    manifest = load_manifest(task_dir)
-    probed = writable_paths(task_dir, manifest.source_paths, None)
-    assert probed == ("app.py", "models.py", "templates", "tests")
 
 
 def _tree(tmp_path: Path, entries: dict[str, str]) -> Path:

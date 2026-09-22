@@ -1,186 +1,80 @@
-"""Enforce the active-document checks described in `docs/sdd.md`.
+"""Enforce the release-one document caps. No model, network, or subprocess.
 
-No model, no network, no subprocess — it fits the default test tier and runs
-from `just lint-docs`.
+The caps are the mechanical form of a rule prose could not hold: a result is
+one short page with its recompute command, the roadmap fits on a screen, and
+docs/ cannot grow new rooms.
 """
 
-import re
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-
-type Failure = str
-
-FILE_CAPS: dict[str, int] = {
-    "ROADMAP.md": 400,
-    "BACKLOG.md": 400,
-}
-# Deliberately absent from FILE_CAPS. The historical archive lives outside the
-# Sphinx tree and is not an active planning surface.
-UNCAPPED: frozenset[str] = frozenset({"ARCHIVE.md"})
-GLOB_CAPS: tuple[tuple[str, int], ...] = (
-    ("docs/current/*-design.md", 400),
-    ("docs/current/*-plan.md", 400),
-)
-
-DIRECTION_CAP = 900
-STATUS_CAP = 1_000
-BACKLOG_ENTRY_CAP = 1_200
-
-WHITESPACE_SKIP_PARTS = frozenset({"_build", ".venv", "node_modules"})
+ROADMAP_CAP = 150
+RESULT_CAP = 120
+RESULT_COUNT_CAP = 12
+SPEC_CAP = 400
+PERMITTED_DIRS = frozenset({"superpowers", "superpowers/specs", "superpowers/plans", "results", "reviews"})
+SKIP_PARTS = frozenset({"_build", ".venv", "node_modules", ".claude"})
 
 
-@dataclass(frozen=True, slots=True)
-class Report:
-    failures: list[Failure]
-
-    def render(self) -> int:
-        for line in self.failures:
-            print(f"  {line}")
-        if self.failures:
-            print(f"\nlint-docs: {len(self.failures)} active-document check failures. "
-                  "See docs/sdd.md.")
-            return 1
-        print("lint-docs: all documents within cap")
-        return 0
+def _lines(path: Path) -> list[str]:
+    return path.read_text().splitlines()
 
 
-def _cells(line: str) -> list[str] | None:
-    """Cells of a Markdown table row, or None if the line is not one."""
-    if not line.startswith("|") or set(line) <= set("|- "):
-        return None
-    return [c.strip() for c in line.strip().strip("|").split("|")]
-
-
-def _column_index(header: list[str], *names: str) -> int | None:
-    """Index of the first column whose header starts with one of `names`."""
-    for i, cell in enumerate(header):
-        lowered = cell.strip("* ").lower()
-        if any(lowered.startswith(n) for n in names):
-            return i
-    return None
-
-
-def _phase_rows(text: str) -> list[dict[str, str]]:
-    """Phase-table rows keyed by column, or [] if the file has no phase table.
-
-    **Keyed by header, not by position, on purpose.** A sibling project added an
-    Excludes column between Direction and Status and its positional checker went
-    on measuring the last two cells, so the Status cap silently began measuring
-    Excludes — caught only at phase close-out. A cap that moves to another column
-    when a column is added is not enforcing the cap it names.
-    """
-    header: list[str] | None = None
-    rows: list[dict[str, str]] = []
-    for line in text.splitlines():
-        if (cells := _cells(line)) is None:
-            continue
-        if header is None:
-            if _column_index(cells, "status") is not None:
-                header = cells
-            continue
-        if len(cells) != len(header):
-            continue
-        direction = _column_index(header, "direction", "ships")
-        status = _column_index(header, "status")
-        phase = _column_index(header, "#", "phase")
-        rows.append({
-            "phase": cells[phase] if phase is not None else "?",
-            "direction": cells[direction] if direction is not None else "",
-            "status": cells[status] if status is not None else "",
-        })
-    return rows
-
-
-def _backlog_entries(text: str) -> list[tuple[str, str]]:
-    """(label, body) per entry under `## Entries`.
-
-    Only a bold label at the start of a line inside that section counts. An
-    earlier version matched any bold span anywhere, so it fired on inline
-    emphasis and on this file's own rules header — a detector that cannot tell
-    an entry from a word is not a detector.
-    """
-    section = text.split("\n## Entries\n", 1)
-    if len(section) != 2:
-        return []
-    body = section[1]
-    entries = []
-    for match in re.finditer(r"^\*\*(.+?)\*\*(.*?)(?=^\*\*|\Z)", body, re.S | re.M):
-        entries.append((match.group(1).strip(), match.group(2)))
-    return entries
-
-
-def _whitespace_failures(root: Path) -> list[Failure]:
-    """Trailing whitespace and blank lines at EOF in live documents.
-
-    Added by the D1 amendment (2026-09-04): the D1 design and plan were
-    committed with a trailing blank line each because `git diff --check` was
-    run on the working tree rather than the branch range. The cap checker is
-    the always-running half; this closes the same gap for whitespace.
-    """
-    failures: list[Failure] = []
-    paths = sorted(
-        {*root.glob("*.md"), *root.glob("docs/*.md"), *root.glob("docs/**/*.md")}
-    )
+def _whitespace(root: Path) -> list[str]:
+    failures: list[str] = []
+    paths = sorted({*root.glob("*.md"), *root.glob("docs/**/*.md"), *root.glob("site/**/*.md")})
     for path in paths:
         if not path.is_file():
             continue
-        if any(part in WHITESPACE_SKIP_PARTS for part in path.parts):
+        rel_path = path.relative_to(root)
+        if any(p in SKIP_PARTS for p in rel_path.parts):
             continue
-        rel = path.relative_to(root).as_posix()
-        lines = path.read_text().splitlines()
-        for lineno, line in enumerate(lines, 1):
-            if line != line.rstrip():
-                failures.append(f"{rel}:{lineno}: trailing whitespace")
+        rel = rel_path.as_posix()
+        lines = _lines(path)
+        failures.extend(f"{rel}:{n}: trailing whitespace" for n, line in enumerate(lines, 1) if line != line.rstrip())
         if lines and lines[-1] == "":
             failures.append(f"{rel}: blank line at EOF")
     return failures
 
 
-def check(root: Path = ROOT) -> Report:
-    failures: list[Failure] = []
-
-    for name, cap in FILE_CAPS.items():
-        path = root / name
-        if not path.exists():
-            continue
-        n = len(path.read_text().splitlines())
-        if n > cap:
-            failures.append(f"{name}: {n} lines > {cap}")
-
-    for pattern, cap in GLOB_CAPS:
-        for path in sorted(root.glob(pattern)):
-            n = len(path.read_text().splitlines())
-            if n > cap:
-                failures.append(f"{path.relative_to(root)}: {n} lines > {cap}")
-
-    failures.extend(_whitespace_failures(root))
-
+def check(root: Path) -> list[str]:
+    failures: list[str] = []
     roadmap = root / "ROADMAP.md"
-    if roadmap.exists():
-        for row in _phase_rows(roadmap.read_text()):
-            phase, direction, status = row["phase"], row["direction"], row["status"]
-            if len(direction) > DIRECTION_CAP:
-                failures.append(
-                    f"ROADMAP.md phase {phase}: Direction {len(direction)} chars "
-                    f"> {DIRECTION_CAP}")
-            if len(status) > STATUS_CAP:
-                failures.append(
-                    f"ROADMAP.md phase {phase}: Status {len(status)} chars "
-                    f"> {STATUS_CAP}")
+    if roadmap.exists() and (n := len(_lines(roadmap))) > ROADMAP_CAP:
+        failures.append(f"ROADMAP.md: {n} lines > {ROADMAP_CAP}")
+    docs = root / "docs"
+    if docs.is_dir():
+        for path in sorted(p for p in docs.rglob("*") if p.is_dir()):
+            rel = path.relative_to(docs).as_posix()
+            if rel not in PERMITTED_DIRS:
+                failures.append(f"docs/{rel}: directory not permitted under docs/")
+        results = sorted(p for p in (docs / "results").glob("*.md")) if (docs / "results").is_dir() else []
+        for path in results:
+            rel = path.relative_to(root).as_posix()
+            lines = _lines(path)
+            if len(lines) > RESULT_CAP:
+                failures.append(f"{rel}: {len(lines)} lines > {RESULT_CAP}")
+            if not any(line.startswith("```") for line in lines):
+                failures.append(f"{rel}: no fenced recompute block")
+        if len(results) > RESULT_COUNT_CAP:
+            failures.append(f"docs/results: {len(results)} result files > {RESULT_COUNT_CAP}")
+        for path in sorted((docs / "superpowers" / "specs").glob("*.md")) if (docs / "superpowers" / "specs").is_dir() else []:
+            if (n := len(_lines(path))) > SPEC_CAP:
+                failures.append(f"{path.relative_to(root).as_posix()}: {n} lines > {SPEC_CAP}")
+    failures.extend(_whitespace(root))
+    return failures
 
-    backlog = root / "BACKLOG.md"
-    if backlog.exists():
-        for label, body in _backlog_entries(backlog.read_text()):
-            if len(body) > BACKLOG_ENTRY_CAP:
-                failures.append(
-                    f"BACKLOG.md '{label[:44]}': {len(body)} chars "
-                    f"> {BACKLOG_ENTRY_CAP} — a research doc is owed")
 
-    return Report(failures)
+def main() -> int:
+    failures = check(Path.cwd())
+    for line in failures:
+        print(f"  {line}")
+    if failures:
+        print(f"\nlint-docs: {len(failures)} failures")
+        return 1
+    print("lint-docs: all documents within cap")
+    return 0
 
 
 if __name__ == "__main__":
-    sys.exit(check().render())
+    sys.exit(main())

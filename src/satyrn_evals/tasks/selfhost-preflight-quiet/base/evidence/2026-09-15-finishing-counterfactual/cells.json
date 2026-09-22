@@ -1,0 +1,862 @@
+{
+ "evals_commit": "07e11428426ab77bfefc812a3c84ae145560b81b",
+ "evals_dirty": false,
+ "command": "counterfactual.py --phase decision",
+ "cells": [
+  {
+   "task": "agentclinic-repair-depth-3",
+   "group": "decision",
+   "run": "2026-09-14-admission-agentclinic-repair-depth-3",
+   "arm": "baseline",
+   "attempt": "971281",
+   "code": "COMMAND_TIMEOUT",
+   "harness_verdict": null,
+   "actual": "not-pass",
+   "applied": {
+    "write": 0,
+    "edit": 0,
+    "bash": 0
+   },
+   "trigger": null,
+   "trigger_verdict": null,
+   "final_replay_verdict": null,
+   "fidelity": "unverifiable",
+   "counterfactual": "not-pass",
+   "change": "none",
+   "unverified_bash_turns": [],
+   "unmeasured": [],
+   "skipped_writer_turns": [],
+   "anchor_miss_turns": []
+  },
+  {
+   "task": "agentclinic-repair-depth-3",
+   "group": "decision",
+   "run": "2026-09-14-admission-agentclinic-repair-depth-3",
+   "arm": "baseline",
+   "attempt": "021584",
+   "code": "BUDGET_EXCEEDED",
+   "harness_verdict": null,
+   "actual": "not-pass",
+   "applied": {
+    "write": 0,
+    "edit": 0,
+    "bash": 0
+   },
+   "trigger": null,
+   "trigger_verdict": null,
+   "final_replay_verdict": null,
+   "fidelity": "unverifiable",
+   "counterfactual": "not-pass",
+   "change": "none",
+   "unverified_bash_turns": [],
+   "unmeasured": [],
+   "skipped_writer_turns": [],
+   "anchor_miss_turns": []
+  },
+  {
+   "task": "agentclinic-repair-depth-3",
+   "group": "decision",
+   "run": "2026-09-14-admission-agentclinic-repair-depth-3",
+   "arm": "baseline",
+   "attempt": "082295",
+   "code": "OK",
+   "harness_verdict": "fail",
+   "actual": "not-pass",
+   "applied": {
+    "write": 0,
+    "edit": 2,
+    "bash": 0
+   },
+   "trigger": {
+    "step": 27,
+    "turn": 23,
+    "output_tokens": 23230,
+    "route": "bash",
+    "within_budget": true
+   },
+   "trigger_verdict": "fail",
+   "final_replay_verdict": "fail",
+   "fidelity": "pass",
+   "counterfactual": "not-pass",
+   "change": "none",
+   "unverified_bash_turns": [
+    4,
+    6,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23
+   ],
+   "unmeasured": [],
+   "skipped_writer_turns": [],
+   "anchor_miss_turns": []
+  },
+  {
+   "task": "agentclinic-repair-depth-3",
+   "group": "decision",
+   "run": "2026-09-14-admission-agentclinic-repair-depth-3",
+   "arm": "baseline",
+   "attempt": "700050",
+   "code": "BUDGET_EXCEEDED",
+   "harness_verdict": null,
+   "actual": "not-pass",
+   "applied": {
+    "write": 0,
+    "edit": 0,
+    "bash": 0
+   },
+   "trigger": null,
+   "trigger_verdict": null,
+   "final_replay_verdict": null,
+   "fidelity": "unverifiable",
+   "counterfactual": "not-pass",
+   "change": "none",
+   "unverified_bash_turns": [],
+   "unmeasured": [],
+   "skipped_writer_turns": [],
+   "anchor_miss_turns": []
+  },
+  {
+   "task": "selfhost-run-record-gate",
+   "group": "decision",
+   "run": "2026-09-15-admission-selfhost-run-record-gate",
+   "arm": "baseline",
+   "attempt": "388294",
+   "code": "BUDGET_EXCEEDED",
+   "harness_verdict": null,
+   "actual": "not-pass",
+   "applied": {
+    "write": 2,
+    "edit": 13,
+    "bash": 0
+   },
+   "trigger": null,
+   "trigger_verdict": null,
+   "final_replay_verdict": null,
+   "fidelity": "unverifiable",
+   "counterfactual": "not-pass",
+   "change": "none",
+   "unverified_bash_turns": [],
+   "unmeasured": [],
+   "skipped_writer_turns": [
+    34,
+    35,
+    40
+   ],
+   "anchor_miss_turns": [
+    37,
+    43,
+    46
+   ]
+  },
+  {
+   "task": "selfhost-run-record-gate",
+   "group": "decision",
+   "run": "2026-09-15-admission-selfhost-run-record-gate",
+   "arm": "baseline",
+   "attempt": "448568",
+   "code": "BUDGET_EXCEEDED",
+   "harness_verdict": null,
+   "actual": "not-pass",
+   "applied": {
+    "write": 4,
+    "edit": 9,
+    "bash": 0
+   },
+   "trigger": null,
+   "trigger_verdict": null,
+   "final_replay_verdict": null,
+   "fidelity": "unverifiable",
+   "counterfactual": "not-pass",
+   "change": "none",
+   "unverified_bash_turns": [],
+   "unmeasured": [],
+   "skipped_writer_turns": [],
+   "anchor_miss_turns": []
+  },
+  {
+   "task": "selfhost-run-record-gate",
+   "group": "decision",
+   "run": "2026-09-15-admission-selfhost-run-record-gate",
+   "arm": "baseline",
+   "attempt": "519278",
+   "code": "BUDGET_EXCEEDED",
+   "harness_verdict": null,
+   "actual": "not-pass",
+   "applied": {
+    "write": 2,
+    "edit": 8,
+    "bash": 1
+   },
+   "trigger": {
+    "step": 34,
+    "turn": 35,
+    "output_tokens": 23522,
+    "route": "bash",
+    "within_budget": true
+   },
+   "trigger_verdict": "unavailable",
+   "final_replay_verdict": null,
+   "fidelity": "unverifiable",
+   "counterfactual": "not-pass",
+   "change": "none",
+   "unverified_bash_turns": [
+    7,
+    10,
+    11,
+    12,
+    23,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34
+   ],
+   "unmeasured": [
+    "skipped bash writer at turn 29",
+    "skipped bash writer at turn 30",
+    "skipped bash writer at turn 31"
+   ],
+   "skipped_writer_turns": [
+    29,
+    30,
+    31
+   ],
+   "anchor_miss_turns": []
+  },
+  {
+   "task": "selfhost-run-record-gate",
+   "group": "decision",
+   "run": "2026-09-15-admission-selfhost-run-record-gate",
+   "arm": "baseline",
+   "attempt": "028222",
+   "code": "BUDGET_EXCEEDED",
+   "harness_verdict": null,
+   "actual": "not-pass",
+   "applied": {
+    "write": 2,
+    "edit": 13,
+    "bash": 1
+   },
+   "trigger": {
+    "step": 38,
+    "turn": 33,
+    "output_tokens": 21594,
+    "route": "bash",
+    "within_budget": true
+   },
+   "trigger_verdict": "fail",
+   "final_replay_verdict": null,
+   "fidelity": "unverifiable",
+   "counterfactual": "not-pass",
+   "change": "none",
+   "unverified_bash_turns": [
+    1,
+    2,
+    7,
+    10,
+    11,
+    18,
+    19,
+    20,
+    22,
+    29
+   ],
+   "unmeasured": [
+    "skipped bash writer at turn 29"
+   ],
+   "skipped_writer_turns": [
+    29
+   ],
+   "anchor_miss_turns": []
+  },
+  {
+   "task": "selfhost-docs-linter",
+   "group": "decision",
+   "run": "2026-09-15-admission-selfhost-docs-linter",
+   "arm": "baseline",
+   "attempt": "147562",
+   "code": "BUDGET_EXCEEDED",
+   "harness_verdict": null,
+   "actual": "not-pass",
+   "applied": {
+    "write": 6,
+    "edit": 8,
+    "bash": 0
+   },
+   "trigger": {
+    "step": 31,
+    "turn": 32,
+    "output_tokens": 30992,
+    "route": "bash",
+    "within_budget": true
+   },
+   "trigger_verdict": "unavailable",
+   "final_replay_verdict": null,
+   "fidelity": "unverifiable",
+   "counterfactual": "not-pass",
+   "change": "none",
+   "unverified_bash_turns": [
+    1,
+    3,
+    4,
+    5,
+    6,
+    13,
+    14
+   ],
+   "unmeasured": [],
+   "skipped_writer_turns": [],
+   "anchor_miss_turns": []
+  },
+  {
+   "task": "selfhost-docs-linter",
+   "group": "decision",
+   "run": "2026-09-15-admission-selfhost-docs-linter",
+   "arm": "baseline",
+   "attempt": "204433",
+   "code": "OK",
+   "harness_verdict": "pass",
+   "actual": "pass",
+   "applied": {
+    "write": 3,
+    "edit": 10,
+    "bash": 0
+   },
+   "trigger": {
+    "step": 39,
+    "turn": 35,
+    "output_tokens": 21708,
+    "route": "bash",
+    "within_budget": true
+   },
+   "trigger_verdict": "pass",
+   "final_replay_verdict": "pass",
+   "fidelity": "pass",
+   "counterfactual": "pass",
+   "change": "none",
+   "unverified_bash_turns": [
+    1,
+    4,
+    5,
+    21,
+    22,
+    25,
+    26
+   ],
+   "unmeasured": [],
+   "skipped_writer_turns": [],
+   "anchor_miss_turns": []
+  },
+  {
+   "task": "selfhost-docs-linter",
+   "group": "decision",
+   "run": "2026-09-15-admission-selfhost-docs-linter",
+   "arm": "baseline",
+   "attempt": "270586",
+   "code": "BUDGET_EXCEEDED",
+   "harness_verdict": null,
+   "actual": "not-pass",
+   "applied": {
+    "write": 4,
+    "edit": 2,
+    "bash": 0
+   },
+   "trigger": null,
+   "trigger_verdict": null,
+   "final_replay_verdict": null,
+   "fidelity": "unverifiable",
+   "counterfactual": "not-pass",
+   "change": "none",
+   "unverified_bash_turns": [],
+   "unmeasured": [],
+   "skipped_writer_turns": [
+    27
+   ],
+   "anchor_miss_turns": []
+  },
+  {
+   "task": "selfhost-docs-linter",
+   "group": "decision",
+   "run": "2026-09-15-admission-selfhost-docs-linter",
+   "arm": "baseline",
+   "attempt": "970283",
+   "code": "BUDGET_EXCEEDED",
+   "harness_verdict": null,
+   "actual": "not-pass",
+   "applied": {
+    "write": 2,
+    "edit": 4,
+    "bash": 0
+   },
+   "trigger": {
+    "step": 39,
+    "turn": 40,
+    "output_tokens": 27892,
+    "route": "bash",
+    "within_budget": true
+   },
+   "trigger_verdict": "pass",
+   "final_replay_verdict": null,
+   "fidelity": "unverifiable",
+   "counterfactual": "not-pass",
+   "change": "none",
+   "unverified_bash_turns": [
+    6,
+    7,
+    8,
+    18,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38
+   ],
+   "unmeasured": [
+    "skipped bash writer at turn 29",
+    "skipped bash writer at turn 37",
+    "skipped bash writer at turn 38",
+    "unverified-rescue: bash at turns 6, 7, 8, 18, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 32, 33, 34, 35, 36, 37, 38"
+   ],
+   "skipped_writer_turns": [
+    29,
+    37,
+    38,
+    45
+   ],
+   "anchor_miss_turns": []
+  },
+  {
+   "task": "selfhost-guard-prefixes",
+   "group": "decision",
+   "run": "2026-09-15-admission-selfhost-guard-prefixes",
+   "arm": "baseline",
+   "attempt": "812248",
+   "code": "OK",
+   "harness_verdict": "pass",
+   "actual": "pass",
+   "applied": {
+    "write": 0,
+    "edit": 1,
+    "bash": 0
+   },
+   "trigger": null,
+   "trigger_verdict": null,
+   "final_replay_verdict": "pass",
+   "fidelity": "pass",
+   "counterfactual": "pass",
+   "change": "none",
+   "unverified_bash_turns": [],
+   "unmeasured": [],
+   "skipped_writer_turns": [],
+   "anchor_miss_turns": []
+  },
+  {
+   "task": "selfhost-guard-prefixes",
+   "group": "decision",
+   "run": "2026-09-15-admission-selfhost-guard-prefixes",
+   "arm": "baseline",
+   "attempt": "870439",
+   "code": "OK",
+   "harness_verdict": "pass",
+   "actual": "pass",
+   "applied": {
+    "write": 0,
+    "edit": 2,
+    "bash": 0
+   },
+   "trigger": null,
+   "trigger_verdict": null,
+   "final_replay_verdict": "unavailable",
+   "fidelity": "fail",
+   "counterfactual": "pass",
+   "change": "none",
+   "unverified_bash_turns": [],
+   "unmeasured": [
+    "fidelity: harness pass, replay unavailable"
+   ],
+   "skipped_writer_turns": [
+    22,
+    29,
+    30,
+    34
+   ],
+   "anchor_miss_turns": []
+  },
+  {
+   "task": "selfhost-guard-prefixes",
+   "group": "decision",
+   "run": "2026-09-15-admission-selfhost-guard-prefixes",
+   "arm": "baseline",
+   "attempt": "937944",
+   "code": "OK",
+   "harness_verdict": "pass",
+   "actual": "pass",
+   "applied": {
+    "write": 0,
+    "edit": 2,
+    "bash": 0
+   },
+   "trigger": null,
+   "trigger_verdict": null,
+   "final_replay_verdict": "fail",
+   "fidelity": "fail",
+   "counterfactual": "pass",
+   "change": "none",
+   "unverified_bash_turns": [],
+   "unmeasured": [
+    "fidelity: harness pass, replay fail"
+   ],
+   "skipped_writer_turns": [
+    15,
+    16
+   ],
+   "anchor_miss_turns": []
+  },
+  {
+   "task": "selfhost-guard-prefixes",
+   "group": "decision",
+   "run": "2026-09-15-admission-selfhost-guard-prefixes",
+   "arm": "baseline",
+   "attempt": "424626",
+   "code": "OK",
+   "harness_verdict": "pass",
+   "actual": "pass",
+   "applied": {
+    "write": 0,
+    "edit": 6,
+    "bash": 0
+   },
+   "trigger": null,
+   "trigger_verdict": null,
+   "final_replay_verdict": "fail",
+   "fidelity": "fail",
+   "counterfactual": "pass",
+   "change": "none",
+   "unverified_bash_turns": [],
+   "unmeasured": [
+    "fidelity: harness pass, replay fail"
+   ],
+   "skipped_writer_turns": [
+    27,
+    29
+   ],
+   "anchor_miss_turns": []
+  },
+  {
+   "task": "selfhost-review-script",
+   "group": "decision",
+   "run": "2026-09-15-admission-selfhost-review-script",
+   "arm": "baseline",
+   "attempt": "688090",
+   "code": "OK",
+   "harness_verdict": "pass",
+   "actual": "pass",
+   "applied": {
+    "write": 2,
+    "edit": 4,
+    "bash": 0
+   },
+   "trigger": {
+    "step": 17,
+    "turn": 18,
+    "output_tokens": 8309,
+    "route": "bash",
+    "within_budget": true
+   },
+   "trigger_verdict": "pass",
+   "final_replay_verdict": "pass",
+   "fidelity": "pass",
+   "counterfactual": "pass",
+   "change": "none",
+   "unverified_bash_turns": [
+    1,
+    8,
+    13,
+    15,
+    18
+   ],
+   "unmeasured": [
+    "skipped bash writer at turn 15"
+   ],
+   "skipped_writer_turns": [
+    15
+   ],
+   "anchor_miss_turns": []
+  },
+  {
+   "task": "selfhost-review-script",
+   "group": "decision",
+   "run": "2026-09-15-admission-selfhost-review-script",
+   "arm": "baseline",
+   "attempt": "746232",
+   "code": "OK",
+   "harness_verdict": "pass",
+   "actual": "pass",
+   "applied": {
+    "write": 2,
+    "edit": 3,
+    "bash": 0
+   },
+   "trigger": {
+    "step": 9,
+    "turn": 10,
+    "output_tokens": 3822,
+    "route": "bash",
+    "within_budget": true
+   },
+   "trigger_verdict": "pass",
+   "final_replay_verdict": "pass",
+   "fidelity": "pass",
+   "counterfactual": "pass",
+   "change": "none",
+   "unverified_bash_turns": [
+    1,
+    4,
+    10
+   ],
+   "unmeasured": [],
+   "skipped_writer_turns": [],
+   "anchor_miss_turns": []
+  },
+  {
+   "task": "selfhost-review-script",
+   "group": "decision",
+   "run": "2026-09-15-admission-selfhost-review-script",
+   "arm": "baseline",
+   "attempt": "816670",
+   "code": "OK",
+   "harness_verdict": "pass",
+   "actual": "pass",
+   "applied": {
+    "write": 2,
+    "edit": 4,
+    "bash": 0
+   },
+   "trigger": {
+    "step": 16,
+    "turn": 17,
+    "output_tokens": 7138,
+    "route": "bash",
+    "within_budget": true
+   },
+   "trigger_verdict": "pass",
+   "final_replay_verdict": "pass",
+   "fidelity": "pass",
+   "counterfactual": "pass",
+   "change": "none",
+   "unverified_bash_turns": [
+    1,
+    2,
+    4,
+    5,
+    11,
+    17
+   ],
+   "unmeasured": [],
+   "skipped_writer_turns": [
+    29
+   ],
+   "anchor_miss_turns": []
+  },
+  {
+   "task": "selfhost-review-script",
+   "group": "decision",
+   "run": "2026-09-15-admission-selfhost-review-script",
+   "arm": "baseline",
+   "attempt": "501161",
+   "code": "OK",
+   "harness_verdict": "pass",
+   "actual": "pass",
+   "applied": {
+    "write": 2,
+    "edit": 5,
+    "bash": 0
+   },
+   "trigger": {
+    "step": 22,
+    "turn": 23,
+    "output_tokens": 8828,
+    "route": "bash",
+    "within_budget": true
+   },
+   "trigger_verdict": "pass",
+   "final_replay_verdict": "pass",
+   "fidelity": "pass",
+   "counterfactual": "pass",
+   "change": "none",
+   "unverified_bash_turns": [
+    1,
+    4,
+    7,
+    8,
+    11,
+    12,
+    16,
+    17,
+    18,
+    19,
+    23
+   ],
+   "unmeasured": [
+    "skipped bash writer at turn 11",
+    "skipped bash writer at turn 18"
+   ],
+   "skipped_writer_turns": [
+    11,
+    18
+   ],
+   "anchor_miss_turns": []
+  },
+  {
+   "task": "agentclinic-repair-depth-2",
+   "group": "decision",
+   "run": "2026-09-14-admission-agentclinic-repair-depth-2",
+   "arm": "baseline",
+   "attempt": "523251",
+   "code": "OK",
+   "harness_verdict": "pass",
+   "actual": "pass",
+   "applied": {
+    "write": 0,
+    "edit": 2,
+    "bash": 0
+   },
+   "trigger": {
+    "step": 7,
+    "turn": 7,
+    "output_tokens": 3134,
+    "route": "bash",
+    "within_budget": true
+   },
+   "trigger_verdict": "pass",
+   "final_replay_verdict": "pass",
+   "fidelity": "pass",
+   "counterfactual": "pass",
+   "change": "none",
+   "unverified_bash_turns": [
+    5
+   ],
+   "unmeasured": [],
+   "skipped_writer_turns": [],
+   "anchor_miss_turns": []
+  },
+  {
+   "task": "agentclinic-repair-depth-2",
+   "group": "decision",
+   "run": "2026-09-14-admission-agentclinic-repair-depth-2",
+   "arm": "baseline",
+   "attempt": "575297",
+   "code": "OK",
+   "harness_verdict": "pass",
+   "actual": "pass",
+   "applied": {
+    "write": 0,
+    "edit": 2,
+    "bash": 0
+   },
+   "trigger": {
+    "step": 8,
+    "turn": 8,
+    "output_tokens": 3636,
+    "route": "bash",
+    "within_budget": true
+   },
+   "trigger_verdict": "pass",
+   "final_replay_verdict": "pass",
+   "fidelity": "pass",
+   "counterfactual": "pass",
+   "change": "none",
+   "unverified_bash_turns": [
+    3,
+    6
+   ],
+   "unmeasured": [],
+   "skipped_writer_turns": [],
+   "anchor_miss_turns": []
+  },
+  {
+   "task": "agentclinic-repair-depth-2",
+   "group": "decision",
+   "run": "2026-09-14-admission-agentclinic-repair-depth-2",
+   "arm": "baseline",
+   "attempt": "634454",
+   "code": "OK",
+   "harness_verdict": "pass",
+   "actual": "pass",
+   "applied": {
+    "write": 0,
+    "edit": 2,
+    "bash": 0
+   },
+   "trigger": null,
+   "trigger_verdict": null,
+   "final_replay_verdict": "pass",
+   "fidelity": "pass",
+   "counterfactual": "pass",
+   "change": "none",
+   "unverified_bash_turns": [],
+   "unmeasured": [],
+   "skipped_writer_turns": [],
+   "anchor_miss_turns": []
+  },
+  {
+   "task": "agentclinic-repair-depth-2",
+   "group": "decision",
+   "run": "2026-09-14-admission-agentclinic-repair-depth-2",
+   "arm": "baseline",
+   "attempt": "616367",
+   "code": "OK",
+   "harness_verdict": "pass",
+   "actual": "pass",
+   "applied": {
+    "write": 0,
+    "edit": 2,
+    "bash": 0
+   },
+   "trigger": {
+    "step": 8,
+    "turn": 9,
+    "output_tokens": 3009,
+    "route": "bash",
+    "within_budget": true
+   },
+   "trigger_verdict": "pass",
+   "final_replay_verdict": "pass",
+   "fidelity": "pass",
+   "counterfactual": "pass",
+   "change": "none",
+   "unverified_bash_turns": [
+    1,
+    2,
+    4,
+    6
+   ],
+   "unmeasured": [],
+   "skipped_writer_turns": [],
+   "anchor_miss_turns": []
+  }
+ ]
+}

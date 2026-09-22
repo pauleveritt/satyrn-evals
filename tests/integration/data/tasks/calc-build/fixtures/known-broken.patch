@@ -1,0 +1,8 @@
+diff --git a/calc/format.py b/calc/format.py
+new file mode 100644
+index 0000000..ae065e7
+--- /dev/null
++++ b/calc/format.py
+@@ -0,0 +1,2 @@
++def render(n):
++    return None

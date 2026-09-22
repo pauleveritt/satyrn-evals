@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -15,11 +16,13 @@ from satyrn_evals.attempt_record import (
     DeadlinePhase,
     load_attempt_record,
 )
+from satyrn_evals.budget import AttemptBudget, LineCrossing
 from satyrn_evals.deadline import AttemptDeadline
 from satyrn_evals.errors import HookError, UsageError
 from satyrn_evals.receipt import Receipt, write_receipt
 from satyrn_evals.verdict import Verdict
 from satyrn_evals.workspace import (
+    LINE_PATCH_NAME,
     WorkspaceCode,
     WorkspacePrepareError,
     WorkspaceReleaseError,
@@ -39,12 +42,22 @@ TRANSCRIPT = "read the task; wrote the fix\n"
 
 
 class _FakeLease:
-    """Default-tier stand-in for the neutral prepared-workspace boundary."""
+    """Default-tier stand-in for the neutral prepared-workspace boundary.
+
+    ``_environment`` mirrors the real ``PreparedWorkspace``'s private field
+    (`src/satyrn_evals/workspace.py:1452`): a copy of the environment handed
+    to ``prepare_workspace``, so a caller that mutates
+    ``lease._environment`` after the lease is returned -- exactly what
+    ``attempt.py``'s engine-spawn fix does -- observably changes what the
+    fake "spawn" (``run_prepared_command``) sees, the same as it would for
+    the real lease.
+    """
 
     def __init__(self, prepared: dict[str, Any]) -> None:
         self.prepared = prepared
         self.parent = Path("/tmp/fake-prepared-workspace")
         self.base_sha = "b" * 40
+        self._environment = dict(prepared.get("environment", {}))
 
 
 def _install_workspace_double(
@@ -65,7 +78,7 @@ def _install_workspace_double(
         return run(
             base=lease.prepared["base"],
             protected_paths=lease.prepared["protected_paths"],
-            environment=lease.prepared["environment"],
+            environment=lease._environment,
             overlay=lease.prepared["overlay"],
             **kwargs,
         )
@@ -154,6 +167,82 @@ def _run_attempt(
         timeout=timeout,
     )
     return record, _cells(output)[0]
+
+
+# --- F8/R13: the local profile never inherits the maintainer's cell variables ---
+
+
+def test_local_profile_strips_a_stray_isolation_and_cell_parent_from_the_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A stray SATYRN_ISOLATION/SATYRN_CELL_PARENT in the maintainer's own
+    shell must not reach the local-profile command: the adapter would then
+    believe it is isolated and try to run as the cell."""
+    from satyrn_evals.cell import CELL_PARENT_ENV, ISOLATION_ENV
+
+    monkeypatch.setenv(ISOLATION_ENV, "isolated")
+    monkeypatch.setenv(CELL_PARENT_ENV, "/Users/Shared/satyrn-cells/stray")
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+    seen: dict[str, str] = {}
+
+    def fake_run_workspace(**kwargs: Any) -> WorkspaceResult:
+        seen.update(kwargs["environment"])
+        # Leave the patch/transcript unwritten: the attempt refuses NO_PATCH
+        # before grading, so nothing here spawns a subprocess (this row is
+        # about the exported environment, not the grade path).
+        return WorkspaceResult(WorkspaceCode.OK, "attempt command completed", 0, "b" * 40)
+
+    _install_workspace_double(monkeypatch, fake_run_workspace)
+    attempt_module.attempt(
+        task="t", tasks_root=tasks_root, output=tmp_path / "attempts", command=["fake-agent"], timeout=1.0
+    )
+    assert seen[ISOLATION_ENV] == "local"
+    assert CELL_PARENT_ENV not in seen
+
+
+def test_attempt_exports_the_command_backstop_beside_the_other_satyrn_variables(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """design §5.4, plan Ruling 9: the record's command backstop reaches the
+    adapter's environment beside SATYRN_TASK_NAME etc, in whole seconds, set
+    identically for both arms (Baseline's attempt_pi simply ignores it)."""
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+    seen: dict[str, str] = {}
+
+    def fake_run_workspace(**kwargs: Any) -> WorkspaceResult:
+        seen.update(kwargs["environment"])
+        return WorkspaceResult(WorkspaceCode.OK, "attempt command completed", 0, "b" * 40)
+
+    _install_workspace_double(monkeypatch, fake_run_workspace)
+    attempt_module.attempt(
+        task="t", tasks_root=tasks_root, output=tmp_path / "attempts", command=["fake-agent"], timeout=4800.0
+    )
+    assert seen[attempt_module.COMMAND_BACKSTOP_ENV] == "4800"
+
+
+def test_attempt_exports_the_records_budgets_beside_the_backstop(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Maintainer ruling 2026-09-18: the record's token and turn limits reach the
+    adapter's environment, so the Engine writes them into its contract instead of
+    stopping at the product default. Set for both arms; Baseline ignores them."""
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+    seen: dict[str, str] = {}
+
+    def fake_run_workspace(**kwargs: Any) -> WorkspaceResult:
+        seen.update(kwargs["environment"])
+        return WorkspaceResult(WorkspaceCode.OK, "attempt command completed", 0, "b" * 40)
+
+    _install_workspace_double(monkeypatch, fake_run_workspace)
+    attempt_module.attempt(
+        task="t", tasks_root=tasks_root, output=tmp_path / "attempts", command=["fake-agent"],
+        timeout=4800.0, budget=AttemptBudget(output_tokens=48000, turns=72),
+    )
+    assert seen[attempt_module.TOKEN_BUDGET_ENV] == "48000"
+    assert seen[attempt_module.TURN_BUDGET_ENV] == "72"
 
 
 def test_valid_artifacts_proceed() -> None:
@@ -337,6 +426,105 @@ def test_attempt_uses_a_durable_temporary_uv_environment(
 
     assert observed["PYTHONDONTWRITEBYTECODE"] == "1"
     assert not Path(observed["UV_PROJECT_ENVIRONMENT"]).exists()
+
+
+def test_engine_spawn_drops_uv_project_environment_workspace_prep_keeps_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Task 13b: the E5 wrapper's own env lacks it; workspace prep's has it.
+
+    `uv run --project ENGINE satyrn-engine ...` names its own project; a
+    UV_PROJECT_ENVIRONMENT pointed at the attempt's empty private directory
+    makes uv treat that directory as the engine's virtualenv and, under
+    UV_NO_SYNC=1, fail to spawn `satyrn-engine` at all (Task 13 report).
+    """
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+    prepared_environment: dict[str, str] = {}
+    spawned_environment: dict[str, str] = {}
+
+    def fake_workspace(**kwargs: Any) -> WorkspaceResult:
+        spawned_environment.update(kwargs["environment"])
+        return WorkspaceResult(WorkspaceCode.OK, "ok", 0, "b" * 40)
+
+    _install_workspace_double(monkeypatch, fake_workspace)
+    installed_prepare = attempt_module.prepare_workspace
+
+    def capturing_prepare(**kwargs: Any) -> _FakeLease:
+        lease = installed_prepare(**kwargs)
+        prepared_environment.update(lease.prepared["environment"])
+        return lease
+
+    monkeypatch.setattr(attempt_module, "prepare_workspace", capturing_prepare)
+
+    attempt_module.attempt(
+        task="t",
+        tasks_root=tasks_root,
+        output=tmp_path / "attempts",
+        command=["uv", "run", "--project", "/engine/repo", "satyrn-engine", "attempt"],
+    )
+
+    assert "UV_PROJECT_ENVIRONMENT" in prepared_environment
+    assert "UV_PROJECT_ENVIRONMENT" not in spawned_environment
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        # The real arm's actual command (arms/engine-ornith15-9b.json's argv,
+        # `arms.build_argv`): the console-script entry point, not the legacy
+        # `uv run --project ... satyrn-engine ...` fixture shape below.
+        ["satyrn-evals-attempt-engine", "--engine-repo", "/x/engine-abc", "--model", "omlx/m"],
+        # `tests/integration/test_isolated_arms.py::_engine_arm`'s shape.
+        [sys.executable, "-m", "satyrn_evals.attempt_engine", "--model", "omlx/m",
+         "--engine-repo", "/x/engine-abc", "--uv-bin", "uv"],
+        # The legacy fixture shape `test_engine_spawn_drops_uv_project_environment_
+        # workspace_prep_keeps_it` above still exercises.
+        ["uv", "run", "--project", "/engine/repo", "satyrn-engine", "attempt"],
+    ],
+)
+def test_the_engine_wrapper_is_recognized_by_every_shape_it_actually_runs_as(
+    command: list[str],
+) -> None:
+    """C1 (Opus review of a113f0b..3ecf068): `engine_arm` gated the line
+    harvest's lookup of the Engine's own internal deliver worktree
+    (workspace.py's `_engine_worktree`), but `_is_engine_wrapper_command` only
+    ever matched a `uv run --project ... satyrn-engine ...` fixture shape --
+    never the real arm's `satyrn-evals-attempt-engine` console script
+    (`arms/engine-ornith15-9b.json`'s argv) or the `-m satyrn_evals.
+    attempt_engine` shape the integration suite uses. `engine_arm` was always
+    False for a real Engine-arm attempt, so a line crossing harvested the
+    outer Evals worktree (not yet holding the model's changes, mid-deliver)
+    instead of erroring -- silently wrong, not even the recorded failure the
+    review describes."""
+    assert attempt_module._is_engine_wrapper_command(command)
+
+
+def test_a_bare_pi_command_is_not_the_engine_wrapper() -> None:
+    assert not attempt_module._is_engine_wrapper_command(["fake-agent", "--model", "m"])
+
+
+def test_non_engine_spawn_keeps_uv_project_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Sibling of the engine test: a Bare-Pi command's spawn env keeps it."""
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+    spawned_environment: dict[str, str] = {}
+
+    def fake_workspace(**kwargs: Any) -> WorkspaceResult:
+        spawned_environment.update(kwargs["environment"])
+        return WorkspaceResult(WorkspaceCode.OK, "ok", 0, "b" * 40)
+
+    _install_workspace_double(monkeypatch, fake_workspace)
+    attempt_module.attempt(
+        task="t",
+        tasks_root=tasks_root,
+        output=tmp_path / "attempts",
+        command=["fake-agent"],
+    )
+
+    assert "UV_PROJECT_ENVIRONMENT" in spawned_environment
 
 
 def test_attempt_environment_cleanup_failure_is_not_silent(
@@ -1140,6 +1328,85 @@ def test_private_deadline_command_expiry_retains_available_artifacts(
     assert record.retained_path == "/tmp/fake-prepared-workspace"
 
 
+def test_private_deadline_command_expiry_after_a_crossing_carries_it_into_the_refusal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """C2 (Opus review of a113f0b..3ecf068): a cell can cross the declared
+    line, and `run_prepared_command` can return a normal WorkspaceResult
+    carrying that crossing, before the whole-attempt deadline check right
+    after it (`_attempt`'s own `deadline.remaining(DeadlinePhase.COMMAND)`,
+    not one inside `run_prepared_command`) raises. Before this fix, the
+    `except AttemptDeadlineExceeded` there called `_write_deadline_refusal`
+    with no `workspace=`, so `line_crossed` came back None while
+    `line_patch_path` was still derived from line.diff's presence on disk --
+    an AttemptRecord combination attempt_record.py's own validation forbids,
+    so building the record raised ValueError and no attempt.json was ever
+    written. Distinct from the sibling case at
+    `test_private_deadline_command_expiry_retains_available_artifacts`
+    (line ~1307): there the deadline fires *inside* `run_prepared_command`
+    itself, before it can return anything, so `workspace` is legitimately
+    unbound and all three line fields are correctly None."""
+    clock = _Clock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+    crossing = LineCrossing(by="tokens", output_tokens=16001, turn=10, at="2026-09-19T00:00:00+00:00")
+
+    def run(**kwargs: Any) -> WorkspaceResult:
+        environment = kwargs["environment"]
+        Path(environment[attempt_module.PATCH_ENV]).write_text(GOOD_PATCH)
+        Path(environment[attempt_module.TRANSCRIPT_ENV]).write_text(TRANSCRIPT)
+        kwargs["line_patch"].write_text("diff --git a/x b/x\n")
+        clock.now = 1.0  # expired by the time _attempt's own COMMAND check runs next
+        return WorkspaceResult(
+            WorkspaceCode.OK, "done", 0, "b" * 40, line_crossed=crossing, line_patch_written=True,
+        )
+
+    _install_workspace_double(monkeypatch, run)
+    record = _bounded_attempt(tmp_path, monkeypatch, deadline)
+
+    assert record.code is AttemptCode.DEADLINE_EXCEEDED
+    assert record.deadline is not None
+    assert record.deadline.phase is DeadlinePhase.COMMAND
+    assert record.line_crossed == crossing
+    assert record.line_harvest_error is None
+    assert record.line_patch_path == LINE_PATCH_NAME
+
+
+def test_private_deadline_command_expiry_never_carries_both_line_patch_path_and_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """N2: `_harvest_patch` can return `(False, error)` with `line.diff`
+    already present on disk (a write that creates the file and then fails).
+    At this call site, that means `workspace.line_harvest_error` is set
+    while the file still exists -- `line_patch_path` must not be derived
+    from file presence alone here either, or the same
+    attempt_record.py refusal (`cannot both carry a line_patch_path and a
+    line_harvest_error`) crashes the cell with no attempt.json written."""
+    clock = _Clock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+    crossing = LineCrossing(by="tokens", output_tokens=16001, turn=10, at="2026-09-19T00:00:00+00:00")
+
+    def run(**kwargs: Any) -> WorkspaceResult:
+        environment = kwargs["environment"]
+        Path(environment[attempt_module.PATCH_ENV]).write_text(GOOD_PATCH)
+        Path(environment[attempt_module.TRANSCRIPT_ENV]).write_text(TRANSCRIPT)
+        # A partial/stale line.diff is present on disk despite the harvest
+        # itself having failed.
+        kwargs["line_patch"].write_text("diff --git a/x b/x\n")
+        clock.now = 1.0  # expired by the time _attempt's own COMMAND check runs next
+        return WorkspaceResult(
+            WorkspaceCode.OK, "done", 0, "b" * 40, line_crossed=crossing, line_patch_written=False,
+            line_harvest_error="OSError: No space left on device",
+        )
+
+    _install_workspace_double(monkeypatch, run)
+    record = _bounded_attempt(tmp_path, monkeypatch, deadline)
+
+    assert record.code is AttemptCode.DEADLINE_EXCEEDED
+    assert record.line_crossed == crossing
+    assert record.line_harvest_error == "OSError: No space left on device"
+    assert record.line_patch_path is None
+
+
 def test_deadline_refusal_keeps_unreadable_artifact_path_without_digest(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1245,6 +1512,52 @@ def test_private_deadline_preservation_expiry_retains_artifacts_without_grading(
     assert record.deadline.phase is DeadlinePhase.PRESERVATION
     assert record.patch_digest is not None and record.transcript_digest is not None
     assert record.retained_path == "/tmp/fake-prepared-workspace"
+    # Sibling to the crossed-line case below: a cell that never crossed the
+    # line must still get all three fields, all None/absent.
+    assert record.line_crossed is None
+    assert record.line_patch_path is None
+    assert record.line_harvest_error is None
+
+
+def test_private_deadline_preservation_expiry_carries_a_crossed_line_into_the_refusal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A cell can cross the declared line and then hit the whole-attempt
+    deadline before `_finish_attempt` ever runs. `_write_deadline_refusal`
+    must carry the same three line fields `_finish_attempt` would have --
+    the line harvest happened regardless of which function ends up writing
+    the durable record (release-two line-harvest gap, Part B)."""
+
+    class PreservationClock(_Clock):
+        def __call__(self) -> float:
+            observed = self.now
+            if observed == 0.5:
+                self.now = 1.0
+            return observed
+
+    clock = PreservationClock()
+    deadline = AttemptDeadline(1.0, clock=clock)
+    crossing = LineCrossing(by="tokens", output_tokens=16001, turn=10, at="2026-09-19T00:00:00+00:00")
+
+    def run(**kwargs: Any) -> WorkspaceResult:
+        environment = kwargs["environment"]
+        Path(environment[attempt_module.PATCH_ENV]).write_text(GOOD_PATCH)
+        Path(environment[attempt_module.TRANSCRIPT_ENV]).write_text(TRANSCRIPT)
+        kwargs["line_patch"].write_text("diff --git a/x b/x\n")
+        clock.now = 0.5
+        return WorkspaceResult(
+            WorkspaceCode.OK, "done", 0, "b" * 40, line_crossed=crossing, line_patch_written=True,
+        )
+
+    _install_workspace_double(monkeypatch, run)
+    record = _bounded_attempt(tmp_path, monkeypatch, deadline)
+
+    assert record.code is AttemptCode.DEADLINE_EXCEEDED
+    assert record.deadline is not None
+    assert record.deadline.phase is DeadlinePhase.PRESERVATION
+    assert record.line_crossed == crossing
+    assert record.line_harvest_error is None
+    assert record.line_patch_path == LINE_PATCH_NAME
 
 
 def test_private_deadline_preservation_keeps_command_timeout_authority(
@@ -1967,3 +2280,27 @@ def test_hand_authored_engine_contract_keeps_todays_behaviour(
     )
     assert record.command[-1].endswith("format_number/engine-contract.yaml")
     assert not (output / "engine-contracts").exists()
+
+
+def test_the_command_learns_the_workspace_base_commit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The adapter harvests against the commit Evals built, not HEAD."""
+    tasks_root = tmp_path / "tasks"
+    _task(tasks_root)
+    seen: dict[str, Any] = {}
+
+    def run(**kwargs: Any) -> WorkspaceResult:
+        seen.update(kwargs)
+        Path(kwargs["environment"][attempt_module.PATCH_ENV]).write_text(GOOD_PATCH)
+        Path(kwargs["environment"][attempt_module.TRANSCRIPT_ENV]).write_text(TRANSCRIPT)
+        return WorkspaceResult(WorkspaceCode.OK, "attempt command completed", 0, "b" * 40)
+
+    _install_workspace_double(monkeypatch, run)
+    monkeypatch.setattr(attempt_module, "grade", _grade_pass)
+    record = attempt_module.attempt(
+        task="t", tasks_root=tasks_root, output=tmp_path / "attempts", command=["fake-agent"]
+    )
+    assert record.code is AttemptCode.OK
+    assert seen["extra_environment"] == {attempt_module.BASE_SHA_ENV: "b" * 40}
+    assert attempt_module.BASE_SHA_ENV not in seen["environment"]

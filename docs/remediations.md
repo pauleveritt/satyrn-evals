@@ -1,10 +1,22 @@
 # Remediations
 
+*Status 2026-09-15: a remediation's "worked" claim is confirmed only where
+its pathology entry is settled as a bug fix; where the pathology entry is
+re-opened (model behaviour observed before release one's clean harness —
+before 2026-09-14 14:25Z declared sampling, two-uid isolation, the budget
+tripwire, and the base-commit harvest), the fix's effect on frequency or
+severity is unconfirmed. See `docs/pathologies.md` and
+`docs/superpowers/specs/2026-09-15-release-one-outcome.md`. Each numbered
+entry below carries its own marker, matching its pathology entry.*
+
 What was done about each entry in [pathologies.md](pathologies.md), and
 whether it worked. Numbered to match — an entry here without a fix means
 none has landed yet, and that is recorded as plainly as a fix that did.
 
 ## 1. Redundant-read lock
+
+*Status 2026-09-15: re-opened (model behaviour, pre-clean-harness evidence)
+— this fix's effect on the locking rate is unconfirmed.*
 
 **Shipped: a spending rule, not a nudge.** `--max-repeated-calls N` tears
 the command down after `N` identical consecutive tool calls, exactly as the
@@ -14,7 +26,7 @@ Validated by replaying it offline over the V11c batch's 24 retained
 transcripts *before* it ran anywhere: the longest identical-call run was 1,
 3, or 5 on every cell that went on to succeed, and 280 on every cell that
 locked — a limit anywhere in that gap separates them exactly.
-(`src/satyrn_evals/repeat_limit.py:7-23`, `docs/usage.md:128-134`)
+(`src/satyrn_evals/repeat_limit.py:7-23`; `git show pre-release-one-2026-09-13:docs/usage.md` lines 128-134)
 
 Known gap, stated rather than hidden: turning it on forecloses ever
 observing whether context compaction would have rescued a locked loop. It
@@ -22,6 +34,8 @@ is also validated against one model so far and is meant to be re-checked
 per model before being trusted on a new one.
 
 ## 2. Streaming updates counted as extra tool calls
+
+*Status 2026-09-15: settled as a bug fix.*
 
 **Shipped.** The V10 amendment (2026-09-05) added `tool_execution_update`
 to the recognized event vocabulary and defined it to count as nothing — a
@@ -33,6 +47,8 @@ merely miscounted.
 
 ## 3. `--model=VALUE` silently rejected
 
+*Status 2026-09-15: settled as a bug fix.*
+
 **Shipped, on both sides.** Engine commit `75d4863` fixed pi's parser.
 Independently, Evals' own adapter never emits the combined form — it
 always builds the model flag as two space-separated tokens — so the arm
@@ -40,6 +56,9 @@ substrate doesn't depend on the engine fix alone.
 (`src/satyrn_evals/arms.py:198-201`, `src/satyrn_evals/attempt_pi.py:16-19`)
 
 ## 4. Untracked files invisible to patch capture
+
+*Status 2026-09-15: re-opened (model behaviour, pre-clean-harness evidence)
+— no fix has landed to confirm or disconfirm.*
 
 **Not fixed — scoped around instead.** `git add -A` was considered and
 rejected: it would sweep a model's own `uv run pytest` residue into the
@@ -52,6 +71,8 @@ measured wrong.
 
 ## 5. Infrastructure crash counted as a plain refusal
 
+*Status 2026-09-15: settled as a bug fix.*
+
 **Shipped: a dedicated outcome code.** `MODEL_ERROR` is recorded when the
 preserved transcript shows the inference substrate failed underneath a
 well-formed request — a 5xx or a GPU out-of-memory fault — with no patch
@@ -61,9 +82,11 @@ decided silently by the tally. The boundary is deliberately narrow: a 4xx
 (the server answering and rejecting the input on its own terms, e.g. a
 context-window overflow) is *not* `MODEL_ERROR` — it stays counted as
 genuine pathology in the denominator.
-(`docs/usage.md:136-145`)
+(`git show pre-release-one-2026-09-13:docs/usage.md` lines 136-145)
 
 ## 6. `regrade` could not reach an already-collected infrastructure failure
+
+*Status 2026-09-15: settled as a bug fix.*
 
 **Shipped.** V11d slice 4 moved the reclassification check ahead of the
 gradeable check inside `regrade`, and scoped it to exactly `NO_PATCH` and
@@ -74,6 +97,8 @@ without re-running the model.
 (`src/satyrn_evals/rescore.py:363-372`)
 
 ## 7. A self-reported no-op edit repeated five times without adapting
+
+*Status 2026-09-15: re-opened (model behaviour, pre-clean-harness evidence).*
 
 **Partially covered by existing mechanisms, not a targeted fix.** The
 `noop_edits` counter (entry 8's remediation) already measures exactly the
@@ -89,6 +114,8 @@ lock, is unaddressed.
 
 ## 8. No-op edit loop, reported as success
 
+*Status 2026-09-15: settled as a bug fix.*
+
 **Partially shipped — measured, not gated.** This repository's own
 pathology counter includes `noop_edits`: any `edit` tool call whose
 `oldText` equals its `newText` is counted per cell, using the same
@@ -103,11 +130,15 @@ foreclosed here.
 
 ## 9. Near-miss file targeting
 
+*Status 2026-09-15: re-opened (model behaviour, pre-clean-harness evidence).*
+
 **Not addressed.** No detector or adapter behavior in this repository
 targets a model writing to a plausible sibling path instead of the one
 it was asked to edit. Carried as an open risk, not a closed one.
 
 ## 10. Schema-mismatched call repetition
+
+*Status 2026-09-15: re-opened (model behaviour, pre-clean-harness evidence).*
 
 **Partially addressed, structurally rather than by design intent.**
 Entry 1's `--max-repeated-calls` spending rule tears down a cell after
@@ -121,12 +152,16 @@ covers it: a batch that turns the limit on stops this loop too, once
 
 ## 11. Destructive failure tied to task shape
 
+*Status 2026-09-15: re-opened (model behaviour, pre-clean-harness evidence).*
+
 **Not addressed.** Nothing in this repository detects a repair attempt
 that deletes existing tests rather than fixing them; the failure would
 currently surface only as a failed grade, with no distinguishing signal
 from an ordinary wrong-answer failure.
 
 ## 12. Empty-workspace probing spiral
+
+*Status 2026-09-15: re-opened (model behaviour, pre-clean-harness evidence).*
 
 **Not addressed directly, but partially covered by a general mechanism.**
 No task-authoring convention in this repository states workspace
@@ -137,6 +172,8 @@ coverage, not a targeted fix.
 
 ## 13. Headless conversational stall
 
+*Status 2026-09-15: re-opened (model behaviour, pre-clean-harness evidence).*
+
 **Not addressed.** A cell that takes one turn, makes no tool calls, and
 stops asking a question that will never be answered is currently
 indistinguishable from any other zero-tool-call `NO_PATCH` cell — nothing
@@ -145,6 +182,8 @@ specifically.
 
 ## 14. Operationally vague self-authored specs
 
+*Status 2026-09-15: re-opened (model behaviour, pre-clean-harness evidence).*
+
 **Out of scope for this repository as currently used.** Every task this
 repository runs against is a fixed, hand-authored contract; nothing here
 uses a model to author the contract a later attempt executes. The finding
@@ -152,6 +191,8 @@ stands as a caution against ever doing so without an operational-vagueness
 check, not as something remediated.
 
 ## 15. Scope overreach via its own contract's prose
+
+*Status 2026-09-15: re-opened (model behaviour, pre-clean-harness evidence).*
 
 **Partially addressed by a different mechanism, not the one that would
 catch this exactly.** `workspace_escapes` (entry 2's module) measures a
@@ -165,6 +206,13 @@ not do.
 (`src/satyrn_evals/pathology.py:326-331`)
 
 ## 16. Oracle-hunting by filesystem search
+
+*Status 2026-09-15: re-opened (model behaviour, pre-clean-harness evidence).*
+Release one's clean harness re-observed hunting under isolation and closed
+it with guard 4, which cut a root-wide hunt for the acceptance tests at
+120 s that had cost a Baseline cell 1,800 s
+(`docs/superpowers/specs/2026-09-15-release-one-outcome.md`); the confounded
+ranking below is still unconfirmed.
 
 **Partially shipped, and one hole named rather than hidden.** A
 whole-process `sandbox-exec` (Seatbelt) profile closes most of it:
@@ -195,6 +243,8 @@ its correction)
 
 ## 17. Sandbox removed the model's own test runner
 
+*Status 2026-09-15: re-opened (model behaviour, pre-clean-harness evidence).*
+
 **Not fixed within that record — named as a required follow-up.** The
 same document that found it (adversarial review, not the original author)
 stated the fix directly: a corrected profile must grant the run root a
@@ -203,6 +253,8 @@ in this repository yet.
 (archived: same document, §2)
 
 ## 18. A detector that always fires
+
+*Status 2026-09-15: settled as a bug fix.*
 
 **Shipped, in a different module than the one that failed.** The spike's
 own proposed standing test — every detector must fire on a known-bad from
@@ -218,6 +270,8 @@ line of an honest test must never fire."
 (`src/satyrn_evals/contamination.py:1-25`)
 
 ## 19. Contamination overstated sixfold on first read
+
+*Status 2026-09-15: settled as a bug fix.*
 
 **Addressed by the same rewrite as entry 18, not by a separate fix.** The
 original failure was a filename/path match standing in for evidence of

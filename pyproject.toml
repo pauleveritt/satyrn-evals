@@ -13,8 +13,8 @@ satyrn-evals = "satyrn_evals.cli:main"
 satyrn-evals-session-pi = "satyrn_evals.adapters.pi_session:main"
 # The Baseline arm's attempt adapter (arms/baseline.json names this).
 satyrn-evals-attempt-pi = "satyrn_evals.attempt_pi:main"
-# HP7's real implementer, behind HP2's executable seam (route.command_implementer).
-satyrn-evals-implementer-pi = "satyrn_evals.adapters.pi_implementer:main"
+# The Engine arm's attempt adapter: the same task text through /implement.
+satyrn-evals-attempt-engine = "satyrn_evals.attempt_engine:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -31,35 +31,11 @@ dev = [
     "pyrefly>=1.1.1",
 ]
 docs = [
-    "sphinx>=9.1.0",
-    "furo>=2025.12.19",
-    "myst-parser>=5.0.0",
-    "sphinx-autobuild>=2025.8.25",
-]
-# Integration tier only: the bundled local-pings task's base is the svcs
-# checkout, whose root conftest.py imports sybil unconditionally and whose
-# runtime needs attrs; pytest-asyncio serves svcs's async suite during
-# capture's full-suite oracle. The default tier must never need these --
-# the evidence floor's tests are marked integration and do not run in CI.
-integration = [
-    "attrs>=21.3.0",  # svcs runtime dependency
-    "sybil>=6",       # svcs root conftest: from sybil import Sybil
-    "pytest-asyncio>=1.4.0",
+    "zensical==0.0.63",
 ]
 
 [tool.pytest.ini_options]
-# docs/_build is the docs build output, never project tests.
-norecursedirs = [
-    "docs/_build",
-    # Worktrees live under .claude/worktrees; their tests import this
-    # checkout's src and fail on features that exist only on their branch.
-    # The old ".worktrees" entry never matched the real path.
-    ".claude",
-    "src/satyrn_evals/tasks",
-    ".worktrees",
-    "tests/data",
-    "tests/integration/data",
-]
+norecursedirs = [".claude", "src/satyrn_evals/tasks", "tests/data", "tests/integration/data"]
 addopts = ["-m", "not integration", "--strict-markers"]
 strict_xfail = true
 markers = [
@@ -74,7 +50,9 @@ markers = [
 # src/satyrn_evals/tasks/ is oracle fixture data: bundled tasks carry a
 # foreign starting tree (e.g. the svcs checkout) that is neither project
 # code nor ours to reformat. pytest and pyrefly already exclude it.
-extend-exclude = ["docs", "src/satyrn_evals/tasks"]
+# evidence/ holds dated analysis scripts kept verbatim with the outputs they
+# produced (the release-one outcome), so they are not reformatted either.
+extend-exclude = ["docs", "evidence", "src/satyrn_evals/tasks"]
 
 [tool.ruff.lint]
 # Proportionate, not maximalist: correctness and clarity rules a
@@ -98,7 +76,7 @@ project-includes = ["src", "tests"]
 # base tests import a bare module name the type checker cannot resolve.
 # The tests/**/data trees are the same shape: vendored fixture bases and
 # grader overlays importing bare module names, not project code.
-project-excludes = ["src/satyrn_evals/tasks", "tests/data", "tests/integration/data"]
+project-excludes = ["evidence", "src/satyrn_evals/tasks", "tests/data", "tests/integration/data"]
 
 [tool.coverage.run]
 branch = true

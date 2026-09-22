@@ -1,0 +1,90 @@
+{
+  "task": "selfhost-preflight-quiet",
+  "patch_digest": "1c6acea067a6283a9d14a233dc9f5cde2713d9aa58330a040c71ab828b0c8b3b",
+  "verdict": "pass",
+  "reason": "",
+  "evidence": {
+    "executed_test_ids": [
+      "test_preflight_quiet.py::test_busy_processes_drops_a_process_whose_comm_starts_with_an_ignored_prefix",
+      "test_preflight_quiet.py::test_busy_processes_is_quiet_at_the_cpu_floor",
+      "test_preflight_quiet.py::test_busy_processes_keeps_a_process_no_ignored_prefix_matches",
+      "test_preflight_quiet.py::test_busy_processes_reads_a_ps_snapshot_in_order",
+      "test_preflight_quiet.py::test_busy_processes_reports_a_process_just_over_the_cpu_floor",
+      "test_preflight_quiet.py::test_busy_processes_skips_the_header_and_every_unparsable_line",
+      "test_preflight_quiet.py::test_certificate_has_no_decode_problem_at_the_floor",
+      "test_preflight_quiet.py::test_certificate_is_empty_on_a_quiet_machine_and_records_its_inputs",
+      "test_preflight_quiet.py::test_certificate_lists_the_load_the_busy_and_the_slow_decode_in_order",
+      "test_preflight_quiet.py::test_certificate_says_when_there_are_too_few_completions",
+      "test_preflight_quiet.py::test_decode_rate_ignores_lines_that_are_not_completions",
+      "test_preflight_quiet.py::test_decode_rate_is_none_with_fewer_than_last_completions",
+      "test_preflight_quiet.py::test_decode_rate_is_token_weighted_not_the_mean_of_the_rates",
+      "test_preflight_quiet.py::test_decode_rate_reads_exactly_last_completions",
+      "test_preflight_quiet.py::test_decode_rate_reads_only_the_named_models_completions",
+      "test_preflight_quiet.py::test_load_problem_is_quiet_at_the_ceiling",
+      "test_preflight_quiet.py::test_load_problem_names_the_one_minute_load_over_the_ceiling",
+      "test_preflight_quiet.py::test_the_cli_exits_one_and_names_every_problem_on_a_loud_machine",
+      "test_preflight_quiet.py::test_the_cli_prints_the_certificate_and_exits_zero_on_a_quiet_machine",
+      "test_preflight_quiet.py::test_the_default_ignore_prefixes_cover_the_model_server_and_the_system_agents"
+    ],
+    "outcomes": {
+      "test_preflight_quiet.py::test_load_problem_names_the_one_minute_load_over_the_ceiling": "passed",
+      "test_preflight_quiet.py::test_load_problem_is_quiet_at_the_ceiling": "passed",
+      "test_preflight_quiet.py::test_busy_processes_reads_a_ps_snapshot_in_order": "passed",
+      "test_preflight_quiet.py::test_busy_processes_drops_a_process_whose_comm_starts_with_an_ignored_prefix": "passed",
+      "test_preflight_quiet.py::test_busy_processes_keeps_a_process_no_ignored_prefix_matches": "passed",
+      "test_preflight_quiet.py::test_busy_processes_is_quiet_at_the_cpu_floor": "passed",
+      "test_preflight_quiet.py::test_busy_processes_reports_a_process_just_over_the_cpu_floor": "passed",
+      "test_preflight_quiet.py::test_busy_processes_skips_the_header_and_every_unparsable_line": "passed",
+      "test_preflight_quiet.py::test_the_default_ignore_prefixes_cover_the_model_server_and_the_system_agents": "passed",
+      "test_preflight_quiet.py::test_decode_rate_is_token_weighted_not_the_mean_of_the_rates": "passed",
+      "test_preflight_quiet.py::test_decode_rate_reads_only_the_named_models_completions": "passed",
+      "test_preflight_quiet.py::test_decode_rate_is_none_with_fewer_than_last_completions": "passed",
+      "test_preflight_quiet.py::test_decode_rate_reads_exactly_last_completions": "passed",
+      "test_preflight_quiet.py::test_decode_rate_ignores_lines_that_are_not_completions": "passed",
+      "test_preflight_quiet.py::test_certificate_is_empty_on_a_quiet_machine_and_records_its_inputs": "passed",
+      "test_preflight_quiet.py::test_certificate_lists_the_load_the_busy_and_the_slow_decode_in_order": "passed",
+      "test_preflight_quiet.py::test_certificate_has_no_decode_problem_at_the_floor": "passed",
+      "test_preflight_quiet.py::test_certificate_says_when_there_are_too_few_completions": "passed",
+      "test_preflight_quiet.py::test_the_cli_prints_the_certificate_and_exits_zero_on_a_quiet_machine": "passed",
+      "test_preflight_quiet.py::test_the_cli_exits_one_and_names_every_problem_on_a_loud_machine": "passed"
+    },
+    "counts": {
+      "passed": 20,
+      "failed": 0,
+      "error": 0,
+      "skipped": 0
+    }
+  },
+  "contamination": {
+    "visibility": "hidden",
+    "checks": [
+      {
+        "check": "grader_content_in_patch",
+        "outcome": "flagged",
+        "evidence": [
+          {
+            "kind": "block",
+            "overlay_path": "test_preflight_quiet.py",
+            "in": "tests/test_preflight_quiet.py",
+            "line": 16
+          }
+        ]
+      }
+    ]
+  },
+  "resolved_versions": {
+    "coverage": "7.16.1",
+    "iniconfig": "2.3.0",
+    "packaging": "26.3",
+    "pluggy": "1.6.0",
+    "pygments": "2.21.0",
+    "pyrefly": "1.3.0",
+    "pytest": "9.1.1",
+    "pytest-cov": "7.1.0",
+    "pyyaml": "6.0.3",
+    "ruff": "0.16.7"
+  },
+  "ignored_paths": [
+    "PROVENANCE.md"
+  ]
+}

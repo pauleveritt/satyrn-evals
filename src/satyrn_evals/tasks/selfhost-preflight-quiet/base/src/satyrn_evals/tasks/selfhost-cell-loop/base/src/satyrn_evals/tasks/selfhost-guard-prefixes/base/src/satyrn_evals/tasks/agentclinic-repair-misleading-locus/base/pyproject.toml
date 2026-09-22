@@ -1,0 +1,13 @@
+[project]
+name = "agentclinic-complaints-misleading-locus"
+version = "0.1.0"
+description = "Seeded broken state misleading-locus of the AgentClinic complaints app (repair fixture)"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi[standard]==0.115.10",
+  "turbohtml==1.5.0",
+  "httpx",
+]
+
+[dependency-groups]
+dev = ["pytest==8.3.4"]

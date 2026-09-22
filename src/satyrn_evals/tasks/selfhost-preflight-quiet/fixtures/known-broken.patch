@@ -1,0 +1,58 @@
+diff --git a/scripts/preflight_quiet.py b/scripts/preflight_quiet.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/preflight_quiet.py
+@@ -0,0 +1,53 @@
++"""known-broken fixture stub: importable, behaviorally incomplete."""
++
++from dataclasses import dataclass
++
++DEFAULT_CEILING = 0.0
++DEFAULT_CPU_FLOOR = 0.0
++DEFAULT_FLOOR_TOK_S = 0.0
++DEFAULT_LAST = 0
++IGNORE_PREFIXES: tuple[str, ...] = ()
++
++
++@dataclass(frozen=True, slots=True)
++class Process:
++    pid: int = 0
++    comm: str = ""
++    cpu: float = 0.0
++
++
++@dataclass(frozen=True, slots=True)
++class Rate:
++    tok_s: float = 0.0
++    completions: int = 0
++    tokens: int = 0
++    seconds: float = 0.0
++
++
++@dataclass(frozen=True, slots=True)
++class Certificate:
++    problems: tuple[str, ...] = ()
++    record: dict = None
++
++    def as_dict(self):
++        return {}
++
++
++def load_problem(loadavg, cores, *, ceiling):
++    return None
++
++
++def busy_processes(ps_stdout, *, cpu_floor, ignore_prefixes):
++    return []
++
++
++def decode_rate(log_lines, *, model, last):
++    return None
++
++
++def certificate(load, busy, rate, *, floor_tok_s, model, last):
++    return Certificate()
++
++
++def main(argv=None, **kwargs):
++    return 0

@@ -1,0 +1,67 @@
+diff --git a/src/satyrn_evals/launch.py b/src/satyrn_evals/launch.py
+new file mode 100644
+--- /dev/null
++++ b/src/satyrn_evals/launch.py
+@@ -0,0 +1,62 @@
++"""known-broken fixture stub: importable, behaviorally incomplete."""
++
++from dataclasses import dataclass, field
++from enum import StrEnum
++from pathlib import Path
++
++LEDGER_NAME = "launch.json"
++SLOTS_DIR = "slots"
++INFRASTRUCTURE_CODES: frozenset[str] = frozenset()
++
++
++class Status(StrEnum):
++    COMPLETE = "complete"
++    CAPPED = "capped"
++    INFRASTRUCTURE = "infrastructure"
++    INTERRUPTED = "interrupted"
++
++
++@dataclass(frozen=True, slots=True)
++class Slot:
++    index: int
++    arm: str
++
++    @property
++    def name(self) -> str:
++        return ""
++
++
++@dataclass(slots=True)
++class LaunchOutcome:
++    status: Status
++    reason: str | None
++    finished: list[dict] = field(default_factory=list)
++    replaced: list[dict] = field(default_factory=list)
++
++
++def plan_slots(arms, n):
++    return []
++
++
++def slot_path(night: Path, slot: Slot) -> Path:
++    return night
++
++
++def infrastructure_reason(result: dict) -> str | None:
++    return None
++
++
++def read_slots(night: Path) -> dict[int, dict]:
++    return {}
++
++
++def write_ledger(night: Path, *, identity: dict, sitting: dict, outcome: LaunchOutcome) -> None:
++    return None
++
++
++def check_night(night: Path, identity: dict) -> None:
++    return None
++
++
++def launch_cells(**kwargs) -> LaunchOutcome:
++    return LaunchOutcome(Status.COMPLETE, None)

@@ -15,8 +15,8 @@ a recorded floor to exist before any budgeted cell, and refuses without one.
 The measurement matters because it is the input to the Envelope cap decision
 (proposal §2.4), and because the repo-root figures it replaces were wrong in
 the direction that inflates a cap: ~93% of a repo-root ``pi`` call was
-context-file discovery, not the tool's own floor
-(``docs/superpowers/research/2026-09-05-pi-context-file-loading-and-arm-parity.md``).
+context-file discovery, not the tool's own floor (on the tagged tree,
+``git show pre-release-one-2026-09-13:archive/2026-09-07-pre-reset/docs/superpowers/research/2026-09-05-pi-context-file-loading-and-arm-parity.md``).
 
 The discipline this file is built around
 ----------------------------------------

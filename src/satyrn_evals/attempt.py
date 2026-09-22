@@ -28,6 +28,8 @@ from satyrn_evals.attempt_record import (
     load_attempt_record,
     write_attempt_record,
 )
+from satyrn_evals.budget import AttemptBudget, LineBudget
+from satyrn_evals.cell import CELL_PARENT_ENV, ISOLATION_ENV, Isolation
 from satyrn_evals.deadline import AttemptDeadline, AttemptDeadlineExceeded
 from satyrn_evals.engine_contract import (
     engine_contract_path,
@@ -41,9 +43,12 @@ from satyrn_evals.model_error import infrastructure_failure
 from satyrn_evals.overlay import load_overlay
 from satyrn_evals.patch import parse_patch_paths
 from satyrn_evals.receipt import patch_digest
+from satyrn_evals.timeline import TIMELINE_NAME
 from satyrn_evals.verdict import Verdict
 from satyrn_evals.workspace import (
     DEFAULT_TIMEOUT,
+    LINE_PATCH_NAME,
+    TRIPPED_PATCH_NAME,
     PreparedWorkspace,
     WorkspaceCode,
     WorkspacePrepareError,
@@ -58,6 +63,23 @@ TASK_NAME_ENV = "SATYRN_TASK_NAME"
 TASK_CONTRACT_ENV = "SATYRN_TASK_CONTRACT"
 PATCH_ENV = "SATYRN_ATTEMPT_PATCH"
 TRANSCRIPT_ENV = "SATYRN_ATTEMPT_TRANSCRIPT"
+BASE_SHA_ENV = "SATYRN_WORKSPACE_BASE_SHA"
+#: The attempt's command backstop, in whole seconds (design §5.4; plan
+#: Ruling 9). Set for both arms identically: Baseline's `attempt_pi` simply
+#: ignores it, so the identical-tools premise is untouched. The Engine
+#: adapter (`attempt_engine.py`) reads it to compute its own deliver
+#: timeout, which must stop just before this backstop fires.
+COMMAND_BACKSTOP_ENV = "SATYRN_COMMAND_BACKSTOP_S"
+#: The record's own token and turn limits, set for both arms identically. The
+#: Engine adapter reads them and writes them into the derived contract, so the
+#: Engine has no stop the record does not name (maintainer ruling 2026-09-18).
+#: Baseline ignores them: its limits are the harness budget tripwire.
+TOKEN_BUDGET_ENV = "SATYRN_TOKEN_BUDGET"
+TURN_BUDGET_ENV = "SATYRN_TURN_BUDGET"
+#: Under isolation the command's transcript is written here, beside the
+#: worktree where the cell user can write, and copied into the attempt
+#: directory as soon as the command returns.
+LIVE_TRANSCRIPT_NAME = "transcript.txt"
 
 type SelectedContract = tuple[str | None, str]
 
@@ -65,6 +87,7 @@ _WORKSPACE_ATTEMPT_CODES: dict[WorkspaceCode, AttemptCode] = {
     WorkspaceCode.WORKSPACE_FAILED: AttemptCode.WORKSPACE_FAILED,
     WorkspaceCode.COMMAND_TIMEOUT: AttemptCode.COMMAND_TIMEOUT,
     WorkspaceCode.REPEAT_LIMIT: AttemptCode.REPEAT_LIMIT,
+    WorkspaceCode.BUDGET_EXCEEDED: AttemptCode.BUDGET_EXCEEDED,
     WorkspaceCode.CLEANUP_FAILED: AttemptCode.CLEANUP_FAILED,
 }
 
@@ -120,6 +143,56 @@ def contract_digest(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def _is_engine_wrapper_command(command: list[str]) -> bool:
+    """Whether COMMAND runs the Engine arm's adapter (``attempt_engine``).
+
+    Bare-Pi (Baseline) commands run the model's own binary directly and must
+    keep receiving ``UV_PROJECT_ENVIRONMENT`` — that is the model-visible
+    isolation for its own nested ``uv run`` calls. The engine wrapper is a
+    trusted command evals itself constructs; redirecting *its*
+    ``UV_PROJECT_ENVIRONMENT`` onto the attempt's private, empty per-attempt
+    directory makes ``uv`` treat that directory as the engine project's own
+    virtualenv and, under ``UV_NO_SYNC=1``, fail to spawn ``satyrn-engine`` at
+    all (Task 13 report, "Root cause"). It also gates ``engine_arm``, which
+    tells the line harvest to read the Engine's own internal deliver
+    worktree (``workspace._engine_worktree``) instead of the Evals one.
+
+    Three shapes, all matched (C1 fix, Opus review of a113f0b..3ecf068):
+    every real arm (``arms/engine-ornith15-9b.json``'s argv,
+    ``arms.build_argv``) runs the ``satyrn-evals-attempt-engine`` console
+    script; the integration suite (`tests/integration/test_isolated_arms.
+    py::_engine_arm`) runs the same adapter as
+    ``python -m satyrn_evals.attempt_engine``; a still-supported legacy
+    fixture shape (`tests/test_attempt.py::test_engine_spawn_drops_uv_
+    project_environment_workspace_prep_keeps_it`) runs the bare
+    ``uv run --project ENGINE satyrn-engine ...`` invocation directly.
+    Before this fix, only the third shape matched, so ``engine_arm`` was
+    always False for a real attempt and a line crossing silently harvested
+    the wrong (not-yet-populated) worktree instead of either succeeding or
+    recording an error.
+    """
+    if not command:
+        return False
+    name = Path(command[0]).name
+    if name == "satyrn-evals-attempt-engine":
+        return True
+    if name.startswith("python") and len(command) >= 3 and command[1] == "-m":
+        return command[2] == "satyrn_evals.attempt_engine"
+    return (
+        len(command) >= 5
+        and name == "uv"
+        and command[1] == "run"
+        and command[2] == "--project"
+        and command[4] == "satyrn-engine"
+    )
+
+
+def _collect_live_transcript(live: Path, transcript_path: Path) -> None:
+    """Copy an isolated command's transcript into the attempt directory, if it wrote one."""
+    if live != transcript_path and live.is_file():
+        shutil.copyfile(live, transcript_path)
+
+
 def _add_exception_note(error: BaseException, note: str) -> None:
     """Attach recovery evidence without replacing the primary exception."""
     with suppress(BaseException):
@@ -163,6 +236,9 @@ def attempt(
     rung: str | None = None,
     max_repeated_calls: int | None = None,
     attempt_timeout: float | None = None,
+    budget: AttemptBudget | None = None,
+    isolation: Isolation = Isolation.LOCAL,
+    line_budget: LineBudget | None = None,
 ) -> AttemptRecord:
     """Run an unbounded attempt through the stable public API."""
     return _attempt(
@@ -174,6 +250,9 @@ def attempt(
         rung=rung,
         max_repeated_calls=max_repeated_calls,
         attempt_timeout=attempt_timeout,
+        budget=budget,
+        isolation=isolation,
+        line_budget=line_budget,
     )
 
 
@@ -188,6 +267,9 @@ def _attempt(
     max_repeated_calls: int | None = None,
     deadline: AttemptDeadline | None = None,
     attempt_timeout: float | None = None,
+    budget: AttemptBudget | None = None,
+    isolation: Isolation = Isolation.LOCAL,
+    line_budget: LineBudget | None = None,
 ) -> AttemptRecord:
     """Run COMMAND against TASK, preserve patch + transcript, grade, and record.
 
@@ -212,10 +294,21 @@ def _attempt(
     transcript_path = attempt_dir / "transcript.txt"
 
     env = dict(os.environ)
+    if isolation is Isolation.LOCAL:
+        # F8/R13: a stray SATYRN_ISOLATION/SATYRN_CELL_PARENT in the
+        # maintainer's own shell must never reach a local-profile command --
+        # an adapter reading it would believe it is isolated and try to run
+        # as the cell. Isolated attempts set these explicitly below.
+        env[ISOLATION_ENV] = Isolation.LOCAL.value
+        env.pop(CELL_PARENT_ENV, None)
     env[TASK_NAME_ENV] = manifest.name
     env[TASK_CONTRACT_ENV] = contract_text
     env[PATCH_ENV] = str(patch_path)
     env[TRANSCRIPT_ENV] = str(transcript_path)
+    env[COMMAND_BACKSTOP_ENV] = str(int(timeout))
+    if budget is not None:
+        env[TOKEN_BUDGET_ENV] = str(budget.output_tokens)
+        env[TURN_BUDGET_ENV] = str(budget.turns)
     # Keep uv's project environment and Python bytecode out of the model
     # workspace. Pi inherits this temporary location for any ``uv run`` it
     # invokes, but its active evaluator venv is removed separately.
@@ -271,6 +364,7 @@ def _attempt(
                     else None
                 ),
                 deadline=deadline,
+                isolation=isolation,
             )
         except WorkspacePrepareError as exc:
             if exc.deadline is not None:
@@ -317,18 +411,54 @@ def _attempt(
                 exc.retained_path,
             )
         else:
+            if _is_engine_wrapper_command(command):
+                # The wrapper names its own --project; UV_PROJECT_ENVIRONMENT
+                # is for the model's own nested uv run, not for uv finding
+                # the engine itself. Popped here (not left out of `env`
+                # above) so prepare_workspace still receives it for anything
+                # that materializes the task workspace's environment.
+                workspace_lease._environment.pop("UV_PROJECT_ENVIRONMENT", None)
+            exported = {BASE_SHA_ENV: workspace_lease.base_sha}
+            live_transcript = transcript_path
+            if isolation is Isolation.ISOLATED:
+                live_transcript = workspace_lease.parent / LIVE_TRANSCRIPT_NAME
+                exported[ISOLATION_ENV] = isolation.value
+                exported[CELL_PARENT_ENV] = os.fspath(workspace_lease.parent)
+                exported[TRANSCRIPT_ENV] = os.fspath(live_transcript)
+            # C2 (Opus review of a113f0b..3ecf068): pre-bound to None so the
+            # except clause below can pass it to `_write_deadline_refusal`
+            # either way. `run_prepared_command` itself can raise
+            # AttemptDeadlineExceeded before ever returning -- `workspace`
+            # then correctly stays None, no crossing could have been
+            # observed. But the standalone `deadline.remaining(COMMAND)`
+            # check just below it can *also* raise, after `workspace` has
+            # already been assigned a real WorkspaceResult (possibly
+            # carrying a line crossing the model made before the whole-
+            # attempt deadline expired) -- that crossing must not be lost.
+            workspace: WorkspaceResult | None = None
             try:
-                workspace = run_prepared_command(
-                    workspace_lease,
-                    command=effective_command,
-                    timeout=timeout,
-                    transcript=transcript_path,
-                    max_repeated_calls=max_repeated_calls,
-                    deadline=deadline,
-                )
+                try:
+                    workspace = run_prepared_command(
+                        workspace_lease,
+                        command=effective_command,
+                        timeout=timeout,
+                        transcript=live_transcript,
+                        max_repeated_calls=max_repeated_calls,
+                        deadline=deadline,
+                        extra_environment=exported,
+                        budget=budget,
+                        timeline=attempt_dir / TIMELINE_NAME,
+                        tripped_patch=attempt_dir / TRIPPED_PATCH_NAME,
+                        line_budget=line_budget,
+                        line_patch=attempt_dir / LINE_PATCH_NAME,
+                        engine_arm=_is_engine_wrapper_command(command),
+                    )
+                finally:
+                    _collect_live_transcript(live_transcript, transcript_path)
                 if deadline is not None and workspace.code not in (
                     WorkspaceCode.COMMAND_TIMEOUT,
                     WorkspaceCode.REPEAT_LIMIT,
+                    WorkspaceCode.BUDGET_EXCEEDED,
                 ):
                     deadline.remaining(DeadlinePhase.COMMAND)
             except AttemptDeadlineExceeded:
@@ -346,6 +476,7 @@ def _attempt(
                     command_exit=None,
                     workspace_base_sha=workspace_lease.base_sha,
                     retained_path=os.fspath(workspace_lease.parent),
+                    workspace=workspace,
                 )
             except BaseException as exc:
                 _release_after_exception(workspace_lease, exc, deadline=deadline)
@@ -368,6 +499,7 @@ def _attempt(
                         deadline=deadline,
                         workspace_base_sha=workspace_lease.base_sha,
                         retained_path=os.fspath(workspace_lease.parent),
+                        workspace=workspace,
                     )
             try:
                 retained_path, release_message = _release_attempt_workspace(
@@ -388,6 +520,7 @@ def _attempt(
                     deadline=deadline,
                     workspace_base_sha=workspace_lease.base_sha,
                     retained_path=os.fspath(workspace_lease.parent),
+                    workspace=workspace,
                 )
             except BaseException as exc:
                 assert workspace_lease is not None
@@ -414,6 +547,7 @@ def _attempt(
                         deadline=deadline,
                         workspace_base_sha=workspace_lease.base_sha,
                         retained_path=retained_path,
+                        workspace=workspace,
                     )
             workspace_lease = None
             if retained_path is None:
@@ -483,6 +617,7 @@ def _attempt(
                     command_exit=workspace.command_exit,
                     workspace_base_sha=workspace.base_sha,
                     retained_path=os.fspath(workspace_lease.parent),
+                    workspace=workspace,
                 )
         try:
             record = _finish_attempt(
@@ -553,6 +688,7 @@ def _attempt(
                 command_exit=workspace.command_exit,
                 workspace_base_sha=workspace.base_sha,
                 retained_path=os.fspath(workspace_lease.parent),
+                workspace=workspace,
             )
         except BaseException as exc:
             if workspace_lease is not None:
@@ -688,8 +824,17 @@ def _write_deadline_refusal(
     command_exit: int | None = None,
     workspace_base_sha: str | None = None,
     retained_path: str | None = None,
+    workspace: WorkspaceResult | None = None,
 ) -> AttemptRecord:
-    """Finalize a pre-grade expiry from whatever evidence is already local."""
+    """Finalize a pre-grade expiry from whatever evidence is already local.
+
+    The declared-line harvest (release two): same rule as `_finish_attempt`
+    -- `line_patch_path` follows the tripped-patch convention (the file's
+    presence under `attempt_dir` is the interface), and `line_crossed`/
+    `line_harvest_error` come off `workspace` when one is available. A call
+    site before the command ever ran (no `workspace` yet) correctly leaves
+    all three None: nothing could have crossed a line that never started.
+    """
     expiry: AttemptDeadlineExceeded
     try:
         deadline.remaining(DeadlinePhase.PRESERVATION)
@@ -699,6 +844,20 @@ def _write_deadline_refusal(
         raise AssertionError("deadline refusal requires an expired deadline")
     patch_bytes, _patch_error = _read_artifact(patch_path, "patch")
     transcript_bytes, _transcript_error = _read_artifact(transcript_path, "transcript")
+    # Defensive (C2): a line.diff can exist on disk from a crossing this
+    # call site was never told about (no `workspace`) -- never report a
+    # line_patch_path the AttemptRecord itself would then refuse to accept
+    # without a line_crossed (attempt_record.py's "both or neither" rule).
+    # N2: also never alongside a line_harvest_error -- a partial/stale file
+    # can be present on disk even when the harvest itself failed.
+    line_patch_path: str | None = (
+        LINE_PATCH_NAME
+        if workspace is not None
+        and workspace.line_crossed is not None
+        and workspace.line_harvest_error is None
+        and (attempt_dir / LINE_PATCH_NAME).is_file()
+        else None
+    )
     record = AttemptRecord(
         version=1,
         outcome=AttemptOutcome.REFUSED,
@@ -734,6 +893,9 @@ def _write_deadline_refusal(
             expiry.elapsed,
             workspace_retained=retained_path is not None,
         ),
+        line_crossed=workspace.line_crossed if workspace is not None else None,
+        line_patch_path=line_patch_path,
+        line_harvest_error=workspace.line_harvest_error if workspace is not None else None,
     )
     write_attempt_record(attempt_dir / "attempt.json", record)
     return record
@@ -986,9 +1148,41 @@ def _finish_attempt(
             patch_bytes.decode("utf-8")
         except UnicodeDecodeError:
             code = AttemptCode.PATCH_INVALID
+    # The declared-line harvest (release two): set from whatever the
+    # workspace observed, regardless of the cell's own final code -- a cell
+    # can cross the line and still end at any outcome. `line_patch_path`
+    # follows the tripped-patch convention: the file's presence is the
+    # interface, not a second flag to keep in sync with it.
+    line_crossed = workspace.line_crossed
+    line_harvest_error = workspace.line_harvest_error
+    # Defensive (C2), mirroring `_write_deadline_refusal`: never report a
+    # line_patch_path without line_crossed, even here where `workspace` is
+    # always present -- attempt_record.py's own validation would refuse the
+    # combination and this function has no caller left to catch it.
+    # N2: also never alongside line_harvest_error -- `_harvest_patch` can
+    # return a failure with a partial/stale file still present on disk (a
+    # write that creates the file and then fails), and reporting both would
+    # hit the same refusal and crash the cell before attempt.json is ever
+    # written.
+    line_patch_path: str | None = (
+        LINE_PATCH_NAME
+        if line_crossed is not None
+        and line_harvest_error is None
+        and (attempt_dir / LINE_PATCH_NAME).is_file()
+        else None
+    )
     if code is not None:
         if deadline is not None:
             deadline.remaining(DeadlinePhase.PRESERVATION)
+        # Ruling R-1: the record names the harvested secondary; it never grades
+        # it. Grading a tripped worktree belongs to the day-after classifier,
+        # so the deadline-expiry recovery cannot re-enter the oracle here.
+        tripped_patch_path: str | None = None
+        if (
+            code is AttemptCode.BUDGET_EXCEEDED
+            and (attempt_dir / TRIPPED_PATCH_NAME).is_file()
+        ):
+            tripped_patch_path = TRIPPED_PATCH_NAME
         message = (
             workspace.message
             if workspace.code is not WorkspaceCode.OK
@@ -1022,6 +1216,10 @@ def _finish_attempt(
             retained_path=workspace.retained_path,
             attempt_dir=attempt_dir.name,
             attempt_timeout=deadline.timeout if deadline is not None else None,
+            tripped_patch_path=tripped_patch_path,
+            line_crossed=line_crossed,
+            line_patch_path=line_patch_path,
+            line_harvest_error=line_harvest_error,
         )
         write_attempt_record(attempt_dir / "attempt.json", record)
         return record
@@ -1050,6 +1248,9 @@ def _finish_attempt(
         workspace_base_sha=workspace.base_sha,
         attempt_dir=attempt_dir.name,
         attempt_timeout=deadline.timeout if deadline is not None else None,
+        line_crossed=line_crossed,
+        line_patch_path=line_patch_path,
+        line_harvest_error=line_harvest_error,
     )
     write_attempt_record(attempt_dir / "attempt.json", base_record)
     try:
