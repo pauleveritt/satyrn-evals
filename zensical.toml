@@ -1,19 +1,38 @@
 [project]
-site_name = "Satyrn"
+site_name = "Satyrn Evals and Satyrn Engine"
 docs_dir = "site"
 site_dir = "_build"
 nav = [
   { "Home" = "index.md" },
-  { "The numbers" = "numbers.md" },
-  { "The engine" = "engine.md" },
-  { "Using the engine" = "engine-usage.md" },
-  { "Glossary" = "engine-glossary.md" },
+  { "How it works" = "how-it-works.md" },
+  { "First results" = "numbers.md" },
   { "Release one — the stated negative" = "release-one-negative.md" },
+  { "Measurement" = "measurement.md" },
+  { "Evals" = [
+    { "About Satyrn Evals" = "evals-about.md" },
+    { "Architecture" = "evals-architecture.md" },
+    { "Using Evals" = "use-evals.md" },
+    { "Authoring" = "authoring.md" },
+  ] },
+  { "Engine" = [
+    { "About Satyrn Engine" = "engine.md" },
+    { "Architecture" = "engine-architecture.md" },
+    { "Using Engine" = "engine-usage.md" },
+    { "Glossary" = "engine-glossary.md" },
+  ] },
+  { "Satyrn Models" = "models.md" },
   { "Lessons" = "lessons.md" },
+  { "Pathologies" = "pathologies.md" },
+  { "Remediations" = "remediations.md" },
+  { "Contributing" = "contributing.md" },
+  { "Glossary" = "glossary.md" },
 ]
 
 [project.markdown_extensions]
 pymdownx.snippets = {}
+pymdownx.superfences.custom_fences = [
+  { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" },
+]
 
 [project.validation]
 invalid_links = true

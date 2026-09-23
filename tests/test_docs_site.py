@@ -62,10 +62,41 @@ def test_every_site_page_is_in_the_navigation() -> None:
     assert set(pages) <= set(nav)
 
 
+def test_the_config_declares_the_mermaid_fence() -> None:
+    ext = _config()["project"]["markdown_extensions"]
+    fences = ext.get("pymdownx", {}).get("superfences", {}).get("custom_fences", [])
+    assert any(dict(f).get("name") == "mermaid" for f in fences)
+
+
+def test_the_nav_names_the_new_pages_in_order() -> None:
+    nav = _nav_paths(_config()["project"]["nav"])
+    for rel in (
+        "how-it-works.md",
+        "numbers.md",
+        "measurement.md",
+        "evals-about.md",
+        "evals-architecture.md",
+        "use-evals.md",
+        "authoring.md",
+        "engine.md",
+        "engine-architecture.md",
+        "engine-usage.md",
+        "engine-glossary.md",
+        "models.md",
+        "pathologies.md",
+        "remediations.md",
+        "contributing.md",
+        "glossary.md",
+    ):
+        assert rel in nav, rel
+
+
 def test_the_canonical_files_the_site_includes_are_present() -> None:
     for rel in (
         "docs/numbers.md",
         "docs/superpowers/specs/2026-09-15-release-one-outcome.md",
         "docs/lessons.md",
+        "docs/pathologies.md",
+        "docs/remediations.md",
     ):
         assert (ROOT / rel).is_file(), rel
