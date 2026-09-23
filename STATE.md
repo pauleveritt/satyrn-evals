@@ -172,6 +172,23 @@ phase rows.
   `tool_free_terminal_turns: 1` — indistinguishable from a plain refusal.
   Observed on both Mellum cells (`evidence/2026-09-22-mellum-tool-surface/`);
   a detector for tool-call-shaped text is not built.
+- **Pathology counter blind to announce-then-stop.** A final turn whose
+  reasoning plans a concrete step ("Let's write the file.") and then ends with
+  no tool call counts as a clean `self_stop`. It ended 4 of 12 Mellum cells in
+  the n = 6 record, two before the implementation existed. The detector in
+  `evidence/2026-09-22-mellum-tool-surface/compare_ornith.py` is a regex over
+  the last reasoning line, not a harness counter; none is built.
+- **Engine pins are split.** satyrn-engine `release-one` now ends at
+  `803df2d` (the red-stop gate); only `arms/engine-mellum-class-swe-pi-redstop.json`
+  pins it. Every other Engine arm pins `78ab87d`. Decide which commit the next
+  Engine record runs before freezing it, and re-pin every arm it uses
+  (`evidence/2026-09-23-red-stop-gate/`).
+- **Mellum vs Ornith reruns owed before any model claim**
+  (`evidence/2026-09-22-mellum-tool-surface/README.md`): Ornith at n = 6 on
+  both arms on a freshly started server before any wall-time comparison;
+  about 20 cells per arm per model before any pass-rate claim (n = 6 gives
+  p = 1.0 on both arms); a k = 1 run of each before quoting per-request
+  speed without the batching caveat.
 - **Arm parity:** the Engine's `DELIVER_TIMEOUT_SECONDS` is 1800 while the
   record's backstop is 3,000, so an Engine cell stops earlier than Baseline's.
   Fix before the first Engine record of release two; not a census defect.
@@ -186,4 +203,8 @@ phase rows.
   at `b624b84`; the census build's stale qualify expectations and launch-record
   timing were restored in that commit.
 - **Local state not in git:** the `satyrn-cell` user and its sudoers rule, the
-  engine export under `/Users/Shared/satyrn-cells/`, and `~/satyrn-runs`.
+  engine exports under `/Users/Shared/satyrn-cells/` (`78ab87d` and
+  `803df2d`), `~/satyrn-runs`, and the Mellum `mellum`-class MLX conversion
+  with its oMLX and Pi config entries (the broken `qwen3_moe` conversion was
+  deleted 2026-09-23, so `arms/baseline-mellum-swe-pi.json` cannot be rerun
+  without rebuilding it).
