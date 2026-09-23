@@ -153,3 +153,9 @@ def test_models_placeholder_and_catalogue_stubs() -> None:
     assert "Models" in (SITE / "models.md").read_text()
     assert '--8<-- "docs/pathologies.md"' in (SITE / "pathologies.md").read_text()
     assert '--8<-- "docs/remediations.md"' in (SITE / "remediations.md").read_text()
+
+
+def test_contributing_mentions_gates_and_provenance() -> None:
+    text = (SITE / "contributing.md").read_text()
+    for fragment in ("just gates", "provenance", "Mastodon"):
+        assert fragment in text, fragment
