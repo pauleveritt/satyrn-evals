@@ -4,9 +4,9 @@ title: How it works
 
 # How it works
 
-The whole story, from a prompt to an eval verdict, in three sections. Each
-section hides the previous section's "out there" complexity and collapses it
-to one block.
+Satyrn Evals and how it connects to Satyrn Engine -- it's a lot. Perhaps
+too much, which we'll tackle in a rewrite. Until then, let's try explaining
+it visually, starting small, then introducing each next piece of complexity.
 
 ## How agents work
 
@@ -20,14 +20,18 @@ flowchart LR
   S --> M[model]
 ```
 
-Add tools, a loop, and planning:
+Add the repeated model turn, tools, and planning. The model's output either
+asks the agent to use a tool, starting another turn, or becomes the final
+response. Planning happens within those model turns.
 
 ```mermaid
 flowchart LR
   P[prompt] --> A[agent]
+  A -->|context + tools| S[inference server]
+  S -->|model output| A
   A -->|tool call| T[tools]
   T -->|result| A
-  A --> R[response]
+  A -->|final response| R[response]
 ```
 
 Running locally, the same shape: Pi is the agent, oMLX serves Ornith 1.5 9B.

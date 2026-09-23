@@ -92,6 +92,8 @@ before-and-after numbers and no ceiling claim (`ROADMAP.md`).
 holds — k = 1 gives 41 tok/s per stream, k = 3 about 89 tok/s total, 2.2×
 (`q3stats.md`). The outcome page's open item 7 is answered: k = 3 was sound.
 
+<div class="record-recompute" markdown="1">
+
 ## Recompute
 
 ```bash
@@ -105,3 +107,5 @@ python3 q3stats.py      # token, turn, thinking and decode statistics -> q3stats
 Large outputs (`audit.json`, `trajectory.json`, `serverlog_sept.json`,
 `grades/`) are git-ignored; the scripts regenerate them. The full review is
 `fable-review.md`.
+
+</div>

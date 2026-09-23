@@ -1,10 +1,14 @@
 # The numbers — release two
 
+<div class="record-metadata" markdown="1">
+
 Drafted by Fable 2026-09-20 from the committed results under `records/` and the
 retained cells under `~/satyrn-runs/`. Nothing here pools across tasks or arms.
 The comparison was pre-registered on 2026-09-19 (the `decision_rule` of each
 `records/2026-09-21-comparison-*.json`, frozen at `cdae9b1` before any cell
 ran) and read once, when complete.
+
+</div>
 
 ## What was compared
 
@@ -150,6 +154,8 @@ the grader refuses for a stray non-source file, six of seven on Baseline.
   harvested tree is read from the wrong worktree, so "held a passing tree" is
   unavailable for those six cells. It touches no count on this page.
 
+<div class="record-recompute" markdown="1">
+
 ## Recompute
 
 ```bash
@@ -159,3 +165,5 @@ uv run satyrn-evals grade-sensitivity $N-selfhost-run-record-gate-a --record $R-
   --combine $N-selfhost-run-record-gate-b --record2 $R-selfhost-run-record-gate-b.json --grade-root $G
 uv run satyrn-evals grade-line $N-selfhost-docs-linter --record $R-selfhost-docs-linter.json --grade-root $G
 ```
+
+</div>

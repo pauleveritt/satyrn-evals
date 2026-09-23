@@ -162,6 +162,8 @@ Harm is zero in all 39 cells. The night-2 design's first draft said "5 of
   route-proof`, read for behaviour only. It is **reported beside the void 2026-09-18 night above,
   never in its place**, and the row above is unchanged.
 
+<div class="record-recompute" markdown="1">
+
 ## Recompute
 
 ```bash
@@ -181,3 +183,5 @@ uv run --project . python evidence/2026-09-16-census/classify.py \
 diff -r tmp-census-1 evidence/2026-09-16-census --exclude README.md --exclude classify.py --exclude validity --exclude __pycache__
 diff -r tmp-census-2 evidence/2026-09-17-census-2 --exclude validity
 ```
+
+</div>

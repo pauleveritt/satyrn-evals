@@ -1,0 +1,5 @@
+/* Canonical records keep their audit trail; the public site presents the result. */
+.record-metadata,
+.record-recompute {
+  display: none;
+}

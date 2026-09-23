@@ -8521,6 +8521,7 @@
 | zensical.toml | created in release-one |
 | site/index.md | created in release-one |
 | site/numbers.md | created in release-one |
+| site/stylesheets/public.css | created to keep operator-only record metadata out of the public site |
 | site/release-one-negative.md | created in release-one |
 | site/lessons.md | created in release-one |
 | tests/test_docs_site.py | created in release-one |

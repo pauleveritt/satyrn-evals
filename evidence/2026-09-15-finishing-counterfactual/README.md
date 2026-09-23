@@ -109,6 +109,8 @@ nor provably read-only). Full rows: `debug/table.md`.
   `PROVENANCE.md`, so the harness answered `unavailable`; their `task_tree_sha256`
   no longer matches the current tree. Every decision record's does.
 
+<div class="record-recompute" markdown="1">
+
 ## Recompute
 
 ```bash
@@ -118,3 +120,5 @@ mv evidence/2026-09-15-finishing-counterfactual/cells.json cells.committed.json
 uv run --project . python evidence/2026-09-15-finishing-counterfactual/counterfactual.py --phase decision --grade-root "$HOME/satyrn-counterfactual-grades-recompute"
 uv run python -c "import json; a, b = (json.load(open(p))['cells'] for p in ('cells.committed.json', 'evidence/2026-09-15-finishing-counterfactual/cells.json')); print('identical' if a == b else 'DIFFERENT')"
 ```
+
+</div>

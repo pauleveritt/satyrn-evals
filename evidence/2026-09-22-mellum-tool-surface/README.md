@@ -312,6 +312,8 @@ the cell's `models.json`, whose Ornith entry is untouched. One side effect:
 oMLX now names the Mellum id as its default model, so `omlx launch` without
 `--model` selects it; the harness always passes `--model` explicitly.
 
+<div class="record-recompute" markdown="1">
+
 ## Recompute
 
 ```bash
@@ -325,3 +327,5 @@ uv run python probe.py --out raw-mellum \
   --model swe-pi-m23-mix4s100-think-ae10k-init800-20260917-bulat-step-500-mellum-MLX-8bit
 uv run python probe.py --tally-only --out raw-mellum
 ```
+
+</div>

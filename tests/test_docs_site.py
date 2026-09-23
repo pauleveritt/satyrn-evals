@@ -38,6 +38,17 @@ def test_the_config_names_the_site_directory() -> None:
     project = _config()["project"]
     assert project["site_name"] == "Satyrn Evals and Satyrn Engine"
     assert project["docs_dir"] == "site"
+    assert project["extra_css"] == ["stylesheets/public.css"]
+    assert project["markdown_extensions"]["md_in_html"] == {}
+
+
+def test_operator_only_record_blocks_are_marked_for_the_public_site() -> None:
+    text = (ROOT / "docs/numbers.md").read_text()
+    assert '<div class="record-metadata" markdown="1">' in text
+    assert '<div class="record-recompute" markdown="1">' in text
+    css = (SITE / "stylesheets" / "public.css").read_text()
+    assert ".record-metadata," in css
+    assert ".record-recompute" in css
 
 
 def test_every_include_target_exists() -> None:
@@ -58,7 +69,7 @@ def test_the_landing_page_links_the_numbers_page_first() -> None:
 def test_the_landing_page_carries_the_public_copy() -> None:
     text = (SITE / "index.md").read_text()
     for fragment in (
-        "start with evidence",
+        "start with *evidence*",
         "Part of the SatyrnAI project",
         "Laptop AI",
         "petri dish",
@@ -90,7 +101,6 @@ def test_the_nav_names_the_new_pages_in_order() -> None:
     for rel in (
         "how-it-works.md",
         "numbers.md",
-        "measurement.md",
         "evals-about.md",
         "evals-architecture.md",
         "use-evals.md",
@@ -129,7 +139,7 @@ def test_how_it_works_has_three_sections_and_diagrams() -> None:
 
 def test_first_results_and_measurement_titles() -> None:
     assert (SITE / "numbers.md").read_text().startswith("---\ntitle: First results")
-    assert "## How the claim was measured" in (SITE / "measurement.md").read_text()
+    assert "## How the claim was measured" in (SITE / "numbers.md").read_text()
 
 
 def test_evals_about_names_why_how_what() -> None:
