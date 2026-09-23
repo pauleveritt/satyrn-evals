@@ -192,6 +192,28 @@ turns editing the wrong file's imports. These are pathologies 21 and 22 in
 comparison (48k tokens, 72 turns) scored Baseline 2/6 and Engine 5/6. At
 n = 2 these counts do not rank the models.
 
+**Mellum at n = 6, both arms (2026-09-23).** Record
+`records/2026-09-23-spike-mellum-class-review-script-n6.json` mirrors the
+2026-09-21 Ornith comparison exactly (n = 6 per arm, k = 3, 48k tokens and
+72 turns) with only the model changed, as a development record.
+`compare_ornith.py` recomputes the table from `~/satyrn-runs` and the oMLX
+logs.
+
+| arm | Ornith 1.5 9B passes | Mellum passes | median turns (O / M) | median output tokens (O / M) | median wall s (O / M) |
+|---|---|---|---|---|---|
+| baseline | 2/6 | 3/6 | 23.5 / 27 | 7,471 / 13,617 | 382 / 269 |
+| engine | 5/6 | **6/6** | 18.5 / 10 | 11,134 / 7,336 | 662 / 283 |
+
+Decode speed at k = 3: Ornith 21.9 tok/s, Mellum 57.1 tok/s. The whole
+night took 2,800 s for Ornith and 1,514 s for Mellum. All three Mellum
+baseline losses are the two pathologies below: two ended on an announced,
+untaken action before the implementation was written (`NO_PATCH`, and a
+tests-only patch the grader could not run), and one burned its 72 turns in
+a `ruff` import-sort loop. Mellum baseline committed 0/6 against Ornith's
+6/6. No Mellum engine cell lost to either: the engine ends the attempt on a
+passing self-test and forbids the commit itself. n = 6 per arm; counts,
+not rates.
+
 ## The cells
 
 Two `purpose=development` records, bare Pi, `selfhost-review-script` R1-plan,
