@@ -141,3 +141,9 @@ def test_evals_architecture_names_the_physical_run() -> None:
 def test_using_evals_and_authoring_stub() -> None:
     assert "satyrn-evals" in (SITE / "use-evals.md").read_text()
     assert "coming" in (SITE / "authoring.md").read_text().lower()
+
+
+def test_engine_architecture_names_its_pieces() -> None:
+    text = (SITE / "engine-architecture.md").read_text()
+    for fragment in ("derive", "deliver", "worktree", "receipt", "engine-glossary.md"):
+        assert fragment in text, fragment
