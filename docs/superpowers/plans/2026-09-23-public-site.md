@@ -20,12 +20,10 @@
 - Naming: **Laptop AI**, **SatyrnAI**, org **`satyrn-ai`**, site title **Satyrn Evals and Satyrn Engine**.
 - `just gates` must exit 0 at the end of Task 12.
 
-**Intermediate red build is anticipated, not a defect to stop on.** Task 1 sets
-the full navigation up front, so `uv run --group docs zensical build --strict`
-fails from Task 1 until Task 11 (the nav names pages that do not exist yet).
-The pytest suite, ruff, lint-docs, and provenance stay green throughout; only
-`just docs` is red, and its fix is Tasks 2–11. Commit at task boundaries as
-normal and do not stop on that specific red build.
+**Zensical 0.0.63 silently skips a nav entry whose page does not exist (exit 0,
+"No issues found")** — the strict build stays green throughout, so it is NOT a
+guard against a typo'd nav filename. The safety net is the `nav ⊆ pages` test
+in Task 12; until that lands, a missing page is invisible to the build.
 
 ---
 
@@ -46,7 +44,7 @@ Add to `tests/test_docs_site.py`:
 def test_the_config_declares_the_mermaid_fence() -> None:
     ext = _config()["project"]["markdown_extensions"]
     fences = ext.get("pymdownx", {}).get("superfences", {}).get("custom_fences", [])
-    assert {"name": "mermaid"} in [dict(f) for f in fences]
+    assert any(dict(f).get("name") == "mermaid" for f in fences)
 
 
 def test_the_nav_names_the_new_pages_in_order() -> None:
@@ -996,31 +994,46 @@ git commit -m "site: evals glossary"
 ### Task 12: Full gate
 
 **Files:**
-- Modify: `tests/test_docs_site.py` (remove any now-stale assertions, if the build surfaced them)
+- Modify: `tests/test_docs_site.py` (add the `nav ⊆ pages` safety-net test below; remove any now-stale assertions)
 
 **Interfaces:**
 - Produces: a green `just gates` and a strict build with zero warnings.
 
-- [ ] **Step 1: Run the strict build**
+- [ ] **Step 1: Add the nav⊆pages safety-net test**
+
+Zensical 0.0.63 silently skips a nav entry whose page does not exist, so the
+build cannot catch a typo'd nav filename. Add to `tests/test_docs_site.py`:
+
+```python
+def test_every_nav_entry_has_a_page() -> None:
+    nav = _nav_paths(_config()["project"]["nav"])
+    pages = {page.relative_to(SITE).as_posix() for page in _site_pages()}
+    assert set(nav) <= pages, sorted(set(nav) - pages)
+```
+
+Run: `uv run pytest tests/test_docs_site.py::test_every_nav_entry_has_a_page -q`
+Expected: pass (all pages now exist).
+
+- [ ] **Step 2: Run the strict build**
 
 Run: `uv run --group docs zensical build --strict`
 Expected: exit 0, no warnings.
 
-- [ ] **Step 2: Run the full default tier**
+- [ ] **Step 3: Run the full default tier**
 
 Run: `uv run pytest -q`
 Expected: all pass.
 
-- [ ] **Step 3: Run `just gates`**
+- [ ] **Step 4: Run `just gates`**
 
 Run: `just gates`
 Expected: exit 0 (tests, ruff, lint-docs, docs, provenance all green).
 
-- [ ] **Step 4: Resolve any failure**
+- [ ] **Step 5: Resolve any failure**
 
 If a step fails, fix the page or test it names, then re-run `just gates`. Do not weaken a test.
 
-- [ ] **Step 5: Commit any stragglers**
+- [ ] **Step 6: Commit any stragglers**
 
 ```bash
 git status --short
