@@ -333,6 +333,17 @@ not run, so this is model behaviour observed once, not a settled cause.*
     satisfy an import-sort rule by hand. Its tree already passed the
     hidden tests when the budget ran out, so the loop alone cost the cell.
 
+23. **A test run of an early, buggy version leaves an artifact in the tree,
+    and the model never notices it.** Mellum swe-pi step-500, served as
+    `mellum`, in a satyrn-evals Engine cell on the review-script task
+    (record `2026-09-23-spike-mellum-class-review-script-redstop`, cell
+    `174223-301364`). Its first `review_path` ignored the root argument, so
+    its own `main` test wrote `docs/reviews/abc..def-zai-glm-5.3.md` into the
+    repository on the first pytest run. Two turns later it fixed the code and
+    the test to use the root, but never looked for or removed the file. The
+    grader refused the patch for touching a non-source path. With that path
+    stripped, it passes. n = 1.
+
 ## Where the fuller record lives
 
 A sibling project, `ds4-engine`, keeps a cross-project pathology catalog

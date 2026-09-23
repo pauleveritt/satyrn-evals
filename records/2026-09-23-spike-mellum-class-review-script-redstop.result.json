@@ -1,0 +1,191 @@
+{
+  "record": "records/2026-09-23-spike-mellum-class-review-script-redstop.json",
+  "record_sha256": "b59fe74a5739d66505464800c3d2e38740cd194ed5fdf254668cd1b08ea0f97f",
+  "arm_sha256": {
+    "engine": "b5d245c03bff55b53cbc3cace24dd88302701dce49e0d49b51b71d0503e8c3e1"
+  },
+  "status": "complete",
+  "reason": null,
+  "night": "/Users/pauleveritt/satyrn-runs/2026-09-23-spike-mellum-class-review-script-redstop",
+  "task": "selfhost-review-script",
+  "rung": "R1-plan",
+  "k": 3,
+  "n": 6,
+  "purpose": "development",
+  "arms": {
+    "engine": {
+      "finished": 6,
+      "n": 6,
+      "code_counts": {
+        "OK": 6
+      },
+      "passes": 5,
+      "summary": "/Users/pauleveritt/satyrn-runs/2026-09-23-spike-mellum-class-review-script-redstop/engine/summary.json",
+      "infrastructure": [],
+      "contamination": {
+        "graded": 6,
+        "flagged": 0,
+        "clean": 6,
+        "unmeasured": 0
+      }
+    }
+  },
+  "cells": [
+    {
+      "slot": 0,
+      "arm": "engine",
+      "attempt_dir": "selfhost-review-script-20260923-173626-421493",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 1,
+      "arm": "engine",
+      "attempt_dir": "selfhost-review-script-20260923-173626-514221",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 2,
+      "arm": "engine",
+      "attempt_dir": "selfhost-review-script-20260923-173626-609831",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 3,
+      "arm": "engine",
+      "attempt_dir": "selfhost-review-script-20260923-174218-047907",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 4,
+      "arm": "engine",
+      "attempt_dir": "selfhost-review-script-20260923-174223-301364",
+      "code": "OK",
+      "verdict": "unavailable",
+      "infrastructure": false
+    },
+    {
+      "slot": 5,
+      "arm": "engine",
+      "attempt_dir": "selfhost-review-script-20260923-174223-502588",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    }
+  ],
+  "replaced": [],
+  "sittings": [
+    {
+      "record": "records/2026-09-23-spike-mellum-class-review-script-redstop.json",
+      "started": "2026-09-23T17:36:26+00:00",
+      "k": 3,
+      "evals_head": "b2874ba07f50e570e8f85aa59f754d7fce7d4f07",
+      "preflight": {
+        "cell_user": "satyrn-cell",
+        "cells_root": "/Users/Shared/satyrn-cells",
+        "tolerated": [],
+        "pi_version": "0.85.1",
+        "unreadable_checked": [
+          "/Users/pauleveritt/projects/pauleveritt/satyrn-evals/.worktrees/mellum-tool-surface",
+          "/Users/pauleveritt/projects/pauleveritt/satyrn-evals/.worktrees/mellum-tool-surface/src/satyrn_evals/tasks",
+          "/Users/pauleveritt",
+          "/Users/pauleveritt/satyrn-runs"
+        ],
+        "hunt_root": "/",
+        "hunt_names": [
+          "known-broken.patch",
+          "known-good.patch",
+          "satyrn_evals",
+          "test_acceptance.py",
+          "test_doc_caps.py",
+          "test_hook_guard.py",
+          "test_launch.py",
+          "test_phase1_home.py",
+          "test_phase2_board.py",
+          "test_phase3_add.py",
+          "test_phase4_resolve_reopen.py",
+          "test_preflight_quiet.py",
+          "test_review.py",
+          "test_run_record.py",
+          "test_speed_probe.py"
+        ],
+        "hunt_hits": [],
+        "stale_processes": []
+      },
+      "engine_engine_self_test": {
+        "base_exit": 0,
+        "known_good_exit": 0,
+        "repair_base": false
+      },
+      "task_self_test": {
+        "base_exit": 0,
+        "known_good_exit": 0,
+        "repair_base": false
+      },
+      "model_server": {
+        "swe-pi-m23-mix4s100-think-ae10k-init800-20260917-bulat-step-500-mellum-MLX-8bit": {
+          "base_url": "http://127.0.0.1:8001"
+        }
+      },
+      "settings": {
+        "engine": {
+          "arm_sha256": "42205618f9686c1bff118807f0cfe5ed5af017bf0c75e64ce90faf6f7f043f4b",
+          "omlx_entry": {
+            "enable_thinking": true,
+            "force_sampling": false,
+            "is_default": false,
+            "is_pinned": false,
+            "max_context_window": 131072,
+            "max_tokens": 16000,
+            "min_p": 0.0,
+            "preserve_thinking": true,
+            "reasoning_parser": "qwen_3",
+            "temperature": 0.6,
+            "thinking_budget_enabled": false,
+            "top_k": 20,
+            "top_p": 0.95,
+            "trust_remote_code": false,
+            "turboquant_kv_enabled": false
+          },
+          "omlx_entry_sha256": "ebfb9a077b9029f82da798dfbcf4d5d9f7b668c74c121cb9bdf8c566e41660af",
+          "pi_entry": {
+            "contextWindow": 131072,
+            "cost": {
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "input": 0,
+              "output": 0
+            },
+            "id": "swe-pi-m23-mix4s100-think-ae10k-init800-20260917-bulat-step-500-mellum-MLX-8bit",
+            "input": [
+              "text"
+            ],
+            "maxTokens": 16000,
+            "name": "Mellum swe-pi m23 step-500 (MLX 8-bit, mellum class)",
+            "reasoning": true,
+            "samplingParams": {
+              "min_p": 0.0,
+              "presence_penalty": 0.0,
+              "repetition_penalty": 1.0,
+              "temperature": 0.6,
+              "top_k": 20,
+              "top_p": 0.95
+            }
+          },
+          "pi_entry_sha256": "70adac77f5fe2ba65b545b23b1c24150b96bd8191ea51b6d416cd908e7cf825f",
+          "pi_models": "satyrn-cell:/Users/satyrn-cell/.pi/agent/models.json"
+        }
+      },
+      "ended": "2026-09-23T17:50:39+00:00",
+      "status": "complete",
+      "reason": null
+    }
+  ]
+}

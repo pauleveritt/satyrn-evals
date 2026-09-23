@@ -243,6 +243,26 @@ freshly started server before any wall-time claim; about 20 cells per arm
 per model before any pass-rate claim; a k = 1 run of each for per-request
 speed without the batching caveat.
 
+**Red-stop engine rerun (2026-09-23).** The Mellum engine arm of the n = 6
+record, rerun with only the engine changed: satyrn-engine `803df2d`
+(branch `phase/red-stop-gate`), which re-runs `self_test` and sends one
+follow-up when the model stops on a red tree (arm
+`arms/engine-mellum-class-swe-pi-redstop.json`, record
+`records/2026-09-23-spike-mellum-class-review-script-redstop.json`,
+sensitivity `grade-sensitivity-mellum-redstop.json`).
+
+| engine | passes | stripped | engine `TESTS_FAILED` | red-stop fired | median turns | median output tokens | median wall s |
+|---|---|---|---|---|---|---|---|
+| `78ab87d` | 6/6 | 6/6 | 1 | (absent) | 10 | 7,336 | 283 |
+| `803df2d` | 5/6 | 6/6 | 0 | **0** | 8.5 | 6,621 | 268 |
+
+The gate never fired, so this run says nothing about its effect; the offline
+scan predicted about 1 firing in 92 Engine cells. The one non-pass is
+`unavailable`: an early `review_path` ignored its root, the model's own
+`main` test wrote `docs/reviews/abc..def-zai-glm-5.3.md` into the tree, and
+the model fixed the code but left the file (pathology 23). Stripped, 6/6.
+n = 6; counts, not rates.
+
 ## The cells
 
 Two `purpose=development` records, bare Pi, `selfhost-review-script` R1-plan,
