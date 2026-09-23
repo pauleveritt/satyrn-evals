@@ -299,18 +299,21 @@ reads as a plain refusal. A future model failing this way would look like
 
 ## Local state changed
 
-| file | backup |
-|---|---|
-| `~/.omlx/model_settings.json` (added the model's entry) | `~/.omlx/model_settings.json.bak-pre-mellum-20260922-201215` |
-| `~/.pi/agent/models.json` (added the entry) | `~/.pi/agent/models.json.bak-pre-mellum-20260922` |
-| `/Users/satyrn-cell/.pi/agent/models.json` (added the entry) | `/Users/satyrn-cell/.pi/agent/models.json.bak-pre-mellum-20260922` |
-| `~/.omlx/model_settings.json` (2026-09-23: added the `-mellum-MLX-8bit` entry, same settings) | `~/.omlx/model_settings.json.bak-pre-mellum-class-20260923` |
+As left after the cleanup on 2026-09-23:
 
-**Revert before an Ornith run?** Not required: the Ornith entries in both Pi
-configs and in `model_settings.json` are unchanged, and isolated cells read
-the cell's `models.json`, whose Ornith entry is untouched. One side effect:
-oMLX now names the Mellum id as its default model, so `omlx launch` without
-`--model` selects it; the harness always passes `--model` explicitly.
+| where | state |
+|---|---|
+| `~/.cache/huggingface/hub/mlx-community/JetBrains/` | the `-mellum-MLX-8bit` conversion only; the broken `qwen3_moe` `-MLX-8bit` conversion is deleted |
+| `~/.omlx/model_settings.json` | an entry for the `-mellum-MLX-8bit` id only; no model is flagged default |
+| `~/.pi/agent/models.json` | an entry for the `-mellum-MLX-8bit` id only |
+| `/Users/satyrn-cell/.pi/agent/models.json` | an entry for the `-mellum-MLX-8bit` id only |
+| `/Users/Shared/satyrn-cells/engine-803df2d…` | the red-stop engine export, beside the `78ab87d` one |
+
+The `pre-mellum` backups of all three config files were deleted in the same
+cleanup. The Ornith entries were never changed. Because the broken
+conversion is gone, `arms/baseline-mellum-swe-pi.json` and the 2026-09-22
+records cannot be rerun without rebuilding it from the snapshot with its own
+`config.json` (see "The model").
 
 ## Recompute
 
