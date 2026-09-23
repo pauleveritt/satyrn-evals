@@ -35,7 +35,7 @@ docs = [
 ]
 
 [tool.pytest.ini_options]
-norecursedirs = [".claude", "src/satyrn_evals/tasks", "tests/data", "tests/integration/data"]
+norecursedirs = [".claude", ".worktrees", "src/satyrn_evals/tasks", "tests/data", "tests/integration/data"]
 addopts = ["-m", "not integration", "--strict-markers"]
 strict_xfail = true
 markers = [

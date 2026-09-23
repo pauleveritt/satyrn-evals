@@ -8521,6 +8521,7 @@
 | zensical.toml | created in release-one |
 | site/index.md | created in release-one |
 | site/numbers.md | created in release-one |
+| site/stylesheets/public.css | created to keep operator-only record metadata out of the public site |
 | site/release-one-negative.md | created in release-one |
 | site/lessons.md | created in release-one |
 | tests/test_docs_site.py | created in release-one |
@@ -8545,3 +8546,17 @@
 | arms/baseline-mellum-class-swe-pi.json | created in the mellum-class rerun 2026-09-23 |
 | arms/engine-mellum-class-swe-pi.json | created for the mellum-class n=6 run 2026-09-23 |
 | arms/engine-mellum-class-swe-pi-redstop.json | created for the red-stop engine rerun 2026-09-23 (engine 803df2d) |
+| site/how-it-works.md | created in release-one |
+| site/measurement.md | created in release-one |
+| docs/superpowers/specs/2026-09-23-public-site-design.md | created in release-one |
+| docs/superpowers/plans/2026-09-23-public-site.md | created in release-one |
+| site/evals-about.md | created in release-one |
+| site/evals-architecture.md | created in release-one |
+| site/use-evals.md | created in release-one |
+| site/authoring.md | created in release-one |
+| site/engine-architecture.md | created in release-one |
+| site/models.md | created in release-one |
+| site/pathologies.md | created in release-one |
+| site/remediations.md | created in release-one |
+| site/contributing.md | created in release-one |
+| site/glossary.md | created in release-one |

@@ -36,8 +36,19 @@ def _nav_paths(entries: list) -> list[str]:
 
 def test_the_config_names_the_site_directory() -> None:
     project = _config()["project"]
-    assert project["site_name"]
+    assert project["site_name"] == "Satyrn Evals and Satyrn Engine"
     assert project["docs_dir"] == "site"
+    assert project["extra_css"] == ["stylesheets/public.css"]
+    assert project["markdown_extensions"]["md_in_html"] == {}
+
+
+def test_operator_only_record_blocks_are_marked_for_the_public_site() -> None:
+    text = (ROOT / "docs/numbers.md").read_text()
+    assert '<div class="record-metadata" markdown="1">' in text
+    assert '<div class="record-recompute" markdown="1">' in text
+    css = (SITE / "stylesheets" / "public.css").read_text()
+    assert ".record-metadata," in css
+    assert ".record-recompute" in css
 
 
 def test_every_include_target_exists() -> None:
@@ -55,6 +66,17 @@ def test_the_landing_page_links_the_numbers_page_first() -> None:
     assert links and links[0] == "numbers.md"
 
 
+def test_the_landing_page_carries_the_public_copy() -> None:
+    text = (SITE / "index.md").read_text()
+    for fragment in (
+        "start with *evidence*",
+        "Part of the SatyrnAI project",
+        "Laptop AI",
+        "petri dish",
+    ):
+        assert fragment in text, fragment
+
+
 def test_every_site_page_is_in_the_navigation() -> None:
     nav = _nav_paths(_config()["project"]["nav"])
     pages = [page.relative_to(SITE).as_posix() for page in _site_pages()]
@@ -62,10 +84,100 @@ def test_every_site_page_is_in_the_navigation() -> None:
     assert set(pages) <= set(nav)
 
 
+def test_every_nav_entry_has_a_page() -> None:
+    nav = _nav_paths(_config()["project"]["nav"])
+    pages = {page.relative_to(SITE).as_posix() for page in _site_pages()}
+    assert set(nav) <= pages, sorted(set(nav) - pages)
+
+
+def test_the_config_declares_the_mermaid_fence() -> None:
+    ext = _config()["project"]["markdown_extensions"]
+    fences = ext.get("pymdownx", {}).get("superfences", {}).get("custom_fences", [])
+    assert any(dict(f).get("name") == "mermaid" for f in fences)
+
+
+def test_the_nav_names_the_new_pages_in_order() -> None:
+    nav = _nav_paths(_config()["project"]["nav"])
+    for rel in (
+        "how-it-works.md",
+        "numbers.md",
+        "evals-about.md",
+        "evals-architecture.md",
+        "use-evals.md",
+        "authoring.md",
+        "engine.md",
+        "engine-architecture.md",
+        "engine-usage.md",
+        "engine-glossary.md",
+        "models.md",
+        "pathologies.md",
+        "remediations.md",
+        "contributing.md",
+        "glossary.md",
+    ):
+        assert rel in nav, rel
+
+
 def test_the_canonical_files_the_site_includes_are_present() -> None:
     for rel in (
         "docs/numbers.md",
         "docs/superpowers/specs/2026-09-15-release-one-outcome.md",
         "docs/lessons.md",
+        "docs/pathologies.md",
+        "docs/remediations.md",
     ):
         assert (ROOT / rel).is_file(), rel
+
+
+def test_how_it_works_has_three_sections_and_diagrams() -> None:
+    text = (SITE / "how-it-works.md").read_text()
+    assert "## How agents work" in text
+    assert "## How the Engine works" in text
+    assert "## How Evals works" in text
+    assert text.count("```mermaid") >= 6
+
+
+def test_first_results_and_measurement_titles() -> None:
+    assert (SITE / "numbers.md").read_text().startswith("---\ntitle: First results")
+    assert "## How the claim was measured" in (SITE / "numbers.md").read_text()
+
+
+def test_evals_about_names_why_how_what() -> None:
+    text = (SITE / "evals-about.md").read_text()
+    for fragment in ("## Why", "## How", "## What", "glossary.md"):
+        assert fragment in text, fragment
+
+
+def test_evals_architecture_names_the_physical_run() -> None:
+    text = (SITE / "evals-architecture.md").read_text()
+    for fragment in ("launcher", "run record", "isolated workspace", "subprocess", "offline"):
+        assert fragment in text, fragment
+
+
+def test_using_evals_and_authoring_stub() -> None:
+    assert "satyrn-evals" in (SITE / "use-evals.md").read_text()
+    assert "coming" in (SITE / "authoring.md").read_text().lower()
+
+
+def test_engine_architecture_names_its_pieces() -> None:
+    text = (SITE / "engine-architecture.md").read_text()
+    for fragment in ("derive", "deliver", "worktree", "receipt", "engine-glossary.md"):
+        assert fragment in text, fragment
+
+
+def test_models_placeholder_and_catalogue_stubs() -> None:
+    assert "Models" in (SITE / "models.md").read_text()
+    assert '--8<-- "docs/pathologies.md"' in (SITE / "pathologies.md").read_text()
+    assert '--8<-- "docs/remediations.md"' in (SITE / "remediations.md").read_text()
+
+
+def test_contributing_mentions_gates_and_provenance() -> None:
+    text = (SITE / "contributing.md").read_text()
+    for fragment in ("just gates", "provenance", "Mastodon"):
+        assert fragment in text, fragment
+
+
+def test_the_evals_glossary_defines_the_harness_terms() -> None:
+    text = (SITE / "glossary.md").read_text()
+    for term in ("task", "arm", "cell", "launcher", "verdict", "transcript", "patch"):
+        assert f"**{term}**" in text, term

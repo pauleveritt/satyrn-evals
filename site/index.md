@@ -1,31 +1,40 @@
 ---
-title: Satyrn
+title: Satyrn Evals and Satyrn Engine
 ---
 
-# Satyrn
+# Satyrn Evals and Satyrn Engine
 
-Keep a small local model on track, so a Python developer can use local AI and
-stay at the wheel.
+You have a great idea to speed up AI. Your agent encourages your brilliance
+and starts building. And building. Four quadrillion tokens later, nobody
+understands anything, you're painted into a corner, and you find it isn't
+actually solving a problem.
 
-[The numbers](numbers.md) are the result: a pre-registered comparison of
-Satyrn's `/implement` against bare Pi on medium-build tasks, read once when
-complete, with where it did not help and what it costs.
+Because you didn't start with *evidence*.
 
-Two repositories, both on `release-one`:
+Satyrn Evals is a deep, deliberately over-deep way to find pathologies and
+experiment with remedies. Small models need help. Evals gives you the
+confidence that you're on the right track, and that you can deliver something
+into a solution -- Satyrn Engine.
 
-- **satyrn-engine** — the product: `/implement`, a derived contract, guards,
-  carried tests, and a receipt.
-- **satyrn-evals** — the eval harness: tasks, isolated cells, a launcher, and
-  grading from retained evidence.
+The evidence is in [the numbers](numbers.md): a pre-registered comparison of
+`/implement` against bare Pi on medium-build tasks, read once when complete,
+with where it did not help and what it costs.
 
-This site is the record, not marketing. It shows the negative as plainly as
-the win:
+**The shape.** Evals is the star; Engine is the petri dish where remedies get
+tested. Later, Engine becomes a routine-Python tool for Laptop AI. For now, we
+are a group of people learning how to measure and investigate for Laptop AI.
+Read [how it works](how-it-works.md) for the whole story in diagrams.
 
-- [The numbers](numbers.md) — the release-two comparison.
-- [Release one — the stated negative](release-one-negative.md) — the ceiling
-  claim that did not hold.
-- [Lessons](lessons.md) — the catalogue, with each entry marked re-opened or
-  settled.
+**The honest scope.** Satyrn Engine is not ready to be an everyday addition to
+your agent. In 0.1 it is a good implementer for medium-sized tasks in routine
+Laptop AI Python work.
 
-The harness preserves a patch and transcript before grading, and grades only
-retained evidence. Every claim names the file or commit that holds it.
+**Join.** Follow us on Mastodon — **TBD**.
+
+> **FYI.** Two repositories today (`satyrn-engine`, `satyrn-evals`), both under
+> `pauleveritt`; this site lives at `pauleveritt.github.io/satyrn-evals/`.
+> After 0.1 they fold into one repository under `satyrn-ai`.
+
+## Part of the SatyrnAI project
+
+SatyrnAI builds tools for **Laptop AI** — link **TBD**.

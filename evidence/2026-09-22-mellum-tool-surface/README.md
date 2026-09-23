@@ -315,6 +315,8 @@ conversion is gone, `arms/baseline-mellum-swe-pi.json` and the 2026-09-22
 records cannot be rerun without rebuilding it from the snapshot with its own
 `config.json` (see "The model").
 
+<div class="record-recompute" markdown="1">
+
 ## Recompute
 
 ```bash
@@ -328,3 +330,5 @@ uv run python probe.py --out raw-mellum \
   --model swe-pi-m23-mix4s100-think-ae10k-init800-20260917-bulat-step-500-mellum-MLX-8bit
 uv run python probe.py --tally-only --out raw-mellum
 ```
+
+</div>

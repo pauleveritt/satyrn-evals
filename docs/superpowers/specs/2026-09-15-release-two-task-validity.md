@@ -102,6 +102,8 @@ For all five tasks the recorded `validity.commit` is `df33336`, and the
 `selfhost-cell-loop` prompt edit landed in `fc870ba`; a re-derivation must
 apply that edit to reproduce the checked cell-loop prompt.
 
+<div class="record-recompute" markdown="1">
+
 ## Recompute
 
 The whole sequence for one task, `selfhost-docs-linter`:
@@ -159,6 +161,8 @@ path.write_text(json.dumps(body, indent=2, ensure_ascii=False) + "\n", encoding=
 print(task, body["validity"])
 PY
 ```
+
+</div>
 
 ## Carried forward
 

@@ -78,6 +78,8 @@ Baseline's within-budget rate is plausibly 0.15–0.3; at n = 12 it lands at
 7. The probe's k = 1 total (36.5 tok/s) is well below single-stream decode
    (55.9 tok/s); k = 3 needs re-measuring before it is relied on.
 
+<div class="record-recompute" markdown="1">
+
 ## Recompute
 
 ```
@@ -90,3 +92,5 @@ The full review, with per-cell tables and citations, is
 `evidence/2026-09-15-release-one-outcome/fable-review.md`. The reconstruction
 reproduces the harness verdict for 11 of 14 graded cells; its pass-states are
 lower bounds.
+
+</div>
