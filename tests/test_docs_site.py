@@ -136,3 +136,8 @@ def test_evals_architecture_names_the_physical_run() -> None:
     text = (SITE / "evals-architecture.md").read_text()
     for fragment in ("launcher", "run record", "isolated workspace", "subprocess", "offline"):
         assert fragment in text, fragment
+
+
+def test_using_evals_and_authoring_stub() -> None:
+    assert "satyrn-evals" in (SITE / "use-evals.md").read_text()
+    assert "coming" in (SITE / "authoring.md").read_text().lower()
