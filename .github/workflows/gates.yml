@@ -15,5 +15,5 @@ jobs:
         with: {node-version: "22"}
       - uses: extractions/setup-just@v2
       - run: uv python install
-      - run: uv sync --frozen
+      - run: uv sync --frozen --all-groups
       - run: just gates
