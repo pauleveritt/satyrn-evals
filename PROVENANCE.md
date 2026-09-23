@@ -8558,3 +8558,4 @@
 | site/pathologies.md | created in release-one |
 | site/remediations.md | created in release-one |
 | site/contributing.md | created in release-one |
+| site/glossary.md | created in release-one |

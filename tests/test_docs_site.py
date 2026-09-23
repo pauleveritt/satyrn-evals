@@ -159,3 +159,9 @@ def test_contributing_mentions_gates_and_provenance() -> None:
     text = (SITE / "contributing.md").read_text()
     for fragment in ("just gates", "provenance", "Mastodon"):
         assert fragment in text, fragment
+
+
+def test_the_evals_glossary_defines_the_harness_terms() -> None:
+    text = (SITE / "glossary.md").read_text()
+    for term in ("task", "arm", "cell", "launcher", "verdict", "transcript", "patch"):
+        assert f"**{term}**" in text, term
