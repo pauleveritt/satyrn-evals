@@ -8544,3 +8544,4 @@
 | arms/baseline-mellum-swe-pi.json | created in the mellum shootout spike 2026-09-22 |
 | arms/baseline-mellum-class-swe-pi.json | created in the mellum-class rerun 2026-09-23 |
 | arms/engine-mellum-class-swe-pi.json | created for the mellum-class n=6 run 2026-09-23 |
+| arms/engine-mellum-class-swe-pi-redstop.json | created for the red-stop engine rerun 2026-09-23 (engine 803df2d) |
