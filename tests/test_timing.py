@@ -150,7 +150,12 @@ def test_the_residual_is_never_folded_into_the_phases_dict(tmp_path: Path) -> No
         receipt=_BASE + 20,
         attempt_record=_BASE + 21,
     )
-    result = measure_timing(cell_dir, wrapper_start=_BASE, wrapper_end=_BASE + 30)
+    result = measure_timing(
+        cell_dir,
+        wrapper_start=_BASE,
+        wrapper_end=_BASE + 30,
+        birthtime_reader=_births(**{"transcript.txt": _BASE + 5}),
+    )
 
     assert "residual" not in result.phases
     assert set(result.phases) <= {"setup", "command", "grading"}
