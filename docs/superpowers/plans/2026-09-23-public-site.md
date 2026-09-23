@@ -20,10 +20,14 @@
 - Naming: **Laptop AI**, **SatyrnAI**, org **`satyrn-ai`**, site title **Satyrn Evals and Satyrn Engine**.
 - `just gates` must exit 0 at the end of Task 12.
 
-**Zensical 0.0.63 silently skips a nav entry whose page does not exist (exit 0,
-"No issues found")** — the strict build stays green throughout, so it is NOT a
-guard against a typo'd nav filename. The safety net is the `nav ⊆ pages` test
-in Task 12; until that lands, a missing page is invisible to the build.
+**Intermediate red `just docs` is expected.** Zensical `--strict` behaves two ways:
+a nav entry whose page does not exist is **silently skipped** (no failure), but a
+**markdown link** to a nonexistent page fails `--strict` ("page does not
+exist"). Because the pages cross-link, `just docs` is red from roughly Task 2
+until every linked page exists; pytest, ruff, lint-docs, and provenance stay
+green throughout. Commit at task boundaries; do not stop on the red `just docs`.
+The `nav ⊆ pages` test in Task 12 is the safety net for the nav-skip case, since
+the build cannot catch a typo'd nav filename.
 
 ---
 
