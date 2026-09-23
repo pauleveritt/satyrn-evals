@@ -124,3 +124,9 @@ def test_how_it_works_has_three_sections_and_diagrams() -> None:
 def test_first_results_and_measurement_titles() -> None:
     assert (SITE / "numbers.md").read_text().startswith("---\ntitle: First results")
     assert "## How the claim was measured" in (SITE / "measurement.md").read_text()
+
+
+def test_evals_about_names_why_how_what() -> None:
+    text = (SITE / "evals-about.md").read_text()
+    for fragment in ("## Why", "## How", "## What", "glossary.md"):
+        assert fragment in text, fragment
