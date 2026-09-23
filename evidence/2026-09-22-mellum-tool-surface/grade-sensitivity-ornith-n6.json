@@ -1,0 +1,139 @@
+{
+  "night": "/Users/pauleveritt/satyrn-runs/2026-09-21-comparison-selfhost-review-script",
+  "cells": [
+    {
+      "attempt": "selfhost-review-script-20260920-131248-255807",
+      "task": "selfhost-review-script",
+      "arm": "baseline",
+      "code": "OK",
+      "delivered_pass": true,
+      "delivered_pass_stripped": true,
+      "stripped_paths": [],
+      "undelivered_tree": null,
+      "undelivered_tree_stripped_paths": []
+    },
+    {
+      "attempt": "selfhost-review-script-20260920-131248-371468",
+      "task": "selfhost-review-script",
+      "arm": "engine",
+      "code": "OK",
+      "delivered_pass": true,
+      "delivered_pass_stripped": true,
+      "stripped_paths": [],
+      "undelivered_tree": null,
+      "undelivered_tree_stripped_paths": []
+    },
+    {
+      "attempt": "selfhost-review-script-20260920-131248-503708",
+      "task": "selfhost-review-script",
+      "arm": "baseline",
+      "code": "OK",
+      "delivered_pass": true,
+      "delivered_pass_stripped": true,
+      "stripped_paths": [],
+      "undelivered_tree": null,
+      "undelivered_tree_stripped_paths": []
+    },
+    {
+      "attempt": "selfhost-review-script-20260920-131652-471993",
+      "task": "selfhost-review-script",
+      "arm": "engine",
+      "code": "OK",
+      "delivered_pass": true,
+      "delivered_pass_stripped": true,
+      "stripped_paths": [],
+      "undelivered_tree": null,
+      "undelivered_tree_stripped_paths": []
+    },
+    {
+      "attempt": "selfhost-review-script-20260920-132033-377694",
+      "task": "selfhost-review-script",
+      "arm": "baseline",
+      "code": "OK",
+      "delivered_pass": false,
+      "delivered_pass_stripped": true,
+      "stripped_paths": [
+        "tools/conftest.py"
+      ],
+      "undelivered_tree": null,
+      "undelivered_tree_stripped_paths": []
+    },
+    {
+      "attempt": "selfhost-review-script-20260920-132540-625663",
+      "task": "selfhost-review-script",
+      "arm": "engine",
+      "code": "OK",
+      "delivered_pass": true,
+      "delivered_pass_stripped": true,
+      "stripped_paths": [],
+      "undelivered_tree": null,
+      "undelivered_tree_stripped_paths": []
+    },
+    {
+      "attempt": "selfhost-review-script-20260920-132950-574401",
+      "task": "selfhost-review-script",
+      "arm": "baseline",
+      "code": "OK",
+      "delivered_pass": false,
+      "delivered_pass_stripped": false,
+      "stripped_paths": [],
+      "undelivered_tree": null,
+      "undelivered_tree_stripped_paths": []
+    },
+    {
+      "attempt": "selfhost-review-script-20260920-133235-439507",
+      "task": "selfhost-review-script",
+      "arm": "engine",
+      "code": "OK",
+      "delivered_pass": true,
+      "delivered_pass_stripped": true,
+      "stripped_paths": [],
+      "undelivered_tree": null,
+      "undelivered_tree_stripped_paths": []
+    },
+    {
+      "attempt": "selfhost-review-script-20260920-133414-034257",
+      "task": "selfhost-review-script",
+      "arm": "baseline",
+      "code": "OK",
+      "delivered_pass": false,
+      "delivered_pass_stripped": false,
+      "stripped_paths": [],
+      "undelivered_tree": null,
+      "undelivered_tree_stripped_paths": []
+    },
+    {
+      "attempt": "selfhost-review-script-20260920-133423-246074",
+      "task": "selfhost-review-script",
+      "arm": "engine",
+      "code": "OK",
+      "delivered_pass": false,
+      "delivered_pass_stripped": false,
+      "stripped_paths": [],
+      "undelivered_tree": null,
+      "undelivered_tree_stripped_paths": []
+    },
+    {
+      "attempt": "selfhost-review-script-20260920-134013-352881",
+      "task": "selfhost-review-script",
+      "arm": "baseline",
+      "code": "BUDGET_EXCEEDED",
+      "delivered_pass": false,
+      "delivered_pass_stripped": false,
+      "stripped_paths": [],
+      "undelivered_tree": "yes",
+      "undelivered_tree_stripped_paths": []
+    },
+    {
+      "attempt": "selfhost-review-script-20260920-134903-350949",
+      "task": "selfhost-review-script",
+      "arm": "engine",
+      "code": "OK",
+      "delivered_pass": true,
+      "delivered_pass_stripped": true,
+      "stripped_paths": [],
+      "undelivered_tree": null,
+      "undelivered_tree_stripped_paths": []
+    }
+  ]
+}

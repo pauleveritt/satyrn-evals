@@ -313,10 +313,12 @@ not run, so this is model behaviour observed once, not a settled cause.*
     committed in 7 of 8 baseline cells on this task. The harness counts
     this as a clean self-stop, so nothing flags it. n = 2, one task.
     Observed 2026-09-23 (`records/2026-09-23-spike-mellum-class-review-script-mellum.json`).
-    *n = 6 update, same day:* 3 of 6 more baseline cells ended this way,
-    and two of them stopped before writing the implementation, costing the
-    patch. 0 of 6 engine cells lost to it: the engine ends on a passing
-    self-test and does the delivery itself.
+    *n = 6 update, same day, corrected after review:* it ended 4 of 12
+    more Mellum cells. Three were baseline cells, and two of those stopped
+    before writing the implementation, costing the patch. One was an engine
+    cell that stopped with its own tests failing and passed only because
+    the hidden grader replaces the model's tests. So the engine did not
+    prevent it; that the engine absorbs it is untested.
 
 22. **Fixes the file it was not told about.** Also seen in the second
     cell: `ruff` reported an import-sort error in `tests/test_review.py`
@@ -328,7 +330,8 @@ not run, so this is model behaviour observed once, not a settled cause.*
     *n = 6 update, same day:* one more baseline cell spent its whole 72-turn
     budget in a `ruff` import-sort loop, 18 `ruff check` runs on the right
     file this time, never trying `--fix`. The general defect: it cannot
-    satisfy an import-sort rule by hand.
+    satisfy an import-sort rule by hand. Its tree already passed the
+    hidden tests when the budget ran out, so the loop alone cost the cell.
 
 ## Where the fuller record lives
 

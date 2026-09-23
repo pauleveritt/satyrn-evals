@@ -2,6 +2,7 @@
 import datetime as dt
 import glob
 import json
+import math
 import os
 import re
 import statistics as st
@@ -20,7 +21,9 @@ for f in sorted(glob.glob(os.path.expanduser("~/.omlx/logs/server.log*"))):
         if m := PAT.match(line):
             LOG.append((dt.datetime.strptime(m[1], "%Y-%m-%d %H:%M:%S"), m[2], int(m[3]), float(m[4])))
 
-ANNOUNCE = re.compile(r"(let'?s|we'?ll|we will|now,? (i|we)|next,? (i|we))[^.\n]{0,80}\.?\s*$", re.I)
+# A plan in the last line of reasoning; paths like tools/review.py contain dots,
+# so the tail is matched to end of line, not to the first period.
+ANNOUNCE = re.compile(r"(let'?s|we'?ll|we will|now,? (i|we)|next,? (i|we))[^\n]{0,160}$", re.I)
 
 
 def transcript_facts(path):
@@ -80,6 +83,16 @@ def throughput(model_sub, rows):
     return toks / gen if gen else None, (hi - lo).total_seconds()
 
 
+def fisher_two_sided(a, n1, b, n2):
+    """Exact two-sided Fisher p for a/n1 vs b/n2 successes."""
+    k, n = a + b, n1 + n2
+    def pr(x):
+        return math.comb(n1, x) * math.comb(n2, k - x) / math.comb(n, k)
+    obs = pr(a)
+    lo, hi = max(0, k - n2), min(k, n1)
+    return min(1.0, sum(pr(x) for x in range(lo, hi + 1) if pr(x) <= obs * (1 + 1e-9)))
+
+
 def med(xs):
     xs = [x for x in xs if x is not None]
     return st.median(xs) if xs else None
@@ -97,15 +110,23 @@ for model, night in NIGHTS.items():
             "verdicts": {v: sum(r["verdict"] == v for r in rows) for v in {r["verdict"] for r in rows}},
             "median_out": med(r["out"] for r in rows), "median_out_pass": med(r["out"] for r in passed),
             "median_turns": med(r["turns"] for r in rows), "median_turns_pass": med(r["turns"] for r in passed),
-            "median_wall": med(r["wall"] for r in rows),
+            "median_wall": med(r["wall"] for r in rows), "median_wall_pass": med(r["wall"] for r in passed),
             "committed": sum(1 for r in rows if r["commits"]), "lint_clean_last": sum(1 for r in rows if r["lint_clean_last"]),
             "lint_ran": sum(1 for r in rows if r["lint_clean_last"] is not None),
             "announce_stop": sum(r["announce_stop"] for r in rows),
             "repeats_total": sum(r["repeats"] or 0 for r in rows), "churn_total": sum(r["churn"] or 0 for r in rows),
+            "pathology_unmeasured": sum(1 for r in rows if r["repeats"] is None),
+            "repeats_excl_budget": sum(r["repeats"] or 0 for r in rows if r["code"] != "BUDGET_EXCEEDED"),
+            "churn_excl_budget": sum(r["churn"] or 0 for r in rows if r["code"] != "BUDGET_EXCEEDED"),
             "length_stops": sum(r["length_stops"] or 0 for r in rows),
             "decode_tok_s_k3": round(tps, 1) if tps else None, "night_span_s": round(span),
         }
         if "-v" in sys.argv:
             for r in rows:
                 print(model, arm, {k: v for k, v in r.items() if k != "window"})
+for arm in ("baseline", "engine"):
+    o, m = out[f"Ornith {arm}"], out[f"Mellum {arm}"]
+    out[f"fisher {arm} pass"] = round(fisher_two_sided(o["pass"], o["n"], m["pass"], m["n"]), 3)
+o, m = out["Ornith baseline"], out["Mellum baseline"]
+out["fisher baseline committed"] = round(fisher_two_sided(o["committed"], o["n"], m["committed"], m["n"]), 4)
 print(json.dumps(out, indent=1))

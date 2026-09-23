@@ -194,25 +194,54 @@ n = 2 these counts do not rank the models.
 
 **Mellum at n = 6, both arms (2026-09-23).** Record
 `records/2026-09-23-spike-mellum-class-review-script-n6.json` mirrors the
-2026-09-21 Ornith comparison exactly (n = 6 per arm, k = 3, 48k tokens and
-72 turns) with only the model changed, as a development record.
-`compare_ornith.py` recomputes the table from `~/satyrn-runs` and the oMLX
-logs.
+2026-09-21 Ornith comparison (n = 6 per arm, k = 3, 48k tokens, 72 turns).
+Only the model and the unused context window differ; the task tree, Pi
+0.85.1, engine `78ab87d`, sampling and per-turn cap are identical, and
+`purpose` gates launch only, not grading. `compare_ornith.py` recomputes the
+table; `grade-sensitivity-{ornith,mellum}-n6.json` hold the pre-registered
+sensitivity reading. An independent review corrected the first version of
+this section; the corrections are folded in below.
 
-| arm | Ornith 1.5 9B passes | Mellum passes | median turns (O / M) | median output tokens (O / M) | median wall s (O / M) |
-|---|---|---|---|---|---|
-| baseline | 2/6 | 3/6 | 23.5 / 27 | 7,471 / 13,617 | 382 / 269 |
-| engine | 5/6 | **6/6** | 18.5 / 10 | 11,134 / 7,336 | 662 / 283 |
+| arm | passes O / M | stripped O / M | Fisher p | pass-only median turns O / M | tokens O / M | wall s O / M |
+|---|---|---|---|---|---|---|
+| baseline | 2/6 / 3/6 | **3/6 / 3/6** | 1.0 | 23.5 / 30 | 6,682 / 18,517 | 323 / 380 |
+| engine | 5/6 / 6/6 | 5/6 / 6/6 | 1.0 | 17 / 10 | 10,737 / 7,336 | 657 / 283 |
 
-Decode speed at k = 3: Ornith 21.9 tok/s, Mellum 57.1 tok/s. The whole
-night took 2,800 s for Ornith and 1,514 s for Mellum. All three Mellum
-baseline losses are the two pathologies below: two ended on an announced,
-untaken action before the implementation was written (`NO_PATCH`, and a
-tests-only patch the grader could not run), and one burned its 72 turns in
-a `ruff` import-sort loop. Mellum baseline committed 0/6 against Ornith's
-6/6. No Mellum engine cell lost to either: the engine ends the attempt on a
-passing self-test and forbids the commit itself. n = 6 per arm; counts,
-not rates.
+- **Pass counts do not separate the models.** Ornith's one `unavailable`
+  baseline cell was refused for touching `tools/conftest.py` and passes
+  with that path stripped, so baseline is 3/6 each. Engine 6/6 vs 5/6 is
+  p = 1.0.
+- **Cost splits by arm.** On passing cells, bare Mellum is slower and uses
+  2.8 times Ornith's tokens; under the engine it uses fewer turns, tokens
+  and wall time. All-cell medians hid the baseline direction, because
+  Mellum's losses were short and Ornith's was long.
+- **Wall time is confounded.** It includes tool time that differs by arm
+  (a full `self_test` run costs 60 to 100 s), contention from the other two
+  concurrent cells, and server state: the Ornith night ran on a server up
+  about 31 h, Mellum's on one started 2 h before.
+- **Decode speed is the robust result.** From the oMLX logs over each
+  night, per stream at k = 3: Ornith 21.9 tok/s, Mellum 57.1 tok/s; alone
+  (the n = 2 spikes) about 35 and 111. Prompt lengths are comparable and
+  neither quant carries MTP tensors, so neither was drafting.
+- **Commits: Ornith 6/6, Mellum 0/6 on baseline, p = 0.002.** The only
+  significant difference. It measures instruction following only: grading
+  diffs against the base commit, and the engine forbids commits.
+- **Repeats and churn are not comparable as totals.** Ornith's over-budget
+  baseline cell is unmeasured and counts zero. Excluding both budget cells:
+  repeats 1 vs 37, churn 12 vs 20. Mellum's repeats are mostly identical
+  `ruff check` runs; Ornith's commands rarely repeat verbatim.
+- **The defects.** Announce-then-stop ended 4 of 12 Mellum cells: 3
+  baseline (two before the implementation existed) and 1 engine cell,
+  `130353`, whose own tests were failing (`TESTS_FAILED` engine receipt) and
+  which passed only because the hidden overlay replaces the model's tests.
+  The third baseline loss is a 72-turn `ruff` import-sort loop. Both
+  over-budget cells held a passing tree. That the engine absorbs these
+  defects is consistent with the data, not shown by it.
+
+**What would make a model claim defensible:** Ornith rerun at n = 6 on a
+freshly started server before any wall-time claim; about 20 cells per arm
+per model before any pass-rate claim; a k = 1 run of each for per-request
+speed without the batching caveat.
 
 ## The cells
 
