@@ -266,8 +266,30 @@ here must be re-derived before it is cited in a plan." Archived at
     10 of those 12 were legitimate model-authored tests written from an
     assertion the prompt had already displayed. The overstatement was
     caught only on a later review pass, not by the person who ran the
-    block. (§3, "Two further corrections came from adversarial review,
-    not from me.")
+     block. (§3, "Two further corrections came from adversarial review,
+     not from me.")
+
+### Seen in the Mellum tool-surface probe (2026-09-22)
+
+*One checkpoint, one conversion, one machine, one server. The
+rendering-path control that would separate checkpoint from template has
+not run, so this is model behaviour observed once, not a settled cause.*
+
+20. *Status 2026-09-22: observed, not yet re-derived on a different
+    rendering path.*
+    **Tool-calling collapses as the tool surface widens.** The checkpoint
+    `JetBrains/swe-pi-m23-mix4s100-think-ae10k-init800-20260917-bulat-step-500`
+    (MLX 8-bit, oMLX 0.6.4, bundled `mlx_lm` 0.31.3), given the review-script
+    task text and 1–4 tool signatures five times per case, returned a valid
+    tool call 5/5 on a trivial one-tool weather prompt, 1/5 on the task text
+    with one or two tools, and 0/5 with three or four; two sampling variants
+    at four tools were also 0/5. The failures are 2,000-token length stops of
+    malformed `tool_call` JSON inside a text block, not parsed calls. Pi's
+    four-tool surface (`read,bash,edit,write`) therefore sits at 0/5, and both
+    isolated cells read `NO_PATCH` with 0 tool calls and a single 16,000-token
+    turn. No-tools controls write coherent code, so the quant is not globally
+    broken; a bf16 tool-call control was not run.
+    (`evidence/2026-09-22-mellum-tool-surface/README.md`, `raw/`)
 
 ## Where the fuller record lives
 

@@ -165,6 +165,13 @@ phase rows.
   gated record field. **Open, for R2 parity:** the Engine's one-replacement
   edit schema, its 3–4× prompt that lists carried files as writable, and
   derive admitting paths the grader rejects.
+- **Pathology counter blind to malformed tool-call text.** `summarize`'s
+  pathology block counts parsed `tool_calls` and tool-execution events, so a
+  cell that emits thousands of tokens of malformed `tool_call` JSON inside a
+  text block reports `invalid_tool_calls: 0`, `tool_calls: {}`, and
+  `tool_free_terminal_turns: 1` — indistinguishable from a plain refusal.
+  Observed on both Mellum cells (`evidence/2026-09-22-mellum-tool-surface/`);
+  a detector for tool-call-shaped text is not built.
 - **Arm parity:** the Engine's `DELIVER_TIMEOUT_SECONDS` is 1800 while the
   record's backstop is 3,000, so an Engine cell stops earlier than Baseline's.
   Fix before the first Engine record of release two; not a census defect.

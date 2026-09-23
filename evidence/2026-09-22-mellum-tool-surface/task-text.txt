@@ -1,0 +1,19 @@
+Task 9: The review script's pure core
+
+Files:
+- Create: `tools/review.py`, `tests/`
+
+Interfaces:
+- Produces: `review_path(root: Path, commit_range: str, model: str) -> Path` → `docs/reviews/<start>..<end>-<model-slug>.md`; `refuse_if_exists(path: Path) -> None` (raises `FileExistsError`); `provider_and_model(spec: str) -> tuple[str, str]` (`"zai/glm-5.3"` → `("zai", "glm-5.3")`); `build_prompt(diff: str, range_label: str) -> str`; `main(argv)` runs `pi -p --no-session --no-extensions --no-skills -nc --provider P --model M --exclude-tools write,edit PROMPT` and writes its stdout to the path. The `pi` call is the only subprocess and is not exercised in the default tier.
+
+Step 1: Failing tests
+
+Step 2: Run to verify failure — `uv run pytest tests/ -q` → `No module named 'tools.review'`
+
+Step 3: Implement
+
+Step 4: Pass — `uv run pytest tests/ -q` → 6 passed; `uv run ruff check` → clean.
+
+Step 5: Record and commit
+
+Message formats the acceptance suite asserts, match them exactly: provider_and_model raises ValueError when the spec has no slash, and the message contains the exact phrase `provider/model`. build_prompt(diff, range_label) returns text that contains range_label, the diff verbatim, and the exact words `Accept` and `itemized`. refuse_if_exists raises FileExistsError only when the path exists. review_path replaces every `/` in the model spec with `-`.
