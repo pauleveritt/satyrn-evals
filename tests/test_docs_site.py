@@ -111,3 +111,11 @@ def test_the_canonical_files_the_site_includes_are_present() -> None:
         "docs/remediations.md",
     ):
         assert (ROOT / rel).is_file(), rel
+
+
+def test_how_it_works_has_three_sections_and_diagrams() -> None:
+    text = (SITE / "how-it-works.md").read_text()
+    assert "## How agents work" in text
+    assert "## How the Engine works" in text
+    assert "## How Evals works" in text
+    assert text.count("```mermaid") >= 6
