@@ -1,0 +1,305 @@
+{
+  "record": "records/2026-09-23-spike-mellum-class-review-script-n6.json",
+  "record_sha256": "acdfb8bc1240f4d7c9ef714ea0a9d6769ff747a1c524e0742618df7bf8f28192",
+  "arm_sha256": {
+    "baseline": "8b6c87f54f46df7f888d0422e696be9b2d1e755274fbb40f9aef182abd410c58",
+    "engine": "2229be2bf1749f53a7d9907cea4eb27c5ff4d2c0adfd0e65c6b263e3cd1ba7d6"
+  },
+  "status": "complete",
+  "reason": null,
+  "night": "/Users/pauleveritt/satyrn-runs/2026-09-23-spike-mellum-class-review-script-n6",
+  "task": "selfhost-review-script",
+  "rung": "R1-plan",
+  "k": 3,
+  "n": 6,
+  "purpose": "development",
+  "arms": {
+    "baseline": {
+      "finished": 6,
+      "n": 6,
+      "code_counts": {
+        "OK": 4,
+        "NO_PATCH": 1,
+        "BUDGET_EXCEEDED": 1
+      },
+      "passes": 3,
+      "summary": "/Users/pauleveritt/satyrn-runs/2026-09-23-spike-mellum-class-review-script-n6/baseline/summary.json",
+      "infrastructure": [],
+      "contamination": {
+        "graded": 4,
+        "flagged": 0,
+        "clean": 4,
+        "unmeasured": 0
+      }
+    },
+    "engine": {
+      "finished": 6,
+      "n": 6,
+      "code_counts": {
+        "OK": 6
+      },
+      "passes": 6,
+      "summary": "/Users/pauleveritt/satyrn-runs/2026-09-23-spike-mellum-class-review-script-n6/engine/summary.json",
+      "infrastructure": [],
+      "contamination": {
+        "graded": 6,
+        "flagged": 0,
+        "clean": 6,
+        "unmeasured": 0
+      }
+    }
+  },
+  "cells": [
+    {
+      "slot": 0,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-review-script-20260923-124245-366691",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 1,
+      "arm": "engine",
+      "attempt_dir": "selfhost-review-script-20260923-124245-516199",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 2,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-review-script-20260923-124245-664127",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 3,
+      "arm": "engine",
+      "attempt_dir": "selfhost-review-script-20260923-124527-429821",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 4,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-review-script-20260923-125101-822836",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 5,
+      "arm": "engine",
+      "attempt_dir": "selfhost-review-script-20260923-125223-434257",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 6,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-review-script-20260923-125730-680229",
+      "code": "NO_PATCH",
+      "verdict": null,
+      "infrastructure": false
+    },
+    {
+      "slot": 7,
+      "arm": "engine",
+      "attempt_dir": "selfhost-review-script-20260923-125742-916424",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 8,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-review-script-20260923-125908-364414",
+      "code": "BUDGET_EXCEEDED",
+      "verdict": null,
+      "infrastructure": false
+    },
+    {
+      "slot": 9,
+      "arm": "engine",
+      "attempt_dir": "selfhost-review-script-20260923-125926-665606",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 10,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-review-script-20260923-130243-339071",
+      "code": "OK",
+      "verdict": "unavailable",
+      "infrastructure": false
+    },
+    {
+      "slot": 11,
+      "arm": "engine",
+      "attempt_dir": "selfhost-review-script-20260923-130353-154738",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    }
+  ],
+  "replaced": [],
+  "sittings": [
+    {
+      "record": "records/2026-09-23-spike-mellum-class-review-script-n6.json",
+      "started": "2026-09-23T12:42:45+00:00",
+      "k": 3,
+      "evals_head": "59c2a406dad507125564bf24d027e82938839145",
+      "preflight": {
+        "cell_user": "satyrn-cell",
+        "cells_root": "/Users/Shared/satyrn-cells",
+        "tolerated": [],
+        "pi_version": "0.85.1",
+        "unreadable_checked": [
+          "/Users/pauleveritt/projects/pauleveritt/satyrn-evals/.worktrees/mellum-tool-surface",
+          "/Users/pauleveritt/projects/pauleveritt/satyrn-evals/.worktrees/mellum-tool-surface/src/satyrn_evals/tasks",
+          "/Users/pauleveritt",
+          "/Users/pauleveritt/satyrn-runs"
+        ],
+        "hunt_root": "/",
+        "hunt_names": [
+          "known-broken.patch",
+          "known-good.patch",
+          "satyrn_evals",
+          "test_acceptance.py",
+          "test_doc_caps.py",
+          "test_hook_guard.py",
+          "test_launch.py",
+          "test_phase1_home.py",
+          "test_phase2_board.py",
+          "test_phase3_add.py",
+          "test_phase4_resolve_reopen.py",
+          "test_preflight_quiet.py",
+          "test_review.py",
+          "test_run_record.py",
+          "test_speed_probe.py"
+        ],
+        "hunt_hits": [],
+        "stale_processes": []
+      },
+      "engine_engine_self_test": {
+        "base_exit": 0,
+        "known_good_exit": 0,
+        "repair_base": false
+      },
+      "task_self_test": {
+        "base_exit": 0,
+        "known_good_exit": 0,
+        "repair_base": false
+      },
+      "model_server": {
+        "swe-pi-m23-mix4s100-think-ae10k-init800-20260917-bulat-step-500-mellum-MLX-8bit": {
+          "base_url": "http://127.0.0.1:8001"
+        }
+      },
+      "settings": {
+        "baseline": {
+          "arm_sha256": "5e6fc2923ec732b19c504aa1024b05624c73c8a4afa9afbe9c8f5084da869067",
+          "omlx_entry": {
+            "enable_thinking": true,
+            "force_sampling": false,
+            "is_default": false,
+            "is_pinned": false,
+            "max_context_window": 131072,
+            "max_tokens": 16000,
+            "min_p": 0.0,
+            "preserve_thinking": true,
+            "reasoning_parser": "qwen_3",
+            "temperature": 0.6,
+            "thinking_budget_enabled": false,
+            "top_k": 20,
+            "top_p": 0.95,
+            "trust_remote_code": false,
+            "turboquant_kv_enabled": false
+          },
+          "omlx_entry_sha256": "ebfb9a077b9029f82da798dfbcf4d5d9f7b668c74c121cb9bdf8c566e41660af",
+          "pi_entry": {
+            "contextWindow": 131072,
+            "cost": {
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "input": 0,
+              "output": 0
+            },
+            "id": "swe-pi-m23-mix4s100-think-ae10k-init800-20260917-bulat-step-500-mellum-MLX-8bit",
+            "input": [
+              "text"
+            ],
+            "maxTokens": 16000,
+            "name": "Mellum swe-pi m23 step-500 (MLX 8-bit, mellum class)",
+            "reasoning": true,
+            "samplingParams": {
+              "min_p": 0.0,
+              "presence_penalty": 0.0,
+              "repetition_penalty": 1.0,
+              "temperature": 0.6,
+              "top_k": 20,
+              "top_p": 0.95
+            }
+          },
+          "pi_entry_sha256": "70adac77f5fe2ba65b545b23b1c24150b96bd8191ea51b6d416cd908e7cf825f",
+          "pi_models": "satyrn-cell:/Users/satyrn-cell/.pi/agent/models.json"
+        },
+        "engine": {
+          "arm_sha256": "d5fa21b913ef407ebfdcb6b5572e97cc133ef74d5b5e0f116e34a8f6c6a203f5",
+          "omlx_entry": {
+            "enable_thinking": true,
+            "force_sampling": false,
+            "is_default": false,
+            "is_pinned": false,
+            "max_context_window": 131072,
+            "max_tokens": 16000,
+            "min_p": 0.0,
+            "preserve_thinking": true,
+            "reasoning_parser": "qwen_3",
+            "temperature": 0.6,
+            "thinking_budget_enabled": false,
+            "top_k": 20,
+            "top_p": 0.95,
+            "trust_remote_code": false,
+            "turboquant_kv_enabled": false
+          },
+          "omlx_entry_sha256": "ebfb9a077b9029f82da798dfbcf4d5d9f7b668c74c121cb9bdf8c566e41660af",
+          "pi_entry": {
+            "contextWindow": 131072,
+            "cost": {
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "input": 0,
+              "output": 0
+            },
+            "id": "swe-pi-m23-mix4s100-think-ae10k-init800-20260917-bulat-step-500-mellum-MLX-8bit",
+            "input": [
+              "text"
+            ],
+            "maxTokens": 16000,
+            "name": "Mellum swe-pi m23 step-500 (MLX 8-bit, mellum class)",
+            "reasoning": true,
+            "samplingParams": {
+              "min_p": 0.0,
+              "presence_penalty": 0.0,
+              "repetition_penalty": 1.0,
+              "temperature": 0.6,
+              "top_k": 20,
+              "top_p": 0.95
+            }
+          },
+          "pi_entry_sha256": "70adac77f5fe2ba65b545b23b1c24150b96bd8191ea51b6d416cd908e7cf825f",
+          "pi_models": "satyrn-cell:/Users/satyrn-cell/.pi/agent/models.json"
+        }
+      },
+      "ended": "2026-09-23T13:09:18+00:00",
+      "status": "complete",
+      "reason": null
+    }
+  ]
+}

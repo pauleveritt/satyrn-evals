@@ -1,0 +1,96 @@
+{
+  "model": "swe-pi-m23-mix4s100-think-ae10k-init800-20260917-bulat-step-500-mellum-MLX-8bit",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Task 9: The review script's pure core\n\nFiles:\n- Create: `tools/review.py`, `tests/`\n\nInterfaces:\n- Produces: `review_path(root: Path, commit_range: str, model: str) -> Path` \u2192 `docs/reviews/<start>..<end>-<model-slug>.md`; `refuse_if_exists(path: Path) -> None` (raises `FileExistsError`); `provider_and_model(spec: str) -> tuple[str, str]` (`\"zai/glm-5.3\"` \u2192 `(\"zai\", \"glm-5.3\")`); `build_prompt(diff: str, range_label: str) -> str`; `main(argv)` runs `pi -p --no-session --no-extensions --no-skills -nc --provider P --model M --exclude-tools write,edit PROMPT` and writes its stdout to the path. The `pi` call is the only subprocess and is not exercised in the default tier.\n\nStep 1: Failing tests\n\nStep 2: Run to verify failure \u2014 `uv run pytest tests/ -q` \u2192 `No module named 'tools.review'`\n\nStep 3: Implement\n\nStep 4: Pass \u2014 `uv run pytest tests/ -q` \u2192 6 passed; `uv run ruff check` \u2192 clean.\n\nStep 5: Record and commit\n\nMessage formats the acceptance suite asserts, match them exactly: provider_and_model raises ValueError when the spec has no slash, and the message contains the exact phrase `provider/model`. build_prompt(diff, range_label) returns text that contains range_label, the diff verbatim, and the exact words `Accept` and `itemized`. refuse_if_exists raises FileExistsError only when the path exists. review_path replaces every `/` in the model spec with `-`.\n"
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "read",
+        "description": "Read a file",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "bash",
+        "description": "Run a shell command",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "command"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "edit",
+        "description": "Edit a file",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "old": {
+              "type": "string"
+            },
+            "new": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "old",
+            "new"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "write",
+        "description": "Write a file",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "content"
+          ]
+        }
+      }
+    }
+  ],
+  "max_tokens": 2000
+}

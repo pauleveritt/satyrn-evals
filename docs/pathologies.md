@@ -266,8 +266,83 @@ here must be re-derived before it is cited in a plan." Archived at
     10 of those 12 were legitimate model-authored tests written from an
     assertion the prompt had already displayed. The overstatement was
     caught only on a later review pass, not by the person who ran the
-    block. (§3, "Two further corrections came from adversarial review,
-    not from me.")
+     block. (§3, "Two further corrections came from adversarial review,
+     not from me.")
+
+### Seen in the Mellum tool-surface probe (2026-09-22)
+
+*One checkpoint, one conversion, one machine, one server, n = 5 per case.
+The rendering-path control that would separate checkpoint from template has
+not run, so this is model behaviour observed once, not a settled cause.*
+
+20. *Status 2026-09-23: resolved as a serving misconfiguration. The
+    snapshot's config declares `qwen3_moe`, so the runtime dropped Mellum's
+    1,024-token sliding window and YaRN. Reconverted as `mellum`, the
+    four-tool thinking-on case is 5/5 at a 16,000-token budget and no
+    degenerate output remains. The thinking-path reading below is
+    superseded. Lesson: check `model_type` against the released model's
+    config before diagnosing behaviour
+    (`evidence/2026-09-22-mellum-tool-surface/`, "Rerun on the mellum model
+    class").*
+    **Tool-calling collapses on the real task text with thinking on, at any
+    tool count.** The checkpoint
+    `JetBrains/swe-pi-m23-mix4s100-think-ae10k-init800-20260917-bulat-step-500`
+    (MLX 8-bit, oMLX 0.6.4, bundled `mlx_lm` 0.31.3), five runs per case,
+    returned a valid tool call (parsed call, `tool_calls` finish, under the
+    token cap) 5/5 on a trivial weather prompt with one tool and 5/5 with
+    four; on the review-script task text with thinking on it returned 0/5,
+    1/5, 0/5, 0/5 for one to four tools — not separable at n = 5 — plus one
+    call the server salvaged from a 2,000-token degenerate response. The same
+    task text and four tools with `enable_thinking` false was 5/5, each call
+    23 tokens. The failures are 2,000-token length stops of `tool_call`-shaped
+    fragments laced with repeated `</think>` tokens. Both isolated Pi cells
+    read `NO_PATCH` with 0 tool calls and a single 16,000-token turn. An
+    earlier write-up read this as "collapses as the tool surface widens";
+    the data never supported that. A bf16 control was not run.
+    (`evidence/2026-09-22-mellum-tool-surface/README.md`, `raw/`)
+
+21. **Announces the next action in its reasoning, then ends the turn without
+    it.** The same Mellum checkpoint, served correctly as `mellum`, in two
+    bare-Pi `satyrn-evals` cells on the review-script task (thinking on,
+    16,000-token turns). Both passed the hidden grader, and both ended the
+    same way: the last turn's reasoning closes with a plan ("Now, let's
+    perform the edit." / "Let's create a commit.") and the turn stops with
+    `stopReason` `stop`, no tool call, and an empty visible reply. One cell
+    left `ruff` failing on an import-sort error it had just read; neither
+    made the commit the task's step 5 asks for, where Ornith 1.5 9B
+    committed in 7 of 8 baseline cells on this task. The harness counts
+    this as a clean self-stop, so nothing flags it. n = 2, one task.
+    Observed 2026-09-23 (`records/2026-09-23-spike-mellum-class-review-script-mellum.json`).
+    *n = 6 update, same day, corrected after review:* it ended 4 of 12
+    more Mellum cells. Three were baseline cells, and two of those stopped
+    before writing the implementation, costing the patch. One was an engine
+    cell that stopped with its own tests failing and passed only because
+    the hidden grader replaces the model's tests. So the engine did not
+    prevent it; that the engine absorbs it is untested.
+
+22. **Fixes the file it was not told about.** Also seen in the second
+    cell: `ruff` reported an import-sort error in `tests/test_review.py`
+    four times. Three times the model re-sorted the import block of
+    `tools/review.py` instead, flipping its order back and forth, and its
+    one edit to the test file left it still unsorted. It escaped only by
+    running `ruff check --fix`. Eight repeated commands and
+    four churned edits came from this loop. n = 1.
+    *n = 6 update, same day:* one more baseline cell spent its whole 72-turn
+    budget in a `ruff` import-sort loop, 18 `ruff check` runs on the right
+    file this time, never trying `--fix`. The general defect: it cannot
+    satisfy an import-sort rule by hand. Its tree already passed the
+    hidden tests when the budget ran out, so the loop alone cost the cell.
+
+23. **A test run of an early, buggy version leaves an artifact in the tree,
+    and the model never notices it.** Mellum swe-pi step-500, served as
+    `mellum`, in a satyrn-evals Engine cell on the review-script task
+    (record `2026-09-23-spike-mellum-class-review-script-redstop`, cell
+    `174223-301364`). Its first `review_path` ignored the root argument, so
+    its own `main` test wrote `docs/reviews/abc..def-zai-glm-5.3.md` into the
+    repository on the first pytest run. Two turns later it fixed the code and
+    the test to use the root, but never looked for or removed the file. The
+    grader refused the patch for touching a non-source path. With that path
+    stripped, it passes. n = 1.
 
 ## Where the fuller record lives
 

@@ -1,0 +1,137 @@
+{
+  "night": "/Users/pauleveritt/satyrn-runs/2026-09-23-spike-mellum-class-review-script-n6",
+  "cells": [
+    {
+      "attempt": "selfhost-review-script-20260923-124245-366691",
+      "task": "selfhost-review-script",
+      "arm": "baseline",
+      "code": "OK",
+      "delivered_pass": true,
+      "delivered_pass_stripped": true,
+      "stripped_paths": [],
+      "undelivered_tree": null,
+      "undelivered_tree_stripped_paths": []
+    },
+    {
+      "attempt": "selfhost-review-script-20260923-124245-516199",
+      "task": "selfhost-review-script",
+      "arm": "engine",
+      "code": "OK",
+      "delivered_pass": true,
+      "delivered_pass_stripped": true,
+      "stripped_paths": [],
+      "undelivered_tree": null,
+      "undelivered_tree_stripped_paths": []
+    },
+    {
+      "attempt": "selfhost-review-script-20260923-124245-664127",
+      "task": "selfhost-review-script",
+      "arm": "baseline",
+      "code": "OK",
+      "delivered_pass": true,
+      "delivered_pass_stripped": true,
+      "stripped_paths": [],
+      "undelivered_tree": null,
+      "undelivered_tree_stripped_paths": []
+    },
+    {
+      "attempt": "selfhost-review-script-20260923-124527-429821",
+      "task": "selfhost-review-script",
+      "arm": "engine",
+      "code": "OK",
+      "delivered_pass": true,
+      "delivered_pass_stripped": true,
+      "stripped_paths": [],
+      "undelivered_tree": null,
+      "undelivered_tree_stripped_paths": []
+    },
+    {
+      "attempt": "selfhost-review-script-20260923-125101-822836",
+      "task": "selfhost-review-script",
+      "arm": "baseline",
+      "code": "OK",
+      "delivered_pass": true,
+      "delivered_pass_stripped": true,
+      "stripped_paths": [],
+      "undelivered_tree": null,
+      "undelivered_tree_stripped_paths": []
+    },
+    {
+      "attempt": "selfhost-review-script-20260923-125223-434257",
+      "task": "selfhost-review-script",
+      "arm": "engine",
+      "code": "OK",
+      "delivered_pass": true,
+      "delivered_pass_stripped": true,
+      "stripped_paths": [],
+      "undelivered_tree": null,
+      "undelivered_tree_stripped_paths": []
+    },
+    {
+      "attempt": "selfhost-review-script-20260923-125730-680229",
+      "task": "selfhost-review-script",
+      "arm": "baseline",
+      "code": "NO_PATCH",
+      "delivered_pass": false,
+      "delivered_pass_stripped": false,
+      "stripped_paths": [],
+      "undelivered_tree": null,
+      "undelivered_tree_stripped_paths": []
+    },
+    {
+      "attempt": "selfhost-review-script-20260923-125742-916424",
+      "task": "selfhost-review-script",
+      "arm": "engine",
+      "code": "OK",
+      "delivered_pass": true,
+      "delivered_pass_stripped": true,
+      "stripped_paths": [],
+      "undelivered_tree": null,
+      "undelivered_tree_stripped_paths": []
+    },
+    {
+      "attempt": "selfhost-review-script-20260923-125908-364414",
+      "task": "selfhost-review-script",
+      "arm": "baseline",
+      "code": "BUDGET_EXCEEDED",
+      "delivered_pass": false,
+      "delivered_pass_stripped": false,
+      "stripped_paths": [],
+      "undelivered_tree": "yes",
+      "undelivered_tree_stripped_paths": []
+    },
+    {
+      "attempt": "selfhost-review-script-20260923-125926-665606",
+      "task": "selfhost-review-script",
+      "arm": "engine",
+      "code": "OK",
+      "delivered_pass": true,
+      "delivered_pass_stripped": true,
+      "stripped_paths": [],
+      "undelivered_tree": null,
+      "undelivered_tree_stripped_paths": []
+    },
+    {
+      "attempt": "selfhost-review-script-20260923-130243-339071",
+      "task": "selfhost-review-script",
+      "arm": "baseline",
+      "code": "OK",
+      "delivered_pass": false,
+      "delivered_pass_stripped": false,
+      "stripped_paths": [],
+      "undelivered_tree": null,
+      "undelivered_tree_stripped_paths": []
+    },
+    {
+      "attempt": "selfhost-review-script-20260923-130353-154738",
+      "task": "selfhost-review-script",
+      "arm": "engine",
+      "code": "OK",
+      "delivered_pass": true,
+      "delivered_pass_stripped": true,
+      "stripped_paths": [],
+      "undelivered_tree": null,
+      "undelivered_tree_stripped_paths": []
+    }
+  ]
+}
