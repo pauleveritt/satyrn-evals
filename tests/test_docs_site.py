@@ -73,6 +73,12 @@ def test_every_site_page_is_in_the_navigation() -> None:
     assert set(pages) <= set(nav)
 
 
+def test_every_nav_entry_has_a_page() -> None:
+    nav = _nav_paths(_config()["project"]["nav"])
+    pages = {page.relative_to(SITE).as_posix() for page in _site_pages()}
+    assert set(nav) <= pages, sorted(set(nav) - pages)
+
+
 def test_the_config_declares_the_mermaid_fence() -> None:
     ext = _config()["project"]["markdown_extensions"]
     fences = ext.get("pymdownx", {}).get("superfences", {}).get("custom_fences", [])

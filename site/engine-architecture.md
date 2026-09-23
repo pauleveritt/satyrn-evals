@@ -19,3 +19,5 @@ The pieces are the TypeScript adapter that exposes `/implement` inside Pi,
 and the Python core that does the work. Terms are in the engine
 [glossary](engine-glossary.md); the product is described on
 [About Satyrn Engine](engine.md).
+
+Describes the engine synced at `78ab87dbab3381dd585986c43fd49e6e4974f6b6`.
