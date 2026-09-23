@@ -8560,3 +8560,4 @@
 | site/remediations.md | created in release-one |
 | site/contributing.md | created in release-one |
 | site/glossary.md | created in release-one |
+| .github/workflows/deploy.yml | created in release-one |
