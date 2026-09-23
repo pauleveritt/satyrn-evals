@@ -216,11 +216,12 @@ Run: `uv run pytest tests/test_docs_site.py -q`
 Run: `uv run --group docs zensical build --strict`
 Expected: all pass (the nav's remaining missing files still fail the build — ignore until their tasks land; if the build fails here on a *missing page other than the ones this task has not created yet*, stop and re-read the nav).
 
-- [ ] **Step 5: Provenance + commit**
+- [ ] **Step 5: Commit**
+
+`index.md` already has a provenance row — do not add another.
 
 ```bash
-uv run python tools/provenance.py new site/index.md
-git add site/index.md PROVENANCE.md
+git add site/index.md
 git commit -m "site: public home page"
 ```
 
