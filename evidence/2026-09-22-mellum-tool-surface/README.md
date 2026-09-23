@@ -174,6 +174,24 @@ unmeasured: whether the mellum conversion completes the task in a cell,
 which needs the two n = 2 cells rerun on the new model id. The bf16 control
 is no longer needed for this question.
 
+**Cells on the mellum class (2026-09-23).** The two n = 2 cells were rerun
+with only the model id changed (`arms/baseline-mellum-class-swe-pi.json`,
+`records/2026-09-23-spike-mellum-class-review-script-mellum.json`). Both
+passed the hidden grader:
+
+| cell | verdict | turns | output tokens | tool calls | repeats | churn |
+|---|---|---|---|---|---|---|
+| `121635` | pass | 8 | 9,701 | 7 | 0 | 0 |
+| `121830` | pass | 25 | 14,687 | 24 | 8 | 4 |
+
+Both ended by announcing an action in their reasoning and stopping without
+it: one left `ruff` failing, and neither committed. The second cell spent 11
+turns editing the wrong file's imports. These are pathologies 21 and 22 in
+`docs/pathologies.md`. Ornith 1.5 9B on this task, for scale only: the
+2026-09-22 spike pair (same record settings) scored 0/2; the 2026-09-21
+comparison (48k tokens, 72 turns) scored Baseline 2/6 and Engine 5/6. At
+n = 2 these counts do not rank the models.
+
 ## The cells
 
 Two `purpose=development` records, bare Pi, `selfhost-review-script` R1-plan,

@@ -301,6 +301,27 @@ not run, so this is model behaviour observed once, not a settled cause.*
     the data never supported that. A bf16 control was not run.
     (`evidence/2026-09-22-mellum-tool-surface/README.md`, `raw/`)
 
+21. **Announces the next action in its reasoning, then ends the turn without
+    it.** The same Mellum checkpoint, served correctly as `mellum`, in two
+    bare-Pi `satyrn-evals` cells on the review-script task (thinking on,
+    16,000-token turns). Both passed the hidden grader, and both ended the
+    same way: the last turn's reasoning closes with a plan ("Now, let's
+    perform the edit." / "Let's create a commit.") and the turn stops with
+    `stopReason` `stop`, no tool call, and an empty visible reply. One cell
+    left `ruff` failing on an import-sort error it had just read; neither
+    made the commit the task's step 5 asks for, where Ornith 1.5 9B
+    committed in 7 of 8 baseline cells on this task. The harness counts
+    this as a clean self-stop, so nothing flags it. n = 2, one task.
+    Observed 2026-09-23 (`records/2026-09-23-spike-mellum-class-review-script-mellum.json`).
+
+22. **Fixes the file it was not told about.** Also seen in the second
+    cell: `ruff` reported an import-sort error in `tests/test_review.py`
+    four times. Three times the model re-sorted the import block of
+    `tools/review.py` instead, flipping its order back and forth, and its
+    one edit to the test file left it still unsorted. It escaped only by
+    running `ruff check --fix`. Eight repeated commands and
+    four churned edits came from this loop. n = 1.
+
 ## Where the fuller record lives
 
 A sibling project, `ds4-engine`, keeps a cross-project pathology catalog
