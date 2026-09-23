@@ -55,6 +55,17 @@ def test_the_landing_page_links_the_numbers_page_first() -> None:
     assert links and links[0] == "numbers.md"
 
 
+def test_the_landing_page_carries_the_public_copy() -> None:
+    text = (SITE / "index.md").read_text()
+    for fragment in (
+        "start with evidence",
+        "Part of the SatyrnAI project",
+        "Laptop AI",
+        "petri dish",
+    ):
+        assert fragment in text, fragment
+
+
 def test_every_site_page_is_in_the_navigation() -> None:
     nav = _nav_paths(_config()["project"]["nav"])
     pages = [page.relative_to(SITE).as_posix() for page in _site_pages()]
