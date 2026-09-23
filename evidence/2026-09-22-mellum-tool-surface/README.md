@@ -40,49 +40,85 @@ chat template (oMLX renders it), the task text the cells received
 (`task-text.txt`), and 1–4 tool signatures. Each case is run **5 times**
 (the model is stochastic); every request body and verbatim response is
 under `raw/<case>/run<N>.{request,response}.json`, with `raw/summary.json`
-holding the tally. "Valid tool call" means the response's `message.tool_calls`
-is non-empty. No transcript, no cell, no harness: this is the server path
-alone.
+holding the tally. No transcript, no cell, no harness: this is the server
+path alone.
+
+**Valid tool call** means `message.tool_calls` is non-empty **and**
+`finish_reason` is `tool_calls` **and** `completion_tokens` is below the
+request's `max_tokens`. A run with `tool_calls` that fails either other test
+is counted **salvaged**: the server's parser pulled a call out of a response
+that ran to the cap. The first version of this note counted any non-empty
+`tool_calls`, which scored `02` run5 — 2,000 tokens, 3,808 characters of
+garbage content, and a call `bash` with `{"command": "bash"}` — as a success.
+Cases 01–09 were re-tallied from the unchanged response files
+(`probe.py --tally-only`); cases 10–11 were run 2026-09-23 11:06 UTC.
 
 ## Results (n = 5 per case)
 
-| case | tools | sampling | valid tool calls | finish reasons |
-|---|---|---|---|---|
-| `01_weather_one_tool` | 1 (get_weather) | server | **5/5** | tool_calls 5 |
-| `02_task_text_one_tool` | 1 (bash) | server | 1/5 | length 4, tool_calls 1 |
-| `03_two_tools` | 2 | server | 1/5 | length 4, tool_calls 1 |
-| `04_three_tools` | 3 | server | **0/5** | length 5 |
-| `05_four_tools` | 4 | server | **0/5** | length 5 |
-| `06_four_tools_temp1_topk0` | 4 | temp 1.0, top_p 1.0, top_k 0 | 0/5 | length 5 |
-| `07_four_tools_reppen1_1` | 4 | temp 0.6, rep_pen 1.1 | 0/5 | length 5 |
-| `08_no_tools_coding_short` | 0 | server | (n/a) | stop 5 |
-| `09_no_tools_coding_long` | 0 | server | (n/a) | stop 4, length 1 |
+| case | prompt | tools | sampling | valid | salvaged | finish reasons |
+|---|---|---|---|---|---|---|
+| `01_weather_one_tool` | weather | 1 (get_weather) | server | **5/5** | 0 | tool_calls 5 |
+| `02_task_text_one_tool` | task | 1 (bash) | server | **0/5** | 1 | length 4, tool_calls 1 |
+| `03_two_tools` | task | 2 | server | 1/5 | 0 | length 4, tool_calls 1 |
+| `04_three_tools` | task | 3 | server | **0/5** | 0 | length 5 |
+| `05_four_tools` | task | 4 | server | **0/5** | 0 | length 5 |
+| `06_four_tools_temp1_topk0` | task | 4 | temp 1.0, top_p 1.0, top_k 0 | 0/5 | 0 | length 5 |
+| `07_four_tools_reppen1_1` | task | 4 | temp 0.6, rep_pen 1.1 | 0/5 | 0 | length 5 |
+| `08_no_tools_coding_short` | code | 0 | server | (n/a) | – | stop 5 |
+| `09_no_tools_coding_long` | code | 0 | server | (n/a) | – | stop 4, length 1 |
+| `10_weather_four_tools` | weather | 4 (get_weather, read, bash, edit) | server | **5/5** | 0 | tool_calls 5 |
+| `11_four_tools_no_thinking` | task | 4 | server, `enable_thinking` false | **5/5** | 0 | tool_calls 5 |
 
-The degenerate responses are 2,000-token length stops: raw `tool_call`-shaped
-JSON fragments and repeated `</think>` / punctuation inside a text block, never
-a parsed call (see any `raw/04_*` or `raw/05_*` response). The no-tools coding
+`09`'s one length stop (run1) is coherent reasoning about the answer cut off
+at the 800-token cap, not degeneration.
+
+The degenerate responses are 2,000-token length stops: ~2,300 characters of
+split-off reasoning, then a content block of `tool_call`-shaped JSON
+fragments with the `</think>` token repeated inside it (24–142 times per
+`05` response), never a parsed call. The one valid task-text call with
+thinking on (`03` run3) is 623 tokens, empty content, `mkdir -p tools
+tests`. Every `11` call is 23 tokens with empty content (`read
+tools/review.py` ×2, `mkdir -p tools tests` ×3). The no-tools coding
 controls return correct code and stop normally.
+
+`11` sends `chat_template_kwargs: {"enable_thinking": false}`: oMLX takes the
+toggle from there, a request value overrides the model setting (`true`),
+and the snapshot's `chat_template.jinja` branches on it.
 
 ## Reading
 
-**Leading hypothesis, not a root cause:** this checkpoint's tool-calling
-degrades sharply as the number of tool signatures grows — reliable only on a
-trivial one-tool prompt, already unreliable (1/5) on the real task with one
-or two tools, and absent (0/5) with three or four — independent of the two
-sampling variants tried. Pi's four-tool surface sits in the 0/5 region.
+**Supported at n = 5:** the trivial weather prompt works 5/5 with one tool
+and with four (`01`, `10`); the real task text with thinking on collapses at
+every tool count tried — 0/5, 1/5, 0/5, 0/5 for one to four tools — and
+those four counts are **not separable** from each other at n = 5. The same
+task text with the same four tools and thinking off is 5/5 (`11`).
 
-**The discriminator is not yet run.** The template path and the checkpoint
-path are not separated here. The cheap test is to re-render the same
-multi-tool prompt through a different path — a newer `mlx_lm`, or the
-model's intended `json_tools` format rather than the snapshot template as
-oMLX renders it — and re-probe. Until that runs, "checkpoint" versus
-"template rendering" is undecided.
+**Not supported:** that the collapse grows with the tool surface. The first
+version of this note said so, on a 1/5-vs-0/5 difference that included a
+salvaged call. Case `01` also differs from `02` in *both* the prompt and the
+tool, so `01`–`05` alone could not say whether tool count, prompt length, or
+their combination drove it. `10` removes tool count as a sufficient cause on
+the trivial prompt; `11` points at the thinking path on the task text.
+
+**Leading hypothesis, not a root cause:** with thinking on, this checkpoint
+does not close its reasoning cleanly on the task text and degenerates into
+`</think>`-laced tool-call fragments; with thinking off it calls a tool
+immediately. Two single controls at n = 5 each, one server, one conversion —
+enough to redirect the next probe, not to settle the cause.
+
+**Next, in order.** (1) Thinking off at one tool (`02` with
+`enable_thinking` false) and thinking on with a larger `max_tokens`, to
+separate "thinking breaks tool emission" from "thinking runs out of budget".
+(2) Then the rendering-path discriminator: re-render the multi-tool prompt
+through a different path — a newer `mlx_lm`, or the model's intended
+`json_tools` format rather than the snapshot template as oMLX renders it —
+and re-probe. Until that runs, "checkpoint" versus "template rendering" is
+undecided.
 
 **What is *not* shown:** that the Q8 conversion left tool-calling intact.
-The no-tools controls show the quant is not globally broken (it writes
-coherent code), but only a bf16 or unquantized control **at 2+ tools** would
-separate quantisation damage from a checkpoint/template limitation. That
-control was not run.
+The no-tools controls and `11` show the quant is not globally broken, but
+only a bf16 control with thinking on would separate quantisation damage from
+a checkpoint/template limitation. That control was not run.
 
 ## The cells
 
@@ -135,7 +171,9 @@ oMLX now names the Mellum id as its default model, so `omlx launch` without
 ## Recompute
 
 ```bash
-# server must be up with the model registered; task-text.txt is the cell prompt
+# task-text.txt (beside probe.py) is the cell prompt
 cd evidence/2026-09-22-mellum-tool-surface
-python3 probe.py        # rewrites raw/ and prints the per-case tally
+uv run python probe.py --tally-only   # no server: re-tally raw/ into summary.json
+uv run python probe.py                # server up, model registered: rewrites raw/
+uv run python probe.py --cases 10_weather_four_tools 11_four_tools_no_thinking
 ```

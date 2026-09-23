@@ -271,24 +271,27 @@ here must be re-derived before it is cited in a plan." Archived at
 
 ### Seen in the Mellum tool-surface probe (2026-09-22)
 
-*One checkpoint, one conversion, one machine, one server. The
-rendering-path control that would separate checkpoint from template has
+*One checkpoint, one conversion, one machine, one server, n = 5 per case.
+The rendering-path control that would separate checkpoint from template has
 not run, so this is model behaviour observed once, not a settled cause.*
 
-20. *Status 2026-09-22: observed, not yet re-derived on a different
-    rendering path.*
-    **Tool-calling collapses as the tool surface widens.** The checkpoint
+20. *Status 2026-09-23: observed; tool count ruled out as sufficient, the
+    thinking path implicated, cause not settled.*
+    **Tool-calling collapses on the real task text with thinking on, at any
+    tool count.** The checkpoint
     `JetBrains/swe-pi-m23-mix4s100-think-ae10k-init800-20260917-bulat-step-500`
-    (MLX 8-bit, oMLX 0.6.4, bundled `mlx_lm` 0.31.3), given the review-script
-    task text and 1–4 tool signatures five times per case, returned a valid
-    tool call 5/5 on a trivial one-tool weather prompt, 1/5 on the task text
-    with one or two tools, and 0/5 with three or four; two sampling variants
-    at four tools were also 0/5. The failures are 2,000-token length stops of
-    malformed `tool_call` JSON inside a text block, not parsed calls. Pi's
-    four-tool surface (`read,bash,edit,write`) therefore sits at 0/5, and both
-    isolated cells read `NO_PATCH` with 0 tool calls and a single 16,000-token
-    turn. No-tools controls write coherent code, so the quant is not globally
-    broken; a bf16 tool-call control was not run.
+    (MLX 8-bit, oMLX 0.6.4, bundled `mlx_lm` 0.31.3), five runs per case,
+    returned a valid tool call (parsed call, `tool_calls` finish, under the
+    token cap) 5/5 on a trivial weather prompt with one tool and 5/5 with
+    four; on the review-script task text with thinking on it returned 0/5,
+    1/5, 0/5, 0/5 for one to four tools — not separable at n = 5 — plus one
+    call the server salvaged from a 2,000-token degenerate response. The same
+    task text and four tools with `enable_thinking` false was 5/5, each call
+    23 tokens. The failures are 2,000-token length stops of `tool_call`-shaped
+    fragments laced with repeated `</think>` tokens. Both isolated Pi cells
+    read `NO_PATCH` with 0 tool calls and a single 16,000-token turn. An
+    earlier write-up read this as "collapses as the tool surface widens";
+    the data never supported that. A bf16 control was not run.
     (`evidence/2026-09-22-mellum-tool-surface/README.md`, `raw/`)
 
 ## Where the fuller record lives

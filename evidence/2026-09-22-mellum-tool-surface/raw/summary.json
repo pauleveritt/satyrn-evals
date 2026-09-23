@@ -3,6 +3,7 @@
     "case": "01_weather_one_tool",
     "runs": 5,
     "valid_tool_calls": 5,
+    "salvaged_tool_calls": 0,
     "finish_reasons": {
       "tool_calls": 5
     }
@@ -10,7 +11,8 @@
   {
     "case": "02_task_text_one_tool",
     "runs": 5,
-    "valid_tool_calls": 1,
+    "valid_tool_calls": 0,
+    "salvaged_tool_calls": 1,
     "finish_reasons": {
       "length": 4,
       "tool_calls": 1
@@ -20,6 +22,7 @@
     "case": "03_two_tools",
     "runs": 5,
     "valid_tool_calls": 1,
+    "salvaged_tool_calls": 0,
     "finish_reasons": {
       "length": 4,
       "tool_calls": 1
@@ -29,6 +32,7 @@
     "case": "04_three_tools",
     "runs": 5,
     "valid_tool_calls": 0,
+    "salvaged_tool_calls": 0,
     "finish_reasons": {
       "length": 5
     }
@@ -37,6 +41,7 @@
     "case": "05_four_tools",
     "runs": 5,
     "valid_tool_calls": 0,
+    "salvaged_tool_calls": 0,
     "finish_reasons": {
       "length": 5
     }
@@ -45,6 +50,7 @@
     "case": "06_four_tools_temp1_topk0",
     "runs": 5,
     "valid_tool_calls": 0,
+    "salvaged_tool_calls": 0,
     "finish_reasons": {
       "length": 5
     }
@@ -53,6 +59,7 @@
     "case": "07_four_tools_reppen1_1",
     "runs": 5,
     "valid_tool_calls": 0,
+    "salvaged_tool_calls": 0,
     "finish_reasons": {
       "length": 5
     }
@@ -61,6 +68,7 @@
     "case": "08_no_tools_coding_short",
     "runs": 5,
     "valid_tool_calls": 0,
+    "salvaged_tool_calls": 0,
     "finish_reasons": {
       "stop": 5
     }
@@ -69,9 +77,28 @@
     "case": "09_no_tools_coding_long",
     "runs": 5,
     "valid_tool_calls": 0,
+    "salvaged_tool_calls": 0,
     "finish_reasons": {
       "length": 1,
       "stop": 4
+    }
+  },
+  {
+    "case": "10_weather_four_tools",
+    "runs": 5,
+    "valid_tool_calls": 5,
+    "salvaged_tool_calls": 0,
+    "finish_reasons": {
+      "tool_calls": 5
+    }
+  },
+  {
+    "case": "11_four_tools_no_thinking",
+    "runs": 5,
+    "valid_tool_calls": 5,
+    "salvaged_tool_calls": 0,
+    "finish_reasons": {
+      "tool_calls": 5
     }
   }
 ]

@@ -2,10 +2,22 @@
 
 Run against a live oMLX server on 127.0.0.1:8001 serving the converted model.
 Each case is repeated RUNS times (the model is stochastic); every request body
-and verbatim response is written under ./raw/<case>/run<N>.json, and a per-case
-valid-tool-call tally is printed and written to ./raw/summary.json.
+and verbatim response is written under ./raw/<case>/run<N>.request.json and
+./raw/<case>/run<N>.response.json, and a per-case tally is printed and written
+to ./raw/summary.json.
+
+A run is a *valid* tool call only if ``message.tool_calls`` is non-empty AND
+``finish_reason == "tool_calls"`` AND ``completion_tokens`` is below the
+request's ``max_tokens``. A run with ``tool_calls`` that fails either other
+condition is counted as ``salvaged_tool_calls``: the server's parser pulled a
+call out of a response that ran to the token cap.
+
+    uv run python probe.py                      # run every case, re-tally
+    uv run python probe.py --cases 10_x 11_y    # run only the named cases
+    uv run python probe.py --tally-only         # no server: re-tally raw/
 """
 
+import argparse
 import json
 import subprocess
 import sys
@@ -16,7 +28,7 @@ URL = "http://127.0.0.1:8001/v1/chat/completions"
 OUT = Path(__file__).parent / "raw"
 RUNS = 5
 
-TASK_TEXT = Path("/private/tmp/task-text.txt").read_text()
+TASK_TEXT = (Path(__file__).parent / "task-text.txt").read_text()
 
 WEATHER = {
     "type": "function",
@@ -45,41 +57,82 @@ CASES = {
     "07_four_tools_reppen1_1": {"messages": [{"role": "user", "content": TASK_TEXT}], "tools": [READ, BASH, EDIT, WRITE], "max_tokens": 2000, "temperature": 0.6, "top_p": 0.95, "top_k": 20, "repetition_penalty": 1.1},
     "08_no_tools_coding_short": {"messages": [{"role": "user", "content": "Write a Python function provider_and_model(spec) that splits on the first slash and raises ValueError if there is no slash. Reply with only the code."}], "max_tokens": 800},
     "09_no_tools_coding_long": {"messages": [{"role": "user", "content": "Implement a pure Python function build_prompt(diff, range_label) that returns text containing range_label, the diff verbatim, and the words Accept and itemized. Reply with only the code."}], "max_tokens": 800},
+    # Control: tool count without the task text (case 01's prompt, case 05's tools).
+    "10_weather_four_tools": {"messages": [{"role": "user", "content": "What is the weather in Paris? Use the get_weather tool."}], "tools": [WEATHER, READ, BASH, EDIT], "tool_choice": "auto", "max_tokens": 200},
+    # Control: case 05 with thinking off. oMLX reads enable_thinking from
+    # chat_template_kwargs; a request value overrides the model setting (true).
+    "11_four_tools_no_thinking": {"messages": [{"role": "user", "content": TASK_TEXT}], "tools": [READ, BASH, EDIT, WRITE], "max_tokens": 2000, "chat_template_kwargs": {"enable_thinking": False}},
 }
 
 
-def main() -> int:
-    OUT.mkdir(exist_ok=True)
-    summary = []
-    for name, case in CASES.items():
-        d = OUT / name
-        d.mkdir(exist_ok=True)
-        valid = 0
-        finishes: dict[str, int] = {}
-        for run in range(1, RUNS + 1):
-            body = {"model": MODEL, **case}
-            (d / f"run{run}.request.json").write_text(json.dumps(body, indent=2))
-            r = subprocess.run(
-                ["curl", "-s", "-m", "180", URL, "-H", "Content-Type: application/json",
-                 "-H", "Authorization: Bearer not-needed", "-d", json.dumps(body)],
-                capture_output=True, text=True,
-            )
-            (d / f"run{run}.response.json").write_text(r.stdout)
-            try:
-                resp = json.loads(r.stdout)
-                choice = resp["choices"][0]
-                msg = choice["message"]
-                ok = bool(msg.get("tool_calls"))
-                finish = choice.get("finish_reason")
-                valid += ok
-                finishes[finish] = finishes.get(finish, 0) + 1
-            except Exception as exc:  # noqa: BLE001
-                finishes["PARSE_ERROR"] = finishes.get("PARSE_ERROR", 0) + 1
-                print(f"{name} run{run}: PARSE_ERROR {exc} {r.stdout[:120]}")
-        row = {"case": name, "runs": RUNS, "valid_tool_calls": valid, "finish_reasons": finishes}
-        summary.append(row)
+def classify(resp: dict, max_tokens: int) -> tuple[str, str]:
+    """Return (finish_reason, kind) with kind in {valid, salvaged, none}."""
+    choice = resp["choices"][0]
+    finish = choice.get("finish_reason")
+    has_calls = bool(choice["message"].get("tool_calls"))
+    completion = resp.get("usage", {}).get("completion_tokens")
+    if not has_calls:
+        return finish, "none"
+    if finish == "tool_calls" and completion is not None and completion < max_tokens:
+        return finish, "valid"
+    return finish, "salvaged"
+
+
+def tally_case(name: str) -> dict | None:
+    """Recompute one case's row from its committed request/response files."""
+    d = OUT / name
+    responses = sorted(d.glob("run*.response.json")) if d.is_dir() else []
+    if not responses:
+        return None
+    valid = salvaged = 0
+    finishes: dict[str, int] = {}
+    for resp_path in responses:
+        req_path = resp_path.with_name(resp_path.name.replace(".response.", ".request."))
+        max_tokens = json.loads(req_path.read_text())["max_tokens"]
+        try:
+            finish, kind = classify(json.loads(resp_path.read_text()), max_tokens)
+        except Exception as exc:  # noqa: BLE001
+            finishes["PARSE_ERROR"] = finishes.get("PARSE_ERROR", 0) + 1
+            print(f"{name} {resp_path.name}: PARSE_ERROR {exc}")
+            continue
+        valid += kind == "valid"
+        salvaged += kind == "salvaged"
+        finishes[finish] = finishes.get(finish, 0) + 1
+    return {"case": name, "runs": len(responses), "valid_tool_calls": valid,
+            "salvaged_tool_calls": salvaged, "finish_reasons": dict(sorted(finishes.items()))}
+
+
+def write_summary() -> None:
+    summary = [row for name in CASES if (row := tally_case(name)) is not None]
+    for row in summary:
         print(json.dumps(row))
-    (OUT / "summary.json").write_text(json.dumps(summary, indent=2))
+    (OUT / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+
+
+def run_case(name: str) -> None:
+    d = OUT / name
+    d.mkdir(parents=True, exist_ok=True)
+    for run in range(1, RUNS + 1):
+        body = {"model": MODEL, **CASES[name]}
+        (d / f"run{run}.request.json").write_text(json.dumps(body, indent=2))
+        r = subprocess.run(
+            ["curl", "-s", "-m", "180", URL, "-H", "Content-Type: application/json",
+             "-H", "Authorization: Bearer not-needed", "-d", json.dumps(body)],
+            capture_output=True, text=True,
+        )
+        (d / f"run{run}.response.json").write_text(r.stdout)
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--tally-only", action="store_true", help="re-tally raw/ without a server")
+    ap.add_argument("--cases", nargs="+", choices=list(CASES), help="run only these cases")
+    args = ap.parse_args()
+    if not args.tally_only:
+        OUT.mkdir(exist_ok=True)
+        for name in args.cases or list(CASES):
+            run_case(name)
+    write_summary()
     return 0
 
 
