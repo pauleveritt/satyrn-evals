@@ -62,6 +62,7 @@ CASES = {
     # Control: case 05 with thinking off. oMLX reads enable_thinking from
     # chat_template_kwargs; a request value overrides the model setting (true).
     "11_four_tools_no_thinking": {"messages": [{"role": "user", "content": TASK_TEXT}], "tools": [READ, BASH, EDIT, WRITE], "max_tokens": 2000, "chat_template_kwargs": {"enable_thinking": False}},
+    "12_four_tools_16k": {"messages": [{"role": "user", "content": TASK_TEXT}], "tools": [READ, BASH, EDIT, WRITE], "max_tokens": 16000},
 }
 
 
@@ -116,7 +117,7 @@ def run_case(name: str) -> None:
         body = {"model": MODEL, **CASES[name]}
         (d / f"run{run}.request.json").write_text(json.dumps(body, indent=2))
         r = subprocess.run(
-            ["curl", "-s", "-m", "180", URL, "-H", "Content-Type: application/json",
+            ["curl", "-s", "-m", "900", URL, "-H", "Content-Type: application/json",
              "-H", "Authorization: Bearer not-needed", "-d", json.dumps(body)],
             capture_output=True, text=True,
         )
@@ -124,10 +125,14 @@ def run_case(name: str) -> None:
 
 
 def main() -> int:
+    global MODEL, OUT
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--tally-only", action="store_true", help="re-tally raw/ without a server")
     ap.add_argument("--cases", nargs="+", choices=list(CASES), help="run only these cases")
+    ap.add_argument("--model", default=MODEL, help="served model id (default: the qwen3_moe conversion)")
+    ap.add_argument("--out", type=Path, default=OUT, help="results directory (default: raw/)")
     args = ap.parse_args()
+    MODEL, OUT = args.model, args.out
     if not args.tally_only:
         OUT.mkdir(exist_ok=True)
         for name in args.cases or list(CASES):

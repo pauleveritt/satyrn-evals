@@ -8,6 +8,13 @@ chat write-up asserted a root cause with no artifact behind it; this note
 and its `raw/` responses are that artifact. Where the probe does not
 settle a question, this note says so.
 
+> **2026-09-23 update: the cause is found.** The snapshot's `config.json`
+> declares `qwen3_moe`, so oMLX served it without Mellum's sliding-window
+> attention or YaRN. Reconverted as `mellum`, the degeneration is gone and
+> the four-tool thinking-on case is 5/5 at the harness budget. See
+> "Rerun on the mellum model class" below. The "Reading" section is kept
+> as written; it is superseded, not deleted.
+
 ## The model
 
 - **Served id:** `swe-pi-m23-mix4s100-think-ae10k-init800-20260917-bulat-step-500-MLX-8bit`
@@ -120,6 +127,53 @@ The no-tools controls and `11` show the quant is not globally broken, but
 only a bf16 control with thinking on would separate quantisation damage from
 a checkpoint/template limitation. That control was not run.
 
+## Rerun on the mellum model class (2026-09-23)
+
+**The mislabel.** The snapshot's `config.json` says `qwen3_moe` /
+`Qwen3MoeForCausalLM`. The released `JetBrains/Mellum2-12B-A2.5B-Thinking`
+config says `mellum` / `MellumForCausalLM` and has the same shapes. Under
+`qwen3_moe`, oMLX's `mlx_lm` 0.31.3 ran full attention on all 28 layers,
+where 21 are trained with a 1,024-token sliding window, and dropped YaRN.
+Every clean call in `raw/` finished under about 1,024 total tokens except
+one at 1,252. Every thinking-on task-text run had to cross it.
+
+**The fix.** The Mellum team said sliding layers take no YaRN and that the
+official config can be copied. The new source directory is the snapshot's
+files with only `config.json` replaced by the official one (model type
+`mellum`, `num_experts`, `rope_parameters` keyed by layer type: YaRN on
+`full_attention`, plain RoPE on `sliding_attention`). The snapshot's chat
+template and tokenizer were kept, so the config is the only variable. It was
+converted with the same bundled `mlx_lm`, 8-bit, group size 64, to
+`...-step-500-mellum-MLX-8bit` (12 GB, the same 791 tensors). `mlx_lm` picks
+its model module from the model type, so this is served by `mellum.py`.
+
+**Results** (`raw-mellum/`, n = 5 per case, same cases and criterion):
+
+| case | qwen3_moe (`raw/`) | mellum (`raw-mellum/`) |
+|---|---|---|
+| `01` weather, 1 tool | 5/5 | 5/5 |
+| `02`–`05` task text, 1–4 tools, 2,000 cap | 0, 1, 0, 0 | 0, 0, 1, 0 |
+| `06`, `07` four tools, sampling variants | 0, 0 | 1, 1 |
+| `10` weather, 4 tools | 5/5 | 5/5 |
+| `11` four tools, thinking off | 5/5 | 5/5 |
+| `12` four tools, thinking on, 16,000 cap | not run | **5/5** |
+
+The 2,000-cap counts look alike, but the failures are different in kind.
+Across the length-stopped runs of cases `02`–`07`, the qwen3_moe responses
+carry 6–166 stray `</think>` tags and up to 347 `{"name` fragments each,
+with as few as 11% distinct lines. The mellum responses carry none of
+either, with 80–100% distinct lines: coherent reasoning cut off by the cap.
+Case `12` gives the model the harness's own budget. All five runs return a
+clean call (`mkdir`, or a `write` of `tools/review.py`) after 529–7,138
+completion tokens, far past the 1,024-token window.
+
+**Reading.** The collapse was a serving misconfiguration, not a checkpoint
+limitation or a thinking-mode defect. Quantisation is not implicated: the
+same 8-bit conversion recipe works once the model class is right. Still
+unmeasured: whether the mellum conversion completes the task in a cell,
+which needs the two n = 2 cells rerun on the new model id. The bf16 control
+is no longer needed for this question.
+
 ## The cells
 
 Two `purpose=development` records, bare Pi, `selfhost-review-script` R1-plan,
@@ -161,6 +215,7 @@ reads as a plain refusal. A future model failing this way would look like
 | `~/.omlx/model_settings.json` (added the model's entry) | `~/.omlx/model_settings.json.bak-pre-mellum-20260922-201215` |
 | `~/.pi/agent/models.json` (added the entry) | `~/.pi/agent/models.json.bak-pre-mellum-20260922` |
 | `/Users/satyrn-cell/.pi/agent/models.json` (added the entry) | `/Users/satyrn-cell/.pi/agent/models.json.bak-pre-mellum-20260922` |
+| `~/.omlx/model_settings.json` (2026-09-23: added the `-mellum-MLX-8bit` entry, same settings) | `~/.omlx/model_settings.json.bak-pre-mellum-class-20260923` |
 
 **Revert before an Ornith run?** Not required: the Ornith entries in both Pi
 configs and in `model_settings.json` are unchanged, and isolated cells read
@@ -176,4 +231,8 @@ cd evidence/2026-09-22-mellum-tool-surface
 uv run python probe.py --tally-only   # no server: re-tally raw/ into summary.json
 uv run python probe.py                # server up, model registered: rewrites raw/
 uv run python probe.py --cases 10_weather_four_tools 11_four_tools_no_thinking
+# the mellum-class rerun, into raw-mellum/
+uv run python probe.py --out raw-mellum \
+  --model swe-pi-m23-mix4s100-think-ae10k-init800-20260917-bulat-step-500-mellum-MLX-8bit
+uv run python probe.py --tally-only --out raw-mellum
 ```

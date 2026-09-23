@@ -275,8 +275,15 @@ here must be re-derived before it is cited in a plan." Archived at
 The rendering-path control that would separate checkpoint from template has
 not run, so this is model behaviour observed once, not a settled cause.*
 
-20. *Status 2026-09-23: observed; tool count ruled out as sufficient, the
-    thinking path implicated, cause not settled.*
+20. *Status 2026-09-23: resolved as a serving misconfiguration. The
+    snapshot's config declares `qwen3_moe`, so the runtime dropped Mellum's
+    1,024-token sliding window and YaRN. Reconverted as `mellum`, the
+    four-tool thinking-on case is 5/5 at a 16,000-token budget and no
+    degenerate output remains. The thinking-path reading below is
+    superseded. Lesson: check `model_type` against the released model's
+    config before diagnosing behaviour
+    (`evidence/2026-09-22-mellum-tool-surface/`, "Rerun on the mellum model
+    class").*
     **Tool-calling collapses on the real task text with thinking on, at any
     tool count.** The checkpoint
     `JetBrains/swe-pi-m23-mix4s100-think-ae10k-init800-20260917-bulat-step-500`

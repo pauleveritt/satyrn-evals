@@ -1,0 +1,10 @@
+{
+  "model": "swe-pi-m23-mix4s100-think-ae10k-init800-20260917-bulat-step-500-mellum-MLX-8bit",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Implement a pure Python function build_prompt(diff, range_label) that returns text containing range_label, the diff verbatim, and the words Accept and itemized. Reply with only the code."
+    }
+  ],
+  "max_tokens": 800
+}

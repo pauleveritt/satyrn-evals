@@ -1,0 +1,10 @@
+{
+  "model": "swe-pi-m23-mix4s100-think-ae10k-init800-20260917-bulat-step-500-mellum-MLX-8bit",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Write a Python function provider_and_model(spec) that splits on the first slash and raises ValueError if there is no slash. Reply with only the code."
+    }
+  ],
+  "max_tokens": 800
+}
