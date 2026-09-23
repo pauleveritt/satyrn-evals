@@ -147,3 +147,9 @@ def test_engine_architecture_names_its_pieces() -> None:
     text = (SITE / "engine-architecture.md").read_text()
     for fragment in ("derive", "deliver", "worktree", "receipt", "engine-glossary.md"):
         assert fragment in text, fragment
+
+
+def test_models_placeholder_and_catalogue_stubs() -> None:
+    assert "Models" in (SITE / "models.md").read_text()
+    assert '--8<-- "docs/pathologies.md"' in (SITE / "pathologies.md").read_text()
+    assert '--8<-- "docs/remediations.md"' in (SITE / "remediations.md").read_text()
