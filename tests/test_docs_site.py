@@ -130,3 +130,9 @@ def test_evals_about_names_why_how_what() -> None:
     text = (SITE / "evals-about.md").read_text()
     for fragment in ("## Why", "## How", "## What", "glossary.md"):
         assert fragment in text, fragment
+
+
+def test_evals_architecture_names_the_physical_run() -> None:
+    text = (SITE / "evals-architecture.md").read_text()
+    for fragment in ("launcher", "run record", "isolated workspace", "subprocess", "offline"):
+        assert fragment in text, fragment
