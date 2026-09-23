@@ -8547,3 +8547,5 @@
 | arms/engine-mellum-class-swe-pi-redstop.json | created for the red-stop engine rerun 2026-09-23 (engine 803df2d) |
 | site/how-it-works.md | created in release-one |
 | site/measurement.md | created in release-one |
+| docs/superpowers/specs/2026-09-23-public-site-design.md | created in release-one |
+| docs/superpowers/plans/2026-09-23-public-site.md | created in release-one |
