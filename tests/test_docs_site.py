@@ -36,7 +36,7 @@ def _nav_paths(entries: list) -> list[str]:
 
 def test_the_config_names_the_site_directory() -> None:
     project = _config()["project"]
-    assert project["site_name"]
+    assert project["site_name"] == "Satyrn Evals and Satyrn Engine"
     assert project["docs_dir"] == "site"
 
 

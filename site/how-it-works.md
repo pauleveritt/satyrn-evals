@@ -32,6 +32,8 @@ flowchart LR
 
 Running locally, the same shape: Pi is the agent, oMLX serves Ornith 1.5 9B.
 
+Pi's tools are read, bash, edit, and write.
+
 ```mermaid
 flowchart LR
   Pi[Pi] --> oMLX[oMLX server]
@@ -48,7 +50,7 @@ flowchart LR
 ```
 
 Add guards — the loop breaker, writable-path scope, symbol preservation, and
-command bounds:
+command bounds — TypeScript checks that observe Pi tool calls:
 
 ```mermaid
 flowchart LR
@@ -79,6 +81,9 @@ Worktree isolation and the logical pieces inside:
 ```mermaid
 flowchart LR
   A[adapter, TypeScript] --> E[engine core, Python]
+  E --> P[protocol]
+  E --> C[contract]
+  E --> K[candidate]
   E --> W[worktree isolation]
   E --> R[receipt]
 ```
