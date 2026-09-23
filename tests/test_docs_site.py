@@ -119,3 +119,8 @@ def test_how_it_works_has_three_sections_and_diagrams() -> None:
     assert "## How the Engine works" in text
     assert "## How Evals works" in text
     assert text.count("```mermaid") >= 6
+
+
+def test_first_results_and_measurement_titles() -> None:
+    assert (SITE / "numbers.md").read_text().startswith("---\ntitle: First results")
+    assert "## How the claim was measured" in (SITE / "measurement.md").read_text()
