@@ -7,7 +7,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
-from test_pathology import (  # type: ignore[missing-import]  # pytest sibling resolution (tests/ on sys.path); pyrefly's src root cannot see it
+from test_pathology import (  # type: ignore[missing-import]
     BROKEN_REPLY_CELL,
     REFUSAL_CELL,
     TEXT_CALL_CELL,
