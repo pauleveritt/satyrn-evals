@@ -1184,7 +1184,6 @@ def test_a_cell_with_a_runaway_resume_is_not_unknown_event() -> None:
 # --- tool_call_text_messages: call envelopes left in text (2026-09-24) ------
 
 _MELLUM = Path(__file__).resolve().parents[1] / "evidence" / "2026-09-22-mellum-tool-surface"
-#: Pi's stopReason for each chat-completions finish_reason the probe saw.
 _STOP_REASONS = {"length": "length", "stop": "stop", "tool_calls": "toolUse"}
 
 
@@ -1195,7 +1194,6 @@ def message_turn(content: list[dict], stop: str) -> list[str]:
         '{"type": "turn_start"}',
         json.dumps({"type": "message_start", "message": message}),
         json.dumps({"type": "message_end", "message": message}),
-        # turn_end repeats the final message; the count must not read it twice.
         json.dumps({"type": "turn_end", "message": message}),
     ]
 
@@ -1214,7 +1212,9 @@ def retained_turn(path: Path) -> list[str]:
     """A retained probe reply as the one assistant turn Pi would record.
 
     ``reasoning_content`` becomes the thinking part, ``content`` the text
-    part, each unedited; a parsed call becomes a ``toolCall`` part.
+    part, each unedited; a parsed call becomes a ``toolCall`` part. The Pi
+    framing is synthesized: the cells' own transcripts are in
+    ``~/satyrn-runs``, not in git.
     """
     choice = json.loads(path.read_text(encoding="utf-8"))["choices"][0]
     reply = choice["message"]
@@ -1236,36 +1236,18 @@ def text_cell(text: str, stop: str = "stop") -> str:
     return pi_cell(message_turn([{"type": "text", "text": text}], stop))
 
 
-#: The STATE.md gap's input. ``raw/05_four_tools/run1`` is the Mellum
-#: checkpoint served as ``qwen3_moe`` on the cells' task text and four tools:
-#: a 2,000-token length stop whose text is broken envelopes and stray
-#: ``</think>`` tags, with no parsed call. The Pi framing is synthesized --
-#: the cells' own transcripts are in ``~/satyrn-runs``, not in git -- but the
-#: reasoning and text are the response's, unedited.
 BROKEN_REPLY_CELL = pi_cell(retained_turn(_MELLUM / "raw" / "05_four_tools" / "run1.response.json"))
-#: The plain refusal every older axis confuses it with.
 REFUSAL_CELL = text_cell("I will fix the redirect now.")
-#: The template's own form, unparsed: a stop with no call.
 _ENVELOPE = '{"name": "write", "arguments": {"path": "tools/review.py"}}'
 TEXT_CALL_CELL = text_cell(f"<tool_call>\n{_ENVELOPE}\n</tool_call>")
-#: Look-alike text that must not count, each as a cell's final text.
 ORDINARY_JSON_TEXTS = (
-    # A task manifest opens the same way but has no arguments key.
     'The manifest is now {"name": "t", "contract": "c"}.',
     'json.dumps({"name": "visible"})',
-    # A Pi toolCall part quoted in prose: arguments, but name is not first.
     'The fixture line is {"type": "toolCall", "id": "c1", "name": "bash", "arguments": {}}.',
     'Pass "arguments": through unchanged.',
     '{"name": "bash", "args": {"command": "ls"}}',
-    # The literal without its colon passes the fast path, never the pattern.
     'The "arguments" field, and {"name": "t"}.',
 )
-#: Every retained probe reply (both conversions, 2026-09-22/23), keyed
-#: (directory, case, run). The six qwen3_moe length stops left out are the
-#: envelope's opening alone, repeated (02 run1: 69 openings, no "arguments"
-#: key), or no envelope at all (02 run4: ``</think>``-laced "We" repetition);
-#: they stay visible only as length stops. 02 run5 is the reply the server
-#: salvaged a call from.
 RETAINED_REPLIES = {
     (root, path.parent.name, int(path.name.removeprefix("run").split(".")[0])): path
     for root in ("raw", "raw-mellum")
@@ -1277,7 +1259,7 @@ RETAINED_COUNTED = {
                  "06_four_tools_temp1_topk0", "07_four_tools_reppen1_1")
     for run in range(1, 6)
 } - {
-    ("raw", "03_two_tools", 3),  # a clean parsed call
+    ("raw", "03_two_tools", 3),
     ("raw", "02_task_text_one_tool", 1), ("raw", "02_task_text_one_tool", 2),
     ("raw", "02_task_text_one_tool", 4), ("raw", "04_three_tools", 5),
     ("raw", "06_four_tools_temp1_topk0", 2), ("raw", "06_four_tools_temp1_topk0", 3),
@@ -1285,9 +1267,11 @@ RETAINED_COUNTED = {
 
 
 def test_a_retained_broken_reply_reads_as_a_refusal_on_every_older_axis() -> None:
-    """The STATE.md gap, reproduced: every axis the block carried before
-    2026-09-24 reads the broken reply exactly as a one-line plain refusal;
-    only the new count tells them apart."""
+    """The STATE.md gap, reproduced on ``raw/05_four_tools/run1``: the
+    Mellum checkpoint served as ``qwen3_moe``, a 2,000-token length stop of
+    broken envelopes and stray ``</think>`` tags with no parsed call. Every
+    axis the block carried before 2026-09-24 reads it exactly as a one-line
+    plain refusal; only the new count tells them apart."""
     broken = count_transcript(BROKEN_REPLY_CELL, had_patch=False).to_block()
     refusal = count_transcript(REFUSAL_CELL, had_patch=False).to_block()
     assert (broken.pop("tool_call_text_messages"), refusal.pop("tool_call_text_messages")) == (1, 0)
@@ -1297,10 +1281,14 @@ def test_a_retained_broken_reply_reads_as_a_refusal_on_every_older_axis() -> Non
 
 def test_the_rule_over_every_retained_probe_reply() -> None:
     """All 115 retained replies: 23 counted (22 of the 28 broken qwen3_moe
-    length stops and the salvaged one), none of the other 86 -- clean parsed
-    calls, the no-tools coding controls, and the mellum-class conversion's
-    length stops, whose text parts are 7,000-8,000 characters of coherent
-    reasoning that names ``read``, ``bash``, ``edit`` and ``write``."""
+    length stops and 02 run5, the reply the server salvaged a call from),
+    none of the other 86 -- clean parsed calls, the no-tools coding controls,
+    and the mellum-class conversion's length stops, whose text parts are
+    7,000-8,000 characters of coherent reasoning that names ``read``,
+    ``bash``, ``edit`` and ``write``. The six broken replies left out are the
+    envelope's opening alone, repeated (02 run1: 69 openings, no
+    ``"arguments"`` key), or no envelope at all (02 run4: ``</think>``-laced
+    "We" repetition); they stay visible only as length stops."""
     counted = {
         key
         for key, path in RETAINED_REPLIES.items()
