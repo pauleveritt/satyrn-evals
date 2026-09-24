@@ -3,6 +3,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from satyrn_evals.pathology import (
     EVENT_TYPES,
     GUARD_KINDS,
@@ -576,6 +578,7 @@ def test_measured_cell_to_block_wire_shape() -> None:
         "tool_free_terminal_turns": 0,
         "workspace_escapes": 0,
         "loop_broken": 0,
+        "tool_call_text_messages": 0,
     }
 
 
@@ -690,6 +693,7 @@ def test_validation_row_reproduces_the_spec_table() -> None:
         "tool_free_terminal_turns": 0,
         "workspace_escapes": 0,
         "loop_broken": 0,
+        "tool_call_text_messages": 0,
     }
 
 
@@ -1175,3 +1179,167 @@ def test_a_cell_with_a_runaway_resume_is_not_unknown_event() -> None:
     doc = _LOOP_BROKEN_DOC.replace('"loop_broken"', '"runaway_resumed"')
     block = count_transcript(doc, had_patch=True)
     assert (block.measured, block.reason) == (True, None)
+
+
+# --- tool_call_text_messages: call envelopes left in text (2026-09-24) ------
+
+_MELLUM = Path(__file__).resolve().parents[1] / "evidence" / "2026-09-22-mellum-tool-surface"
+_STOP_REASONS = {"length": "length", "stop": "stop", "tool_calls": "toolUse"}
+
+
+def message_turn(content: list[dict], stop: str) -> list[str]:
+    """One turn holding one assistant message, framed as Pi writes it."""
+    message = {"role": "assistant", "content": content, "stopReason": stop}
+    return [
+        '{"type": "turn_start"}',
+        json.dumps({"type": "message_start", "message": message}),
+        json.dumps({"type": "message_end", "message": message}),
+        json.dumps({"type": "turn_end", "message": message}),
+    ]
+
+
+def pi_cell(*turns: list[str]) -> str:
+    return "\n".join([
+        '{"type": "session", "version": 3, "cwd": "/w"}',
+        '{"type": "agent_start"}',
+        *(line for turn in turns for line in turn),
+        '{"type": "agent_end"}',
+        '{"type": "agent_settled"}',
+    ])
+
+
+def retained_turn(path: Path) -> list[str]:
+    """A retained probe reply as the one assistant turn Pi would record.
+
+    ``reasoning_content`` becomes the thinking part, ``content`` the text
+    part, each unedited; a parsed call becomes a ``toolCall`` part. The Pi
+    framing is synthesized: the cells' own transcripts are in
+    ``~/satyrn-runs``, not in git.
+    """
+    choice = json.loads(path.read_text(encoding="utf-8"))["choices"][0]
+    reply = choice["message"]
+    content: list[dict] = []
+    if reply.get("reasoning_content"):
+        content.append({"type": "thinking", "thinking": reply["reasoning_content"]})
+    if reply.get("content"):
+        content.append({"type": "text", "text": reply["content"]})
+    for call in reply.get("tool_calls") or []:
+        content.append({
+            "type": "toolCall", "id": call["id"], "name": call["function"]["name"],
+            "arguments": json.loads(call["function"]["arguments"]),
+        })
+    return message_turn(content, _STOP_REASONS[choice["finish_reason"]])
+
+
+def text_cell(text: str, stop: str = "stop") -> str:
+    """A one-turn cell whose only assistant message is ``text``."""
+    return pi_cell(message_turn([{"type": "text", "text": text}], stop))
+
+
+BROKEN_REPLY_CELL = pi_cell(retained_turn(_MELLUM / "raw" / "05_four_tools" / "run1.response.json"))
+REFUSAL_CELL = text_cell("I will fix the redirect now.")
+_ENVELOPE = '{"name": "write", "arguments": {"path": "tools/review.py"}}'
+TEXT_CALL_CELL = text_cell(f"<tool_call>\n{_ENVELOPE}\n</tool_call>")
+ORDINARY_JSON_TEXTS = (
+    'The manifest is now {"name": "t", "contract": "c"}.',
+    'json.dumps({"name": "visible"})',
+    'The fixture line is {"type": "toolCall", "id": "c1", "name": "bash", "arguments": {}}.',
+    'Pass "arguments": through unchanged.',
+    '{"name": "bash", "args": {"command": "ls"}}',
+    'The "arguments" field, and {"name": "t"}.',
+)
+RETAINED_REPLIES = {
+    (root, path.parent.name, int(path.name.removeprefix("run").split(".")[0])): path
+    for root in ("raw", "raw-mellum")
+    for path in sorted((_MELLUM / root).glob("*/run*.response.json"))
+}
+RETAINED_COUNTED = {
+    ("raw", case, run)
+    for case in ("02_task_text_one_tool", "03_two_tools", "04_three_tools", "05_four_tools",
+                 "06_four_tools_temp1_topk0", "07_four_tools_reppen1_1")
+    for run in range(1, 6)
+} - {
+    ("raw", "03_two_tools", 3),
+    ("raw", "02_task_text_one_tool", 1), ("raw", "02_task_text_one_tool", 2),
+    ("raw", "02_task_text_one_tool", 4), ("raw", "04_three_tools", 5),
+    ("raw", "06_four_tools_temp1_topk0", 2), ("raw", "06_four_tools_temp1_topk0", 3),
+}
+
+
+def test_a_retained_broken_reply_reads_as_a_refusal_on_every_older_axis() -> None:
+    """The STATE.md gap, reproduced on ``raw/05_four_tools/run1``: the
+    Mellum checkpoint served as ``qwen3_moe``, a 2,000-token length stop of
+    broken envelopes and stray ``</think>`` tags with no parsed call. Every
+    axis the block carried before 2026-09-24 reads it exactly as a one-line
+    plain refusal; only the new count tells them apart."""
+    broken = count_transcript(BROKEN_REPLY_CELL, had_patch=False).to_block()
+    refusal = count_transcript(REFUSAL_CELL, had_patch=False).to_block()
+    assert (broken.pop("tool_call_text_messages"), refusal.pop("tool_call_text_messages")) == (1, 0)
+    assert broken == refusal
+    assert (broken["invalid_tool_calls"], broken["tool_calls"], broken["tool_free_terminal_turns"]) == (0, {}, 1)
+
+
+def test_the_rule_over_every_retained_probe_reply() -> None:
+    """All 115 retained replies: 23 counted (22 of the 28 broken qwen3_moe
+    length stops and 02 run5, the reply the server salvaged a call from),
+    none of the other 86 -- clean parsed calls, the no-tools coding controls,
+    and the mellum-class conversion's length stops, whose text parts are
+    7,000-8,000 characters of coherent reasoning that names ``read``,
+    ``bash``, ``edit`` and ``write``. The six broken replies left out are the
+    envelope's opening alone, repeated (02 run1: 69 openings, no
+    ``"arguments"`` key), or no envelope at all (02 run4: ``</think>``-laced
+    "We" repetition); they stay visible only as length stops."""
+    counted = {
+        key
+        for key, path in RETAINED_REPLIES.items()
+        if count_transcript(pi_cell(retained_turn(path)), had_patch=False).tool_call_text_messages
+    }
+    assert (len(RETAINED_REPLIES), len(RETAINED_COUNTED)) == (115, 23)
+    assert counted == RETAINED_COUNTED
+
+
+def test_a_well_formed_call_left_in_text_counts() -> None:
+    block = count_transcript(TEXT_CALL_CELL, had_patch=False)
+    assert (block.tool_call_text_messages, block.tool_calls, block.tool_free_terminal_turns) == (1, {}, 1)
+
+
+@pytest.mark.parametrize("text", ORDINARY_JSON_TEXTS)
+def test_ordinary_json_in_text_does_not_count(text: str) -> None:
+    assert count_transcript(text_cell(text), had_patch=False).tool_call_text_messages == 0
+
+
+def test_a_parsed_call_and_its_execution_do_not_count() -> None:
+    """A real call carries ``name`` and ``arguments`` on its ``toolCall`` part
+    and its execution, never in text: tool_calls counts it, the new count
+    does not."""
+    call = {"type": "toolCall", "id": "c1", "name": "read", "arguments": {"path": "app.py"}}
+    turn = message_turn([{"type": "text", "text": "Let me read it."}, call], "toolUse")
+    turn[-1:-1] = [
+        '{"type": "tool_execution_start", "toolCallId": "c1", "toolName": "read", "args": {"path": "app.py"}}',
+        '{"type": "tool_execution_end", "toolCallId": "c1", "toolName": "read", "result": {}}',
+    ]
+    done = message_turn([{"type": "text", "text": "Done. All 12 tests pass."}], "stop")
+    block = count_transcript(pi_cell(turn, done), had_patch=True)
+    assert (block.tool_calls, block.tool_call_text_messages) == ({"read": 1}, 0)
+
+
+def test_an_envelope_outside_the_models_visible_text_does_not_count() -> None:
+    """Reasoning drafts calls; a tool result or the prompt is file or task text."""
+    turn = message_turn([{"type": "thinking", "thinking": _ENVELOPE}], "stop")
+    turn[1:1] = [
+        json.dumps({"type": "message_end", "message": {"role": role, "content": [{"type": "text", "text": _ENVELOPE}]}})
+        for role in ("user", "toolResult", "custom")
+    ]
+    block = count_transcript(pi_cell(turn), had_patch=False)
+    assert (block.measured, block.tool_call_text_messages) == (True, 0)
+
+
+def test_each_assistant_message_counts_once() -> None:
+    block = count_transcript(
+        pi_cell(
+            message_turn([{"type": "text", "text": f"{_ENVELOPE}\n{_ENVELOPE}"}], "length"),
+            message_turn([{"type": "text", "text": _ENVELOPE}], "stop"),
+        ),
+        had_patch=False,
+    )
+    assert block.tool_call_text_messages == 2

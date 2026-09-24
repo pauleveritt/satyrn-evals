@@ -11,6 +11,7 @@ metric needs completion semantics.
 
 import json
 import posixpath
+import re
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
@@ -75,6 +76,9 @@ GUARD_KINDS = frozenset(
     }
 )
 
+_ENVELOPE_OPENING = re.compile(r'\{\s*"name"\s*:')
+_ENVELOPE_ARGUMENTS = re.compile(r'"arguments"\s*:')
+
 type PathologyReason = Literal[
     "absent", "empty", "unparseable", "unsupported_version",
     "unknown_event", "malformed", "multi_session", "partial",
@@ -97,6 +101,7 @@ class CellPathology:
     tool_free_terminal_turns: int = 0
     workspace_escapes: int = 0
     loop_broken: int = 0
+    tool_call_text_messages: int = 0
 
     def to_block(self) -> dict[str, object]:
         if not self.measured:
@@ -113,6 +118,7 @@ class CellPathology:
             "tool_free_terminal_turns": self.tool_free_terminal_turns,
             "workspace_escapes": self.workspace_escapes,
             "loop_broken": self.loop_broken,
+            "tool_call_text_messages": self.tool_call_text_messages,
         }
 
 
@@ -367,6 +373,9 @@ def _count(events: list[dict], *, had_patch: bool, truncated: bool = False) -> C
     hold here: starts pair uniquely with ends (or one is the truncated
     in-flight call), and every file-tool execution carries a string
     ``args.path`` unless it is an invalid call, counted separately.
+    ``tool_call_text_messages`` (2026-09-24) is outside the spec's axes: it
+    reads assistant messages, not executions, and changes none of the others.
+    A block written before it lacks the key: unknown, not zero.
     """
     starts = [e for e in events if e.get("type") == "tool_execution_start"]
     invalid = [e for e in starts if _invalid_file_call(e)]
@@ -428,12 +437,13 @@ def _count(events: list[dict], *, had_patch: bool, truncated: bool = False) -> C
         if event["toolName"] in FILE_TOOLS
         and _escapes(events[0]["cwd"], (event.get("args") or {})["path"])
     )
-    loop_broken = sum(
-        1
-        for event in events
-        if event.get("type") == "entry_appended"
-        and event["entry"]["customType"] == "loop_broken"
-    )
+    loop_broken = tool_call_text_messages = 0
+    for event in events:
+        match event.get("type"):
+            case "message_end" if _tool_call_text(event.get("message")):
+                tool_call_text_messages += 1
+            case "entry_appended" if event["entry"]["customType"] == "loop_broken":
+                loop_broken += 1
     return CellPathology(
         measured=True,
         truncated=truncated,
@@ -446,6 +456,39 @@ def _count(events: list[dict], *, had_patch: bool, truncated: bool = False) -> C
         tool_free_terminal_turns=tool_free,
         workspace_escapes=escapes,
         loop_broken=loop_broken,
+        tool_call_text_messages=tool_call_text_messages,
+    )
+
+
+def _tool_call_text(message: object) -> bool:
+    """An assistant message whose visible text holds a call envelope.
+
+    Both Mellum cells of 2026-09-22 wrote malformed tool-call JSON into text
+    and read ``tool_calls: {}`` (`evidence/2026-09-22-mellum-tool-surface/`).
+    The envelope is the one the served chat template asks for,
+    ``{"name": <function-name>, "arguments": <args-json-object>}``, and the
+    ``text`` parts must carry both a ``{"name":`` opening and an
+    ``"arguments":`` key: a task manifest's ``{"name": "t", "contract": "c"}``
+    opens the same way, and a Pi ``toolCall`` part quoted in prose carries
+    ``"arguments":`` with ``name`` not first. The unit is the assistant
+    ``message_end`` -- the event the budget counter and the length-stop count
+    read; ``turn_end`` repeats the turn's final message and is not counted.
+    One message counts once however many envelopes it holds. Whether the message also
+    carries a parsed ``toolCall`` part does not matter: a server that
+    salvages one call from a broken reply still leaves the rest in text.
+    ``thinking`` parts are not read (a model drafts calls in its reasoning),
+    and neither are tool results, the prompt, or guard messages, whose text
+    is file content or harness text, never the model's attempt at a call.
+    """
+    if not isinstance(message, dict) or message.get("role") != "assistant":
+        return False
+    parts: list[str] = []
+    _append_text_parts(parts, message.get("content"))
+    if '"arguments"' not in (text := "\n".join(parts)):
+        return False
+    return (
+        _ENVELOPE_ARGUMENTS.search(text) is not None
+        and _ENVELOPE_OPENING.search(text) is not None
     )
 
 

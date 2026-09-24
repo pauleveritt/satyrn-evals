@@ -170,8 +170,13 @@ phase rows.
   cell that emits thousands of tokens of malformed `tool_call` JSON inside a
   text block reports `invalid_tool_calls: 0`, `tool_calls: {}`, and
   `tool_free_terminal_turns: 1` — indistinguishable from a plain refusal.
-  Observed on both Mellum cells (`evidence/2026-09-22-mellum-tool-surface/`);
-  a detector for tool-call-shaped text is not built.
+  Observed on both Mellum cells (`evidence/2026-09-22-mellum-tool-surface/`).
+  *2026-09-24:* the block now carries `tool_call_text_messages`, the
+  assistant messages whose text holds the call envelope (`{"name":` and an
+  `"arguments":` key); thinking and tool results are not read. It counts
+  23 of the 115 retained probe replies: 22 of 28 broken qwen3_moe replies,
+  the salvaged one, no control. Blocks written before it lack the key
+  (unknown, not zero). The cells in `~/satyrn-runs` are not yet rescanned.
 - **Pathology counter blind to announce-then-stop.** A final turn whose
   reasoning plans a concrete step ("Let's write the file.") and then ends with
   no tool call counts as a clean `self_stop`. It ended 4 of 12 Mellum cells in

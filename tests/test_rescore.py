@@ -7,6 +7,11 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from test_pathology import (  # type: ignore[missing-import]
+    BROKEN_REPLY_CELL,
+    REFUSAL_CELL,
+    TEXT_CALL_CELL,
+)
 
 from satyrn_evals.attempt_record import (
     AttemptCode,
@@ -708,6 +713,25 @@ def test_compute_pathology_had_patch_true_keeps_terminal_zero(
     cell_block = block["format_number-1"]
     assert cell_block["measured"] is True
     assert cell_block["tool_free_terminal_turns"] == 0
+
+
+def test_compute_pathology_counts_call_envelopes_left_in_text(
+    tmp_path: Path,
+) -> None:
+    """End to end through the binder `summarize` calls: transcripts on disk
+    in, per-cell blocks out. The retained broken Mellum reply and a
+    well-formed call left in text each count one message; the plain refusal
+    beside them counts none, and agrees with the broken reply on every older
+    axis."""
+    output, task_dir, manifest = _visible_setup(tmp_path)
+    cells = [
+        _pathology_cell(output, f"format_number-{index}", transcript=transcript)
+        for index, transcript in enumerate((BROKEN_REPLY_CELL, TEXT_CALL_CELL, REFUSAL_CELL), 1)
+    ]
+    blocks = compute_pathology(output, cells, task_dir=task_dir, manifest=manifest)
+    counts = [blocks[name].pop("tool_call_text_messages") for name, _, _ in cells]
+    assert counts == [1, 1, 0]
+    assert blocks["format_number-1"] == blocks["format_number-3"]
 
 
 def test_summarize_refuses_an_unreadable_overlay_as_operational(
