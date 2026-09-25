@@ -8546,6 +8546,7 @@
 | arms/baseline-mellum-class-swe-pi.json | created in the mellum-class rerun 2026-09-23 |
 | arms/engine-mellum-class-swe-pi.json | created for the mellum-class n=6 run 2026-09-23 |
 | arms/engine-mellum-class-swe-pi-redstop.json | created for the red-stop engine rerun 2026-09-23 (engine 803df2d) |
+| arms/baseline-unsloth-ornith15-9b.json | created 2026-09-25 for the local unsloth/GGUF Baseline smoke on the Linux port |
 | site/how-it-works.md | created in release-one |
 | site/measurement.md | created in release-one |
 | docs/superpowers/specs/2026-09-23-public-site-design.md | created in release-one |
