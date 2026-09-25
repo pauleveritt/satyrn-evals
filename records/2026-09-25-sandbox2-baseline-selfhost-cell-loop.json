@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "task": "selfhost-cell-loop",
+  "task_tree_sha256": "57d65a06c4412e5dc843d956c48c84a727916da53f4d457e0c86699c060d6370",
+  "arm": "baseline",
+  "model": "unsloth/ornith-ai/Ornith-1.5-9B-GGUF",
+  "condition": "cold",
+  "n": 6,
+  "mode": "batch",
+  "max_minutes": 240,
+  "stop_rule": "established infrastructure failure only",
+  "decision_rule": "admission: ceiling when bare Pi passes at most 1 of 4 within budget and no passing cell read material outside its worktree; floor when it passes 4 of 4; a ceiling candidate passing 2 of 4 or more moves to the floor set",
+  "previous_result": null,
+  "token_budget": 48000,
+  "turn_budget": 72,
+  "isolation": "sandbox",
+  "purpose": "admission",
+  "k": 3,
+  "rung": "R1-plan",
+  "authority": "Nicola Jordan, 2026-09-25: full Baseline ceiling set under the unprivileged sandbox on the unsloth GGUF; selfhost bases revised for Linux host-assumption tests (KNOWN_DEFECTS.md)",
+  "command_backstop_s": 3000,
+  "backend": "openai"
+}

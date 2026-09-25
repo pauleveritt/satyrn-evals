@@ -113,6 +113,14 @@ The censuses and the release-two comparison ran on the previous revision;
 their records pin those hashes and that revision is in git, so their
 evidence stays theirs.
 
+| task | before this revision | after |
+|---|---|---|
+| `selfhost-cell-loop` | `406487a854b78b38b615d23de3c20f18eed39b04610ce3e905ff997e542f3173` | `57d65a06c4412e5dc843d956c48c84a727916da53f4d457e0c86699c060d6370` |
+| `selfhost-docs-linter` | `a8c1aaf0e2d5136be35ed6e5d2bf49cb88e06e15c7217ed0b481edfbd090b1c6` | `74ad8dc9ccb935b2d6272c531d5a593c0c1de9890f16817d08491f4d0aee3516` |
+| `selfhost-run-record-gate` | `a7c74e5449d5a82e155f9e0161b793697ac9c973323818fe335297faf114ebcc` | `7ec64d916bad6e4a5a96418919c3e1a7c4d2a2800c3c0b65a5c60f4ef30f3da8` |
+| `selfhost-speed-probe` | `dbb752affe8df090fa8594e8f046383c3ac57e6657fbb7c6181f31331270df28` | `a83618c5df42df0b687a532c6f2b738d08351c0bab799986c1a09ca887805a5a` |
+| `selfhost-preflight-quiet` | `1edcf796591ec22e9c19187744d43706f840e4fdc05dbe790f925c06cac86aa0` | `5921477554353022e45d4fc5113c67ac1deadc77e9b8ee68ae962781905efa20` |
+
 ## Admission rule
 
 No task named here may be reused as a ceiling candidate until its defect is
