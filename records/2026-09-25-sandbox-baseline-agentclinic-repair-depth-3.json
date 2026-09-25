@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "task": "agentclinic-repair-depth-3",
+  "task_tree_sha256": "ea6ce7da30d2c3b8f99cba6cdd857af7ea38255102bca963b75e7caa1997612d",
+  "arm": "baseline",
+  "model": "unsloth/ornith-ai/Ornith-1.5-9B-GGUF",
+  "condition": "cold",
+  "n": 6,
+  "mode": "batch",
+  "max_minutes": 240,
+  "stop_rule": "established infrastructure failure only",
+  "decision_rule": "admission: ceiling when bare Pi passes at most 1 of 4 within budget and no passing cell read material outside its worktree; floor when it passes 4 of 4; a ceiling candidate passing 2 of 4 or more moves to the floor set",
+  "previous_result": null,
+  "token_budget": 48000,
+  "turn_budget": 72,
+  "isolation": "sandbox",
+  "purpose": "admission",
+  "k": 3,
+  "rung": "R2",
+  "authority": "Nicola Jordan, 2026-09-25: full Baseline ceiling set under the unprivileged sandbox on the unsloth GGUF",
+  "command_backstop_s": 3000,
+  "backend": "openai"
+}
