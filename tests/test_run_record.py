@@ -42,7 +42,19 @@ def _write(tmp_path: Path, **over: object) -> Path:
 def test_a_complete_record_loads_and_passes_the_gate(tmp_path: Path) -> None:
     record = load_run_record(_write(tmp_path))
     assert isinstance(record, RunRecord) and record.n == 4
+    assert record.backend == "omlx"
     gate(record, previous_result_committed=None)
+
+
+def test_an_openai_backend_record_loads(tmp_path: Path) -> None:
+    """The sibling success for the backend refusal below: a record served
+    by an OpenAI-compatible server is a declared backend, not an error."""
+    assert load_run_record(_write(tmp_path, backend="openai")).backend == "openai"
+
+
+def test_an_unknown_backend_is_refused(tmp_path: Path) -> None:
+    with pytest.raises(RunRecordError, match="backend"):
+        load_run_record(_write(tmp_path, backend="telepathy"))
 
 
 def test_a_missing_field_is_named(tmp_path: Path) -> None:

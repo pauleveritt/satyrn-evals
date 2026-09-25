@@ -8,7 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from satyrn_evals.arms import load_arm
+from satyrn_evals.arms import BACKENDS, load_arm
 from satyrn_evals.attempt import attempt, resolve_contract
 from satyrn_evals.attempt_record import AttemptCode, AttemptOutcome
 from satyrn_evals.budget import AttemptBudget, LineBudget
@@ -350,6 +350,10 @@ def _launch_preflight(args: argparse.Namespace) -> int:
             raise RunRecordError(
                 f"arm file {arm_path} is {arm.arm} on {arm.model}; the record is {record.arm} on {record.model}"
             )
+        if arm.backend != record.backend:
+            raise RunRecordError(
+                f"arm file {arm_path} runs backend {arm.backend!r}; the record is on {record.backend!r}"
+            )
         loaded[arm.arm] = arm
     if sorted(loaded) != sorted(names):
         raise RunRecordError(
@@ -451,6 +455,7 @@ def _record_new(args: argparse.Namespace) -> int:
         turn_budget=args.turn_budget, previous_result=args.previous_result, authority=args.authority,
         decision_rule=args.decision_rule,
         line_token_budget=args.line_token_budget, line_turn_budget=args.line_turn_budget,
+        backend=args.backend,
     )
     write_new_record(Path(args.output), body)
     print(f"record: wrote {args.output} (task_tree_sha256 {body['task_tree_sha256']}); commit it before launch")
@@ -750,6 +755,10 @@ record_new_p.add_argument("--k", type=int, choices=K_VALUES, required=True, help
 record_new_p.add_argument("--purpose", required=True, choices=sorted(PURPOSES))
 record_new_p.add_argument("--isolation", default="isolated", choices=["isolated", "local"])
 record_new_p.add_argument("--model", default="omlx/Ornith-1.5-9B-MLX-8bit")
+record_new_p.add_argument(
+    "--backend", default="omlx", choices=sorted(BACKENDS),
+    help="the serving backend the arm files must also declare; records on different backends never pool",
+)
 record_new_p.add_argument("--mode", default="attended", choices=["attended", "batch"])
 record_new_p.add_argument("--max-minutes", type=positive_int, default=60)
 record_new_p.add_argument(

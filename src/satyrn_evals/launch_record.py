@@ -205,6 +205,10 @@ def _arms(record: RunRecord, arm_paths: Sequence[Path]) -> dict[str, tuple[Path,
     for path, arm in loaded.values():
         if arm.model != record.model:
             raise RunRecordError(f"arm file {path} is on {arm.model}; the record is on {record.model}")
+        if arm.backend != record.backend:
+            raise RunRecordError(
+                f"arm file {path} runs backend {arm.backend!r}; the record is on {record.backend!r}"
+            )
     if len({arm.pins.pi for _, arm in loaded.values()}) != 1:
         raise RunRecordError("the arms pin different pi versions; interleaved arms run one pi")
     return loaded

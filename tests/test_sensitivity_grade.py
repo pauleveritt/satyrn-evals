@@ -361,6 +361,15 @@ def test_check_combinable_refuses_a_differing_field() -> None:
         check_combinable(a, b)
 
 
+def test_check_combinable_refuses_a_differing_backend() -> None:
+    """The same model on two serving stacks is two conditions: summing the
+    parts would pool oMLX cells with OpenAI-compatible-server cells."""
+    a = _run_record(backend="omlx")
+    b = _run_record(backend="openai")
+    with pytest.raises(UsageError, match="backend"):
+        check_combinable(a, b)
+
+
 def test_combine_summaries_sums_matching_groups() -> None:
     from satyrn_evals.sensitivity_grade import GroupSummary
 

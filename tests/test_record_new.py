@@ -128,3 +128,15 @@ def test_record_new_without_a_line_writes_neither_field(tmp_path: Path) -> None:
 def test_record_new_refuses_only_one_line_flag(tmp_path: Path) -> None:
     assert main(_new(tmp_path, "--line-token-budget", "16000")) == 2
     assert not (tmp_path / "records" / "depth-3.json").exists()
+
+
+def test_record_new_defaults_the_backend_to_omlx(tmp_path: Path) -> None:
+    assert main(_new(tmp_path)) == 0
+    assert load_run_record(tmp_path / "records" / "depth-3.json").backend == "omlx"
+
+
+def test_record_new_takes_a_backend(tmp_path: Path) -> None:
+    """A record served by another backend is written, not silently defaulted
+    to omlx -- otherwise its arm files could never match it."""
+    assert main(_new(tmp_path, "--backend", "openai")) == 0
+    assert load_run_record(tmp_path / "records" / "depth-3.json").backend == "openai"

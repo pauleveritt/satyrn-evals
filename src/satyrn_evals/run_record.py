@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from satyrn_evals.arms import BACKENDS
 from satyrn_evals.attempt import resolve_contract
 from satyrn_evals.budget import AttemptBudget, LineBudget
 from satyrn_evals.cell import Isolation
@@ -106,6 +107,11 @@ class RunRecord:
     # behaviour byte for byte -- older records need not carry these.
     line_token_budget: int | None = None
     line_turn_budget: int | None = None
+    # Release two: the serving backend. A record and its arm files must name
+    # the same one, so the same model served by oMLX on one machine and by
+    # an OpenAI-compatible server on another can never share a denominator.
+    # Absent means ``omlx``: every record written before this field existed.
+    backend: str = "omlx"
 
 
 _REQUIRED: dict[str, type | tuple[type, ...]] = {
@@ -119,6 +125,7 @@ _REQUIRED: dict[str, type | tuple[type, ...]] = {
 _OPTIONAL: dict[str, type | tuple[type, ...]] = {
     "k": int, "rung": (str, type(None)), "authority": (str, type(None)),
     "command_backstop_s": int, "line_token_budget": int, "line_turn_budget": int,
+    "backend": str,
 }
 _ARM_PART = re.compile(r"^[a-z][a-z-]*$")
 
@@ -154,6 +161,10 @@ def load_run_record(path: Path) -> RunRecord:
     if body["purpose"] not in PURPOSES:
         raise RunRecordError(
             f"run record {path}: purpose must be one of {', '.join(sorted(PURPOSES))}"
+        )
+    if body.get("backend", "omlx") not in BACKENDS:
+        raise RunRecordError(
+            f"run record {path}: backend must be one of {', '.join(sorted(BACKENDS))}"
         )
     parts = body["arm"].split(ARM_SEPARATOR)
     if not all(_ARM_PART.match(part) for part in parts) or len(set(parts)) != len(parts):
@@ -320,6 +331,7 @@ def new_record(
     command_backstop_s: int = DEFAULT_COMMAND_BACKSTOP_S,
     line_token_budget: int | None = None,
     line_turn_budget: int | None = None,
+    backend: str = "omlx",
 ) -> dict[str, object]:
     """A record body ``load_run_record`` and ``gate`` accept, with the tree digest and rung read from the task.
 
@@ -342,7 +354,7 @@ def new_record(
         "condition": "cold", "n": n, "mode": mode, "max_minutes": max_minutes, "stop_rule": stop_rule,
         "decision_rule": decision_rule, "previous_result": previous_result, "token_budget": token_budget,
         "turn_budget": turn_budget, "isolation": isolation, "purpose": purpose, "k": k, "rung": rung,
-        "authority": authority, "command_backstop_s": command_backstop_s,
+        "authority": authority, "command_backstop_s": command_backstop_s, "backend": backend,
     }
     if line_token_budget is not None or line_turn_budget is not None:
         body["line_token_budget"] = line_token_budget

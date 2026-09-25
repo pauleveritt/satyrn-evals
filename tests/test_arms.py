@@ -59,6 +59,7 @@ def test_baseline_file_loads_with_the_four_baseline_tools() -> None:
     assert arm.tools == ("read", "bash", "edit", "write")
     assert arm.model == "omlx/gemma-4-12B-it-MLX-8bit"
     assert arm.server_model == "gemma-4-12B-it-MLX-8bit"
+    assert arm.backend == "omlx"
     assert arm.pins.pi == "0.85.1"
     assert arm.pins.engine_commit is None
     assert arm.pins.digests == {}
@@ -135,6 +136,21 @@ def test_missing_server_model_is_refused(tmp_path: Path) -> None:
     path = _write(tmp_path, BASELINE, server_model=None)
     with pytest.raises(ArmError, match="server_model"):
         load_arm(path)
+
+
+def test_an_unknown_backend_is_refused(tmp_path: Path) -> None:
+    """A backend this tree does not model is an authoring error: preflight
+    would otherwise have no settings source to hold the arm's claims to."""
+    path = _write(tmp_path, BASELINE, backend="telepathy")
+    with pytest.raises(ArmError, match="backend"):
+        load_arm(path)
+
+
+def test_an_openai_backend_arm_loads(tmp_path: Path) -> None:
+    """The sibling success: the same model served by an OpenAI-compatible
+    server (unsloth/vLLM) is a declared backend, not a refusal."""
+    path = _write(tmp_path, BASELINE, backend="openai")
+    assert load_arm(path).backend == "openai"
 
 
 def test_a_file_that_is_not_a_json_object_is_refused(tmp_path: Path) -> None:

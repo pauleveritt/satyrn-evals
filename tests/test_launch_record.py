@@ -142,6 +142,15 @@ def test_an_arm_file_the_record_does_not_run_is_refused(tmp_path: Path) -> None:
     assert "the --arm files are baseline" in _refused(tmp_path, record, _facts())
 
 
+def test_an_arm_on_another_backend_than_the_record_is_refused(tmp_path: Path) -> None:
+    """The guard the model string cannot give: the same model served by a
+    different stack has the same ``--model`` value, so the record's backend
+    is what keeps their cells from ever sharing a denominator."""
+    record = _record(tmp_path, backend="openai")
+    assert "runs backend 'omlx'" in _refused(tmp_path, record, _facts())
+    assert not (tmp_path / "runs").exists()
+
+
 @pytest.mark.parametrize(
     "facts",
     [
