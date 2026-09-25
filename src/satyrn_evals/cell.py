@@ -36,13 +36,57 @@ What this module knows, verified on the maintainer's Mac on 2026-09-14
 import os
 import pwd
 import subprocess
+import sys
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
+#: Paths differ by platform and are overridable, so one tree runs on the
+#: maintainer's Mac and on a Linux host without editing source. The cells
+#: root is created and shared by the machine setup; these vars name where it
+#: and the cell's home live. A value in the environment wins over the default.
+CELL_HOME_ENV = "SATYRN_CELL_HOME"
+CELLS_ROOT_ENV = "SATYRN_CELLS_ROOT"
+_MACOS_CELL_HOME = "/Users/satyrn-cell"
+_MACOS_CELLS_ROOT = "/Users/Shared/satyrn-cells"
+_LINUX_CELL_HOME = "/home/satyrn-cell"
+_LINUX_CELLS_ROOT = "/srv/satyrn-cells"
+
 CELL_USER = "satyrn-cell"
-CELL_HOME = Path("/Users/satyrn-cell")
-CELLS_ROOT = Path("/Users/Shared/satyrn-cells")
+
+
+@dataclass(frozen=True, slots=True)
+class CellLayout:
+    """Where the cell user, its home and the shared cells root live on this host."""
+
+    home: Path
+    cells_root: Path
+    path: tuple[str, ...]
+    shell: str
+
+
+def cell_layout(environ: Mapping[str, str], *, on_macos: bool = sys.platform == "darwin") -> CellLayout:
+    """The layout the environment names, or the platform's own defaults.
+
+    Pure, and tested directly: the real layout is read once at import from the
+    running interpreter's platform, which a default-tier test cannot vary
+    without a second user and a real cells root.
+    """
+    home = Path(environ.get(CELL_HOME_ENV) or (_MACOS_CELL_HOME if on_macos else _LINUX_CELL_HOME))
+    cells_root = Path(environ.get(CELLS_ROOT_ENV) or (_MACOS_CELLS_ROOT if on_macos else _LINUX_CELLS_ROOT))
+    home_bins = (os.fspath(home / ".local" / "bin"), os.fspath(home / ".npm-global" / "bin"))
+    system_bins = (
+        ("/opt/homebrew/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin")
+        if on_macos
+        else ("/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin")
+    )
+    return CellLayout(home, cells_root, (*home_bins, *system_bins), "/bin/zsh" if on_macos else "/bin/bash")
+
+
+_LAYOUT = cell_layout(os.environ)
+CELL_HOME = _LAYOUT.home
+CELLS_ROOT = _LAYOUT.cells_root
 #: What the harness exports to an adapter: which profile this attempt runs under.
 ISOLATION_ENV = "SATYRN_ISOLATION"
 #: The workspace parent the harness allocated under ``CELLS_ROOT``; the
@@ -51,15 +95,9 @@ CELL_PARENT_ENV = "SATYRN_CELL_PARENT"
 #: Directories prepended to the cell's PATH. A test seam (fake ``pi``); the
 #: launcher refuses an isolated admission, route-proof or campaign run with it set.
 CELL_PATH_PREFIX_ENV = "SATYRN_CELL_PATH_PREFIX"
-CELL_PATH: tuple[str, ...] = (
-    os.fspath(CELL_HOME / ".local" / "bin"),
-    os.fspath(CELL_HOME / ".npm-global" / "bin"),
-    "/opt/homebrew/bin",
-    "/usr/bin",
-    "/bin",
-    "/usr/sbin",
-    "/sbin",
-)
+CELL_PATH: tuple[str, ...] = _LAYOUT.path
+#: The cell's login shell; the model runs through it, not the maintainer's.
+CELL_SHELL = _LAYOUT.shell
 _CELL_SCRIPT = 'umask 007 && cd "$1" && shift && exec "$@"'
 
 
@@ -104,7 +142,7 @@ def cell_environment(
         "HOME": os.fspath(CELL_HOME),
         "USER": CELL_USER,
         "LOGNAME": CELL_USER,
-        "SHELL": "/bin/zsh",
+        "SHELL": CELL_SHELL,
         "PATH": os.pathsep.join([*path_prefix, *CELL_PATH]),
         "TMPDIR": os.fspath(tmpdir),
         "UV_PROJECT_ENVIRONMENT": os.fspath(uv_environment),
@@ -184,8 +222,37 @@ MAINTAINER_RIGHTS = (
 )
 
 
+def _maintainer_name() -> str:
+    return pwd.getpwuid(os.getuid()).pw_name
+
+
 def maintainer_ace() -> str:
-    return f"user:{pwd.getpwuid(os.getuid()).pw_name} allow {MAINTAINER_RIGHTS}"
+    """The macOS ``chmod +a`` entry: full rights, inherited by new entries."""
+    return f"user:{_maintainer_name()} allow {MAINTAINER_RIGHTS}"
+
+
+def maintainer_acl() -> str:
+    """The POSIX ``setfacl`` spec for the same: access and default entries.
+
+    The ``u:``/``d:u:`` entries are the maintainer's, inherited by entries
+    created below. The ``g::``/``d:g::`` entries are not decoration: a POSIX
+    ``chmod`` sets a file's ACL *mask*, not its owning-group entry, so a
+    directory granted only ``u:...`` keeps ``group::---`` (synthesized from
+    the mode it had) and the *cell group* -- the user the whole design exists
+    to let in -- is denied however the mask reads. Naming the group here is
+    what keeps ``share_with_cell``'s ``chmod`` (which moves the mask) from
+    locking the cell out.
+
+    A named-user entry is capped by each file's mask, which the kernel derives
+    from the mode its creator asked for: a cell writing a plain group-writable
+    file (``umask 007``, the cell script's) leaves the mask permissive, so the
+    maintainer's entry holds for the files an attempt produces. A file the cell
+    deliberately creates ``0600`` masks both entries out and stays the
+    maintainer's to reach as root -- the one place POSIX ACLs are weaker than
+    the Mac's inherited entry.
+    """
+    name = _maintainer_name()
+    return f"u:{name}:rwx,d:u:{name}:rwx,g::rwx,d:g::rwx"
 
 
 def grant_maintainer(
@@ -194,21 +261,46 @@ def grant_maintainer(
     """Add the inherited maintainer ACL entry to ``directory``; why it failed, else None.
 
     Only entries created after this carry it, so call it on an empty directory.
+    macOS uses ``chmod +a``; every other platform uses ``setfacl``.
+    """
+    if sys.platform == "darwin":
+        argv = ["/bin/chmod", "+a", maintainer_ace(), os.fspath(directory)]
+        tool = "chmod +a"
+    else:
+        argv = ["setfacl", "-m", maintainer_acl(), os.fspath(directory)]
+        tool = "setfacl"
+    try:
+        completed = run(argv, capture_output=True, check=False)
+    except OSError as exc:
+        return f"cannot run {tool}: {exc}"
+    if completed.returncode != 0:
+        return f"{tool} exited {completed.returncode}: {os.fsdecode(completed.stderr).strip()}"
+    return None
+
+
+def _cell_group_gid() -> int | None:
+    """The cell user's primary group, or ``None`` when there is no cell user.
+
+    A contributor who has not set up the second uid gets ``None``: sharing is
+    then only the group-mode widening it has always been.
     """
     try:
-        completed = run(["/bin/chmod", "+a", maintainer_ace(), os.fspath(directory)], capture_output=True, check=False)
-    except OSError as exc:
-        return f"cannot run chmod +a: {exc}"
-    if completed.returncode != 0:
-        return f"chmod +a exited {completed.returncode}: {os.fsdecode(completed.stderr).strip()}"
-    return None
+        return pwd.getpwnam(CELL_USER).pw_gid
+    except KeyError:
+        return None
 
 
 def share_with_cell(root: Path, *, writable: bool = True) -> None:
     """Make every directory under ``root`` group-readable and every file group-readable.
 
-    The cells root is ``pauleveritt:satyrn`` 2770, so new entries are already
-    group ``satyrn`` (BSD group inheritance); only the mode needs widening.
+    On macOS the cells root is ``pauleveritt:satyrn`` 2770 and BSD group
+    inheritance gives every new entry the group ``satyrn``; only the mode
+    needs widening. Linux has no BSD group inheritance -- a file takes its
+    creator's primary group unless its parent is setgid, and the worktree's
+    ``.git`` is made before ``seed`` is setgid -- so off macOS each
+    maintainer-owned entry is also ``chgrp``'d to the cell's group. Without
+    that, ``git`` inside the cell cannot read the worktree's git dir.
+
     Entries the cell user created are its own to share (it writes under
     ``umask 007``) and are left alone, as are symbolic links.
 
@@ -219,12 +311,17 @@ def share_with_cell(root: Path, *, writable: bool = True) -> None:
     tree. The engine export uses this so a cell cannot write into it.
     """
     owner = os.getuid()
+    cell_gid = _cell_group_gid() if sys.platform != "darwin" else None
     for directory, _dirs, files in os.walk(root):  # never follows directory symlinks
         if os.stat(directory).st_uid == owner:
+            if cell_gid is not None:
+                os.chown(directory, -1, cell_gid)
             os.chmod(directory, 0o2770 if writable else 0o2750)
         for name in files:
             path = Path(directory) / name
             if not path.is_symlink() and (info := path.stat()).st_uid == owner:
+                if cell_gid is not None:
+                    os.chown(path, -1, cell_gid)
                 if writable:
                     os.chmod(path, info.st_mode & 0o7777 | 0o060)
                 else:

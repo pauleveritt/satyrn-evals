@@ -25,6 +25,7 @@ import io
 import os
 import stat
 import subprocess
+import sys
 import tarfile
 from collections.abc import Mapping
 from pathlib import Path
@@ -35,7 +36,13 @@ from satyrn_evals.errors import UsageError
 from satyrn_evals.hygiene import overlay_copies, overlay_digests
 
 MARKER = ".satyrn-engine-export"
-CELL_PYTHON = Path("/opt/homebrew/bin/python3.14")
+#: The interpreter the export's ``.venv`` is synced against: one the cell can
+#: execute (the maintainer's Homebrew Python on the Mac; a system Python on
+#: Linux). Overridable, because the right interpreter is a property of the
+#: host, not of this tree.
+CELL_PYTHON = Path(
+    os.environ.get("SATYRN_CELL_PYTHON", "/opt/homebrew/bin/python3.14" if sys.platform == "darwin" else "/usr/bin/python3")
+)
 #: What an export holds: the package sources ``uv sync`` builds (``src``,
 #: ``pyproject.toml``, ``uv.lock``, and ``README.md``, which hatchling's
 #: ``readme`` field refuses to build without), the extensions pi loads

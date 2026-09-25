@@ -5,6 +5,7 @@ Every refusal has a success sibling over the same shape.
 
 import hashlib
 import json
+import sys
 from dataclasses import replace
 from pathlib import Path
 
@@ -130,6 +131,10 @@ def _pinned_export(tmp_path: Path) -> tuple[Arm, Path]:
     assert commit is not None
     export = tmp_path / "cells" / f"engine-{commit}"
     (export / "packages" / "engine").mkdir(parents=True)
+    # verify_export refuses group-/other-writable exports, and mkdir honors the
+    # ambient umask (0775 under umask 002): pin the mode the check wants so
+    # these rows test the check, not the shell they ran in.
+    export.chmod(0o700)
     for name in ENGINE_SOURCES:
         (export / "packages" / "engine" / name).write_text(f"// {name}\n")
     (export / ".satyrn-engine-export").write_text(f"{commit}\n")
@@ -148,9 +153,19 @@ def test_an_engine_arm_whose_export_is_its_pinned_commit_and_bytes_has_no_proble
 
 
 def test_the_committed_engine_arm_names_the_export_of_its_pinned_commit_under_the_cells_root() -> None:
+    """The arm names ``engine-<commit>``; its parent is the host's cells root.
+
+    The committed file records the Mac's ``/Users/Shared/satyrn-cells``, so off
+    macOS the parent is the recorded host's, not this one's -- assert the pin's
+    own name (the fact the arm carries) and check the full path against
+    ``CELLS_ROOT`` only where that root is the one the file was written on.
+    """
     arm = load_arm(ENGINE_ARM)
     assert arm.pins.engine_commit is not None
-    assert arm.argv[arm.argv.index("--engine-repo") + 1] == str(export_path(arm.pins.engine_commit))
+    named = Path(arm.argv[arm.argv.index("--engine-repo") + 1])
+    assert named.name == export_path(arm.pins.engine_commit).name
+    if sys.platform == "darwin":
+        assert named == export_path(arm.pins.engine_commit)
 
 
 def test_a_baseline_arm_has_no_export_to_check(tmp_path: Path) -> None:

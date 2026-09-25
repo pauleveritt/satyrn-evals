@@ -37,7 +37,14 @@ from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
 
 HUNT_NAMES = ("satyrn_evals", "known-good.patch", "known-broken.patch", "test_acceptance.py")
 #: Executables the OS runs for every user; a cell never starts these.
-SYSTEM_PREFIXES = ("/usr/libexec/", "/usr/sbin/", "/System/", "/Library/Apple/")
+SYSTEM_PREFIXES = (
+    "/usr/libexec/",
+    "/usr/sbin/",
+    "/System/",
+    "/Library/Apple/",
+    "/usr/lib/systemd/",
+    "/lib/systemd/",
+)
 HUNT_TIMEOUT = 1800
 _READABLE = 'for p in "$@"; do if [ -r "$p" ]; then echo "$p"; fi; done'
 #: F5/R13: the readable-path loop and the hunt run as the cell and read only

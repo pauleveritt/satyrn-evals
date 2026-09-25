@@ -14,6 +14,8 @@ import pytest
 from integration.cell_support import cell_process_alive, run_as_cell
 from satyrn_evals.attempt_pi import harvest_patch
 from satyrn_evals.cell import (
+    CELL_HOME,
+    CELL_PATH,
     CELLS_ROOT,
     Isolation,
     cell_command,
@@ -66,7 +68,7 @@ def test_the_cell_cannot_use_the_maintainers_worktree_without_its_git_config(
 ) -> None:
     lease = _isolated(tmp_path)
     try:
-        bare = {"HOME": "/Users/satyrn-cell", "PATH": "/opt/homebrew/bin:/usr/bin:/bin"}
+        bare = {"HOME": os.fspath(CELL_HOME), "PATH": os.pathsep.join(CELL_PATH)}
         refused = run_as_cell(["git", "status", "--short"], cwd=lease.worktree, environment=bare)
         assert refused.returncode == 128 and "dubious ownership" in refused.stderr
     finally:
