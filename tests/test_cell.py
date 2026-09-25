@@ -187,7 +187,10 @@ def test_the_imported_layout_is_the_running_hosts() -> None:
     assert cell_layout(os.environ).cells_root == CELLS_ROOT
 
 
-def test_sharing_widens_group_bits_on_the_maintainers_entries(tmp_path: Path) -> None:
+def test_sharing_widens_group_bits_on_the_maintainers_entries(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("satyrn_evals.cell._cell_group_gid", lambda: None)
     (tmp_path / "d").mkdir(mode=0o700)
     (tmp_path / "d" / "f").write_text("x")
     (tmp_path / "d" / "f").chmod(0o600)
@@ -196,7 +199,25 @@ def test_sharing_widens_group_bits_on_the_maintainers_entries(tmp_path: Path) ->
     assert stat.S_IMODE((tmp_path / "d" / "f").stat().st_mode) == 0o660
 
 
-def test_sharing_read_only_grants_group_read_and_execute_but_never_write(tmp_path: Path) -> None:
+def test_sharing_chgrps_the_maintainers_entries_to_the_cell_group(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Off macOS, Linux has no BSD group inheritance: the group is set, not inherited."""
+    chowned: list[tuple[Path, int]] = []
+    monkeypatch.setattr("satyrn_evals.cell._cell_group_gid", lambda: 4242)
+    monkeypatch.setattr(
+        "satyrn_evals.cell.os.chown", lambda path, uid, gid: chowned.append((Path(path), gid))
+    )
+    (tmp_path / "d").mkdir(mode=0o700)
+    (tmp_path / "d" / "f").write_text("x")
+    share_with_cell(tmp_path)
+    assert (tmp_path, 4242) in chowned and (tmp_path / "d" / "f", 4242) in chowned
+
+
+def test_sharing_read_only_grants_group_read_and_execute_but_never_write(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("satyrn_evals.cell._cell_group_gid", lambda: None)
     (tmp_path / "d").mkdir(mode=0o700)
     (tmp_path / "d" / "f").write_text("x")
     (tmp_path / "d" / "f").chmod(0o600)

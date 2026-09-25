@@ -32,7 +32,9 @@ DEFAULT_MODEL_SERVER_URL = "http://127.0.0.1:8001"
 MODEL_SERVER_TIMEOUT = 5.0
 
 
-def model_server_problems(base_url: str, server_model: str, *, timeout: float = MODEL_SERVER_TIMEOUT) -> list[str]:
+def model_server_problems(
+    base_url: str, server_model: str, *, api_key: str | None = None, timeout: float = MODEL_SERVER_TIMEOUT
+) -> list[str]:
     """Zero or one problem: unreachable, or reachable but not serving `server_model`.
 
     `urllib.request.urlopen` raises `URLError`/`HTTPError` (both `OSError`)
@@ -40,10 +42,18 @@ def model_server_problems(base_url: str, server_model: str, *, timeout: float = 
     except clause covers "nothing is listening" and "something is listening
     but answered badly" the same way -- both are "unreachable" from a
     launcher's point of view, distinct only from "reachable, wrong model".
+
+    `api_key` is sent as a bearer token when the arm's provider has one: an
+    OpenAI-compatible server that authenticates answers 401 to an anonymous
+    ``GET /v1/models``, which would refuse a sitting that runs fine once pi
+    sends the key from the same config.
     """
     url = f"{base_url}/v1/models"
+    request: str | urllib.request.Request = url
+    if api_key:
+        request = urllib.request.Request(url, headers={"Authorization": f"Bearer {api_key}"})
     try:
-        with urllib.request.urlopen(url, timeout=timeout) as response:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
             body = response.read()
     except (OSError, ValueError) as exc:
         return [f"the model server at {base_url} is unreachable: {exc}"]

@@ -45,7 +45,7 @@ def _facts(**over: object) -> LaunchFacts:
     base = dict(
         frozen=lambda path: True, committed=lambda path: True, head=lambda: "f" * 40,
         preflight=lambda **kw: CellPreflight([], {"pi_version": "0.85.1"}), settings=lambda path, cell: (0, SETTINGS),
-        spawn_cell=spawn, model_server=lambda base_url, server_model: [], pi_models=lambda cell: {},
+        spawn_cell=spawn, model_server=lambda base_url, server_model, api_key=None: [], pi_models=lambda cell: {},
         task_self_test=lambda task_dir, manifest: TaskSelfTest([], {}),
         engine_self_test=lambda *a, **k: TaskSelfTest([], {}),
     )
@@ -156,7 +156,7 @@ def test_an_arm_on_another_backend_than_the_record_is_refused(tmp_path: Path) ->
     [
         _facts(preflight=lambda **kw: CellPreflight(["the cell can find /x/known-good.patch"], {})),
         _facts(settings=lambda path, cell: (1, "preflight_settings FAILED: temperature")),
-        _facts(model_server=lambda base_url, server_model: [f"the model server at {base_url} is unreachable: refused"]),
+        _facts(model_server=lambda base_url, server_model, api_key=None: [f"the model server at {base_url} is unreachable: refused"]),
     ],
     ids=["cell-preflight", "settings", "model-server"],
 )
@@ -173,7 +173,7 @@ def test_the_model_server_check_is_asked_about_the_default_base_url_and_the_arms
 
     seen: dict[str, object] = {}
 
-    def model_server(base_url: str, server_model: str) -> list[str]:
+    def model_server(base_url: str, server_model: str, api_key: str | None = None) -> list[str]:
         seen["base_url"], seen["server_model"] = base_url, server_model
         return []
 
@@ -184,7 +184,7 @@ def test_the_model_server_check_is_asked_about_the_default_base_url_and_the_arms
 def test_an_unreachable_model_server_names_the_url_and_reason_in_the_launch_failure(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    facts = _facts(model_server=lambda base_url, server_model: [f"the model server at {base_url} is unreachable: [Errno 61] Connection refused"])
+    facts = _facts(model_server=lambda base_url, server_model, api_key=None: [f"the model server at {base_url} is unreachable: [Errno 61] Connection refused"])
     assert _launch(tmp_path, _record(tmp_path), facts) == 1
     err = capsys.readouterr().err
     assert "launch FAILED: the model server at http://127.0.0.1:8001 is unreachable: [Errno 61] Connection refused" in err
@@ -198,7 +198,7 @@ def test_a_development_record_on_the_fake_pi_seam_skips_the_model_server_check(
     a development record uses to skip this check, the same way it skips settings."""
     monkeypatch.setenv(CELL_PATH_PREFIX_ENV, "/fake/bin")
 
-    def boom(base_url: str, server_model: str) -> list[str]:
+    def boom(base_url: str, server_model: str, api_key: str | None = None) -> list[str]:
         raise AssertionError("model_server must not be consulted on the fake-pi seam")
 
     record = _record(tmp_path, purpose="development", decision_rule="none")
@@ -216,7 +216,7 @@ def _arm(server_model: str, arm: str = "baseline") -> Arm:
 def test_model_server_checks_asks_once_per_distinct_server_model() -> None:
     asked: list[str] = []
 
-    def model_server(base_url: str, server_model: str) -> list[str]:
+    def model_server(base_url: str, server_model: str, api_key: str | None = None) -> list[str]:
         asked.append(server_model)
         return []
 
@@ -233,7 +233,7 @@ def test_model_server_checks_derives_the_base_url_from_the_arms_own_provider() -
     pi_models = {"providers": {"omlx": {"baseUrl": "http://10.0.0.5:9001/v1"}}}
     seen: dict[str, object] = {}
 
-    def model_server(base_url: str, server_model: str) -> list[str]:
+    def model_server(base_url: str, server_model: str, api_key: str | None = None) -> list[str]:
         seen["base_url"] = base_url
         return []
 
@@ -244,17 +244,40 @@ def test_model_server_checks_derives_the_base_url_from_the_arms_own_provider() -
     assert checked == {"model-a": {"base_url": "http://10.0.0.5:9001"}}
 
 
+def test_model_server_checks_sends_the_providers_api_key() -> None:
+    """An authenticated provider (unsloth's proxy) must be probed with its key,
+    or a reachable server 401s and the sitting is refused."""
+    pi_models = {"providers": {"unsloth": {"baseUrl": "http://10.0.0.5:9001/v1", "apiKey": "sk-x"}}}
+    seen: dict[str, object] = {}
+
+    def model_server(base_url: str, server_model: str, api_key: str | None = None) -> list[str]:
+        seen["api_key"] = api_key
+        return []
+
+    arm = Arm(
+        arm="baseline", argv=("satyrn-evals-attempt-pi",), tools=("read", "bash", "edit", "write"),
+        model="unsloth/model-a", server_model="model-a",
+        pins=ArmPins(pi="0.85.1", engine_commit=None, digests={}), backend="openai",
+    )
+    problems, checked = model_server_checks(
+        [arm], Isolation.ISOLATED, pi_models=lambda cell: pi_models, model_server=model_server
+    )
+    assert problems == []
+    assert seen["api_key"] == "sk-x"
+    assert checked["model-a"]["authenticated"] is True
+
+
 def test_model_server_checks_falls_back_and_says_so_only_when_the_check_fails() -> None:
     problems, checked = model_server_checks(
         [_arm("model-a")], Isolation.LOCAL, pi_models=lambda cell: {"providers": {}},
-        model_server=lambda base_url, server_model: [],
+        model_server=lambda base_url, server_model, api_key=None: [],
     )
     assert problems == []
     assert checked["model-a"]["fallback"].startswith("no 'omlx' provider")
 
     problems, _ = model_server_checks(
         [_arm("model-a")], Isolation.LOCAL, pi_models=lambda cell: {"providers": {}},
-        model_server=lambda base_url, server_model: [f"the model server at {base_url} is unreachable: refused"],
+        model_server=lambda base_url, server_model, api_key=None: [f"the model server at {base_url} is unreachable: refused"],
     )
     assert problems == [
         "the model server at http://127.0.0.1:8001 is unreachable: refused "
@@ -268,7 +291,7 @@ def test_model_server_checks_reports_an_unreadable_pi_config_instead_of_raising(
 
     problems, checked = model_server_checks(
         [_arm("model-a")], Isolation.ISOLATED, pi_models=pi_models,
-        model_server=lambda base_url, server_model: [f"the model server at {base_url} is unreachable: refused"],
+        model_server=lambda base_url, server_model, api_key=None: [f"the model server at {base_url} is unreachable: refused"],
     )
     assert problems == [
         "the model server at http://127.0.0.1:8001 is unreachable: refused "

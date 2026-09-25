@@ -99,6 +99,35 @@ def test_the_url_joins_base_url_and_v1_models(monkeypatch: pytest.MonkeyPatch) -
     assert seen == {"url": f"{BASE_URL}/v1/models", "timeout": 2.5}
 
 
+def test_a_key_is_sent_as_a_bearer_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An OpenAI-compatible server that authenticates 401s an anonymous
+    listing, so the check sends the same key pi will."""
+    seen: dict[str, object] = {}
+
+    def urlopen(request: object, timeout: float) -> _FakeResponse:
+        seen["request"] = request
+        return _FakeResponse(_listing(SERVER_MODEL))
+
+    monkeypatch.setattr("satyrn_evals.model_server.urllib.request.urlopen", urlopen)
+    assert model_server_problems(BASE_URL, SERVER_MODEL, api_key="sk-test") == []
+    request = seen["request"]
+    assert request.full_url == f"{BASE_URL}/v1/models"
+    assert request.get_header("Authorization") == "Bearer sk-test"
+
+
+def test_without_a_key_the_listing_is_a_plain_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The sibling: an unauthenticated server is still asked without a header."""
+    seen: dict[str, object] = {}
+
+    def urlopen(url: object, timeout: float) -> _FakeResponse:
+        seen["url"] = url
+        return _FakeResponse(_listing(SERVER_MODEL))
+
+    monkeypatch.setattr("satyrn_evals.model_server.urllib.request.urlopen", urlopen)
+    assert model_server_problems(BASE_URL, SERVER_MODEL) == []
+    assert isinstance(seen["url"], str)
+
+
 def test_the_default_base_url_is_the_omlx_port() -> None:
     assert DEFAULT_MODEL_SERVER_URL == "http://127.0.0.1:8001"
 

@@ -69,7 +69,7 @@ from satyrn_evals.launch import (
 from satyrn_evals.launch_cell import popen_cell
 from satyrn_evals.manifest import TaskManifest, load_manifest, resolve_task
 from satyrn_evals.model_server import model_server_base_url, model_server_problems
-from satyrn_evals.pi_models import read_pi_models
+from satyrn_evals.pi_models import provider_api_key, read_pi_models
 from satyrn_evals.rescore import (
     _load_cell,
     compute_evidence,
@@ -132,7 +132,7 @@ def model_server_checks(
     isolation: Isolation,
     *,
     pi_models: Callable[[bool], dict] = read_pi_models,
-    model_server: Callable[[str, str], list[str]] = model_server_problems,
+    model_server: Callable[..., list[str]] = model_server_problems,
 ) -> tuple[list[str], dict[str, dict]]:
     """``model_server_problems`` for every distinct ``server_model`` among ``arms``.
 
@@ -159,13 +159,15 @@ def model_server_checks(
         if arm.server_model in checked:
             continue
         base_url, fallback = model_server_base_url(pi_config, arm.model)
-        server_problems = model_server(base_url, arm.server_model)
+        api_key = provider_api_key(pi_config, arm.model.partition("/")[0]) if pi_config is not None else None
+        server_problems = model_server(base_url, arm.server_model, api_key=api_key)
         if server_problems and (fallback or read_problem):
             note = "; ".join(text for text in (read_problem, fallback) if text)
             server_problems = [f"{problem} ({note})" for problem in server_problems]
         problems += server_problems
         checked[arm.server_model] = {
             "base_url": base_url,
+            **({"authenticated": True} if api_key else {}),
             **({"fallback": fallback} if fallback else {}),
             **({"read_problem": read_problem} if read_problem else {}),
         }
@@ -185,7 +187,7 @@ class LaunchFacts:
     engine_export: Callable[[Arm], list[str]] = arm_export_problems
     engine_self_test: Callable[..., TaskSelfTest] = run_engine_self_test
     task_self_test: Callable[[Path, TaskManifest], TaskSelfTest] = run_task_self_test
-    model_server: Callable[[str, str], list[str]] = model_server_problems
+    model_server: Callable[..., list[str]] = model_server_problems
     pi_models: Callable[[bool], dict] = read_pi_models
 
 

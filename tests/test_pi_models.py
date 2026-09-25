@@ -7,6 +7,7 @@ import pytest
 
 from satyrn_evals.pi_models import (
     CELL_PI_MODELS,
+    provider_api_key,
     provider_base_url,
     read_cell_pi_models,
     read_local_pi_models,
@@ -26,6 +27,20 @@ def test_provider_base_url_is_none_for_an_unknown_provider() -> None:
 
 def test_provider_base_url_is_none_without_a_providers_block() -> None:
     assert provider_base_url({}, "omlx") is None
+
+
+def test_provider_api_key_returns_the_providers_key() -> None:
+    models = {"providers": {"unsloth": {"apiKey": "sk-test", "models": []}}}
+    assert provider_api_key(models, "unsloth") == "sk-test"
+
+
+def test_provider_api_key_is_none_for_an_unknown_provider() -> None:
+    assert provider_api_key(MODELS, "unsloth") is None
+
+
+def test_provider_api_key_is_none_for_an_empty_or_non_string_key() -> None:
+    assert provider_api_key({"providers": {"unsloth": {"apiKey": ""}}}, "unsloth") is None
+    assert provider_api_key({"providers": {"unsloth": {"apiKey": 7}}}, "unsloth") is None
 
 
 def test_read_cell_pi_models_parses_the_sudo_cat_stdout() -> None:
