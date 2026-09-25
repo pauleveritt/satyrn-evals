@@ -35,6 +35,7 @@ What this module knows, verified on the maintainer's Mac on 2026-09-14
 
 import os
 import pwd
+import shutil
 import subprocess
 import sys
 from collections.abc import Callable, Mapping, Sequence
@@ -102,10 +103,26 @@ _CELL_SCRIPT = 'umask 007 && cd "$1" && shift && exec "$@"'
 
 
 class Isolation(StrEnum):
-    """The launcher profiles (Ruling 1): two-uid, or the maintainer's own uid."""
+    """The launcher profiles.
+
+    ``isolated`` is the two-uid profile: the model runs as a second local
+    user, and the kernel's permission bits are the isolation (macOS; see
+    the module docstring). ``sandbox`` is the unprivileged ``bwrap`` mount
+    namespace: the model runs as the maintainer under a filesystem view
+    that simply does not contain the repo, the task roots or the home, so
+    there is no host user, group or sudoers change (Linux). ``local`` runs
+    as the maintainer with no isolation at all (contributors, Engine users,
+    development plumbing).
+    """
 
     ISOLATED = "isolated"
+    SANDBOX = "sandbox"
     LOCAL = "local"
+
+    @property
+    def isolating(self) -> bool:
+        """True for both isolation mechanisms, false only for the local profile."""
+        return self is not Isolation.LOCAL
 
 
 def isolation_from(environment: Mapping[str, str]) -> Isolation:
@@ -114,7 +131,9 @@ def isolation_from(environment: Mapping[str, str]) -> Isolation:
     try:
         return Isolation(raw)
     except ValueError:
-        raise ValueError(f"{ISOLATION_ENV} must be isolated or local, got {raw!r}") from None
+        raise ValueError(
+            f"{ISOLATION_ENV} must be one of {', '.join(profile.value for profile in Isolation)}, got {raw!r}"
+        ) from None
 
 
 def cell_paths(parent: Path) -> tuple[Path, Path, Path]:
@@ -157,11 +176,137 @@ def model_environment(environment: Mapping[str, str], extra: Mapping[str, str] |
     """The cell environment for an adapter, from what the harness exported."""
     if not (parent := environment.get(CELL_PARENT_ENV, "")):
         raise ValueError(f"{CELL_PARENT_ENV} is required under isolation")
+    if isolation_from(environment) is Isolation.SANDBOX:
+        return sandbox_environment(parent=Path(parent), extra=extra, path_prefix=path_prefix_from(environment))
     return cell_environment(parent=Path(parent), extra=extra, path_prefix=path_prefix_from(environment))
 
 
 def path_prefix_from(environment: Mapping[str, str]) -> tuple[str, ...]:
     return tuple(entry for entry in environment.get(CELL_PATH_PREFIX_ENV, "").split(os.pathsep) if entry)
+
+
+#: System trees a sandboxed cell needs read-only to run pi, uv and python.
+#: One bind per root; a tree the host lacks is skipped.
+SANDBOX_ROOTS: tuple[str, ...] = ("/usr", "/bin", "/sbin", "/lib", "/lib64", "/etc", "/run")
+
+
+def sandbox_tool_binds(home: Path | None = None) -> tuple[tuple[str, str], ...]:
+    """(source, dest) of the maintainer's tools bound read-only at neutral paths.
+
+    pi's managed install and the ``uv`` binary live under the maintainer's
+    home. They are bound at ``/opt/satyrn`` rather than at their own paths: a
+    bind at ``$HOME/.pi`` would make ``$HOME`` itself exist in the view (as a
+    mount point), and the sandbox is supposed to make the home *absent*, not
+    empty. pi's managed launcher finds its install relative to its own path,
+    so it runs unchanged from the new location.
+    """
+    base = home or Path.home()
+    return (
+        (os.fspath(base / ".pi"), "/opt/satyrn/pi"),
+        (os.fspath(base / ".local" / "bin"), "/opt/satyrn/bin"),
+    )
+
+
+#: The sandbox cell's PATH: the bound tool dirs, then the host's system bins.
+SANDBOX_PATH: tuple[str, ...] = (
+    "/opt/satyrn/pi/agent/bin",
+    "/opt/satyrn/bin",
+    "/usr/local/bin",
+    "/usr/bin",
+    "/bin",
+    "/usr/sbin",
+    "/sbin",
+)
+
+
+def sandbox_environment(
+    *, parent: Path, extra: Mapping[str, str] | None = None, path_prefix: Sequence[str] = ()
+) -> dict[str, str]:
+    """The whole environment a sandboxed cell sees; nothing else is inherited.
+
+    ``HOME`` is a per-cell directory inside the workspace parent (the only
+    writable place the sandbox binds), so pi reads its config from there and
+    writes sessions there, never into the maintainer's home. ``UV_CACHE_DIR``
+    is redirected for the same reason.
+    """
+    home = parent / "home"
+    environment = {
+        "HOME": os.fspath(home),
+        "USER": os.environ.get("USER", "satyrn"),
+        "LOGNAME": os.environ.get("LOGNAME", os.environ.get("USER", "satyrn")),
+        "SHELL": CELL_SHELL,
+        "PATH": os.pathsep.join([*path_prefix, *SANDBOX_PATH]),
+        "TMPDIR": os.fspath(parent / "tmp"),
+        "UV_PROJECT_ENVIRONMENT": os.fspath(parent / "environment"),
+        "UV_CACHE_DIR": os.fspath(home / ".cache" / "uv"),
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "GIT_CONFIG_GLOBAL": os.fspath(parent / "gitconfig"),
+    }
+    environment.update(extra or {})
+    return environment
+
+
+def sandbox_command(
+    argv: Sequence[str], *, parent: Path, cwd: Path, environment: Mapping[str, str]
+) -> list[str]:
+    """``argv`` run in an unprivileged ``bwrap`` view: tools visible, everything else not.
+
+    The view is built by naming what to bind, never by binding ``/`` and
+    hiding pieces: the repo, the task roots, the retained runs and the
+    maintainer's home are absent rather than denied, which is the guarantee
+    a mount namespace gives and permission bits do not. ``--tmpfs /tmp``
+    comes before the workspace bind so a parent allocated under ``/tmp`` is
+    re-exposed; ``--unshare-pid`` and ``--die-with-parent`` keep the command's
+    process tree its own and tied to this launch.
+    """
+    if not argv:
+        raise ValueError("sandbox command is empty")
+    builder = [
+        "bwrap", "--die-with-parent", "--unshare-pid",
+        "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/tmp",
+    ]
+    for path in SANDBOX_ROOTS:
+        if Path(path).is_dir():
+            builder += ["--ro-bind", path, path]
+    # The workspace parent must be bound before anything placed *under* it
+    # (pi's config), or this bind mounts over that one and hides it.
+    builder += ["--bind", os.fspath(parent), os.fspath(parent)]
+    for source, dest in sandbox_tool_binds():
+        if Path(source).exists():
+            builder += ["--ro-bind", source, dest]
+    # The provider config pi reads from its sandbox HOME. Bound as this one
+    # file (read-only) rather than the maintainer's config directory, so
+    # extensions in settings.json never reach a cell.
+    config = Path.home() / ".pi" / "agent" / "models.json"
+    if config.is_file():
+        builder += [
+            "--ro-bind", os.fspath(config), os.fspath(parent / "home" / ".pi" / "agent" / "models.json")
+        ]
+    builder += ["--chdir", os.fspath(cwd)]
+    for key, value in sorted(environment.items()):
+        builder += ["--setenv", key, value]
+    builder += ["--", *argv]
+    return builder
+
+
+def sandbox_unavailable_reason(
+    run: Callable[..., subprocess.CompletedProcess[bytes]] = subprocess.run
+) -> str | None:
+    """None when ``bwrap`` is installed and can build the view; else why not."""
+    if shutil.which("bwrap") is None:
+        return "bwrap is not installed (no unprivileged sandbox on this host)"
+    probe = ["bwrap", "--die-with-parent"]
+    for path in SANDBOX_ROOTS:
+        if Path(path).is_dir():
+            probe += ["--ro-bind", path, path]
+    probe += ["--dev", "/dev", "--proc", "/proc", "--", "/usr/bin/true"]
+    try:
+        completed = run(probe, cwd="/", capture_output=True, timeout=10, check=False)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return f"bwrap cannot build a view: {exc}"
+    if completed.returncode != 0:
+        return f"bwrap exited {completed.returncode}: {os.fsdecode(completed.stderr).strip()}"
+    return None
 
 
 def cell_command(argv: Sequence[str], *, cwd: Path, environment: Mapping[str, str]) -> list[str]:

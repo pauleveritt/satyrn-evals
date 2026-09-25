@@ -50,7 +50,7 @@ from satyrn_evals.arms import Arm, build_argv, load_arm
 from satyrn_evals.attempt import resolve_contract
 from satyrn_evals.cell import CELL_PATH_PREFIX_ENV, CELLS_ROOT, Isolation
 from satyrn_evals.cell_engine import arm_export, arm_export_problems
-from satyrn_evals.cell_preflight import CellPreflight, preflight_cell
+from satyrn_evals.cell_preflight import CellPreflight, preflight_cell, preflight_sandbox
 from satyrn_evals.errors import SatyrnError
 from satyrn_evals.launch import (
     SLOTS_DIR,
@@ -182,6 +182,7 @@ class LaunchFacts:
     committed: Callable[[str], bool] = git_committed
     head: Callable[[], str] = git_head
     preflight: Callable[..., CellPreflight] = preflight_cell
+    sandbox_preflight: Callable[..., CellPreflight] = preflight_sandbox
     settings: Callable[[Path, bool], tuple[int, str]] = settings_provenance
     spawn_cell: Callable[[Path, Path], CellProcess] = popen_cell
     engine_export: Callable[[Arm], list[str]] = arm_export_problems
@@ -347,8 +348,9 @@ def launch_record(
 
     problems: list[str] = []
     checked: dict[str, object] = {}
-    if record.isolation is Isolation.ISOLATED:
-        report = facts.preflight(
+    if record.isolation.isolating:
+        checker = facts.preflight if record.isolation is Isolation.ISOLATED else facts.sandbox_preflight
+        report = checker(
             pinned_pi=next(iter(arms.values()))[1].pins.pi,
             protected=(Path.cwd(), tasks_root, Path.home(), runs_root),
             tasks_root=tasks_root, hunt_root="/" if hunt else None,

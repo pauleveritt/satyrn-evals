@@ -20,6 +20,7 @@ import os
 import pwd
 import stat
 import subprocess
+import tempfile
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -31,6 +32,9 @@ from satyrn_evals.cell import (
     CELLS_ROOT,
     cell_command,
     cell_unavailable_reason,
+    sandbox_command,
+    sandbox_environment,
+    sandbox_unavailable_reason,
 )
 from satyrn_evals.hygiene import overlay_digests
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
@@ -152,6 +156,71 @@ def _cells_root_problems(cells_root: Path, tolerated: Sequence[Path] = ()) -> li
         if not (maintainer_owned_dir and entry.name.startswith("engine-")):
             problems.append(f"unexpected entry in the cells root: {entry}")
     return problems
+
+
+#: A path is a problem if the sandbox can see it at all: the mount namespace
+#: exists to make the repo, task roots and home absent, not merely unreadable.
+_EXISTS = 'for p in "$@"; do if [ -e "$p" ]; then echo "$p"; fi; done'
+
+
+def preflight_sandbox(
+    *,
+    pinned_pi: str,
+    protected: Sequence[Path],
+    hunt_root: str | None = "/",
+    tasks_root: Path | None = None,
+    cells_root: Path | None = None,
+    tolerated: Sequence[Path] = (),
+    run: Runner = subprocess.run,
+) -> CellPreflight:
+    """The ``bwrap`` view: it builds, pi inside it is the pin, and the protected
+    paths are absent from it. ``cells_root``/``tolerated`` are accepted for a
+    uniform call shape and unused: the sandbox keeps no host state to vet.
+    """
+    del cells_root, tolerated
+    if (reason := sandbox_unavailable_reason(run)) is not None:
+        return CellPreflight([reason])
+    problems: list[str] = []
+    with tempfile.TemporaryDirectory(prefix="satyrn-sandbox-preflight-") as temporary:
+        parent = Path(temporary)
+        (parent / "home" / ".pi" / "agent").mkdir(parents=True, exist_ok=True)
+        environment = sandbox_environment(parent=parent)
+
+        def as_sandbox(argv: list[str], name: str, timeout: float = 60) -> str:
+            command = sandbox_command(
+                _with_sentinel(argv), parent=parent, cwd=parent, environment=environment
+            )
+            completed = run(
+                command, cwd="/", stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                text=True, timeout=timeout, check=False,
+            )
+            stdout, complete = _strip_sentinel(completed.stdout)
+            if not complete:
+                problems.append(
+                    f"the {name} probe did not complete (no sentinel; the sandbox may have failed to start)"
+                )
+            return stdout
+
+        version = as_sandbox(["pi", "--version"], "pi --version").strip()
+        if version != pinned_pi:
+            problems.append(f"the sandbox's pi --version is {version or 'missing'}, the arm pins {pinned_pi}")
+        paths = [os.fspath(path) for path in protected]
+        visible = _lines(as_sandbox(["/bin/sh", "-c", _EXISTS, "sh", *paths], "hidden-path"))
+        problems += [f"the sandbox can see {path}" for path in visible]
+        hits: list[str] = []
+        if hunt_root is not None:
+            names = hunt_names(tasks_root) if tasks_root is not None else hunt_names()
+            hits = _lines(as_sandbox(hunt_argv(names, hunt_root), "hunt", timeout=HUNT_TIMEOUT))
+            problems += [f"the sandbox can find {hit}" for hit in hits]
+    checked: dict[str, object] = {
+        "sandbox": "bwrap",
+        "pi_version": version,
+        "hidden_checked": paths,
+        "hidden_visible": visible,
+        "hunt_root": hunt_root,
+        "hunt_hits": hits,
+    }
+    return CellPreflight(problems, checked)
 
 
 def preflight_cell(

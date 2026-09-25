@@ -421,9 +421,19 @@ def test_the_isolated_profile_runs_pi_as_the_cell_user_in_the_worktree() -> None
     assert argv[argv.index("satyrn-cell", 5) + 1 :] == ["/cells/a/worktree", *build_pi_argv(args, "fix it")]
 
 
+def test_the_sandbox_profile_runs_pi_in_a_bwrap_view() -> None:
+    args = parse_args(["--model", MODEL])
+    exported = {ISOLATION_ENV: "sandbox", CELL_PARENT_ENV: "/cells/a"}
+    argv = pi_command(args, "fix it", exported, Path("/cells/a/worktree"))
+    assert argv[0] == "bwrap" and "--die-with-parent" in argv
+    assert any(argv[i : i + 3] == ["--setenv", "HOME", "/cells/a/home"] for i in range(len(argv) - 2))
+    assert any(argv[i : i + 3] == ["--setenv", "TMPDIR", "/cells/a/tmp"] for i in range(len(argv) - 2))
+    assert argv[argv.index("--") + 1 :] == build_pi_argv(args, "fix it")
+
+
 @pytest.mark.parametrize(
     ("exported", "message"),
-    [({ISOLATION_ENV: "isolated"}, CELL_PARENT_ENV), ({ISOLATION_ENV: "sandbox"}, "isolated or local")],
+    [({ISOLATION_ENV: "isolated"}, CELL_PARENT_ENV), ({ISOLATION_ENV: "docker"}, "must be one of")],
 )
 def test_an_isolated_profile_the_harness_did_not_complete_is_refused(exported: dict[str, str], message: str) -> None:
     with pytest.raises(AdapterError, match=message):

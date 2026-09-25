@@ -198,7 +198,7 @@ def run(
                     attempt_kwargs["attempt_timeout"] = attempt_timeout
                 if budget is not None:
                     attempt_kwargs["budget"] = budget
-                if isolation is Isolation.ISOLATED:
+                if isolation.isolating:
                     attempt_kwargs["isolation"] = isolation
                 if line_budget is not None:
                     attempt_kwargs["line_budget"] = line_budget

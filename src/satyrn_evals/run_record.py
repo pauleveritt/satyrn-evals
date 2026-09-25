@@ -157,7 +157,7 @@ def load_run_record(path: Path) -> RunRecord:
                 f"run record {path}: {field} must be a positive integer"
             )
     if body["isolation"] not in {profile.value for profile in Isolation}:
-        raise RunRecordError(f"run record {path}: isolation must be isolated or local")
+        raise RunRecordError(f"run record {path}: isolation must be one of {', '.join(sorted(p.value for p in Isolation))}")
     if body["purpose"] not in PURPOSES:
         raise RunRecordError(
             f"run record {path}: purpose must be one of {', '.join(sorted(PURPOSES))}"
@@ -249,7 +249,7 @@ def gate(
         )
     if record.previous_result is not None and previous_result_committed is not True:
         raise RunRecordError(f"previous_result {record.previous_result} is not committed")
-    if record.purpose in DECIDING_PURPOSES and record.isolation is not Isolation.ISOLATED:
+    if record.purpose in DECIDING_PURPOSES and not record.isolation.isolating:
         raise RunRecordError(
             f"{record.purpose} records run only under the isolated profile; "
             "the local profile is for development records"

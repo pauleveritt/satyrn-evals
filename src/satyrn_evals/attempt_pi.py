@@ -44,7 +44,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from satyrn_evals.arms import KNOWN_TOOLS
-from satyrn_evals.cell import Isolation, cell_command, isolation_from, model_environment
+from satyrn_evals.cell import (
+    CELL_PARENT_ENV,
+    Isolation,
+    cell_command,
+    isolation_from,
+    model_environment,
+    sandbox_command,
+)
 from satyrn_evals.errors import UsageError
 from satyrn_evals.session_patch import RESIDUE_EXCLUDES, build_cumulative_patch
 
@@ -167,9 +174,15 @@ def pi_command(args: AdapterArgs, prompt: str, environment: Mapping[str, str], w
     """
     command = build_pi_argv(args, prompt)
     try:
-        if isolation_from(environment) is Isolation.LOCAL:
+        profile = isolation_from(environment)
+        if profile is Isolation.LOCAL:
             return command
-        return cell_command(command, cwd=worktree, environment=model_environment(environment))
+        cell = model_environment(environment)
+        if profile is Isolation.SANDBOX:
+            return sandbox_command(
+                command, parent=Path(environment[CELL_PARENT_ENV]), cwd=worktree, environment=cell
+            )
+        return cell_command(command, cwd=worktree, environment=cell)
     except ValueError as exc:
         raise AdapterError(str(exc)) from exc
 

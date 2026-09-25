@@ -420,7 +420,7 @@ def _attempt(
                 workspace_lease._environment.pop("UV_PROJECT_ENVIRONMENT", None)
             exported = {BASE_SHA_ENV: workspace_lease.base_sha}
             live_transcript = transcript_path
-            if isolation is Isolation.ISOLATED:
+            if isolation.isolating:
                 live_transcript = workspace_lease.parent / LIVE_TRANSCRIPT_NAME
                 exported[ISOLATION_ENV] = isolation.value
                 exported[CELL_PARENT_ENV] = os.fspath(workspace_lease.parent)

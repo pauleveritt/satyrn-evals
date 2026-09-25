@@ -268,10 +268,19 @@ def delivery_environment(environment: Mapping[str, str]) -> dict[str, str]:
 def isolated(args: EngineArgs, environment: Mapping[str, str]) -> bool:
     """Whether the engine runs as the cell user; refuses an engine the cell cannot read."""
     try:
-        if isolation_from(environment) is Isolation.LOCAL:
-            return False
+        profile = isolation_from(environment)
     except ValueError as exc:
         raise AdapterError(str(exc)) from exc
+    if profile is Isolation.LOCAL:
+        return False
+    if profile is Isolation.SANDBOX:
+        # The Engine arm's export lives outside the workspace parent, and the
+        # sandbox view binds only what it names; wiring the export in is its
+        # own change, and the pinned Engine commit is unrecoverable here, so
+        # refuse loudly rather than build a view the engine cannot use.
+        raise AdapterError(
+            "the Engine arm has no sandbox export yet; it runs under the two-uid isolated profile"
+        )
     if not args.engine_repo.resolve().is_relative_to(CELLS_ROOT.resolve()):
         raise AdapterError(
             f"under isolation the engine must be an export under {CELLS_ROOT} "

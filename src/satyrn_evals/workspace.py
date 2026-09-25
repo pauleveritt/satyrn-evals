@@ -1269,7 +1269,7 @@ def _engine_worktree_search_roots(state: _WorkspaceState) -> tuple[Path, ...]:
     resolved identity -- scanning only the first candidate would miss a
     worktree Engine itself put in a fallback root.
     """
-    if state.isolation is Isolation.ISOLATED:
+    if state.isolation.isolating:
         return (state.parent / "tmp",)
     seen: dict[Path, None] = {}
     for root in (Path(tempfile.gettempdir()), *_LOCAL_TMP_FALLBACKS):
@@ -1380,7 +1380,7 @@ def _engine_worktree_no_candidate_message(state: _WorkspaceState) -> str:
     (``_engine_worktree_search_roots``), so the same wording would be false
     -- name what was actually scanned instead.
     """
-    if state.isolation is Isolation.ISOLATED:
+    if state.isolation.isolating:
         return "engine arm: no satyrn-engine-* worktree found under the cell TMPDIR"
     roots = ", ".join(os.fspath(root) for root in _engine_worktree_search_roots(state))
     return f"engine arm: no satyrn-engine-* worktree found under any scanned root ({roots})"
@@ -2091,6 +2091,26 @@ def _share_workspace(
         raise _WorkspaceError(f"cannot share the workspace with the cell user: {exc}") from exc
 
 
+def _prepare_sandbox(state: _WorkspaceState) -> None:
+    """The writable tree a sandboxed cell sees under its workspace parent.
+
+    The sandbox binds the parent read-write and nothing else of the
+    maintainer's, so the cell's HOME, TMPDIR, uv project environment and git
+    config must already exist here (there is no group sharing and no ACL: the
+    command runs as the maintainer, and the mount namespace is the isolation).
+    """
+    parent = state.parent
+    for directory in (parent / "tmp", parent / "environment", parent / "home" / ".pi" / "agent"):
+        try:
+            directory.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            raise _WorkspaceError(f"cannot prepare the sandbox workspace {parent}: {exc}") from exc
+    try:
+        (parent / "gitconfig").write_text(cell_gitconfig(state.worktree), encoding="utf-8")
+    except OSError as exc:
+        raise _WorkspaceError(f"cannot write the sandbox git config: {exc}") from exc
+
+
 def prepare_workspace(
     *,
     base: Path,
@@ -2158,6 +2178,8 @@ def prepare_workspace(
                 deadline.remaining(DeadlinePhase.SETUP)
         if isolation is Isolation.ISOLATED:
             _share_workspace(state, git_environment, deadline=deadline)
+        elif isolation is Isolation.SANDBOX:
+            _prepare_sandbox(state)
         assert state.base_sha is not None
         return PreparedWorkspace(
             parent=parent,

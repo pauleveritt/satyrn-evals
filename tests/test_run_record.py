@@ -176,8 +176,12 @@ def test_a_record_without_a_profile_or_purpose_is_refused(tmp_path: Path, field:
 
 
 def test_an_unknown_profile_is_refused(tmp_path: Path) -> None:
-    with pytest.raises(RunRecordError, match="isolation must be isolated or local"):
+    with pytest.raises(RunRecordError, match="isolation must be one of"):
         load_run_record(_write(tmp_path, isolation="docker"))
+
+
+def test_a_sandbox_record_loads(tmp_path: Path) -> None:
+    assert load_run_record(_write(tmp_path, isolation="sandbox")).isolation is Isolation.SANDBOX
 
 
 def test_an_unknown_purpose_is_refused(tmp_path: Path) -> None:

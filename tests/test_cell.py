@@ -31,6 +31,9 @@ from satyrn_evals.cell import (
     maintainer_ace,
     maintainer_acl,
     model_environment,
+    sandbox_command,
+    sandbox_environment,
+    sandbox_unavailable_reason,
     share_with_cell,
 )
 
@@ -86,7 +89,8 @@ def test_the_model_environment_refuses_without_a_workspace_parent() -> None:
 def test_the_profile_defaults_to_local_and_refuses_an_unknown_one() -> None:
     assert isolation_from({}) is Isolation.LOCAL
     assert isolation_from({ISOLATION_ENV: "isolated"}) is Isolation.ISOLATED
-    with pytest.raises(ValueError, match="isolated or local"):
+    assert isolation_from({ISOLATION_ENV: "sandbox"}) is Isolation.SANDBOX
+    with pytest.raises(ValueError, match="must be one of"):
         isolation_from({ISOLATION_ENV: "docker"})
 
 
@@ -115,6 +119,78 @@ def test_the_cell_is_unavailable_when_sudo_refuses(monkeypatch: pytest.MonkeyPat
 def test_the_cell_is_unavailable_without_the_cells_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr("satyrn_evals.cell.CELLS_ROOT", tmp_path / "absent")
     assert "does not exist" in (cell_unavailable_reason(run=lambda *a, **k: _completed(0)) or "")
+
+
+def test_the_sandbox_environment_is_the_cells_own_under_a_writable_home() -> None:
+    environment = sandbox_environment(parent=Path("/cells/a"), extra={"K": "v"}, path_prefix=("/fake/bin",))
+    assert environment["HOME"] == "/cells/a/home"
+    assert environment["TMPDIR"] == "/cells/a/tmp"
+    assert environment["UV_PROJECT_ENVIRONMENT"] == "/cells/a/environment"
+    assert environment["UV_CACHE_DIR"] == "/cells/a/home/.cache/uv"
+    assert environment["PATH"].split(os.pathsep)[0] == "/fake/bin"
+    assert environment["K"] == "v"
+
+
+def test_the_model_environment_dispatches_sandbox_to_the_sandbox_environment() -> None:
+    exported = {CELL_PARENT_ENV: "/cells/a", ISOLATION_ENV: "sandbox"}
+    assert model_environment(exported)["HOME"] == "/cells/a/home"
+
+
+def _setenv(argv: list[str], key: str, value: str) -> bool:
+    return any(argv[i] == "--setenv" and argv[i + 1] == key and argv[i + 2] == value for i in range(len(argv) - 2))
+
+
+def test_the_sandbox_command_binds_the_workspace_sets_the_environment_and_runs_argv() -> None:
+    argv = sandbox_command(
+        ["pi", "--version"], parent=Path("/cells/a"), cwd=Path("/cells/a/worktree"),
+        environment={"PATH": "/bin", "HOME": "/cells/a/home"},
+    )
+    assert argv[0] == "bwrap" and "--die-with-parent" in argv and "--unshare-pid" in argv
+    assert "--bind" in argv and "/cells/a" in argv
+    assert "--chdir" in argv and "/cells/a/worktree" in argv
+    assert _setenv(argv, "HOME", "/cells/a/home") and _setenv(argv, "PATH", "/bin")
+    assert argv[argv.index("--") + 1 :] == ["pi", "--version"]
+
+
+def test_an_empty_sandbox_command_is_refused() -> None:
+    with pytest.raises(ValueError, match="empty"):
+        sandbox_command([], parent=Path("/a"), cwd=Path("/a"), environment={})
+
+
+def test_the_sandbox_is_unavailable_without_bwrap(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("satyrn_evals.cell.shutil.which", lambda name: None)
+    assert "bwrap" in (sandbox_unavailable_reason() or "")
+
+
+def test_the_sandbox_is_unavailable_when_bwrap_cannot_build_a_view() -> None:
+    reason = sandbox_unavailable_reason(run=lambda *a, **k: _completed(1, b"setting up uid map: Permission denied"))
+    assert reason is not None and "Permission denied" in reason
+
+
+def test_the_sandbox_is_available_when_bwrap_runs() -> None:
+    assert sandbox_unavailable_reason(run=lambda *a, **k: _completed(0)) is None
+
+
+def test_the_sandbox_binds_the_workspace_before_anything_placed_inside_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """bwrap mounts in order: a later `--bind parent parent` hides an earlier
+    bind under `parent` (the pi config), which cost one NO_PATCH cell."""
+    home = tmp_path / "home"
+    (home / ".pi" / "agent").mkdir(parents=True)
+    config = home / ".pi" / "agent" / "models.json"
+    config.write_text("{}")
+    monkeypatch.setattr("satyrn_evals.cell.Path.home", lambda: home)
+    parent = tmp_path / "cells" / "a"
+    argv = sandbox_command(["pi"], parent=parent, cwd=parent, environment={})
+    parent_bind = next(
+        i for i in range(len(argv) - 2) if argv[i] == "--bind" and argv[i + 1] == os.fspath(parent)
+    )
+    dest = os.fspath(parent / "home" / ".pi" / "agent" / "models.json")
+    config_bind = next(
+        i for i in range(len(argv) - 2) if argv[i] == "--ro-bind" and argv[i + 2] == dest
+    )
+    assert parent_bind < config_bind
 
 
 def test_the_maintainer_ace_is_inherited_by_files_and_directories() -> None:
