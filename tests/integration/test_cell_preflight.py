@@ -87,8 +87,16 @@ def test_the_hunt_finds_a_planted_answer_key_and_nothing_once_it_is_gone(
 
 
 def test_the_cell_users_pi_models_are_read_as_the_cell(cell_scratch: Path) -> None:
+    """The file is the cell's own, readable through sudo, and holds a model.
+
+    The provider name is a property of the backend the host runs (``omlx`` on
+    the Mac, an OpenAI-compatible provider elsewhere), so this asserts a
+    configured provider carrying a model, not a particular name.
+    """
     models = read_cell_pi_models()
-    assert "omlx" in models["providers"], json.dumps(models)[:200]
+    providers = models.get("providers") or {}
+    assert providers, json.dumps(models)[:200]
+    assert any(block.get("models") for block in providers.values()), json.dumps(models)[:200]
 
 
 def test_the_hunt_run_as_the_cell_over_the_pinned_engine_export_finds_nothing(
