@@ -105,6 +105,31 @@ def test_harvest_excludes_runtime_residue_and_keeps_new_files(tmp_path: Path) ->
     assert ".pytest_cache" in swept  # sibling: the session path's default is unchanged
 
 
+def test_harvest_excludes_residue_the_base_already_tracks(tmp_path: Path) -> None:
+    """A tracked cache is a modification ``add -N`` cannot remove.
+
+    The self-hosted bases carried a committed ``.pytest_cache`` (a coder's own
+    run before the task was cut), so every model test run rewrote a tracked
+    file and every patch was rejected as a non-source path. The diff, not just
+    the add sweep, must carry the excludes.
+    """
+    from satyrn_evals.session_patch import RESIDUE_EXCLUDES
+
+    repo, _ = _repo(tmp_path)
+    cache = repo / ".pytest_cache" / "v" / "cache"
+    cache.mkdir(parents=True)
+    (cache / "nodeids").write_text("[]\n")
+    _git(repo, "add", "-A")
+    _git(repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "cache")
+    base = _git(repo, "rev-parse", "HEAD").stdout.decode().strip()
+
+    (cache / "nodeids").write_text('["test"]\n')  # the model's pytest run rewrites it
+    (repo / "edited.txt").write_text("edited v3\n")
+    harvested = build_cumulative_patch(repo, base, exclude=RESIDUE_EXCLUDES).patch_text
+    assert "edited.txt" in harvested
+    assert ".pytest_cache" not in harvested
+
+
 def test_harvest_excludes_the_mutators_atomic_replace_temp_file(tmp_path: Path) -> None:
     """F4: satyrn-engine's ``_atomic_replace`` (mutation.py ~623-646 at
     0a6e5df) writes each edit through ``.<name>.satyrn-<16 hex>.tmp`` before

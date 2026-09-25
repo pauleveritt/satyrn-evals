@@ -102,6 +102,12 @@ def build_cumulative_patch(
     environment for direct use, mirroring the session's own default of
     None meaning the caller's environment.
 
+    ``exclude``, when given, removes paths from the patch *and* the intent-to-add
+    sweep. The diff carries it as well as the ``git add``: an excluded path the
+    base already tracks (a committed ``.pytest_cache``, say) is a modification
+    to that tracked file, which ``add -N`` cannot remove, and the grader then
+    rejects the patch as a non-source path.
+
     ``timeout`` is a per-git-call ceiling in seconds, applied identically to
     each of the four git calls below; None keeps today's unbounded behaviour
     for the session and adapter callers. A tripped teardown passes a bound
@@ -152,6 +158,9 @@ def build_cumulative_patch(
             "--no-ext-diff",
             "--no-textconv",
             base_commit,
+            "--",
+            ".",
+            *exclude,
             timeout=_call_timeout(),
             extra_config=extra_config,
         ).decode("utf-8", "surrogateescape")
