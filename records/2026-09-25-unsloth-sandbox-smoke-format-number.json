@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "task": "format_number",
+  "task_tree_sha256": "8362a0f562e7e6fe41fd0235a931a723347005d4bc6b438de4eaedf17ea383a0",
+  "arm": "baseline",
+  "model": "unsloth/ornith-ai/Ornith-1.5-9B-GGUF",
+  "condition": "cold",
+  "n": 1,
+  "mode": "attended",
+  "max_minutes": 20,
+  "stop_rule": "established infrastructure failure only",
+  "decision_rule": "none: development, no task outcome",
+  "previous_result": null,
+  "token_budget": 16000,
+  "turn_budget": 12,
+  "isolation": "sandbox",
+  "purpose": "development",
+  "k": 1,
+  "rung": null,
+  "authority": "Nicola Jordan, 2026-09-25: unprivileged bwrap sandbox smoke",
+  "command_backstop_s": 600,
+  "backend": "openai"
+}
