@@ -89,6 +89,30 @@ edit is "decode is null only when the rate is None". It is **not** applied
 here: adding it and re-cutting moves `tree_digest(task_dir)`, which the
 frozen night-3 record pins, and no replacement night is spent.
 
+## `selfhost-*`: host-assumption tests (2026-09-25, Linux port)
+
+All five self-hosted tasks carry a public suite copied from this repo at
+their cut commit. Two of its tests assume the maintainer's Mac and fail on
+Linux, before any cell, so `task_self_test` refused every one of them
+(`launch FAILED: task self-test ...`):
+
+- `tests/test_timing.py::test_the_residual_is_never_folded_into_the_phases_dict`
+  calls `measure_timing` without `birthtime_reader`; on Linux there is no
+  `st_birthtime`, so setup and command stay combined as `setup_and_command`,
+  which the assertion forbids. The parent copy was made hermetic in `f6302ca`.
+- `tests/test_cell_engine.py`'s `_pinned_export` (`selfhost-preflight-quiet`
+  only) leaves the stand-in export group-writable under `umask 002`, so
+  `verify_export` refuses it. The parent copy was fixed 2026-09-25.
+
+Neither touches the contract, the hidden grader, the seeded bug or the
+known-good patch: both are the repository's own incidental context tests.
+The fix is the parent's own, applied to each base's `tests/` only, so the
+revised tasks carry new `task_tree_sha256`s. They are re-qualified under R0
+§2 on this host (known-good green and known-broken red, both directions).
+The censuses and the release-two comparison ran on the previous revision;
+their records pin those hashes and that revision is in git, so their
+evidence stays theirs.
+
 ## Admission rule
 
 No task named here may be reused as a ceiling candidate until its defect is

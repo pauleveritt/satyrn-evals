@@ -130,6 +130,10 @@ def _pinned_export(tmp_path: Path) -> tuple[Arm, Path]:
     assert commit is not None
     export = tmp_path / "cells" / f"engine-{commit}"
     (export / "packages" / "engine").mkdir(parents=True)
+    # verify_export refuses group-/other-writable exports, and mkdir honors the
+    # ambient umask (0775 under umask 002): pin the mode the check wants so
+    # these rows test the check, not the shell they ran in.
+    export.chmod(0o700)
     for name in ENGINE_SOURCES:
         (export / "packages" / "engine" / name).write_text(f"// {name}\n")
     (export / ".satyrn-engine-export").write_text(f"{commit}\n")
