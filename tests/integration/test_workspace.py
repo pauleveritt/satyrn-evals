@@ -287,6 +287,23 @@ def test_ignored_task_base_file_is_materialized(tmp_path: Path) -> None:
     assert observation.read_text() == "persisted\n"
 
 
+def test_cleanup_survives_a_model_that_deletes_the_worktree_git_file(tmp_path: Path) -> None:
+    """`git worktree remove` refuses a worktree whose ``.git`` is gone.
+
+    A real cell (run-record-gate, 2026-09-25) deleted its worktree's ``.git``
+    and came back CLEANUP_FAILED over a displaced BUDGET_EXCEEDED. The worktree
+    is the harness's own temp copy, so it must remove it directly and prune the
+    stale registration rather than report cleanup unconfirmed."""
+    base = _base(tmp_path)
+    result = run_workspace(
+        base=base,
+        protected_paths=(tmp_path,),
+        command=(sys.executable, "-c", "from pathlib import Path; Path('.git').unlink()"),
+        environment=os.environ,
+    )
+    assert result.code is WorkspaceCode.OK
+
+
 @pytest.mark.skipif(os.name != "posix", reason="process-group proof is POSIX-only")
 def test_timeout_reaps_group_before_workspace_cleanup(tmp_path: Path) -> None:
     base = _base(tmp_path)

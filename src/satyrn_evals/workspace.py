@@ -1765,6 +1765,27 @@ def _cleanup_worktree(
         )
     except _WorkspaceError as exc:
         remove_error = exc
+    if remove_error is not None:
+        # `git worktree remove` refuses when the worktree's own `.git` -- or the
+        # repository's admin data for it -- is gone (a model can delete either)
+        # with "validation failed, cannot remove working tree". The directory is
+        # the harness's own temp workspace, so remove it directly and prune the
+        # now-stale registration; the confirmation below is what decides.
+        try:
+            if os.path.lexists(state.worktree):
+                _remove_parent(state.worktree)
+        except OSError as exc:
+            remove_error = _WorkspaceError(f"cannot remove {state.worktree} directly: {exc}")
+        else:
+            with contextlib.suppress(_WorkspaceError):
+                _deadline_git(
+                    state.repository,
+                    ("worktree", "prune"),
+                    environment,
+                    deadline=deadline,
+                    phase=DeadlinePhase.CLEANUP,
+                )
+            remove_error = None
     registered = (
         _worktree_registered(
             state.repository,
