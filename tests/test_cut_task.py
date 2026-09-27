@@ -9,8 +9,10 @@ from satyrn_evals.attempt import contract_digest
 from tools.cut_task import (
     IGNORED_PATHS,
     RUNG,
+    BaseEdit,
     CutError,
     PromptEdit,
+    apply_base_edits,
     apply_prompt_edits,
     broken_patch,
     excluded,
@@ -344,6 +346,82 @@ def test_recorded_edits_land_in_the_generator_block(tmp_path: Path, spec_body: d
     path.write_text(json.dumps(spec_body | {"prompt_edits": [{"old": "a", "new": "b", "reason": "r"}]}))
     body = manifest_body(load_spec(path), "b\n", ["tests/test_x.py::test_y"], "0" * 64)
     assert body["generator"]["prompt_edits"] == [{"old": "a", "new": "b", "reason": "r"}]
+
+
+BASE_EDITS = (
+    BaseEdit(path="tests/test_x.py", old="old = 1\n", new="new = 2\n", reason="r1"),
+    BaseEdit(path="tests/test_y.py", old="    x\n", new="    x\n    y\n", reason="r2: an insertion keeps its anchor"),
+)
+
+
+def test_base_edits_apply_to_named_files_in_order(tmp_path: Path) -> None:
+    base = tmp_path / "base"
+    (base / "tests").mkdir(parents=True)
+    (base / "tests" / "test_x.py").write_text("old = 1\n", encoding="utf-8")
+    (base / "tests" / "test_y.py").write_text("    x\n", encoding="utf-8")
+    apply_base_edits(base, BASE_EDITS)
+    assert (base / "tests" / "test_x.py").read_text(encoding="utf-8") == "new = 2\n"
+    assert (base / "tests" / "test_y.py").read_text(encoding="utf-8") == "    x\n    y\n"
+
+
+def test_a_base_edit_whose_old_text_is_absent_is_refused(tmp_path: Path) -> None:
+    base = tmp_path / "base"
+    base.mkdir()
+    (base / "f.py").write_text("nothing\n", encoding="utf-8")
+    with pytest.raises(CutError, match="occurs 0 times"):
+        apply_base_edits(base, (BaseEdit(path="f.py", old="old = 1", new="new = 2", reason="r"),))
+
+
+def test_a_base_edit_whose_old_text_occurs_twice_is_refused(tmp_path: Path) -> None:
+    base = tmp_path / "base"
+    base.mkdir()
+    (base / "f.py").write_text("x\nx\n", encoding="utf-8")
+    with pytest.raises(CutError, match="occurs 2 times"):
+        apply_base_edits(base, (BaseEdit(path="f.py", old="x\n", new="y\n", reason="r"),))
+
+
+def test_a_base_edit_naming_a_missing_file_is_refused(tmp_path: Path) -> None:
+    base = tmp_path / "base"
+    base.mkdir()
+    with pytest.raises(CutError, match="is not a file in BASE"):
+        apply_base_edits(base, (BaseEdit(path="f.py", old="x", new="y", reason="r"),))
+
+
+@pytest.mark.parametrize(
+    "edit",
+    [
+        {"path": "f.py", "old": "", "new": "x", "reason": "r"},
+        {"path": "f.py", "old": "x", "new": "", "reason": "r"},
+        {"path": "f.py", "old": "x", "new": "y", "reason": ""},
+        {"path": "", "old": "x", "new": "y", "reason": "r"},
+        {"path": "f.py", "old": "x", "new": "y"},
+        {"path": "f.py", "old": "same", "new": "same", "reason": "r"},
+        {"path": "f.py", "old": "x", "new": "y", "reason": "r", "extra": 1},
+        {"path": "/abs/f.py", "old": "x", "new": "y", "reason": "r"},
+        {"path": "../f.py", "old": "x", "new": "y", "reason": "r"},
+    ],
+)
+def test_a_malformed_base_edit_is_refused_at_load(tmp_path: Path, spec_body: dict, edit: dict) -> None:
+    path = tmp_path / "spec.json"
+    path.write_text(json.dumps(spec_body | {"base_edits": [edit]}))
+    with pytest.raises(CutError, match="base_edits"):
+        load_spec(path)
+
+
+def test_a_spec_without_base_edits_still_loads_and_writes_no_manifest_key(tmp_path: Path, spec_body: dict) -> None:
+    """The compatibility direction: a spec that carries none re-cuts byte-identically."""
+    spec = load_spec(_spec(tmp_path, spec_body))
+    assert spec.base_edits == ()
+    body = manifest_body(spec, "prompt\n", ["tests/test_x.py::test_y"], "0" * 64)
+    assert "base_edits" not in body["generator"]
+
+
+def test_recorded_base_edits_land_in_the_generator_block(tmp_path: Path, spec_body: dict) -> None:
+    body = spec_body | {"base_edits": [{"path": "tests/test_x.py", "old": "a", "new": "b", "reason": "r"}]}
+    manifest = manifest_body(load_spec(_spec(tmp_path, body)), "prompt\n", ["tests/test_x.py::test_y"], "0" * 64)
+    assert manifest["generator"]["base_edits"] == [
+        {"path": "tests/test_x.py", "old": "a", "new": "b", "reason": "r"}
+    ]
 
 
 def test_a_spec_may_carry_an_authored_disclosure(tmp_path: Path) -> None:

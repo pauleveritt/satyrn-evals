@@ -73,6 +73,20 @@
       "heading": "### Task 1: The machine-quiet preflight",
       "commit": "3cd88a6ce1e6987293dfa638337d8594535bffd3"
     },
+    "base_edits": [
+      {
+        "path": "tests/test_timing.py",
+        "old": "    result = measure_timing(cell_dir, wrapper_start=_BASE, wrapper_end=_BASE + 30)\n\n    assert \"residual\" not in result.phases\n",
+        "new": "    result = measure_timing(\n        cell_dir,\n        wrapper_start=_BASE,\n        wrapper_end=_BASE + 30,\n        birthtime_reader=_births(**{\"transcript.txt\": _BASE + 5}),\n    )\n\n    assert \"residual\" not in result.phases\n",
+        "reason": "Linux records no st_birthtime, so the copied public suite's residual-phase test left the setup/command boundary unobservable and task_self_test refused this base before any cell. The parent made the same test hermetic in f6302ca (2026-09-23), after this BASE was cut, so the base carries that fix as a recorded edit."
+      },
+      {
+        "path": "tests/test_cell_engine.py",
+        "old": "    (export / \"packages\" / \"engine\").mkdir(parents=True)\n",
+        "new": "    (export / \"packages\" / \"engine\").mkdir(parents=True)\n    # verify_export refuses group-/other-writable exports, and mkdir honors the\n    # ambient umask (0775 under umask 002): pin the mode the check wants so\n    # these rows test the check, not the shell they ran in.\n    export.chmod(0o700)\n",
+        "reason": "mkdir honors the ambient umask (0775 under umask 002), so this base's stand-in engine export was group-writable and verify_export refused task_self_test. The parent pinned the same chmod on 2026-09-25, after this BASE was cut, so the base carries that fix as a recorded edit."
+      }
+    ],
     "authored": true,
     "authoring": {
       "spec": "docs/superpowers/specs/2026-09-17-release-two-authored-task-design.md",
@@ -84,7 +98,7 @@
     }
   },
   "digests": {
-    "task_tree": "b04e178dc8aef3b881812915015cf6060606e87d275c092facb9b77a4483f7d2",
+    "task_tree": "9ce421a4a2146d98b579d95b7fb37bb049d0025e863fba5e2ed535a9119fca99",
     "prompt": "df04f00587106515f9358218df0e921f69b733fc2571b4ccd8574bf98e477bbd"
   },
   "validity": {

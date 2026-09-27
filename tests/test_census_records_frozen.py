@@ -52,26 +52,33 @@ DECISION_RULE = (
 #: so a record's hash is allowed to be the previous digest only while the tree
 #: is the recorded revised one: an unrecorded drift still fails, and a second
 #: revision fails too. ``task -> (previous digest, recorded revised digest)``.
+#:
+#: 2026-09-27: `a194500` changed the bases but left every committed
+#: `manifest.digests.task_tree` stale, so `cut_task check` could not pass. The
+#: manifests were regenerated with the recorded `base_edits` that reproduce the
+#: bases byte for byte; the manifest is inside `tree_digest(task_dir)`, so the
+#: recorded revised digest moved even though no model-facing byte changed. The
+#: census records still pin the pre-2026-09-25 digest, unchanged.
 REVISED_TASK_TREES: dict[str, tuple[str, str]] = {
     "selfhost-cell-loop": (
         "406487a854b78b38b615d23de3c20f18eed39b04610ce3e905ff997e542f3173",
-        "57d65a06c4412e5dc843d956c48c84a727916da53f4d457e0c86699c060d6370",
+        "65ea33d4b34f2b27e6271e6af9bc78a8da5af7348ede832171f40453f2e0b74b",
     ),
     "selfhost-docs-linter": (
         "a8c1aaf0e2d5136be35ed6e5d2bf49cb88e06e15c7217ed0b481edfbd090b1c6",
-        "74ad8dc9ccb935b2d6272c531d5a593c0c1de9890f16817d08491f4d0aee3516",
+        "3e3f7adf7cd962ba04a0948e4bf60f1f9056fc8fb96b9b45a11e780e2da7333e",
     ),
     "selfhost-run-record-gate": (
         "a7c74e5449d5a82e155f9e0161b793697ac9c973323818fe335297faf114ebcc",
-        "7ec64d916bad6e4a5a96418919c3e1a7c4d2a2800c3c0b65a5c60f4ef30f3da8",
+        "068f216e08ef0abee4d3f2b1042ed38d68aaac5a638004c06a1052e03f52be05",
     ),
     "selfhost-speed-probe": (
         "dbb752affe8df090fa8594e8f046383c3ac57e6657fbb7c6181f31331270df28",
-        "a83618c5df42df0b687a532c6f2b738d08351c0bab799986c1a09ca887805a5a",
+        "be6946cd336d318a1e5d3d2e04a6be6ab0fdbfa4be9f145841fdc52145cc26cd",
     ),
     "selfhost-preflight-quiet": (
         "1edcf796591ec22e9c19187744d43706f840e4fdc05dbe790f925c06cac86aa0",
-        "5921477554353022e45d4fc5113c67ac1deadc77e9b8ee68ae962781905efa20",
+        "0567373a69595a8c642b8332df407f83feedb06c4aefc706c2269bba122a5e25",
     ),
 }
 

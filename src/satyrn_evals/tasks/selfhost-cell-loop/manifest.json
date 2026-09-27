@@ -81,10 +81,18 @@
         "new": "Before any cell starts, `launch_cells` creates `<night>/slots/` (with parents as needed). A result is a slot file at slot_path(night, slot), `<night>/slots/<NN>.json`;",
         "reason": "R0 §1.2 validity run 2026-09-16: the prompt-only solution failed 17 of 22 hidden tests because the hidden fake cell writes slot_path(night, slot) without creating <night>/slots/, while the known-good launch_cells creates it; the prompt did not determine that structural choice"
       }
+    ],
+    "base_edits": [
+      {
+        "path": "tests/test_timing.py",
+        "old": "    result = measure_timing(cell_dir, wrapper_start=_BASE, wrapper_end=_BASE + 30)\n\n    assert \"residual\" not in result.phases\n",
+        "new": "    result = measure_timing(\n        cell_dir,\n        wrapper_start=_BASE,\n        wrapper_end=_BASE + 30,\n        birthtime_reader=_births(**{\"transcript.txt\": _BASE + 5}),\n    )\n\n    assert \"residual\" not in result.phases\n",
+        "reason": "Linux records no st_birthtime, so the copied public suite's residual-phase test left the setup/command boundary unobservable and task_self_test refused this base before any cell. The parent made the same test hermetic in f6302ca (2026-09-23), after this BASE was cut, so the base carries that fix as a recorded edit."
+      }
     ]
   },
   "digests": {
-    "task_tree": "a8da5fcf7e0d8e5224415b50233945929396b277007aba8975a8e67cdb29b165",
+    "task_tree": "31ae08eaa585ea10994a1b27dbb8568ec0428b91b0d348a7b097063e25b6603e",
     "prompt": "72e78e2f8e4f3262a143c546d15b5961406d5f44665283fa50ccd0e2d69f4067"
   },
   "validity": {
