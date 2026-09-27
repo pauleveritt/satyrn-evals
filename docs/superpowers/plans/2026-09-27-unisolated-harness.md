@@ -1,6 +1,6 @@
 # The unisolated harness — implementation plan
 
-**Status:** for execution, 2026-09-27. Implements
+**Status:** in execution, updated 2026-09-27. Implements
 `docs/superpowers/specs/2026-09-27-unisolated-harness-design.md`, approved with
 the maintainer's rulings: the stronger contamination package (absence +
 in-worktree confinement + audit), policy-level confinement only (no user,
@@ -14,75 +14,85 @@ recorded no refusal and the audit is clean, the Engine arm refuses by name when
 its checkout's HEAD is not the pin, and `just gates` plus the integration tier
 are green. Re-deriving the census and the comparison is a separate plan.
 
-**Order.** Tasks 1–7 below, in order; each commits at its boundary. No task
-starts before its predecessor's acceptance is green.
+## Progress
 
-## Task 1 — the confinement extension
+| # | Task | State |
+|---|---|---|
+| 1 | The confinement extension | done, `f309d2d` |
+| 2 | The audit core | done, `11ff95f` |
+| 3 | Both arms load the extension | done (eval `e31c3da`; engine seam below) |
+| 4 | Retire OS isolation and the export; pin via the checkout | open — replaces old 4 + old 6 |
+| 5 | The `confinement` record field | open |
+| 6 | Refusal counts, and the stated limit | open |
 
-**Files:** `packages/confinement/confinement.ts` (new), a package manifest pi
-can load.
+Task 3's engine half lives on the engine branch `harness-extension-seam` at
+`54d814d98f69fdf399884276c7d00cd5052e3ca1`, based on `release-one` `803df2d`,
+author Nicola Jordan. It adds `build_pi_command(..., extra_extensions=())` and
+reads `$SATYRN_EXTRA_EXTENSIONS` in `attempt`. The eval pins it only once the
+PR merges (Task 4 re-pins for development in the meantime).
 
-**Behaviour.** On each tool call: resolve a `read`/`edit`/`write` path against
-the session cwd and refuse when it is outside; refuse a `bash` command whose
-text names a protected root or a grader filename. Record every refusal as an
-event the harness can count. The screen is lexical and is not a boundary; the
-audit is the backstop (spec C1, C3).
+## Task 4 — retire OS isolation and the export; pin via the checkout
 
-**Acceptance.** A replay harness (Node, integration tier) drives the shipped
-extension with: an in-worktree read (allowed), an out-of-worktree read
-(refused), an in-worktree write (allowed), a `bash` naming a protected root
-(refused), a `bash` naming nothing protected (allowed). Both directions, one
-process.
+**Why this is one task, not two.** The old plan ordered "retire the export"
+(4) before "remove the OS surfaces" (6). That order cannot work: the export
+exists *because* of two-uid isolation — under `satyrn-cell` the cell user
+cannot read the maintainer's engine checkout, so the engine is exported to a
+shared cells root. Retiring the export while the profiles exist leaves the
+profiles unusable, and four integration modules fail to import:
 
-## Task 2 — the audit core
+- `tests/integration/test_isolated_arms.py` (tests two-uid and the export),
+- `tests/integration/test_cell_preflight.py` (cell/sandbox preflight),
+- `tests/integration/test_launch_record.py` (imports `_cell_pi` from the first),
+- `tests/integration/test_engine_selftest.py` (`arm_export`).
 
-**Files:** `src/satyrn_evals/confinement.py` (new), `tests/test_confinement.py`.
+Those modules *are* the isolation test surface; they are deleted or rewritten
+here, not left broken. `Task 6` and `Task 4` are therefore merged.
 
-**Behaviour.** Pure functions over a transcript plus the corpus roots: enumerate
-every file-tool path and every `bash` argument, resolve each against the
-recorded cwd (reusing `pathology._escapes`), and flag any that reaches the
-corpus root, a task directory, a hidden basename or a fixture. Return the
-evidence in the shape `contamination.py` already uses.
+**Findings carried from the attempted Task 4.**
 
-**Acceptance.** Default tier, no model/network/subprocess. A clean transcript
-flags nothing; a transcript reading a hidden file flags it with the path and
-line; a transcript that copies a fixture is caught by the existing verbatim
-scan. Every flag has a sibling that must not flag.
+- The scoped source change is small and clean: `cell_engine.py` becomes
+  `checkout_root` + `engine_checkout_problems` (absent tree, `HEAD != pin`,
+  or a pinned `packages/engine` byte differing, each refused by name);
+  `attempt_engine.isolated()` returns `False` for `local` and refuses an
+  isolating profile by name; `cli.py`/`launch_record.py` rename the call
+  (`arm_export_problems` → `engine_checkout_problems`, `arm_export` →
+  `checkout_root`); the arms drop `--engine-repo` and name their commit.
+- **Re-pinning moves a digest.** `runner.ts` is `c5c9f431…` at `78ab87d` but
+  `d042fdd1bae9127467d82ce2225b37b17c2f463a40c51e6801b7b77d7ad99fcb` at
+  `54d814d`. All three Engine arms must set the new `engine_commit` **and** the
+  new `runner.ts` digest; the other six `ENGINE_SOURCES` are unchanged between
+  the two commits.
+- `attempt_engine.parse_args` must default `--engine-repo` (the arms no longer
+  name it): `$SATYRN_ENGINE_REPO`, else the sibling `../satyrn-engine`, via
+  `cell_engine.default_checkout`.
 
-## Task 3 — both arms load the extension
+**Sub-steps, each green at its boundary.**
 
-**Files:** `src/satyrn_evals/attempt_pi.py`, `src/satyrn_evals/attempt_engine.py`,
-`src/satyrn_evals/args.py`-adjacent tests.
+**4a — the export retires; the pin is the checkout.** Land the scoped source
+change above and re-pin the three Engine arms to `54d814d` (updating the
+`runner.ts` digest). The `isolated`/`sandbox` profiles still exist, but the
+Engine arm now refuses them by name; the isolation-only test modules are
+deleted here or in 4b, whichever keeps `just gates` and the integration tier
+green at the boundary.
 
-**Behaviour.** `build_pi_argv` gains the explicit `--extension` under the
-existing `--no-extensions`. Baseline and Engine load the same confinement
-extension; the Engine keeps its own `engine.ts`/`mutator.ts`/`scope.ts`/`bounds.ts`.
-The arm's documented tool surface is unchanged.
+**4b — the OS surfaces retire.** Delete the `Isolation` triad's `isolated` and
+`sandbox` behaviour (`cell.py`'s layout, `cell_environment`, `cell_command`,
+`grant_maintainer`, `share_with_cell`, `sandbox_*`), `cell_preflight.py`,
+`workspace.py`'s cell sharing and cell-side kill, `attempt.py`'s and
+`attempt_pi.py`'s isolation branches, and every test that exists only for them.
+A grep proving no source imports a removed symbol is part of acceptance.
 
-**Acceptance.** An argv test pins the extension on both arms; a parity test pins
-that the two arms differ only by the Engine's own extensions and `/implement`.
-Baseline's refusal is stated in the spec, not hidden.
+**4c — the portable preflight.** Replace the cell/sandbox preflight with: the
+confinement extension is loadable, and the run tree holds no grader material
+(spec C2). No host user, no `bwrap`, no cells root.
 
-## Task 4 — the Engine arm pins its commit via the checkout
+**Acceptance.** A record runs both arms end to end with no `satyrn-cell` user
+and no `bwrap`; a checkout at the wrong commit is refused with both shas named
+(the failure this session hit); the per-arm `--engine-repo` still lets two
+Engine arms at two commits run in one record; `just gates` and the integration
+tier green.
 
-**Files:** `src/satyrn_evals/cell_engine.py` (delete the export;
-`engine_checkout_problems` replaces `verify_export`/`arm_export_problems`),
-`src/satyrn_evals/attempt_engine.py`, `src/satyrn_evals/cli.py`,
-`src/satyrn_evals/launch_record.py`, `tools/engine_sync.py` (unchanged),
-`tests/test_cell_engine.py`, `tests/integration/test_engine_arm_pins.py`,
-`arms/engine-*.json`.
-
-**Behaviour.** The arm names `pins.engine_commit`, not a path. The engine comes
-from `--engine-repo` when present, else `$SATYRN_ENGINE_REPO`, else a sibling
-default. A preflight refuses by name when the checkout is absent, its HEAD is
-not the pin, or its `packages/engine/*` do not match `pins.digests`. The
-`cell-engine` subcommand, `CELLS_ROOT` and the export marker retire.
-
-**Acceptance.** A checkout on the wrong commit is refused with the two shas
-named (the failure this session hit); a checkout at the pin passes; the
-per-arm `--engine-repo` lets two Engine arms at two commits run in one record.
-
-## Task 5 — the record field
+## Task 5 — the `confinement` record field
 
 **Files:** `src/satyrn_evals/run_record.py`, `src/satyrn_evals/launch_record.py`,
 `src/satyrn_evals/cli.py`, record fixtures and tests.
@@ -96,29 +106,13 @@ values retire.
 **Acceptance.** A deciding record with `confinement` writes and launches; an
 old record with `isolation` still loads; the schema test proves both keys.
 
-## Task 6 — the portable preflight, and removing the OS surfaces
-
-**Files:** `src/satyrn_evals/cell.py`, `src/satyrn_evals/cell_preflight.py`,
-`src/satyrn_evals/workspace.py`, `src/satyrn_evals/attempt_pi.py`,
-`src/satyrn_evals/attempt_engine.py`, and their tests.
-
-**Behaviour.** The cell/sandbox preflight becomes: the confinement extension is
-loadable, and the run tree holds no grader material (spec C2). The two-uid
-layout, `cell_environment`, `cell_command`, `grant_maintainer`,
-`share_with_cell`, `sandbox_command` and the cell-side kill retire. The
-detached worktree stays.
-
-**Acceptance.** `just gates` green; the integration tier green with no
-`satyrn-cell` user and no `bwrap`; a grep proves no source imports the removed
-symbols.
-
-## Task 7 — count refusals, and state the limit
+## Task 6 — count refusals, and state the limit
 
 **Files:** `src/satyrn_evals/pathology.py`, `src/satyrn_evals/cell_evidence.py`,
 `src/satyrn_evals/summary.py`, tests.
 
-**Behaviour.** `confinement_refusals` joins `workspace_escapes`; the summary and
-result page carry the audit outcome and the spec C4 limit ("no observed
+**Behaviour.** `confinement_refusals` joins `workspace_escapes`; the summary
+and result page carry the audit outcome and the spec C4 limit ("no observed
 access", not "could not access").
 
 **Acceptance.** A transcript with a recorded refusal counts it; a clean one
