@@ -32,6 +32,7 @@ from satyrn_evals.attempt_pi import (
     read_prompt,
 )
 from satyrn_evals.cell import CELL_PARENT_ENV, ISOLATION_ENV
+from satyrn_evals.confinement import EXTENSION_PATH
 from satyrn_evals.session_patch import RESIDUE_EXCLUDES, PatchCapture
 
 MODEL = "omlx/gemma-4-12B-it-MLX-8bit"
@@ -402,6 +403,15 @@ def test_an_argv_without_the_flag_is_detected_as_non_parity() -> None:
     tampered = [token for token in argv if token != "--no-context-files"]
     missing = [flag for flag in ENGINE_HERMETIC_FLAGS if flag not in tampered]
     assert missing == ["--no-context-files"]
+
+
+def test_the_baseline_argv_loads_the_shared_confinement_extension() -> None:
+    """Design C1: Baseline loads the eval's confinement extension, the same
+    path the Engine arm loads through $SATYRN_EXTRA_EXTENSIONS."""
+    argv = build_pi_argv(parse_args(["--model", MODEL]), "the prompt")
+    assert argv[argv.index("--extension") + 1] == os.fspath(EXTENSION_PATH)
+    assert EXTENSION_PATH.as_posix().endswith("packages/confinement/confinement.ts")
+    assert "--no-extensions" in argv
 
 
 # --- 2b: the isolated profile ------------------------------------------------

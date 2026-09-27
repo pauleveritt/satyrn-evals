@@ -30,6 +30,7 @@ from satyrn_evals.attempt_record import (
 )
 from satyrn_evals.budget import AttemptBudget, LineBudget
 from satyrn_evals.cell import CELL_PARENT_ENV, ISOLATION_ENV, Isolation
+from satyrn_evals.confinement import EXTENSION_ENV, EXTENSION_PATH, ROOT_ENV, ROOTS_ENV
 from satyrn_evals.deadline import AttemptDeadline, AttemptDeadlineExceeded
 from satyrn_evals.engine_contract import (
     engine_contract_path,
@@ -418,7 +419,16 @@ def _attempt(
                 # above) so prepare_workspace still receives it for anything
                 # that materializes the task workspace's environment.
                 workspace_lease._environment.pop("UV_PROJECT_ENVIRONMENT", None)
-            exported = {BASE_SHA_ENV: workspace_lease.base_sha}
+            exported = {
+                BASE_SHA_ENV: workspace_lease.base_sha,
+                # The shared confinement condition, both arms: the Baseline
+                # adapter loads the extension from its own argv, and the
+                # Engine arm loads it because the harness names it here (the
+                # engine appends $SATYRN_EXTRA_EXTENSIONS to Pi's argv).
+                EXTENSION_ENV: os.fspath(EXTENSION_PATH),
+                ROOT_ENV: os.fspath(workspace_lease.worktree),
+                ROOTS_ENV: os.pathsep.join((os.fspath(tasks_root), os.fspath(task_dir))),
+            }
             live_transcript = transcript_path
             if isolation.isolating:
                 live_transcript = workspace_lease.parent / LIVE_TRANSCRIPT_NAME

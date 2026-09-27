@@ -56,6 +56,7 @@ class _FakeLease:
     def __init__(self, prepared: dict[str, Any]) -> None:
         self.prepared = prepared
         self.parent = Path("/tmp/fake-prepared-workspace")
+        self.worktree = Path("/tmp/fake-prepared-workspace/worktree")
         self.base_sha = "b" * 40
         self._environment = dict(prepared.get("environment", {}))
 
@@ -2302,5 +2303,10 @@ def test_the_command_learns_the_workspace_base_commit(
         task="t", tasks_root=tasks_root, output=tmp_path / "attempts", command=["fake-agent"]
     )
     assert record.code is AttemptCode.OK
-    assert seen["extra_environment"] == {attempt_module.BASE_SHA_ENV: "b" * 40}
+    assert seen["extra_environment"] == {
+        attempt_module.BASE_SHA_ENV: "b" * 40,
+        attempt_module.EXTENSION_ENV: os.fspath(attempt_module.EXTENSION_PATH),
+        attempt_module.ROOT_ENV: "/tmp/fake-prepared-workspace/worktree",
+        attempt_module.ROOTS_ENV: os.pathsep.join((os.fspath(tasks_root), os.fspath(tasks_root / "t"))),
+    }
     assert attempt_module.BASE_SHA_ENV not in seen["environment"]

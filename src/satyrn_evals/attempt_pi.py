@@ -52,6 +52,7 @@ from satyrn_evals.cell import (
     model_environment,
     sandbox_command,
 )
+from satyrn_evals.confinement import EXTENSION_PATH
 from satyrn_evals.errors import UsageError
 from satyrn_evals.session_patch import RESIDUE_EXCLUDES, build_cumulative_patch
 
@@ -153,6 +154,8 @@ def build_pi_argv(args: AdapterArgs, prompt: str) -> list[str]:
         "--model",
         args.model,
         "--no-extensions",
+        "--extension",
+        os.fspath(EXTENSION_PATH),
         "--no-skills",
         "--no-prompt-templates",
         "--no-themes",

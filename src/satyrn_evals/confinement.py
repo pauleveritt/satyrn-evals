@@ -19,6 +19,16 @@ from pathlib import Path, PurePosixPath
 
 from satyrn_evals.cell_evidence import _events, _path_tokens, _segments
 
+#: The shared Pi extension both arms load (design C1). The Baseline adapter puts
+#: it on Pi's argv; the harness names it in :data:`EXTENSION_ENV` so the Engine
+#: arm's own Pi spawn loads it too.
+EXTENSION_PATH = Path(__file__).resolve().parents[2] / "packages" / "confinement" / "confinement.ts"
+#: Environment the harness exports to a cell: the extension to load, the
+#: worktree the model is confined to, and the roots it must not reach.
+EXTENSION_ENV = "SATYRN_EXTRA_EXTENSIONS"
+ROOT_ENV = "SATYRN_CONFINEMENT_ROOT"
+ROOTS_ENV = "SATYRN_CONFINEMENT_ROOTS"
+
 
 @dataclass(frozen=True, slots=True)
 class Protected:
