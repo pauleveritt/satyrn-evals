@@ -100,6 +100,19 @@ def _births(**by_name: float | None):
     return read
 
 
+def _mtime_is_birth(path: Path) -> float | None:
+    """A birth-time reader derived from the artifact's own mtime.
+
+    The ``run_and_measure`` entry point spawns its subprocess, so the test
+    cannot name the artifact times in advance the way ``_births`` does. Using
+    the mtime as the birth time keeps the setup/command boundary observable,
+    and so the assertion complete, on a filesystem that records no birth time
+    (Linux has no ``st_birthtime``). A birth equal to the mtime is coherent:
+    the reader's contract refuses only a birth *after* the mtime.
+    """
+    return path.stat().st_mtime
+
+
 # --- successes -------------------------------------------------------------
 
 
@@ -508,7 +521,9 @@ def test_run_and_measure_times_a_trivial_model_free_command(tmp_path: Path) -> N
         (attempt / "attempt.json").write_text("{{}}")
         """
     )
-    result = run_and_measure([sys.executable, "-c", script], cell_dir)
+    result = run_and_measure(
+        [sys.executable, "-c", script], cell_dir, birthtime_reader=_mtime_is_birth
+    )
 
     assert result.attempt_dir == f"{_TASK}-{_STAMP}"
     assert result.total_seconds >= 0.0
