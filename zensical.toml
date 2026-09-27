@@ -5,6 +5,7 @@ site_dir = "_build"
 extra_css = ["stylesheets/public.css"]
 nav = [
   { "Home" = "index.md" },
+  { "Getting started" = "user-guide.md" },
   { "How it works" = "how-it-works.md" },
   { "First results" = "numbers.md" },
   { "Release one — the stated negative" = "release-one-negative.md" },
