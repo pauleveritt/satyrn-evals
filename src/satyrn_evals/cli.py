@@ -399,7 +399,7 @@ def _launch_preflight(args: argparse.Namespace) -> int:
         # Same check, same skip rule as `launch_record`'s: a real preflight run
         # never carries the test PATH seam (flagged just below when it does),
         # so this only ever skips there, never for a record this path accepts.
-        server_problems, checked["model_server"] = model_server_checks(arms, record.isolation)
+        server_problems, checked["model_server"] = model_server_checks(arms)
         problems += server_problems
     if os.environ.get(CELL_PATH_PREFIX_ENV):
         problems.append(f"{CELL_PATH_PREFIX_ENV} is set; it is a test seam, never a sitting's PATH")

@@ -48,7 +48,7 @@ from typing import TextIO
 
 from satyrn_evals.arms import Arm, build_argv, load_arm
 from satyrn_evals.attempt import resolve_contract
-from satyrn_evals.cell import CELL_PATH_PREFIX_ENV, CELLS_ROOT, Isolation
+from satyrn_evals.cell import CELL_PATH_PREFIX_ENV
 from satyrn_evals.cell_engine import checkout_root, engine_checkout_problems
 from satyrn_evals.cell_preflight import CellPreflight, preflight_confinement
 from satyrn_evals.errors import SatyrnError
@@ -129,15 +129,14 @@ def settings_provenance(arm_path: Path, cell: bool) -> tuple[int, str]:
 
 def model_server_checks(
     arms: Sequence[Arm],
-    isolation: Isolation,
     *,
-    pi_models: Callable[[bool], dict] = read_pi_models,
+    pi_models: Callable[[], dict] = read_pi_models,
     model_server: Callable[..., list[str]] = model_server_problems,
 ) -> tuple[list[str], dict[str, dict]]:
     """``model_server_problems`` for every distinct ``server_model`` among ``arms``.
 
-    Reads the Pi model config once -- the cell user's under isolation, the
-    maintainer's own otherwise -- and derives each arm's base URL from its
+    Reads the Pi model config once -- the maintainer's own, since confinement
+    runs the model as the maintainer -- and derives each arm's base URL from its
     own provider block (``model_server_base_url``), falling back to
     ``DEFAULT_MODEL_SERVER_URL`` -- named in both the problem text and the
     returned receipt -- only when the config has no such provider or could
@@ -148,7 +147,7 @@ def model_server_checks(
     should that ever change.
     """
     try:
-        pi_config = pi_models(isolation is Isolation.ISOLATED)
+        pi_config = pi_models()
     except OSError as exc:
         pi_config, read_problem = None, f"the Pi model config is unreadable: {exc}"
     else:
@@ -214,30 +213,6 @@ def _arms(record: RunRecord, arm_paths: Sequence[Path]) -> dict[str, tuple[Path,
     if len({arm.pins.pi for _, arm in loaded.values()}) != 1:
         raise RunRecordError("the arms pin different pi versions; interleaved arms run one pi")
     return loaded
-
-
-def _tolerated(cells_root: Path = CELLS_ROOT) -> tuple[Path, ...]:
-    """The cells-root child a deciding record has already refused the env for (R5).
-
-    ``launch --preflight`` never tolerates: only ``launch_record`` calls
-    this. The test PATH seam (``CELL_PATH_PREFIX_ENV``) may name several
-    directories separated by ``os.pathsep``; only the first is under
-    ``cells_root`` in the fixtures this needs (``cell_scratch``'s
-    ``satyrn-test-*`` directory), so its direct child under ``cells_root``
-    is the one entry preflight is told to look past.
-    """
-    prefix = os.environ.get(CELL_PATH_PREFIX_ENV)
-    if not prefix:
-        return ()
-    first = Path(prefix.split(os.pathsep)[0]).resolve()
-    root = cells_root.resolve()
-    try:
-        relative = first.relative_to(root)
-    except ValueError:
-        return ()
-    if not relative.parts:
-        return ()
-    return (root / relative.parts[0],)
 
 
 def _arm_results(finished: dict[int, dict], arm: str) -> tuple[list[dict], list[dict]]:
@@ -379,14 +354,14 @@ def launch_record(
         # reaches a real model server, the same reason it may skip settings; a
         # deciding record has already refused that seam above, so it never skips.
         server_problems, checked["model_server"] = model_server_checks(
-            [arm for _, arm in arms.values()], record.isolation,
+            [arm for _, arm in arms.values()],
             pi_models=facts.pi_models, model_server=facts.model_server,
         )
         problems += server_problems
     baseline_settings: dict[str, str] = {}
     if settings:
         for name, (path, _) in arms.items():
-            code, text = facts.settings(path, record.isolation is Isolation.ISOLATED)
+            code, text = facts.settings(path, False)
             if code != 0:
                 problems.append(f"preflight_settings for {name} exited {code}: {text.strip()}")
             baseline_settings[name] = text
@@ -415,7 +390,7 @@ def launch_record(
         if tree_digest(task_dir) != tree:
             return f"the {record.task} task tree no longer matches task_tree_sha256"
         for name, (path, _) in arms.items() if settings else ():
-            if facts.settings(path, record.isolation is Isolation.ISOLATED)[1] != baseline_settings[name]:
+            if facts.settings(path, False)[1] != baseline_settings[name]:
                 return f"the settings provenance for {name} changed"
         return None
 

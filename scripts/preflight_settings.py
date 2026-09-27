@@ -60,17 +60,12 @@ import hashlib
 import json
 import subprocess
 import sys
-from collections.abc import Callable
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from satyrn_evals.arms import ArmError, load_arm  # noqa: E402
-from satyrn_evals.cell import CELL_USER  # noqa: E402
-from satyrn_evals.pi_models import CELL_PI_MODELS, DEFAULT_PI_MODELS  # noqa: E402
-from satyrn_evals.pi_models import (
-    read_cell_pi_models as _read_cell_pi_models,  # noqa: E402
-)
+from satyrn_evals.pi_models import DEFAULT_PI_MODELS  # noqa: E402
 
 DEFAULT_OMLX_SETTINGS = Path.home() / ".omlx" / "model_settings.json"
 
@@ -247,16 +242,6 @@ def provenance(arm_path_text: str, omlx: dict | None, pi: dict | None, *, backen
     }
 
 
-def read_cell_pi_models(run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run) -> dict:
-    """The cell user's Pi model config, read as the cell user; OSError when it cannot be.
-
-    Delegates to `satyrn_evals.pi_models` -- the same reader `launch`'s
-    model-server check uses for the base URL -- so there is exactly one
-    place that knows how to read the cell's `models.json`.
-    """
-    return _read_cell_pi_models(run=run)
-
-
 def _read_json(path: Path) -> dict:
     """Parse `path` as a JSON object; raises on any unreadable input.
 
@@ -278,7 +263,6 @@ def main(argv: list[str] | None = None) -> int:
     )
     sources = parser.add_mutually_exclusive_group()
     sources.add_argument("--pi-models", type=Path, default=DEFAULT_PI_MODELS)
-    sources.add_argument("--cell", action="store_true", help=f"read {CELL_USER}'s models.json as {CELL_USER}")
     parser.add_argument("--record", type=Path, default=None)
     args = parser.parse_args(argv)
 
@@ -295,7 +279,7 @@ def main(argv: list[str] | None = None) -> int:
         arm_text = args.arm.read_text(encoding="utf-8")
         arm = json.loads(arm_text)
         omlx_settings = _read_json(args.omlx_settings) if loaded_arm.backend == "omlx" else None
-        pi_models = read_cell_pi_models() if args.cell else _read_json(args.pi_models)
+        pi_models = _read_json(args.pi_models)
     except (OSError, json.JSONDecodeError, subprocess.SubprocessError, ArmError) as exc:
         print(f"preflight_settings: unreadable input: {exc}", file=sys.stderr)
         return 2
@@ -309,7 +293,7 @@ def main(argv: list[str] | None = None) -> int:
 
     mismatches = compare(inference, omlx, pi, check_server=loaded_arm.backend == "omlx")
     record = provenance(arm_text, omlx, pi, backend=loaded_arm.backend)
-    record["pi_models"] = f"{CELL_USER}:{CELL_PI_MODELS}" if args.cell else str(args.pi_models)
+    record["pi_models"] = str(args.pi_models)
 
     payload = json.dumps(record, indent=2, sort_keys=True)
     print(payload)

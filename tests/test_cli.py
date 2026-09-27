@@ -467,7 +467,7 @@ def _fake_preflight(monkeypatch: pytest.MonkeyPatch, *, model_server_problems: l
     monkeypatch.setattr(cli_module, "engine_checkout_problems", lambda arm: [])
     monkeypatch.setattr(
         cli_module, "model_server_checks",
-        lambda arms, isolation, **kw: (model_server_problems or [], {arm.server_model: {"base_url": "http://x"} for arm in arms}),
+        lambda arms, **kw: (model_server_problems or [], {arm.server_model: {"base_url": "http://x"} for arm in arms}),
     )
 
 
@@ -500,15 +500,14 @@ def test_launch_preflight_asks_the_model_server_check_about_this_arm(
     monkeypatch.setattr(cli_module, "preflight_confinement", lambda **kw: CellPreflight([], {}))
     monkeypatch.setattr(cli_module, "engine_checkout_problems", lambda arm: [])
 
-    def model_server_checks(arms: list, isolation: Isolation, **kw: object) -> tuple[list[str], dict]:
+    def model_server_checks(arms: list, **kw: object) -> tuple[list[str], dict]:
         seen["arms"] = [arm.server_model for arm in arms]
-        seen["isolation"] = isolation
         return [], {}
 
     monkeypatch.setattr(cli_module, "model_server_checks", model_server_checks)
     record = _preflight_record(tmp_path)
     assert main(["launch", "--preflight", str(record), "--arm", str(ARM)]) == 0
-    assert seen == {"arms": ["Ornith-1.5-9B-MLX-8bit"], "isolation": Isolation.LOCAL}
+    assert seen == {"arms": ["Ornith-1.5-9B-MLX-8bit"]}
 
 
 # --- Part C: grade-line ---
@@ -780,7 +779,7 @@ def test_launch_preflight_skips_the_model_server_check_on_the_fake_pi_seam(
     monkeypatch.setattr(cli_module, "engine_checkout_problems", lambda arm: [])
     monkeypatch.setattr(
         cli_module, "model_server_checks",
-        lambda arms, isolation, **kw: pytest.fail("model_server_checks must not be consulted on the fake-pi seam"),
+        lambda arms, **kw: pytest.fail("model_server_checks must not be consulted on the fake-pi seam"),
     )
     record = _preflight_record(tmp_path)
     # exits 1 regardless (the seam itself is flagged as a problem), but must not have blown up

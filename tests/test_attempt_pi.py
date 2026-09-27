@@ -31,7 +31,6 @@ from satyrn_evals.attempt_pi import (
     read_base_sha,
     read_prompt,
 )
-from satyrn_evals.cell import CELL_PARENT_ENV, ISOLATION_ENV
 from satyrn_evals.confinement import EXTENSION_PATH
 from satyrn_evals.session_patch import RESIDUE_EXCLUDES, PatchCapture
 
@@ -420,31 +419,3 @@ def test_the_baseline_argv_loads_the_shared_confinement_extension() -> None:
 def test_the_local_profile_runs_pi_directly() -> None:
     args = parse_args(["--model", MODEL])
     assert pi_command(args, "fix it", {}, Path("/w")) == build_pi_argv(args, "fix it")
-
-
-def test_the_isolated_profile_runs_pi_as_the_cell_user_in_the_worktree() -> None:
-    args = parse_args(["--model", MODEL])
-    exported = {ISOLATION_ENV: "isolated", CELL_PARENT_ENV: "/cells/a"}
-    argv = pi_command(args, "fix it", exported, Path("/cells/a/worktree"))
-    assert argv[:5] == ["sudo", "-n", "-H", "-u", "satyrn-cell"]
-    assert "TMPDIR=/cells/a/tmp" in argv and "UV_PROJECT_ENVIRONMENT=/cells/a/environment" in argv
-    assert argv[argv.index("satyrn-cell", 5) + 1 :] == ["/cells/a/worktree", *build_pi_argv(args, "fix it")]
-
-
-def test_the_sandbox_profile_runs_pi_in_a_bwrap_view() -> None:
-    args = parse_args(["--model", MODEL])
-    exported = {ISOLATION_ENV: "sandbox", CELL_PARENT_ENV: "/cells/a"}
-    argv = pi_command(args, "fix it", exported, Path("/cells/a/worktree"))
-    assert argv[0] == "bwrap" and "--die-with-parent" in argv
-    assert any(argv[i : i + 3] == ["--setenv", "HOME", "/cells/a/home"] for i in range(len(argv) - 2))
-    assert any(argv[i : i + 3] == ["--setenv", "TMPDIR", "/cells/a/tmp"] for i in range(len(argv) - 2))
-    assert argv[argv.index("--") + 1 :] == build_pi_argv(args, "fix it")
-
-
-@pytest.mark.parametrize(
-    ("exported", "message"),
-    [({ISOLATION_ENV: "isolated"}, CELL_PARENT_ENV), ({ISOLATION_ENV: "docker"}, "must be one of")],
-)
-def test_an_isolated_profile_the_harness_did_not_complete_is_refused(exported: dict[str, str], message: str) -> None:
-    with pytest.raises(AdapterError, match=message):
-        pi_command(parse_args(["--model", MODEL]), "fix it", exported, Path("/w"))

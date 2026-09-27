@@ -29,7 +29,7 @@ from satyrn_evals.attempt_record import (
     write_attempt_record,
 )
 from satyrn_evals.budget import AttemptBudget, LineBudget
-from satyrn_evals.cell import CELL_PARENT_ENV, ISOLATION_ENV, Isolation
+from satyrn_evals.cell import Isolation
 from satyrn_evals.confinement import EXTENSION_ENV, EXTENSION_PATH, ROOT_ENV, ROOTS_ENV
 from satyrn_evals.deadline import AttemptDeadline, AttemptDeadlineExceeded
 from satyrn_evals.engine_contract import (
@@ -295,13 +295,6 @@ def _attempt(
     transcript_path = attempt_dir / "transcript.txt"
 
     env = dict(os.environ)
-    if isolation is Isolation.LOCAL:
-        # F8/R13: a stray SATYRN_ISOLATION/SATYRN_CELL_PARENT in the
-        # maintainer's own shell must never reach a local-profile command --
-        # an adapter reading it would believe it is isolated and try to run
-        # as the cell. Isolated attempts set these explicitly below.
-        env[ISOLATION_ENV] = Isolation.LOCAL.value
-        env.pop(CELL_PARENT_ENV, None)
     env[TASK_NAME_ENV] = manifest.name
     env[TASK_CONTRACT_ENV] = contract_text
     env[PATCH_ENV] = str(patch_path)
@@ -430,11 +423,6 @@ def _attempt(
                 ROOTS_ENV: os.pathsep.join((os.fspath(tasks_root), os.fspath(task_dir))),
             }
             live_transcript = transcript_path
-            if isolation.isolating:
-                live_transcript = workspace_lease.parent / LIVE_TRANSCRIPT_NAME
-                exported[ISOLATION_ENV] = isolation.value
-                exported[CELL_PARENT_ENV] = os.fspath(workspace_lease.parent)
-                exported[TRANSCRIPT_ENV] = os.fspath(live_transcript)
             # C2 (Opus review of a113f0b..3ecf068): pre-bound to None so the
             # except clause below can pass it to `_write_deadline_refusal`
             # either way. `run_prepared_command` itself can raise

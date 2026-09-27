@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from satyrn_evals.arms import Arm, ArmPins
-from satyrn_evals.cell import CELL_PATH_PREFIX_ENV, Isolation
+from satyrn_evals.cell import CELL_PATH_PREFIX_ENV
 from satyrn_evals.cell_preflight import CellPreflight
 from satyrn_evals.cli import main
 from satyrn_evals.errors import SatyrnError
@@ -44,7 +44,7 @@ def _facts(**over: object) -> LaunchFacts:
     base = dict(
         frozen=lambda path: True, committed=lambda path: True, head=lambda: "f" * 40,
         confinement_preflight=lambda **kw: CellPreflight([], {"pi_version": "0.85.1"}), settings=lambda path, cell: (0, SETTINGS),
-        spawn_cell=spawn, model_server=lambda base_url, server_model, api_key=None: [], pi_models=lambda cell: {},
+        spawn_cell=spawn, model_server=lambda base_url, server_model, api_key=None: [], pi_models=lambda: {},
         task_self_test=lambda task_dir, manifest: TaskSelfTest([], {}),
         engine_self_test=lambda *a, **k: TaskSelfTest([], {}),
         # `engine_checkout_problems` runs `git`; the default tier forbids it,
@@ -224,7 +224,7 @@ def test_model_server_checks_asks_once_per_distinct_server_model() -> None:
 
     arms = [_arm("model-a"), _arm("model-a"), _arm("model-b")]
     problems, checked = model_server_checks(
-        arms, Isolation.LOCAL, pi_models=lambda cell: {}, model_server=model_server
+        arms, pi_models=lambda: {}, model_server=model_server
     )
     assert problems == []
     assert asked == ["model-a", "model-b"]
@@ -240,7 +240,7 @@ def test_model_server_checks_derives_the_base_url_from_the_arms_own_provider() -
         return []
 
     problems, checked = model_server_checks(
-        [_arm("model-a")], Isolation.ISOLATED, pi_models=lambda cell: pi_models, model_server=model_server
+        [_arm("model-a")], pi_models=lambda: pi_models, model_server=model_server
     )
     assert problems == [] and seen["base_url"] == "http://10.0.0.5:9001"
     assert checked == {"model-a": {"base_url": "http://10.0.0.5:9001"}}
@@ -262,7 +262,7 @@ def test_model_server_checks_sends_the_providers_api_key() -> None:
         pins=ArmPins(pi="0.85.1", engine_commit=None, digests={}), backend="openai",
     )
     problems, checked = model_server_checks(
-        [arm], Isolation.ISOLATED, pi_models=lambda cell: pi_models, model_server=model_server
+        [arm], pi_models=lambda: pi_models, model_server=model_server
     )
     assert problems == []
     assert seen["api_key"] == "sk-x"
@@ -271,14 +271,14 @@ def test_model_server_checks_sends_the_providers_api_key() -> None:
 
 def test_model_server_checks_falls_back_and_says_so_only_when_the_check_fails() -> None:
     problems, checked = model_server_checks(
-        [_arm("model-a")], Isolation.LOCAL, pi_models=lambda cell: {"providers": {}},
+        [_arm("model-a")], pi_models=lambda: {"providers": {}},
         model_server=lambda base_url, server_model, api_key=None: [],
     )
     assert problems == []
     assert checked["model-a"]["fallback"].startswith("no 'omlx' provider")
 
     problems, _ = model_server_checks(
-        [_arm("model-a")], Isolation.LOCAL, pi_models=lambda cell: {"providers": {}},
+        [_arm("model-a")], pi_models=lambda: {"providers": {}},
         model_server=lambda base_url, server_model, api_key=None: [f"the model server at {base_url} is unreachable: refused"],
     )
     assert problems == [
@@ -288,11 +288,11 @@ def test_model_server_checks_falls_back_and_says_so_only_when_the_check_fails() 
 
 
 def test_model_server_checks_reports_an_unreadable_pi_config_instead_of_raising() -> None:
-    def pi_models(cell: bool) -> dict:
+    def pi_models() -> dict:
         raise OSError("cannot read models.json as satyrn-cell: no password")
 
     problems, checked = model_server_checks(
-        [_arm("model-a")], Isolation.ISOLATED, pi_models=pi_models,
+        [_arm("model-a")], pi_models=pi_models,
         model_server=lambda base_url, server_model, api_key=None: [f"the model server at {base_url} is unreachable: refused"],
     )
     assert problems == [

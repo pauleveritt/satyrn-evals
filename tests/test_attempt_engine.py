@@ -21,7 +21,6 @@ from satyrn_evals.attempt_engine import (
     ENGINE_REPO_ENV,
     RECEIPT_NAME,
     AdapterError,
-    as_cell,
     candidate_commit,
     checkout_candidate,
     contract_path,
@@ -29,13 +28,11 @@ from satyrn_evals.attempt_engine import (
     deliver_timeout,
     delivery_environment,
     derive_argv,
-    isolated,
     main,
     parse_args,
     read_budget,
     read_command_backstop,
 )
-from satyrn_evals.cell import CELL_PARENT_ENV, ISOLATION_ENV
 from satyrn_evals.workspace import GIT_SAFETY_CONFIG
 
 ENGINE = Path("/opt/satyrn-engine")
@@ -335,32 +332,6 @@ def test_under_isolation_the_engine_calls_do_not_sync_the_shared_export() -> Non
     )
     assert delivered.count("--no-sync") == 2
     assert "--no-sync" not in derive_argv(_args(), WORKTREE, "req", token_budget=48000, turn_budget=72)
-
-
-def test_the_local_profile_is_not_isolated() -> None:
-    assert isolated(_args(), {}) is False
-
-
-def test_an_isolating_profile_is_refused() -> None:
-    """Design C1: the Engine arm runs under the confinement condition, not OS
-    isolation, so an isolating record is refused by name rather than run."""
-    for profile in ("isolated", "sandbox"):
-        with pytest.raises(AdapterError, match="not OS isolation"):
-            isolated(_args(), {ISOLATION_ENV: profile})
-
-
-def test_an_engine_call_as_the_cell_carries_the_transcript_and_the_export_but_not_the_models_uv_environment() -> None:
-    exported = {ISOLATION_ENV: "isolated", CELL_PARENT_ENV: "/cells/a", attempt_pi.TRANSCRIPT_ENV: "/cells/a/transcript.txt"}
-    argv = as_cell(["uv", "run"], _args(Path("/cells/engine-abc")), exported, Path("/cells/a/worktree"))
-    assert "SATYRN_ATTEMPT_TRANSCRIPT=/cells/a/transcript.txt" in argv
-    assert "SATYRN_ENGINE_REPO=/cells/engine-abc" in argv
-    assert not any(token.startswith("UV_PROJECT_ENVIRONMENT=") for token in argv)
-    assert argv[-2:] == ["uv", "run"]
-
-
-def test_an_engine_call_as_the_cell_without_the_harness_exports_is_refused() -> None:
-    with pytest.raises(AdapterError, match="cell environment"):
-        as_cell(["uv"], _args(), {ISOLATION_ENV: "isolated"}, WORKTREE)
 
 
 def test_a_failed_candidate_checkout_is_logged_and_returned(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

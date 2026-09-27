@@ -34,19 +34,12 @@ from pathlib import Path
 from satyrn_evals.attempt import COMMAND_BACKSTOP_ENV, TOKEN_BUDGET_ENV, TURN_BUDGET_ENV
 from satyrn_evals.attempt_pi import (
     PATCH_ENV,
-    TRANSCRIPT_ENV,
     AdapterError,
     clean_pi_environment,
     harvest_patch,
     read_artifact_paths,
     read_base_sha,
     read_prompt,
-)
-from satyrn_evals.cell import (
-    Isolation,
-    cell_command,
-    isolation_from,
-    model_environment,
 )
 from satyrn_evals.cell_engine import default_checkout
 from satyrn_evals.workspace import GIT_SAFETY_CONFIG
@@ -264,38 +257,6 @@ def delivery_environment(environment: Mapping[str, str]) -> dict[str, str]:
     return cleaned
 
 
-def isolated(args: EngineArgs, environment: Mapping[str, str]) -> bool:
-    """Whether the engine runs as the cell user: never, under the confinement design.
-
-    The Engine arm runs as the maintainer with the shared confinement
-    extension loaded (design C1). An isolating record is refused by name
-    rather than allowed to run under a profile the design retires, so no cell
-    silently runs the wrong condition.
-    """
-    try:
-        profile = isolation_from(environment)
-    except ValueError as exc:
-        raise AdapterError(str(exc)) from exc
-    if profile is Isolation.LOCAL:
-        return False
-    raise AdapterError("the Engine arm runs under the confinement condition, not OS isolation")
-
-
-def as_cell(argv: list[str], args: EngineArgs, environment: Mapping[str, str], worktree: Path) -> list[str]:
-    """An engine call run as the cell user: the transcript path and the engine
-    export are passed through; the model's ``UV_PROJECT_ENVIRONMENT`` is not
-    (Ruling 7 of Phase 2a, unchanged under isolation)."""
-    try:
-        cell = model_environment(
-            environment,
-            {TRANSCRIPT_ENV: environment[TRANSCRIPT_ENV], ENGINE_REPO_ENV: os.fspath(args.engine_repo)},
-        )
-    except (KeyError, ValueError) as exc:
-        raise AdapterError(f"cannot build the cell environment: {exc}") from exc
-    cell.pop("UV_PROJECT_ENVIRONMENT", None)
-    return cell_command(argv, cwd=worktree, environment=cell)
-
-
 def checkout_candidate(commit: str, log: Path) -> int:
     """Check the candidate out into the Evals worktree; a failure is logged, never raised."""
     checkout = subprocess.run(
@@ -317,17 +278,10 @@ def main(argv: list[str] | None = None) -> int:
     backstop_s = read_command_backstop(os.environ)
     token_budget, turn_budget = read_budget(os.environ)
     worktree = Path.cwd()
-    cell = isolated(args, os.environ)
     environment = delivery_environment(os.environ)
 
-    def command(engine_argv: list[str]) -> list[str]:
-        return as_cell(engine_argv, args, os.environ, worktree) if cell else engine_argv
-
     derived = subprocess.run(
-        command(derive_argv(
-            args, worktree, request, no_sync=cell,
-            token_budget=token_budget, turn_budget=turn_budget,
-        )),
+        derive_argv(args, worktree, request, token_budget=token_budget, turn_budget=turn_budget),
         capture_output=True, text=True, env=environment, check=False,
     )
     (patch_path.parent / DERIVE_LOG_NAME).write_text(derived.stderr, encoding="utf-8")
@@ -335,11 +289,9 @@ def main(argv: list[str] | None = None) -> int:
     if derived.returncode == 0:
         with (patch_path.parent / DELIVER_LOG_NAME).open("w", encoding="utf-8") as log:
             delivered = subprocess.run(
-                command(
-                    deliver_argv(
-                        args, worktree, contract_path(derived.stderr), no_sync=cell, backstop_s=backstop_s,
-                        token_budget=token_budget, turn_budget=turn_budget,
-                    )
+                deliver_argv(
+                    args, worktree, contract_path(derived.stderr), backstop_s=backstop_s,
+                    token_budget=token_budget, turn_budget=turn_budget,
                 ),
                 stdout=subprocess.PIPE, stderr=log, text=True, env=environment, check=False,
             )
