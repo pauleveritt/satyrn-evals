@@ -901,6 +901,20 @@ def test_unknown_engine_entry_custom_type_is_not_silently_accepted() -> None:
     assert (block.measured, block.reason) == (False, "unknown_event")
 
 
+def test_the_eval_confinement_entry_is_measured() -> None:
+    """The eval's own confinement refusal is a count, not an unknown transcript."""
+    doc = _LOOP_BROKEN_DOC.replace('"loop_broken"', '"confinement_refused"')
+    block = count_transcript(doc, had_patch=True)
+    assert (block.measured, block.reason) == (True, None)
+
+
+def test_an_unknown_eval_entry_custom_type_is_not_silently_accepted() -> None:
+    """The sibling: the eval's extension may add only the kinds this tree names."""
+    doc = _LOOP_BROKEN_DOC.replace('"loop_broken"', '"confinement_future"')
+    block = count_transcript(doc, had_patch=True)
+    assert (block.measured, block.reason) == (False, "unknown_event")
+
+
 # --- V11c follow-up: an invalid `edit` call is not an alternate shape ---
 
 def _doc(*tool_events: str) -> str:

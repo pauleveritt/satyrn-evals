@@ -8566,3 +8566,8 @@
 | TODO.md | upstream main @ 35b668e59e55f057759ddd70d1ad4a40a7c0fcf8 |
 | docs/superpowers/specs/2026-09-27-unisolated-harness-design.md | created 2026-09-27 for the unisolated harness design (maintainer ruling: portability over two-uid/sandbox isolation) |
 | docs/superpowers/plans/2026-09-27-unisolated-harness.md | created 2026-09-27 for the unisolated harness implementation plan |
+| packages/confinement/confinement.ts | created in release-one |
+| tools/replay_confinement.mjs | created in release-one |
+| tests/fixtures/confinement/file-tools-stay-in-the-worktree.json | created in release-one |
+| tests/fixtures/confinement/bash-names-a-protected-root.json | created in release-one |
+| tests/integration/test_confinement_extension.py | created in release-one |

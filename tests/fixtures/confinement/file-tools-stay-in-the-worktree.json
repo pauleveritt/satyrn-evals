@@ -1,0 +1,13 @@
+{
+  "name": "file-tools-stay-in-the-worktree",
+  "root": "work",
+  "roots": ["corpus"],
+  "calls": [
+    {"toolName": "read", "input": {"path": "solution.py"}},
+    {"toolName": "read", "input": {"path": "../corpus/test_hidden.py"}},
+    {"toolName": "write", "input": {"path": "src/app.py", "content": "x = 1\n"}},
+    {"toolName": "read", "input": {"path": "/etc/passwd"}},
+    {"toolName": "bash", "input": {"command": "uv run pytest -q"}}
+  ],
+  "expected": {"blocked": 2, "entries": 2, "firstBlock": 2}
+}

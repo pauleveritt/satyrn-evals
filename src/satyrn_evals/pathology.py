@@ -75,6 +75,12 @@ GUARD_KINDS = frozenset(
     }
 )
 
+#: Guard entries the eval's own extension emits. Kept out of ``GUARD_KINDS``,
+#: which mirrors the engine's own list and is pinned against it by the
+#: integration tier; the transcript vocabulary accepts the union, so a
+#: confinement refusal is a count, never an ``unknown_event``.
+EVAL_GUARD_KINDS = frozenset({"confinement_refused"})
+
 type PathologyReason = Literal[
     "absent", "empty", "unparseable", "unsupported_version",
     "unknown_event", "malformed", "multi_session", "partial",
@@ -241,7 +247,7 @@ def _vocabulary_ok(events: list[dict]) -> PathologyReason | None:
             entry = event.get("entry")
             if not isinstance(entry, dict) or not isinstance(entry.get("customType"), str):
                 return "malformed"
-            if entry["customType"] not in GUARD_KINDS:
+            if entry["customType"] not in GUARD_KINDS | EVAL_GUARD_KINDS:
                 return "unknown_event"
     return None
 
