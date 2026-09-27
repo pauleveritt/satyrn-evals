@@ -16,6 +16,10 @@ this is approved.
   required to close the bypass gap.
 - The record field is named **`confinement`**; `isolation` retires and the
   committed records keep their old key.
+- The Engine arm pins its commit **via the checkout** (§7): the export,
+  `CELLS_ROOT` and the `cell-engine` subcommand retire, with an optional
+  per-arm `--engine-repo` for a second checkout, and a preflight that refuses
+  by name when the checkout's HEAD is not the pin.
 - The five sandbox2 records stay **historical**; they are removed later only if
   they break something.
 
@@ -150,7 +154,7 @@ ledger and nothing is built on them.
 4. Re-derive the census, then the counterfactual, then any build — R0 §1's
    order, unchanged.
 
-## 7. Open question: how the Engine arm pins its commit under C1
+## 7. Decision: the Engine arm pins its commit via the checkout (B, 2026-09-27)
 
 `cell_engine.py` does three jobs at once: it **materializes** the pinned engine
 (`git archive <commit>` of `src`, `packages`, `pyproject.toml`, `uv.lock`,
@@ -167,7 +171,7 @@ they are, and it allows two Engine arms at two commits. But it keeps a
 cells-root concept and an absolute, per-machine path in the arm file, and it is
 a second mechanism beside `just fetch-engine`.
 
-**(B) Retire the export; pin via the checkout.** `tools/engine_sync.py` already
+**(B) Retire the export; pin via the checkout — chosen.** `tools/engine_sync.py` already
 clones into a sibling (`../satyrn-engine`, or `$SATYRN_ENGINE_REPO`), checks
 out the pinned commit detached and refuses a checkout at another commit; it is
 what `just fetch-engine` runs. Under B it becomes the only materializer, and a
@@ -179,14 +183,13 @@ checkout exists, its `HEAD` is the arm's `engine_commit` (HEAD is what
 then names the commit, not a path, and one arm file works on a mac, a Linux box
 and a contributor's checkout.
 
-**Recommendation: B**, with one check to settle first — a single sibling
-checkout can be at only one commit, so a record that ran two Engine arms at two
-commits (as `78ab87d` and `803df2d` are) would need two checkouts. If that case
-matters, B keeps an optional per-arm `--engine-repo` pointing at a second
-checkout, and the preflight verifies whichever it names. If it does not, one
-sibling and one pin is enough.
+A single sibling checkout can be at only one commit, so a record that ran two
+Engine arms at two commits (as `78ab87d` and `803df2d` are) needs two
+checkouts. The arm therefore keeps an **optional per-arm `--engine-repo`**
+aimed at a second checkout; when it is absent the sibling default applies, and
+the preflight verifies whichever path the arm names.
 
 The failure B must make loud is the one this session hit: the arm pins
-`78ab87d` while the checkout sits on `main`. `engine_checkout_problems` must
-compare the running checkout's HEAD with the pin and refuse by name, or an
-Engine cell silently runs the wrong engine.
+`78ab87d` while the checkout sits on `main`. `engine_checkout_problems` compares
+the running checkout's HEAD with the pin and refuses by name, so an Engine cell
+can never silently run the wrong engine.
