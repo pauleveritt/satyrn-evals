@@ -8571,3 +8571,5 @@
 | tests/fixtures/confinement/file-tools-stay-in-the-worktree.json | created in release-one |
 | tests/fixtures/confinement/bash-names-a-protected-root.json | created in release-one |
 | tests/integration/test_confinement_extension.py | created in release-one |
+| src/satyrn_evals/confinement.py | created in release-one |
+| tests/test_confinement.py | created in release-one |
