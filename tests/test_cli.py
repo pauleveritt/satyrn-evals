@@ -481,7 +481,7 @@ def _fake_preflight(monkeypatch: pytest.MonkeyPatch, *, model_server_problems: l
     from satyrn_evals.cell_preflight import CellPreflight
 
     monkeypatch.setattr(cli_module, "preflight_cell", lambda **kw: CellPreflight([], {"pi_version": "0.85.1"}))
-    monkeypatch.setattr(cli_module, "arm_export_problems", lambda arm: [])
+    monkeypatch.setattr(cli_module, "engine_checkout_problems", lambda arm: [])
     monkeypatch.setattr(
         cli_module, "model_server_checks",
         lambda arms, isolation, **kw: (model_server_problems or [], {arm.server_model: {"base_url": "http://x"} for arm in arms}),
@@ -515,7 +515,7 @@ def test_launch_preflight_asks_the_model_server_check_about_this_arm(
 
     seen: dict[str, object] = {}
     monkeypatch.setattr(cli_module, "preflight_cell", lambda **kw: CellPreflight([], {}))
-    monkeypatch.setattr(cli_module, "arm_export_problems", lambda arm: [])
+    monkeypatch.setattr(cli_module, "engine_checkout_problems", lambda arm: [])
 
     def model_server_checks(arms: list, isolation: Isolation, **kw: object) -> tuple[list[str], dict]:
         seen["arms"] = [arm.server_model for arm in arms]
@@ -794,7 +794,7 @@ def test_launch_preflight_skips_the_model_server_check_on_the_fake_pi_seam(
 
     monkeypatch.setenv(CELL_PATH_PREFIX_ENV, "/fake/bin")
     monkeypatch.setattr(cli_module, "preflight_cell", lambda **kw: CellPreflight([], {}))
-    monkeypatch.setattr(cli_module, "arm_export_problems", lambda arm: [])
+    monkeypatch.setattr(cli_module, "engine_checkout_problems", lambda arm: [])
     monkeypatch.setattr(
         cli_module, "model_server_checks",
         lambda arms, isolation, **kw: pytest.fail("model_server_checks must not be consulted on the fake-pi seam"),

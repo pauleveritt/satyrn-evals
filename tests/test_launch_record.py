@@ -48,6 +48,9 @@ def _facts(**over: object) -> LaunchFacts:
         spawn_cell=spawn, model_server=lambda base_url, server_model, api_key=None: [], pi_models=lambda cell: {},
         task_self_test=lambda task_dir, manifest: TaskSelfTest([], {}),
         engine_self_test=lambda *a, **k: TaskSelfTest([], {}),
+        # `engine_checkout_problems` runs `git`; the default tier forbids it,
+        # so the launch tests fake it unless a case wants a problem.
+        engine_export=lambda arm: [],
     )
     return LaunchFacts(**{**base, **over})  # type: ignore[arg-type]
 
@@ -480,7 +483,7 @@ def _route_proof(tmp_path: Path) -> Path:
     return path
 
 
-def test_a_route_proof_record_runs_the_committed_engine_arm_on_its_export(tmp_path: Path) -> None:
+def test_a_route_proof_record_runs_the_committed_engine_arm(tmp_path: Path) -> None:
     seen: list[str] = []
 
     def export(arm: Arm) -> list[str]:
@@ -494,9 +497,8 @@ def test_a_route_proof_record_runs_the_committed_engine_arm_on_its_export(tmp_pa
     ) == 3  # the fake spawn raised: interrupted
     assert seen == ["engine"]
     spec = json.loads((tmp_path / "runs" / "route-proof" / SLOTS_DIR / "00.spec.json").read_text())
-    commit = "78ab87dbab3381dd585986c43fd49e6e4974f6b6"
     assert spec["command"] == [
-        "satyrn-evals-attempt-engine", "--engine-repo", f"/Users/Shared/satyrn-cells/engine-{commit}",
+        "satyrn-evals-attempt-engine",
         "--model", "omlx/Ornith-1.5-9B-MLX-8bit",
     ]
     assert (spec["arm"], spec["rung"], spec["isolation"]) == ("engine", "R1", "isolated")

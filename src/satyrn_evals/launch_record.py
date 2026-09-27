@@ -13,7 +13,7 @@ The spec's launcher gates ("Process"), in order, before any cell:
    and a deciding purpose is isolated;
 4. under isolation, the cell preflight (``cell_preflight.preflight_cell``) is clean,
    and an Engine arm's export is the commit and bytes it pins
-   (``cell_engine.arm_export_problems``);
+   (``cell_engine.engine_checkout_problems``);
 5. the arm's model server answers ``GET <base_url>/v1/models`` and lists
    its ``server_model`` (``model_server.model_server_problems``), skipped
    only on the test PATH seam a deciding record already refused above;
@@ -49,7 +49,7 @@ from typing import TextIO
 from satyrn_evals.arms import Arm, build_argv, load_arm
 from satyrn_evals.attempt import resolve_contract
 from satyrn_evals.cell import CELL_PATH_PREFIX_ENV, CELLS_ROOT, Isolation
-from satyrn_evals.cell_engine import arm_export, arm_export_problems
+from satyrn_evals.cell_engine import checkout_root, engine_checkout_problems
 from satyrn_evals.cell_preflight import CellPreflight, preflight_cell, preflight_sandbox
 from satyrn_evals.errors import SatyrnError
 from satyrn_evals.launch import (
@@ -185,7 +185,7 @@ class LaunchFacts:
     sandbox_preflight: Callable[..., CellPreflight] = preflight_sandbox
     settings: Callable[[Path, bool], tuple[int, str]] = settings_provenance
     spawn_cell: Callable[[Path, Path], CellProcess] = popen_cell
-    engine_export: Callable[[Arm], list[str]] = arm_export_problems
+    engine_export: Callable[[Arm], list[str]] = engine_checkout_problems
     engine_self_test: Callable[..., TaskSelfTest] = run_engine_self_test
     task_self_test: Callable[[Path, TaskManifest], TaskSelfTest] = run_task_self_test
     model_server: Callable[..., list[str]] = model_server_problems
@@ -361,9 +361,9 @@ def launch_record(
         for name, (_, arm) in arms.items():
             problems += [f"{name}: {problem}" for problem in facts.engine_export(arm)]
         for name, (_, arm) in arms.items():
-            export = arm_export(arm)
-            if export is None:
+            if arm.arm != "engine":
                 continue
+            export = checkout_root(arm)
             engine_test = facts.engine_self_test(
                 task_dir, manifest,
                 engine=("uv", "run", "--no-sync", "--project", os.fspath(export), "satyrn-engine"),

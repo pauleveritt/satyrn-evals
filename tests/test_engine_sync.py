@@ -29,7 +29,7 @@ def _fake_engine(root: Path) -> Path:
 
 
 def test_engine_pin_reads_the_arms_engine_commit() -> None:
-    assert engine_pin(load_arm(ARM)) == "78ab87dbab3381dd585986c43fd49e6e4974f6b6"
+    assert engine_pin(load_arm(ARM)) == "54d814d98f69fdf399884276c7d00cd5052e3ca1"
 
 
 def test_engine_pin_refuses_an_arm_without_a_pin() -> None:

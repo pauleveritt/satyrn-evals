@@ -122,7 +122,15 @@ the context because the publication result is unknown.
 
 The engine's registered tool that restores carried tests, runs the
 contract's `test_command` and the checks, and returns failed ids with
-their first assertion line.
+their first assertion line. Two gates around it live in
+`packages/engine/runner.ts`: the completion gate runs it once, on a
+tool-call-free turn, when nothing has run it since the last landed
+mutation; the red-stop gate, when that turn is otherwise silent and the
+last completed run at the current mutation generation did not pass, runs
+it again and sends one follow-up only if that fresh run is still red.
+Each fires at most once per mutation generation, and an enforced-gate
+failure follow-up on a generation also satisfies the red-stop gate for
+that same generation.
 
 **receipt**
 

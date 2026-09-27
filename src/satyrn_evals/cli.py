@@ -15,7 +15,7 @@ from satyrn_evals.budget import AttemptBudget, LineBudget
 from satyrn_evals.capture import capture
 from satyrn_evals.capture_record import CaptureOutcome
 from satyrn_evals.cell import CELL_PATH_PREFIX_ENV, Isolation
-from satyrn_evals.cell_engine import arm_export, arm_export_problems, export_engine
+from satyrn_evals.cell_engine import checkout_root, engine_checkout_problems
 from satyrn_evals.cell_preflight import preflight_cell, preflight_sandbox
 from satyrn_evals.census import build_arg_parser as build_census_parser
 from satyrn_evals.census import run_cli as run_census
@@ -271,9 +271,6 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "record":
             return _record_new(args)
-        if args.command == "cell-engine":
-            print(export_engine(Path(args.engine_repo), args.commit))
-            return 0
         if args.command == "qualify":
             failed = False
             for task in args.tasks:
@@ -375,7 +372,7 @@ def _launch_preflight(args: argparse.Namespace) -> int:
     if len(pins) != 1:
         problems.append(f"the arms pin different pi versions: {', '.join(sorted(pins))}")
     for name, arm in zip(names, arms, strict=True):
-        problems += [f"{name}: {problem}" for problem in arm_export_problems(arm)]
+        problems += [f"{name}: {problem}" for problem in engine_checkout_problems(arm)]
     checked: dict[str, object] = dict(report.checked)
     # The task's own self-test, and the Engine's derived self-test, on the base
     # and the known-good state: the check the void night lacked, run here for
@@ -389,9 +386,9 @@ def _launch_preflight(args: argparse.Namespace) -> int:
     problems += [f"task self-test: {problem}" for problem in task_check.problems]
     checked["task_self_test"] = task_check.checked
     for name, arm in zip(names, arms, strict=True):
-        export = arm_export(arm)
-        if export is None:
+        if arm.arm != "engine":
             continue
+        export = checkout_root(arm)
         engine_check = engine_self_test(
             task_dir, manifest,
             engine=("uv", "run", "--no-sync", "--project", os.fspath(export), "satyrn-engine"),
@@ -480,12 +477,6 @@ grade_p.add_argument(
     default=str(DEFAULT_TASKS_ROOT),
     help="task root (default: bundled tasks)",
 )
-
-cell_engine_p = sub.add_parser(
-    "cell-engine", help="export one engine commit under the cells root for the isolated Engine arm"
-)
-cell_engine_p.add_argument("--engine-repo", required=True, help="the maintainer's engine checkout")
-cell_engine_p.add_argument("--commit", required=True, help="the engine commit the arm runs")
 
 qualify_p = sub.add_parser(
     "qualify", help="offline qualification: fixtures both ways, a live harvest, known-good three times"

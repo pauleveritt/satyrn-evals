@@ -355,7 +355,7 @@ def test_the_engine_arm_file_loads_with_the_engines_derived_contract_tool_surfac
     arm = load_arm(ENGINE)
     assert arm.arm == "engine"
     assert arm.tools == ENGINE_TOOLS == ("read", "bash", "edit", "write", "self_test")
-    assert arm.pins.engine_commit == "78ab87dbab3381dd585986c43fd49e6e4974f6b6"
+    assert arm.pins.engine_commit == "54d814d98f69fdf399884276c7d00cd5052e3ca1"
     assert sorted(arm.pins.digests) == sorted(ENGINE_SOURCES)
 
 
@@ -367,25 +367,25 @@ def test_the_engine_arm_pins_all_seven_engine_package_sources() -> None:
     ]
 
 
-def test_the_engine_arm_runs_the_export_of_its_pinned_commit_on_the_baselines_model_and_settings() -> None:
+def test_the_engine_arm_pins_its_commit_on_the_baselines_model_and_settings() -> None:
     engine = json.loads(ENGINE.read_text(encoding="utf-8"))
     baseline = json.loads(ORNITH_BASELINE.read_text(encoding="utf-8"))
-    commit = engine["pins"]["engine_commit"]
-    assert engine["argv"] == ["satyrn-evals-attempt-engine", "--engine-repo", f"/Users/Shared/satyrn-cells/engine-{commit}"]
+    assert engine["argv"] == ["satyrn-evals-attempt-engine"]
     for key in ("model", "server_model", "inference", "settings_verified_by"):
         assert engine[key] == baseline[key], key
     assert engine["pins"]["pi"] == baseline["pins"]["pi"]
     assert build_argv(load_arm(ENGINE)) == [*engine["argv"], "--model", "omlx/Ornith-1.5-9B-MLX-8bit"]
 
 
-def test_the_engine_arms_export_path_and_pinned_commit_cannot_drift_apart() -> None:
-    """A re-pin edits `argv[2]`'s export path and `pins.engine_commit`
-    together. Nothing else enforces that they name the same commit -- a
-    re-pin that edits one and forgets the other is exactly the failure
-    this test exists to catch, pinning the invariant rather than only
-    today's literal shas."""
+def test_the_engine_arm_names_no_export_path_and_pins_a_full_commit() -> None:
+    """The arm names a commit, not an export path: the checkout is resolved
+    from `$SATYRN_ENGINE_REPO` or the sibling, and `engine_checkout_problems`
+    checks the running checkout against the pin (design section 7 B)."""
     arm = load_arm(ENGINE)
-    assert Path(arm.argv[2]).name == f"engine-{arm.pins.engine_commit}"
+    assert arm.argv == ("satyrn-evals-attempt-engine",)
+    assert "--engine-repo" not in arm.argv
+    assert arm.pins.engine_commit is not None
+    assert len(arm.pins.engine_commit) == 40
 
 
 def test_an_engine_arm_missing_a_source_digest_is_refused(tmp_path: Path) -> None:

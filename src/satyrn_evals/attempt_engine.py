@@ -43,13 +43,12 @@ from satyrn_evals.attempt_pi import (
     read_prompt,
 )
 from satyrn_evals.cell import (
-    CELLS_ROOT,
     Isolation,
     cell_command,
     isolation_from,
     model_environment,
 )
-from satyrn_evals.cell_engine import EngineExportError, verify_export
+from satyrn_evals.cell_engine import default_checkout
 from satyrn_evals.workspace import GIT_SAFETY_CONFIG
 
 ENGINE_REPO_ENV = "SATYRN_ENGINE_REPO"
@@ -139,7 +138,7 @@ def parse_args(args: list[str], environment: Mapping[str, str]) -> EngineArgs:
     if not model:
         raise AdapterError("--model is required")
     if not engine_repo:
-        raise AdapterError(f"--engine-repo or {ENGINE_REPO_ENV} is required")
+        engine_repo = os.fspath(default_checkout(environment))
     return EngineArgs(model=model, engine_repo=Path(engine_repo), uv_bin=uv_bin)
 
 
@@ -266,31 +265,20 @@ def delivery_environment(environment: Mapping[str, str]) -> dict[str, str]:
 
 
 def isolated(args: EngineArgs, environment: Mapping[str, str]) -> bool:
-    """Whether the engine runs as the cell user; refuses an engine the cell cannot read."""
+    """Whether the engine runs as the cell user: never, under the confinement design.
+
+    The Engine arm runs as the maintainer with the shared confinement
+    extension loaded (design C1). An isolating record is refused by name
+    rather than allowed to run under a profile the design retires, so no cell
+    silently runs the wrong condition.
+    """
     try:
         profile = isolation_from(environment)
     except ValueError as exc:
         raise AdapterError(str(exc)) from exc
     if profile is Isolation.LOCAL:
         return False
-    if profile is Isolation.SANDBOX:
-        # The Engine arm's export lives outside the workspace parent, and the
-        # sandbox view binds only what it names; wiring the export in is its
-        # own change, and the pinned Engine commit is unrecoverable here, so
-        # refuse loudly rather than build a view the engine cannot use.
-        raise AdapterError(
-            "the Engine arm has no sandbox export yet; it runs under the two-uid isolated profile"
-        )
-    if not args.engine_repo.resolve().is_relative_to(CELLS_ROOT.resolve()):
-        raise AdapterError(
-            f"under isolation the engine must be an export under {CELLS_ROOT} "
-            f"(satyrn-evals cell-engine), not {args.engine_repo}"
-        )
-    try:
-        verify_export(args.engine_repo)
-    except EngineExportError as exc:
-        raise AdapterError(f"engine export {args.engine_repo} is not safe to run: {exc}") from exc
-    return True
+    raise AdapterError("the Engine arm runs under the confinement condition, not OS isolation")
 
 
 def as_cell(argv: list[str], args: EngineArgs, environment: Mapping[str, str], worktree: Path) -> list[str]:

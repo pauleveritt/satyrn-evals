@@ -54,7 +54,6 @@ def test_arguments_take_the_engine_from_the_environment_and_ignore_the_rendered_
     ("argv", "environment", "message"),
     [
         ([], {ENGINE_REPO_ENV: "/e"}, "--model"),
-        (["--model", "m"], {}, ENGINE_REPO_ENV),
         (["--model", "m", "--rung", "R1"], {ENGINE_REPO_ENV: "/e"}, "unknown adapter argument"),
         (["--model", "m", "a.yaml", "b.yaml"], {ENGINE_REPO_ENV: "/e"}, "unexpected extra argument"),
     ],
@@ -62,6 +61,12 @@ def test_arguments_take_the_engine_from_the_environment_and_ignore_the_rendered_
 def test_bad_arguments_are_refused(argv: list[str], environment: dict[str, str], message: str) -> None:
     with pytest.raises(AdapterError, match=message):
         parse_args(argv, environment)
+
+
+def test_a_missing_engine_repo_defaults_to_the_sibling_checkout() -> None:
+    from satyrn_evals.cell_engine import default_checkout
+
+    assert parse_args(["--model", "m"], {}).engine_repo == default_checkout({})
 
 
 def test_derive_and_deliver_are_the_implement_invocations() -> None:
@@ -336,30 +341,12 @@ def test_the_local_profile_is_not_isolated() -> None:
     assert isolated(_args(), {}) is False
 
 
-def _safe_export(tmp_path: Path, name: str = "engine-abc", sha: str = "abc") -> Path:
-    export = tmp_path / name
-    export.mkdir()
-    (export / ".satyrn-engine-export").write_text(f"{sha}\n")
-    export.chmod(0o750)
-    return export
-
-
-def test_an_isolated_engine_outside_the_cells_root_is_refused(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setattr(attempt_engine, "CELLS_ROOT", tmp_path)
-    with pytest.raises(AdapterError, match="must be an export under"):
-        isolated(_args(Path("/Users/someone/satyrn-engine")), {ISOLATION_ENV: "isolated"})
-    export = _safe_export(tmp_path)
-    assert isolated(_args(export), {ISOLATION_ENV: "isolated"}) is True
-
-
-def test_an_isolated_engine_without_a_safe_export_is_refused(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """F2/R11: a cell-plantable directory under the cells root is refused even
-    though it names a marker, once it is group-writable."""
-    monkeypatch.setattr(attempt_engine, "CELLS_ROOT", tmp_path)
-    export = _safe_export(tmp_path, name="engine-evil")
-    export.chmod(0o770)  # group-writable: exactly what a planted directory would be
-    with pytest.raises(AdapterError, match="not safe to run"):
-        isolated(_args(export), {ISOLATION_ENV: "isolated"})
+def test_an_isolating_profile_is_refused() -> None:
+    """Design C1: the Engine arm runs under the confinement condition, not OS
+    isolation, so an isolating record is refused by name rather than run."""
+    for profile in ("isolated", "sandbox"):
+        with pytest.raises(AdapterError, match="not OS isolation"):
+            isolated(_args(), {ISOLATION_ENV: profile})
 
 
 def test_an_engine_call_as_the_cell_carries_the_transcript_and_the_export_but_not_the_models_uv_environment() -> None:
