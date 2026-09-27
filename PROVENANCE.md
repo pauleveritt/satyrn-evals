@@ -8564,3 +8564,4 @@
 | site/glossary.md | created in release-one |
 | .github/workflows/deploy.yml | created in release-one |
 | TODO.md | upstream main @ 35b668e59e55f057759ddd70d1ad4a40a7c0fcf8 |
+| docs/superpowers/specs/2026-09-27-unisolated-harness-design.md | created 2026-09-27 for the unisolated harness design (maintainer ruling: portability over two-uid/sandbox isolation) |
