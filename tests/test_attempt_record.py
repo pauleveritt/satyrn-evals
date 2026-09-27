@@ -14,6 +14,7 @@ from satyrn_evals.attempt_record import (
     load_attempt_record,
     write_attempt_record,
 )
+from satyrn_evals.confinement import Finding
 from satyrn_evals.verdict import Verdict
 
 
@@ -516,6 +517,31 @@ def test_load_rejects_unexpected_field_but_accepts_legacy_v3(tmp_path: Path) -> 
     assert loaded.code is AttemptCode.NO_PATCH
     assert loaded.workspace_base_sha is None
     assert loaded.retained_path is None
+
+
+def test_a_confinement_finding_round_trips_and_an_absent_one_writes_no_key(
+    tmp_path: Path,
+) -> None:
+    """V16 is additive: a record without a finding writes none and loads as
+    unmeasured; one with a finding round-trips exactly."""
+    path = tmp_path / "attempt.json"
+    write_attempt_record(path, _attempted())
+    assert "confinement" not in json.loads(path.read_text())
+    assert load_attempt_record(path).confinement is None
+
+    flagged = replace(_attempted(), confinement=Finding(refusals=0, reaches=2))
+    write_attempt_record(path, flagged)
+    assert load_attempt_record(path).confinement == Finding(refusals=0, reaches=2)
+
+
+def test_load_rejects_a_malformed_confinement(tmp_path: Path) -> None:
+    path = tmp_path / "attempt.json"
+    write_attempt_record(path, _attempted())
+    data = json.loads(path.read_text())
+    data["confinement"] = {"refusals": -1, "reaches": 0}
+    path.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match="confinement"):
+        load_attempt_record(path)
 
 
 @pytest.mark.parametrize("field", ["workspace_base_sha", "retained_path"])

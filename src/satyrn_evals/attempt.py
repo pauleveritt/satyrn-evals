@@ -30,7 +30,14 @@ from satyrn_evals.attempt_record import (
 )
 from satyrn_evals.budget import AttemptBudget, LineBudget
 from satyrn_evals.cell import Isolation
-from satyrn_evals.confinement import EXTENSION_ENV, EXTENSION_PATH, ROOT_ENV, ROOTS_ENV
+from satyrn_evals.confinement import (
+    EXTENSION_ENV,
+    EXTENSION_PATH,
+    ROOT_ENV,
+    ROOTS_ENV,
+    finding,
+    protected,
+)
 from satyrn_evals.deadline import AttemptDeadline, AttemptDeadlineExceeded
 from satyrn_evals.engine_contract import (
     engine_contract_path,
@@ -1116,6 +1123,15 @@ def _finish_attempt(
     transcript_hash = (
         patch_digest(transcript_bytes) if transcript_bytes is not None else None
     )
+    # C3 (design): audit the retained transcript once, here, so the finding is
+    # part of the durable per-cell evidence -- for a refused cell too, and for
+    # a single attempt with no summary. An absent or empty transcript is
+    # unmeasured (no Finding); the summary's tally reads the same field.
+    confinement = (
+        finding(transcript_text, protected_=protected(task_dir.parent, task_dir.name))
+        if transcript_text
+        else None
+    )
     if deadline is not None:
         deadline.remaining(DeadlinePhase.PRESERVATION)
 
@@ -1223,6 +1239,7 @@ def _finish_attempt(
             line_crossed=line_crossed,
             line_patch_path=line_patch_path,
             line_harvest_error=line_harvest_error,
+            confinement=confinement,
         )
         write_attempt_record(attempt_dir / "attempt.json", record)
         return record
@@ -1254,6 +1271,7 @@ def _finish_attempt(
         line_crossed=line_crossed,
         line_patch_path=line_patch_path,
         line_harvest_error=line_harvest_error,
+        confinement=confinement,
     )
     write_attempt_record(attempt_dir / "attempt.json", base_record)
     try:

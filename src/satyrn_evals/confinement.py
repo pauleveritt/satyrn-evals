@@ -57,6 +57,31 @@ class Reach:
     index: int  # the 0-based transcript event index
 
 
+@dataclass(frozen=True, slots=True)
+class Finding:
+    """A cell's confinement outcome (design C3).
+
+    ``refusals`` is the shared extension's recorded blocks (C1); ``reaches`` is
+    the post-hoc audit's count of file-tool and bash paths that resolved to
+    protected material (C3). Both zero is ``admitted``; anything else is
+    flagged and is not an admitted pass. A cell whose transcript cannot be read
+    carries no ``Finding`` at all, which reads as unmeasured.
+    """
+
+    refusals: int
+    reaches: int
+
+    def __post_init__(self) -> None:
+        for name in ("refusals", "reaches"):
+            value = getattr(self, name)
+            if type(value) is not int or value < 0:
+                raise ValueError(f"confinement {name} must be a non-negative integer")
+
+    @property
+    def admitted(self) -> bool:
+        return self.refusals == 0 and self.reaches == 0
+
+
 def protected(tasks_root: Path, task: str | None = None) -> Protected:
     """The tasks root (and, when named, one task directory) and every grader
     filename beneath them.
@@ -152,3 +177,28 @@ def audit(transcript: str, *, protected_: Protected) -> tuple[Reach, ...]:
                     continue
                 break
     return tuple(reached)
+
+
+def finding(transcript: str, *, protected_: Protected) -> Finding | None:
+    """The cell's confinement outcome from its retained transcript (design C3).
+
+    The refusal count is the shared extension's ``confinement_refused`` entries,
+    the same event ``pathology.py`` and ``cell_evidence.py`` count; the reach
+    count is :func:`audit`. Both read the one retained transcript, so the record
+    and the summary cannot disagree about a cell. ``None`` when the transcript
+    yields no events at all -- unreadable or empty evidence, never an admitted
+    cell.
+    """
+    events = _events(transcript)
+    if not events:
+        return None
+    refusals = sum(
+        1
+        for event in events
+        if event.get("type") == "entry_appended"
+        and isinstance(event.get("entry"), dict)
+        and event["entry"].get("customType") == "confinement_refused"
+    )
+    return Finding(
+        refusals=refusals, reaches=len(audit(transcript, protected_=protected_))
+    )

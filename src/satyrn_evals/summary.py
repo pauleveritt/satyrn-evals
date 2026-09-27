@@ -63,8 +63,9 @@ class Summary:
     #: Per-cell evidence for every cell whatever its code (``cell_evidence``);
     #: null only on a summary built without the binder.
     evidence: dict[str, dict] | None = None
-    #: The run condition and its stated limit (design C1, C4), so a result
-    #: page cannot read a clean audit as proof the model could not cheat.
+    #: The run condition, its stated limit and the mechanical admission tally
+    #: (design C1, C3, C4), so a result page cannot read a clean audit as proof
+    #: the model could not cheat and cannot count a flagged pass as admitted.
     confinement: dict[str, object] | None = None
 
     def __post_init__(self) -> None:
@@ -134,6 +135,85 @@ class Summary:
                     or type(block["transcript_digest_missing"]) is not bool
                 ):
                     raise ValueError("deadline provenance missingness must be boolean")
+        if self.confinement is not None:
+            tally = {
+                "measured",
+                "admitted",
+                "flagged",
+                "unmeasured",
+                "admitted_pass",
+                "flagged_pass",
+                "unmeasured_pass",
+            }
+            if set(self.confinement) != {"extension", "limit"} | tally:
+                raise ValueError(
+                    "confinement must hold extension, limit and the admission tally"
+                )
+            if (
+                self.confinement["measured"] + self.confinement["unmeasured"]
+                != self.n
+            ):
+                raise ValueError("confinement measured + unmeasured must equal n")
+            if (
+                self.confinement["admitted"] + self.confinement["flagged"]
+                != self.confinement["measured"]
+            ):
+                raise ValueError("confinement admitted + flagged must equal measured")
+            passes = self.verdict_counts[Verdict.PASS.value]
+            if (
+                self.confinement["admitted_pass"]
+                + self.confinement["flagged_pass"]
+                + self.confinement["unmeasured_pass"]
+                != passes
+            ):
+                raise ValueError(
+                    "confinement pass tally must equal the pass verdict count"
+                )
+
+
+def _confinement_tally(
+    cells: Sequence[AttemptCell], evidence: dict[str, dict] | None
+) -> dict[str, int]:
+    """The mechanical admission tally (design C3).
+
+    A cell's finding is its record's ``confinement`` (written at attempt time,
+    V16) or, for a record older than that field, the offline audit in its
+    evidence block. Neither present is ``unmeasured`` -- never admitted. A
+    ``*_pass`` count is cells whose oracle verdict is ``pass``; a flagged cell's
+    pass rides in ``flagged_pass`` and is not an admitted pass.
+    """
+    admitted = flagged = unmeasured = 0
+    admitted_pass = flagged_pass = unmeasured_pass = 0
+    for name, record, _ in cells:
+        is_pass = record.verdict is Verdict.PASS
+        block = (evidence or {}).get(name)
+        clean: bool | None
+        if record.confinement is not None:
+            clean = record.confinement.admitted
+        elif isinstance(block, dict) and isinstance(
+            block.get("confinement_admitted"), bool
+        ):
+            clean = block["confinement_admitted"]
+        else:
+            clean = None
+        if clean is None:
+            unmeasured += 1
+            unmeasured_pass += int(is_pass)
+        elif clean:
+            admitted += 1
+            admitted_pass += int(is_pass)
+        else:
+            flagged += 1
+            flagged_pass += int(is_pass)
+    return {
+        "measured": admitted + flagged,
+        "admitted": admitted,
+        "flagged": flagged,
+        "unmeasured": unmeasured,
+        "admitted_pass": admitted_pass,
+        "flagged_pass": flagged_pass,
+        "unmeasured_pass": unmeasured_pass,
+    }
 
 
 def _cell_outcome(receipt: dict) -> str:
@@ -295,7 +375,11 @@ def compute_summary(
         contract_digest=digest,
         deadline_provenance=deadline_provenance or None,
         evidence=None if evidence is None else {name: evidence[name] for name, _, _ in cells},
-        confinement={"extension": str(EXTENSION_PATH), "limit": CONFINEMENT_LIMIT},
+        confinement={
+            "extension": str(EXTENSION_PATH),
+            "limit": CONFINEMENT_LIMIT,
+            **_confinement_tally(cells, evidence),
+        },
     )
 
 

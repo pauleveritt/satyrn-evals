@@ -29,6 +29,7 @@ from satyrn_evals.attempt_record import (
     write_attempt_record,
 )
 from satyrn_evals.cell_evidence import HARNESS_CUT_CODES, collect_evidence
+from satyrn_evals.confinement import finding, protected
 from satyrn_evals.contamination import scan_transcript
 from satyrn_evals.errors import OverlayError, SatyrnError, UsageError
 from satyrn_evals.grade import grade
@@ -287,6 +288,7 @@ def compute_evidence(
         if visible_texts is None:
             visible_texts = _base_texts(task_dir)
     blocks: dict[str, dict] = {}
+    terms = protected(task_dir.parent, task_dir.name)
     for name, record, _ in cells:
         text = (
             None
@@ -309,7 +311,16 @@ def compute_evidence(
             # its ``agent_end`` is a genuine self-stop.
             cut=record.code in HARNESS_CUT_CODES and record.command_exit is None,
         )
-        blocks[name] = {"transcript": True, **evidence.to_block()}
+        block: dict = {"transcript": True, **evidence.to_block()}
+        # C3 offline mirror: the same audit the attempt ran, recomputed from
+        # the retained transcript, so a pre-V16 record gains the finding when
+        # it is re-summarized. Absent means not audited (unmeasured).
+        cell_finding = finding(text, protected_=terms)
+        if cell_finding is not None:
+            block["confinement_refusals"] = cell_finding.refusals
+            block["confinement_reaches"] = cell_finding.reaches
+            block["confinement_admitted"] = cell_finding.admitted
+        blocks[name] = block
     return blocks
 
 

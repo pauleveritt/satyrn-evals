@@ -1033,6 +1033,39 @@ def test_evidence_says_when_a_cell_has_no_transcript_and_reads_a_timeline_when_p
     assert blocks["format_number-2"]["overlay_windows"] is None
 
 
+def test_evidence_carries_the_confinement_finding(tmp_path: Path) -> None:
+    """The offline C3 mirror: a pre-V16 record's transcript is audited at
+    re-summarize time, so an old cell gains admitted/flagged and the counts."""
+    output, task_dir, manifest = _visible_setup(tmp_path)
+    reading = _pathology_cell(
+        output,
+        "format_number-1",
+        transcript="\n".join(
+            [
+                '{"type": "session", "version": 3, "cwd": "/w"}',
+                '{"type": "tool_execution_start", "toolCallId": "r1", '
+                '"toolName": "read", "args": {"path": "/elsewhere/known-good.patch"}}',
+            ]
+        ),
+    )
+    block = compute_evidence(
+        output, [reading], task_dir=task_dir, manifest=manifest
+    )["format_number-1"]
+    assert block["confinement_reaches"] == 1
+    assert block["confinement_admitted"] is False
+
+
+def test_evidence_leaves_the_confinement_finding_absent_without_a_transcript(
+    tmp_path: Path,
+) -> None:
+    output, task_dir, manifest = _visible_setup(tmp_path)
+    absent = _pathology_cell(output, "format_number-1", transcript=None)
+    block = compute_evidence(
+        output, [absent], task_dir=task_dir, manifest=manifest
+    )["format_number-1"]
+    assert block == {"transcript": False}
+
+
 def _mutation_transcript(path: str) -> str:
     """One turn whose single write lands on ``path``."""
     return "\n".join([

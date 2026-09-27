@@ -8,7 +8,7 @@ without a process.
 import json
 from pathlib import Path
 
-from satyrn_evals.confinement import Protected, audit, protected
+from satyrn_evals.confinement import Finding, Protected, audit, finding, protected
 
 CWD = "/work"
 
@@ -104,3 +104,36 @@ def test_an_empty_protected_set_flags_nothing(tmp_path: Path) -> None:
     terms = Protected(roots=(), names=())
     text = _transcript(_call("read", path="/etc/passwd"), _call("bash", command="cat /etc/passwd"))
     assert audit(text, protected_=terms) == ()
+
+
+def test_a_clean_transcript_is_admitted(tmp_path: Path) -> None:
+    terms = protected(_tasks_root(tmp_path))
+    result = finding(
+        _transcript(_call("bash", command="uv run pytest -q")), protected_=terms
+    )
+    assert result == Finding(refusals=0, reaches=0)
+    assert result is not None and result.admitted
+
+
+def test_a_reach_or_a_refusal_is_flagged(tmp_path: Path) -> None:
+    root = _tasks_root(tmp_path)
+    terms = protected(root)
+    hidden = str(root / "selfhost-x" / "overlay" / "test_hidden.py")
+    reach = finding(_transcript(_call("read", path=hidden)), protected_=terms)
+    assert reach == Finding(refusals=0, reaches=1)
+    assert reach is not None and not reach.admitted
+    refused = finding(
+        _transcript(
+            {"type": "entry_appended", "entry": {"customType": "confinement_refused"}}
+        ),
+        protected_=terms,
+    )
+    assert refused == Finding(refusals=1, reaches=0)
+    assert refused is not None and not refused.admitted
+
+
+def test_a_transcript_without_events_is_unmeasured(tmp_path: Path) -> None:
+    """The sibling of admitted: no parseable event is not a clean cell."""
+    terms = protected(_tasks_root(tmp_path))
+    assert finding("", protected_=terms) is None
+    assert finding("not json\nstill not json\n", protected_=terms) is None

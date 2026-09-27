@@ -18,6 +18,7 @@ from satyrn_evals.attempt_record import (
 )
 from satyrn_evals.budget import AttemptBudget, LineCrossing
 from satyrn_evals.cell import Isolation
+from satyrn_evals.confinement import Finding
 from satyrn_evals.deadline import AttemptDeadline
 from satyrn_evals.errors import HookError, UsageError
 from satyrn_evals.receipt import Receipt, write_receipt
@@ -227,6 +228,46 @@ def test_attempt_refuses_a_retired_isolating_profile(tmp_path: Path) -> None:
                 task="t", tasks_root=tmp_path / "tasks", output=tmp_path / "attempts",
                 command=["fake-agent"], isolation=profile,
             )
+
+
+@pytest.mark.parametrize(
+    ("transcript", "expected"),
+    [
+        (
+            b'{"type": "session", "cwd": "/work"}\n'
+            b'{"type": "tool_execution_start", "toolName": "bash", "args": {"command": "uv run pytest -q"}}\n',
+            Finding(refusals=0, reaches=0),
+        ),
+        (
+            b'{"type": "session", "cwd": "/work"}\n'
+            b'{"type": "tool_execution_start", "toolName": "read", "args": {"path": "/elsewhere/known-good.patch"}}\n',
+            Finding(refusals=0, reaches=1),
+        ),
+        (
+            b'{"type": "session", "cwd": "/work"}\n'
+            b'{"type": "entry_appended", "entry": {"customType": "confinement_refused"}}\n',
+            Finding(refusals=1, reaches=0),
+        ),
+    ],
+)
+def test_attempt_records_the_confinement_finding_from_the_transcript(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    transcript: bytes,
+    expected: Finding,
+) -> None:
+    """Design C3: the durable per-cell record carries the audit's outcome, for
+    a refused cell too, computed from the one retained transcript."""
+    record, _ = _run_attempt(tmp_path, monkeypatch, patch=None, transcript=transcript)
+    assert record.confinement == expected
+
+
+def test_attempt_leaves_the_finding_unmeasured_without_a_transcript(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The sibling: no transcript is not a clean cell."""
+    record, _ = _run_attempt(tmp_path, monkeypatch, patch=None, transcript=None)
+    assert record.confinement is None
 
 
 def test_valid_artifacts_proceed() -> None:
