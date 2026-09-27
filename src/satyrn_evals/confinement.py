@@ -28,6 +28,15 @@ EXTENSION_PATH = Path(__file__).resolve().parents[2] / "packages" / "confinement
 EXTENSION_ENV = "SATYRN_EXTRA_EXTENSIONS"
 ROOT_ENV = "SATYRN_CONFINEMENT_ROOT"
 ROOTS_ENV = "SATYRN_CONFINEMENT_ROOTS"
+#: The condition's stated limit (design C4), carried into every summary. The
+#: extension refuses at call time and the audit reports what the transcript
+#: shows; neither is a proof that the model could not have reached grader
+#: material, so a result page must never read as one.
+CONFINEMENT_LIMIT = (
+    "confinement reports observed access only: the shared extension refused the calls "
+    "listed here, and the audit found no reach to grader material in the transcript. "
+    "It is not proof the model could not have reached it (design C4)."
+)
 
 
 @dataclass(frozen=True, slots=True)

@@ -20,6 +20,7 @@ from satyrn_evals.attempt_record import (
     DeadlinePhase,
     DeadlineProvenance,
 )
+from satyrn_evals.confinement import CONFINEMENT_LIMIT
 from satyrn_evals.summary import (
     AttemptCell,
     Summary,
@@ -157,6 +158,15 @@ def test_summary_names_cells_and_visibility() -> None:
     assert summary.cells == ["task-1", "task-2"]
     assert summary.oracle_visibility == "visible"
     assert summary.contamination is None
+
+
+def test_the_summary_carries_the_confinement_condition_and_its_limit() -> None:
+    """Design C1, C4: every summary names the condition and states that the
+    audit reports observed access, never the impossibility of it."""
+    summary = _compute([_cell("task-1")])
+    assert summary.confinement is not None
+    assert str(summary.confinement["extension"]).endswith("packages/confinement/confinement.ts")
+    assert summary.confinement["limit"] == CONFINEMENT_LIMIT
 
 
 def test_hidden_summary_counts_and_invariant() -> None:

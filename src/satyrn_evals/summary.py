@@ -21,6 +21,7 @@ from satyrn_evals.attempt_record import (
     AttemptRecord,
     DeadlineProvenance,
 )
+from satyrn_evals.confinement import CONFINEMENT_LIMIT, EXTENSION_PATH
 from satyrn_evals.contamination import CheckResult, overall
 from satyrn_evals.verdict import Verdict
 
@@ -62,6 +63,9 @@ class Summary:
     #: Per-cell evidence for every cell whatever its code (``cell_evidence``);
     #: null only on a summary built without the binder.
     evidence: dict[str, dict] | None = None
+    #: The run condition and its stated limit (design C1, C4), so a result
+    #: page cannot read a clean audit as proof the model could not cheat.
+    confinement: dict[str, object] | None = None
 
     def __post_init__(self) -> None:
         if self.n < 0 or self.attempted < 0 or self.refused < 0:
@@ -291,6 +295,7 @@ def compute_summary(
         contract_digest=digest,
         deadline_provenance=deadline_provenance or None,
         evidence=None if evidence is None else {name: evidence[name] for name, _, _ in cells},
+        confinement={"extension": str(EXTENSION_PATH), "limit": CONFINEMENT_LIMIT},
     )
 
 

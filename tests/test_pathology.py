@@ -576,6 +576,7 @@ def test_measured_cell_to_block_wire_shape() -> None:
         "tool_free_terminal_turns": 0,
         "workspace_escapes": 0,
         "loop_broken": 0,
+        "confinement_refusals": 0,
     }
 
 
@@ -690,6 +691,7 @@ def test_validation_row_reproduces_the_spec_table() -> None:
         "tool_free_terminal_turns": 0,
         "workspace_escapes": 0,
         "loop_broken": 0,
+        "confinement_refusals": 0,
     }
 
 
@@ -901,11 +903,14 @@ def test_unknown_engine_entry_custom_type_is_not_silently_accepted() -> None:
     assert (block.measured, block.reason) == (False, "unknown_event")
 
 
-def test_the_eval_confinement_entry_is_measured() -> None:
+def test_the_eval_confinement_entry_is_measured_and_counted() -> None:
     """The eval's own confinement refusal is a count, not an unknown transcript."""
     doc = _LOOP_BROKEN_DOC.replace('"loop_broken"', '"confinement_refused"')
     block = count_transcript(doc, had_patch=True)
     assert (block.measured, block.reason) == (True, None)
+    assert block.confinement_refusals == 1
+    assert block.loop_broken == 0
+    assert block.to_block()["confinement_refusals"] == 1
 
 
 def test_an_unknown_eval_entry_custom_type_is_not_silently_accepted() -> None:
