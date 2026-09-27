@@ -6,12 +6,22 @@ request. This spec changes the isolation condition of
 "two-uid isolation for every deciding record". Neither change is made until
 this is approved.
 
-**Rulings, 2026-09-27.** The contamination control is the **stronger** package
-(absence + in-worktree confinement + audit). Confinement is required, but it is
-**in-worktree and policy-level** — never a second user, `sudo`, `bwrap`,
-Docker, a container, or any other OS facility. The trigger is portability: the
-two-uid profile needs root and a persistent sudoers grant, `bwrap` is
-Linux-only, and both refused or complicated contributors on other machines.
+**Rulings, 2026-09-27.**
+
+- The contamination control is the **stronger** package (absence + in-worktree
+  confinement + audit).
+- Confinement is required, and is **in-worktree and policy-level** — never a
+  second user, `sudo`, `bwrap`, Docker, a container, or any other OS facility.
+- A **lexical `bash` screen plus the C3 audit is accepted**; no OS isolation is
+  required to close the bypass gap.
+- The record field is named **`confinement`**; `isolation` retires and the
+  committed records keep their old key.
+- The five sandbox2 records stay **historical**; they are removed later only if
+  they break something.
+
+The trigger is portability: the two-uid profile needs root and a persistent
+sudoers grant, `bwrap` is Linux-only, and both refused or complicated
+contributors on other machines.
 
 ## 1. What this decides
 
@@ -120,7 +130,8 @@ re-derived on this harness:
 - the release-two comparison (`docs/numbers.md`): Engine 16 of 24 against
   Baseline 2 of 24;
 - both route proofs and the red-stop replay;
-- the sandbox Baseline set (`records/2026-09-25-sandbox*-baseline-*`).
+- the sandbox Baseline set (`records/2026-09-25-sandbox*-baseline-*`), kept as
+  historical evidence per the 2026-09-27 ruling.
 
 The census's *process* classes can be re-read from the retained transcripts,
 but `hunting` (defined as `root_searches > 0`, `census_classify.py`) becomes
@@ -139,20 +150,43 @@ ledger and nothing is built on them.
 4. Re-derive the census, then the counterfactual, then any build — R0 §1's
    order, unchanged.
 
-## 7. Open questions for the maintainer
+## 7. Open question: how the Engine arm pins its commit under C1
 
-1. **The confinement extension's reach.** It can police file tools exactly and
-   `bash` only lexically. Is a lexical `bash` screen enough for the "stronger"
-   ruling, with C3's audit as the backstop — or does the ruling require
-   confinement the model cannot bypass (`bash` included), which this design
-   cannot deliver without an OS facility?
-2. **Which engine is pinned under C1.** `--engine-repo` may now be any checkout;
-   the arm should still name a commit, so `just fetch-engine` and the pinned
-   digest tests stay meaningful. Confirm the export retires rather than staying
-   as a second mechanism.
-3. **Naming.** `isolation` becomes `confinement` in the record schema; old
-   records keep `isolation`. Confirm the field is renamed rather than kept with
-   a changed meaning.
-4. **The five sandbox2 records.** They already pin the previous task revision
-   after the `base_edits` change; does this spec's re-run replace them, or do
-   they stay as historical baseline evidence beside the new set?
+`cell_engine.py` does three jobs at once: it **materializes** the pinned engine
+(`git archive <commit>` of `src`, `packages`, `pyproject.toml`, `uv.lock`,
+`README.md`, `LICENSE`, then `uv sync --offline`), it **shares** it with the
+cell user, and it **verifies** it (marker, no grader material, and the
+`packages/engine/*.ts` bytes against `pins.digests`). Only the sharing is a
+child of isolation. Under C1 the model reads the maintainer's checkout
+directly, so the question is where materialization and verification live.
+
+**(A) Keep the export, drop only the sharing.** The arm still points at
+`CELLS_ROOT/engine-<commit>`, still created and verified by `cell-engine`. The
+smallest diff and it keeps `arm_export_problems` and `test_engine_arm_pins` as
+they are, and it allows two Engine arms at two commits. But it keeps a
+cells-root concept and an absolute, per-machine path in the arm file, and it is
+a second mechanism beside `just fetch-engine`.
+
+**(B) Retire the export; pin via the checkout.** `tools/engine_sync.py` already
+clones into a sibling (`../satyrn-engine`, or `$SATYRN_ENGINE_REPO`), checks
+out the pinned commit detached and refuses a checkout at another commit; it is
+what `just fetch-engine` runs. Under B it becomes the only materializer, and a
+preflight replaces `verify_export` with `engine_checkout_problems`: the
+checkout exists, its `HEAD` is the arm's `engine_commit` (HEAD is what
+`uv run --project` builds), and its `packages/engine/*` match `pins.digests`.
+`cell_engine.py`, the `cell-engine` subcommand and `CELLS_ROOT` retire;
+`test_engine_arm_pins.py` stays (it reads `git show <commit>:…`). The arm file
+then names the commit, not a path, and one arm file works on a mac, a Linux box
+and a contributor's checkout.
+
+**Recommendation: B**, with one check to settle first — a single sibling
+checkout can be at only one commit, so a record that ran two Engine arms at two
+commits (as `78ab87d` and `803df2d` are) would need two checkouts. If that case
+matters, B keeps an optional per-arm `--engine-repo` pointing at a second
+checkout, and the preflight verifies whichever it names. If it does not, one
+sibling and one pin is enough.
+
+The failure B must make loud is the one this session hit: the arm pins
+`78ab87d` while the checkout sits on `main`. `engine_checkout_problems` must
+compare the running checkout's HEAD with the pin and refuse by name, or an
+Engine cell silently runs the wrong engine.
