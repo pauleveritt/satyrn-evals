@@ -3,7 +3,9 @@
 import json
 import os
 import shutil
+import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -460,6 +462,27 @@ def test_attempt_cli_success_refusal_and_usage(tmp_path: Path) -> None:
     assert not any(usage_output.iterdir())
 
 
+def _node_can_run_typescript() -> bool:
+    """Whether this ``node`` can execute a ``.ts`` module, flag or default.
+
+    The E5 fixture drives the engine's real mutator through
+    ``node --experimental-strip-types``. A build compiled without TypeScript
+    support (Ubuntu's ``node`` package, for one) cannot, and the sitting must
+    skip rather than fail. Probed with a real ``.ts`` file, not a flag check:
+    ``--experimental-strip-types -e`` returns 0 even on a build without it.
+    """
+    node = shutil.which("node")
+    if node is None:
+        return False
+    with tempfile.TemporaryDirectory(prefix="satyrn-node-ts-") as temporary:
+        probe = Path(temporary) / "probe.ts"
+        probe.write_text("const x: number = 1;\n", encoding="utf-8")
+        return any(
+            subprocess.run([*argv, str(probe)], capture_output=True, check=False).returncode == 0
+            for argv in ([node, "--experimental-strip-types"], [node])
+        )
+
+
 def _engine_repo() -> Path:
     configured = os.environ.get("SATYRN_V4_ENGINE_REPO")
     root = (
@@ -476,6 +499,8 @@ def _engine_repo() -> Path:
         pytest.skip("an E5 satyrn-engine source checkout is required")
     if shutil.which("node") is None:
         pytest.skip("Node is required for the real E5 integration")
+    if not _node_can_run_typescript():
+        pytest.skip("a Node with TypeScript support is required for the real E5 integration")
     if shutil.which("uv") is None:
         pytest.skip("uv is required for the real E5 integration")
     if not (root / ".venv" / "bin" / "satyrn-engine").is_file():

@@ -17,7 +17,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
-from satyrn_evals.cell_evidence import _events, _path_tokens, _segments
+from satyrn_evals.cell_evidence import _events, _segments
 
 #: The shared Pi extension both arms load (design C1). The Baseline adapter puts
 #: it on Pi's argv; the harness names it in :data:`EXTENSION_ENV` so the Engine
@@ -107,6 +107,25 @@ def _reaches(path: str, cwd: str | None, protected_: Protected) -> str | None:
     return None if resolved is None else _under(resolved, protected_.roots)
 
 
+def _candidate_tokens(words: Sequence[str]) -> list[str]:
+    """Every word in a bash segment that could name a path, relative or absolute.
+
+    ``cell_evidence._path_tokens`` keeps only absolute, ``~`` and ``$HOME``
+    tokens, because it answers "outside the worktree" -- from inside, a
+    relative path is not outside. The audit must also see a relative traversal
+    (``cat ../../<corpus>/.../test_hidden.py``), so it hands every word to
+    :func:`_reaches`, which resolves a relative token against the transcript's
+    cwd and checks the basename first. The ``--opt=value`` form is unwrapped;
+    a bare assignment or flag is harmless because it only matches a protected
+    basename when it literally spells one."""
+    tokens: list[str] = []
+    for word in words:
+        value = word.split("=", 1)[1] if word.startswith("-") and "=" in word else word
+        if value:
+            tokens.append(value)
+    return tokens
+
+
 def audit(transcript: str, *, protected_: Protected) -> tuple[Reach, ...]:
     """Every file-tool path and bash path token that reached protected material."""
     events = _events(transcript)
@@ -125,7 +144,7 @@ def audit(transcript: str, *, protected_: Protected) -> tuple[Reach, ...]:
         elif tool == "bash" and isinstance(args.get("command"), str):
             command = args["command"]
             for segment in _segments(command):
-                for token in _path_tokens(segment):
+                for token in _candidate_tokens(segment):
                     if (term := _reaches(token, cwd, protected_)) is not None:
                         reached.append(Reach("bash", command, term, index))
                         break

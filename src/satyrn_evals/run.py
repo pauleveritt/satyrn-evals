@@ -163,6 +163,11 @@ def run(
         raise UsageError("run requires a positive --n")
     if not command:
         raise UsageError("run command is required: run TASK [flags] -- COMMAND...")
+    if isolation.isolating:
+        raise UsageError(
+            f"the {isolation} profile retired on 2026-09-27: the harness runs the shared "
+            "confinement extension, not an OS profile (design C1), and cannot honour this one"
+        )
     if attempt_timeout is not None:
         attempt_timeout = validate_attempt_timeout(attempt_timeout)
     task_dir = resolve_task(task, tasks_root=tasks_root)

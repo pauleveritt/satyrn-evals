@@ -17,6 +17,7 @@ from satyrn_evals.attempt_record import (
     load_attempt_record,
 )
 from satyrn_evals.budget import AttemptBudget, LineCrossing
+from satyrn_evals.cell import Isolation
 from satyrn_evals.deadline import AttemptDeadline
 from satyrn_evals.errors import HookError, UsageError
 from satyrn_evals.receipt import Receipt, write_receipt
@@ -215,6 +216,17 @@ def test_attempt_exports_the_records_budgets_beside_the_backstop(
     )
     assert seen[attempt_module.TOKEN_BUDGET_ENV] == "48000"
     assert seen[attempt_module.TURN_BUDGET_ENV] == "72"
+
+
+def test_attempt_refuses_a_retired_isolating_profile(tmp_path: Path) -> None:
+    """Design C1: the harness runs the confinement extension, not an OS
+    profile, and must refuse one by name rather than silently run another."""
+    for profile in (Isolation.ISOLATED, Isolation.SANDBOX):
+        with pytest.raises(UsageError, match="retired"):
+            attempt_module.attempt(
+                task="t", tasks_root=tmp_path / "tasks", output=tmp_path / "attempts",
+                command=["fake-agent"], isolation=profile,
+            )
 
 
 def test_valid_artifacts_proceed() -> None:

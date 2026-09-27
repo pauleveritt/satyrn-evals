@@ -242,6 +242,11 @@ def attempt(
     line_budget: LineBudget | None = None,
 ) -> AttemptRecord:
     """Run an unbounded attempt through the stable public API."""
+    if isolation.isolating:
+        raise UsageError(
+            f"the {isolation} profile retired on 2026-09-27: the harness runs the shared "
+            "confinement extension, not an OS profile (design C1), and cannot honour this one"
+        )
     return _attempt(
         task=task,
         tasks_root=tasks_root,

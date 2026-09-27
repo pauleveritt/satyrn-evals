@@ -2074,10 +2074,10 @@ def prepare_workspace(
 ) -> PreparedWorkspace:
     """Reconstruct a detached worktree and retain its cleaned environment.
 
-    ``Isolation.ISOLATED`` allocates the parent under the cells root and,
-    once the base is verified, shares it with the cell user: a group-shared
-    repository, the cell's TMPDIR, uv environment and git config beside the
-    worktree, every entry group-writable.
+    ``isolation`` is a legacy parameter the retired two-uid and ``bwrap``
+    profiles once selected on. No run uses one: the public entry points refuse
+    an isolating profile rather than silently running the confinement
+    condition, and the parent is always a private temp directory.
     """
     state: _WorkspaceState | None = None
     parent: Path | None = None

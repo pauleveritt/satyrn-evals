@@ -5,8 +5,8 @@
 ``attempt`` with the record's budget, rung and profile, and only when
 ``attempt`` returns a record writes ``slots/NN.json`` (atomically), the file
 that makes the slot finished. SIGTERM and SIGHUP raise ``SignalAbort`` inside
-the attempt, so the workspace's own teardown stops the model (the cell-side
-kill included under isolation) before the process exits without a slot record.
+the attempt, so the workspace's own teardown stops the model before the process
+exits without a slot record.
 """
 
 import contextlib

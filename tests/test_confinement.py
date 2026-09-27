@@ -73,6 +73,24 @@ def test_a_bash_command_naming_a_protected_root_is_flagged(tmp_path: Path) -> No
     assert [(r.kind, r.protected) for r in reached] == [("bash", "test_hidden.py")]
 
 
+def test_a_bash_command_traversing_relative_to_the_corpus_is_flagged(tmp_path: Path) -> None:
+    """The sibling the absolute-only scan missed: a relative path that resolves
+    into a protected root is a reach, and the basename rule names it even when
+    the token is relative."""
+    root = _tasks_root(tmp_path)
+    terms = protected(root)
+    text = _transcript(_call("bash", command="cat ../../corpus/selfhost-x/overlay/test_hidden.py"))
+    reached = audit(text, protected_=terms)
+    assert [(r.kind, r.protected) for r in reached] == [("bash", "test_hidden.py")]
+
+
+def test_a_bash_command_naming_a_hidden_basename_relatively_is_flagged(tmp_path: Path) -> None:
+    terms = protected(_tasks_root(tmp_path))
+    text = _transcript(_call("bash", command="grep -rn tzinfo test_hidden.py"))
+    reached = audit(text, protected_=terms)
+    assert [(r.kind, r.protected) for r in reached] == [("bash", "test_hidden.py")]
+
+
 def test_a_bash_command_that_stays_in_the_worktree_is_not_flagged(tmp_path: Path) -> None:
     """The sibling of the bash refusal: a command that never names a protected
     term must not be flagged, or every cell would be."""
