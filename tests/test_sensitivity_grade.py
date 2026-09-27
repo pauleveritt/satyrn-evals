@@ -65,7 +65,7 @@ def _run_record(**overrides: object) -> RunRecord:
         version=1, task="t", task_tree_sha256=DIGEST, arm="baseline", model="omlx/m",
         condition="cold", n=1, mode="batch", max_minutes=60, stop_rule="infrastructure only",
         decision_rule="fisher", previous_result=None, token_budget=24000, turn_budget=36,
-        isolation="local", purpose="development",
+        confinement="extension", purpose="development",
     )
     return RunRecord(**(fields | overrides))
 

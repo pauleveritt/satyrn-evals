@@ -81,6 +81,35 @@ class CellPreflight:
     checked: dict[str, object] = field(default_factory=dict)
 
 
+def preflight_confinement(
+    *,
+    pinned_pi: str,
+    protected: Sequence[Path] = (),
+    tasks_root: Path | None = None,
+    hunt_root: str | None = None,
+) -> CellPreflight:
+    """The confinement condition's preflight: the shared extension is present,
+    and the run is not built inside the corpus (design C1, C2).
+
+    No host user, mount namespace or cells root is consulted -- the condition
+    is the in-worktree extension and the audit, so there is nothing to build
+    and nothing to tolerate. ``pinned_pi``, ``protected`` and ``hunt_root``
+    are accepted for the launcher's uniform call shape and unused.
+    """
+    from satyrn_evals.confinement import EXTENSION_PATH
+
+    problems: list[str] = []
+    checked: dict[str, object] = {"confinement": "extension", "extension": os.fspath(EXTENSION_PATH)}
+    if not EXTENSION_PATH.is_file():
+        problems.append(f"the confinement extension is missing: {EXTENSION_PATH}")
+    if tasks_root is not None:
+        corpus = Path(tasks_root).resolve()
+        checked["tasks_root"] = os.fspath(corpus)
+        if corpus.is_relative_to(Path.cwd().resolve()):
+            problems.append(f"the task corpus {corpus} sits inside the run tree; the run must not contain it")
+    return CellPreflight(problems, checked)
+
+
 def hunt_names(tasks_root: Path = DEFAULT_TASKS_ROOT) -> tuple[str, ...]:
     """The fixed names plus every bundled hidden-suite ``test_*.py`` file name.
 

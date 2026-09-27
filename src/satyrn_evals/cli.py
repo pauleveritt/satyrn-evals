@@ -16,7 +16,7 @@ from satyrn_evals.capture import capture
 from satyrn_evals.capture_record import CaptureOutcome
 from satyrn_evals.cell import CELL_PATH_PREFIX_ENV, Isolation
 from satyrn_evals.cell_engine import checkout_root, engine_checkout_problems
-from satyrn_evals.cell_preflight import preflight_cell, preflight_sandbox
+from satyrn_evals.cell_preflight import preflight_confinement
 from satyrn_evals.census import build_arg_parser as build_census_parser
 from satyrn_evals.census import run_cli as run_census
 from satyrn_evals.errors import SatyrnError, UsageError
@@ -39,6 +39,7 @@ from satyrn_evals.qualify import qualify
 from satyrn_evals.rescore import regrade_attempt, summarize_output
 from satyrn_evals.run import run
 from satyrn_evals.run_record import (
+    CONFINEMENT,
     DEFAULT_COMMAND_BACKSTOP_S,
     K_VALUES,
     PURPOSES,
@@ -333,8 +334,6 @@ def main(argv: list[str] | None = None) -> int:
 def _launch_preflight(args: argparse.Namespace) -> int:
     """The isolated sitting's cell checks, for every arm the record runs; the JSON report goes to stdout, each problem to stderr."""
     record = load_run_record(Path(args.preflight))
-    if not record.isolation.isolating:
-        raise RunRecordError(f"launch --preflight checks an isolated profile; {args.preflight} is local")
     if not args.arm:
         raise UsageError("launch --preflight needs --arm ARM.json, one per arm the record runs")
     names = record_arms(record)
@@ -360,7 +359,7 @@ def _launch_preflight(args: argparse.Namespace) -> int:
     # line must not matter to what gets checked or how it is keyed below.
     arms = [loaded[name] for name in names]
     tasks_root = Path(args.tasks_root)
-    checker = preflight_cell if record.isolation is Isolation.ISOLATED else preflight_sandbox
+    checker = preflight_confinement
     report = checker(
         pinned_pi=arms[0].pins.pi,
         protected=(Path.cwd(), tasks_root, Path.home()),
@@ -447,7 +446,7 @@ def _record_new(args: argparse.Namespace) -> int:
     """Write one run record from flags, read it back through the loader and gate, print its path."""
     body = new_record(
         task=args.task, tasks_root=Path(args.tasks_root), arm=args.arm, model=args.model, n=args.n, k=args.k,
-        rung=None if args.rung == "contract" else args.rung, purpose=args.purpose, isolation=args.isolation,
+        rung=None if args.rung == "contract" else args.rung, purpose=args.purpose, confinement=args.confinement,
         mode=args.mode, max_minutes=args.max_minutes, command_backstop_s=args.command_backstop,
         token_budget=args.token_budget,
         turn_budget=args.turn_budget, previous_result=args.previous_result, authority=args.authority,
@@ -745,7 +744,7 @@ record_new_p.add_argument(
 record_new_p.add_argument("--n", type=positive_int, required=True, help="cells per arm")
 record_new_p.add_argument("--k", type=int, choices=K_VALUES, required=True, help="cells at a time")
 record_new_p.add_argument("--purpose", required=True, choices=sorted(PURPOSES))
-record_new_p.add_argument("--isolation", default="isolated", choices=[p.value for p in Isolation])
+record_new_p.add_argument("--confinement", default=CONFINEMENT, choices=[CONFINEMENT])
 record_new_p.add_argument("--model", default="omlx/Ornith-1.5-9B-MLX-8bit")
 record_new_p.add_argument(
     "--backend", default="omlx", choices=sorted(BACKENDS),

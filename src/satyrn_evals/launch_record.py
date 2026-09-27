@@ -50,7 +50,7 @@ from satyrn_evals.arms import Arm, build_argv, load_arm
 from satyrn_evals.attempt import resolve_contract
 from satyrn_evals.cell import CELL_PATH_PREFIX_ENV, CELLS_ROOT, Isolation
 from satyrn_evals.cell_engine import checkout_root, engine_checkout_problems
-from satyrn_evals.cell_preflight import CellPreflight, preflight_cell, preflight_sandbox
+from satyrn_evals.cell_preflight import CellPreflight, preflight_confinement
 from satyrn_evals.errors import SatyrnError
 from satyrn_evals.launch import (
     SLOTS_DIR,
@@ -181,8 +181,7 @@ class LaunchFacts:
     frozen: Callable[[Path], bool] = git_frozen
     committed: Callable[[str], bool] = git_committed
     head: Callable[[], str] = git_head
-    preflight: Callable[..., CellPreflight] = preflight_cell
-    sandbox_preflight: Callable[..., CellPreflight] = preflight_sandbox
+    confinement_preflight: Callable[..., CellPreflight] = preflight_confinement
     settings: Callable[[Path, bool], tuple[int, str]] = settings_provenance
     spawn_cell: Callable[[Path, Path], CellProcess] = popen_cell
     engine_export: Callable[[Arm], list[str]] = engine_checkout_problems
@@ -348,33 +347,33 @@ def launch_record(
 
     problems: list[str] = []
     checked: dict[str, object] = {}
-    if record.isolation.isolating:
-        checker = facts.preflight if record.isolation is Isolation.ISOLATED else facts.sandbox_preflight
-        report = checker(
-            pinned_pi=next(iter(arms.values()))[1].pins.pi,
-            protected=(Path.cwd(), tasks_root, Path.home(), runs_root),
-            tasks_root=tasks_root, hunt_root="/" if hunt else None,
-            tolerated=_tolerated(),
+    # The confinement condition's preflight, then the checks that bind on it:
+    # the Engine arm's checkout, the Engine's own self-test and the task's. No
+    # OS profile is consulted (design C1, C2).
+    report = facts.confinement_preflight(
+        pinned_pi=next(iter(arms.values()))[1].pins.pi,
+        protected=(Path.cwd(), tasks_root, Path.home(), runs_root),
+        tasks_root=tasks_root, hunt_root="/" if hunt else None,
+    )
+    problems += report.problems
+    checked["preflight"] = report.checked
+    for name, (_, arm) in arms.items():
+        problems += [f"{name}: {problem}" for problem in facts.engine_export(arm)]
+    for name, (_, arm) in arms.items():
+        if arm.arm != "engine":
+            continue
+        export = checkout_root(arm)
+        engine_test = facts.engine_self_test(
+            task_dir, manifest,
+            engine=("uv", "run", "--no-sync", "--project", os.fspath(export), "satyrn-engine"),
+            request=contract_text,
+            token_budget=record.token_budget, turn_budget=record.turn_budget,
         )
-        problems += report.problems
-        checked["preflight"] = report.checked
-        for name, (_, arm) in arms.items():
-            problems += [f"{name}: {problem}" for problem in facts.engine_export(arm)]
-        for name, (_, arm) in arms.items():
-            if arm.arm != "engine":
-                continue
-            export = checkout_root(arm)
-            engine_test = facts.engine_self_test(
-                task_dir, manifest,
-                engine=("uv", "run", "--no-sync", "--project", os.fspath(export), "satyrn-engine"),
-                request=contract_text,
-                token_budget=record.token_budget, turn_budget=record.turn_budget,
-            )
-            problems += [f"{name} engine self-test: {problem}" for problem in engine_test.problems]
-            checked[f"{name}_engine_self_test"] = engine_test.checked
-        self_test = facts.task_self_test(task_dir, manifest)
-        problems += [f"task self-test: {problem}" for problem in self_test.problems]
-        checked["task_self_test"] = self_test.checked
+        problems += [f"{name} engine self-test: {problem}" for problem in engine_test.problems]
+        checked[f"{name}_engine_self_test"] = engine_test.checked
+    self_test = facts.task_self_test(task_dir, manifest)
+    problems += [f"task self-test: {problem}" for problem in self_test.problems]
+    checked["task_self_test"] = self_test.checked
     if not os.environ.get(CELL_PATH_PREFIX_ENV):
         # A development record on the fake-pi seam (`CELL_PATH_PREFIX_ENV`) never
         # reaches a real model server, the same reason it may skip settings; a

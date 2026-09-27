@@ -29,13 +29,23 @@ GOOD = {
     "mode": "attended", "max_minutes": 60,
     "stop_rule": "established infrastructure failure only", "decision_rule": "presence counts; no rate",
     "previous_result": None, "token_budget": 32000, "turn_budget": 48,
-    "isolation": "isolated", "purpose": "admission",
+    "confinement": "extension", "purpose": "admission",
 }
 
 
 def _write(tmp_path: Path, **over: object) -> Path:
     path = tmp_path / "record.json"
     path.write_text(json.dumps({**GOOD, **over}))
+    return path
+
+
+def _legacy(tmp_path: Path, *, isolation: str = "sandbox", **over: object) -> Path:
+    """A record as committed before the 2026-09-27 rename: `isolation`, no `confinement`."""
+    body = {k: v for k, v in GOOD.items() if k != "confinement"}
+    body["isolation"] = isolation
+    body.update(over)
+    path = tmp_path / "legacy.json"
+    path.write_text(json.dumps(body))
     return path
 
 
@@ -166,8 +176,8 @@ def test_a_non_positive_budget_is_refused(tmp_path: Path, field: str, value: int
         load_run_record(_write(tmp_path, **{field: value}))
 
 
-@pytest.mark.parametrize("field", ["isolation", "purpose"])
-def test_a_record_without_a_profile_or_purpose_is_refused(tmp_path: Path, field: str) -> None:
+@pytest.mark.parametrize("field", ["confinement", "purpose"])
+def test_a_record_without_a_confinement_or_purpose_is_refused(tmp_path: Path, field: str) -> None:
     body = {k: v for k, v in GOOD.items() if k != field}
     path = tmp_path / "r.json"
     path.write_text(json.dumps(body))
@@ -175,13 +185,18 @@ def test_a_record_without_a_profile_or_purpose_is_refused(tmp_path: Path, field:
         load_run_record(path)
 
 
-def test_an_unknown_profile_is_refused(tmp_path: Path) -> None:
-    with pytest.raises(RunRecordError, match="isolation must be one of"):
-        load_run_record(_write(tmp_path, isolation="docker"))
+def test_an_unknown_confinement_is_refused(tmp_path: Path) -> None:
+    with pytest.raises(RunRecordError, match="confinement must be"):
+        load_run_record(_write(tmp_path, confinement="docker"))
 
 
-def test_a_sandbox_record_loads(tmp_path: Path) -> None:
-    assert load_run_record(_write(tmp_path, isolation="sandbox")).isolation is Isolation.SANDBOX
+def test_a_legacy_isolation_record_still_loads_for_inspection(tmp_path: Path) -> None:
+    """The 2026-09-27 rename: a committed record keeps its `isolation` key and
+    parses, mapping to the profile it names so its evidence can still be read."""
+    record = load_run_record(_legacy(tmp_path, isolation="sandbox"))
+    assert record.isolation is Isolation.SANDBOX
+    with pytest.raises(RunRecordError, match="retired profile"):
+        gate(record, previous_result_committed=None)
 
 
 def test_an_unknown_purpose_is_refused(tmp_path: Path) -> None:
@@ -189,28 +204,17 @@ def test_an_unknown_purpose_is_refused(tmp_path: Path) -> None:
         load_run_record(_write(tmp_path, purpose="probe"))
 
 
-@pytest.mark.parametrize("purpose", ["admission", "route-proof", "campaign"])
-def test_a_deciding_record_is_refused_under_the_local_profile(tmp_path: Path, purpose: str) -> None:
-    record = load_run_record(_write(tmp_path, isolation="local", purpose=purpose))
-    with pytest.raises(RunRecordError, match="only under the isolated profile"):
-        gate(record, previous_result_committed=None)
-
-
 @pytest.mark.parametrize("purpose", ["admission", "route-proof", "campaign", "development"])
-def test_every_purpose_passes_the_gate_under_the_isolated_profile(tmp_path: Path, purpose: str) -> None:
+def test_every_purpose_passes_the_gate_under_confinement(tmp_path: Path, purpose: str) -> None:
+    """Design C1: the condition is the confinement extension, not a profile, so
+    a deciding record is no longer gated on an OS profile."""
     record = load_run_record(_write(tmp_path, purpose=purpose))
-    assert record.isolation is Isolation.ISOLATED
-    gate(record, previous_result_committed=None)
-
-
-def test_a_local_development_record_passes_the_gate(tmp_path: Path) -> None:
-    record = load_run_record(_write(tmp_path, isolation="local", purpose="development"))
     assert record.isolation is Isolation.LOCAL
     gate(record, previous_result_committed=None)
 
 
-def test_launch_check_refuses_a_local_admission_record(tmp_path: Path) -> None:
-    assert main(["launch", "--check", str(_write(tmp_path, isolation="local"))]) == 2
+def test_launch_check_refuses_a_legacy_isolation_record(tmp_path: Path) -> None:
+    assert main(["launch", "--check", str(_legacy(tmp_path, isolation="local"))]) == 2
 
 
 TASK = "agentclinic-repair-misleading-locus"

@@ -25,7 +25,8 @@ type Mode = Literal["attended", "batch"]
 type Condition = Literal["cold", "warm"]
 type Purpose = Literal["admission", "route-proof", "campaign", "development"]
 
-#: Purposes whose cells decide something: the launcher runs them only isolated (Ruling 1).
+#: Purposes whose cells decide something. The condition that binds them is the
+#: confinement extension, not an OS profile (design C1); see ``gate``.
 DECIDING_PURPOSES = frozenset({"admission", "route-proof", "campaign"})
 PURPOSES = DECIDING_PURPOSES | {"development"}
 #: The adapter each committed arm runs, by module or console-script name.
@@ -93,8 +94,12 @@ class RunRecord:
     # The campaign budget per attempt, spec "Budget, both arms".
     token_budget: int
     turn_budget: int
-    # The launcher profile and what the run is for (Ruling 1).
-    isolation: Isolation
+    # The run condition and what the run is for (design C1, maintainer ruling
+    # 2026-09-27). ``extension`` is the shared in-worktree confinement
+    # extension, loaded on both arms; a record written before the rename
+    # (or a deliberately historical one) carries ``isolation`` instead and is
+    # refused at launch rather than run under a condition it does not name.
+    confinement: str
     purpose: Purpose
     # Phase 2c (Ruling 2): optional so earlier records load; ``record new`` always writes them.
     k: int = 1
@@ -113,13 +118,28 @@ class RunRecord:
     # Absent means ``omlx``: every record written before this field existed.
     backend: str = "omlx"
 
+    @property
+    def isolation(self) -> Isolation:
+        """The run condition in the legacy vocabulary ``run``/``workspace`` still take.
+
+        A ``confinement`` record runs the local profile with the shared
+        extension; a historical record keeps its named profile (and ``gate``
+        refuses it), so committed records parse for inspection and regrading.
+        """
+        if self.confinement == CONFINEMENT:
+            return Isolation.LOCAL
+        return Isolation(self.confinement.removeprefix("retired:"))
+
 
 _REQUIRED: dict[str, type | tuple[type, ...]] = {
     "version": int, "task": str, "task_tree_sha256": str, "arm": str, "model": str,
     "condition": str, "n": int, "mode": str, "max_minutes": int,
     "stop_rule": str, "decision_rule": str, "previous_result": (str, type(None)),
-    "token_budget": int, "turn_budget": int, "isolation": str, "purpose": str,
+    "token_budget": int, "turn_budget": int, "purpose": str,
 }
+#: The one run condition. New records carry ``confinement: extension``; a
+#: record that carries the retired ``isolation`` key is read as ``retired:<v>``.
+CONFINEMENT = "extension"
 
 
 _OPTIONAL: dict[str, type | tuple[type, ...]] = {
@@ -156,8 +176,21 @@ def load_run_record(path: Path) -> RunRecord:
             raise RunRecordError(
                 f"run record {path}: {field} must be a positive integer"
             )
-    if body["isolation"] not in {profile.value for profile in Isolation}:
-        raise RunRecordError(f"run record {path}: isolation must be one of {', '.join(sorted(p.value for p in Isolation))}")
+    if "confinement" in body:
+        if not isinstance(body["confinement"], str) or not body["confinement"].strip():
+            raise RunRecordError(f"run record {path}: confinement must be a non-empty string")
+        confinement = body["confinement"]
+    elif "isolation" in body:
+        # A committed record from before the 2026-09-27 rename. It parses, so
+        # the evidence beside it still loads, but it names a retired profile
+        # and `gate` refuses to run it under a different condition.
+        if not isinstance(body["isolation"], str):
+            raise RunRecordError(f"run record {path}: isolation must be a string")
+        confinement = f"retired:{body['isolation']}"
+    else:
+        raise RunRecordError(f"run record {path}: missing confinement")
+    if confinement != CONFINEMENT and not confinement.startswith("retired:"):
+        raise RunRecordError(f"run record {path}: confinement must be {CONFINEMENT!r}")
     if body["purpose"] not in PURPOSES:
         raise RunRecordError(
             f"run record {path}: purpose must be one of {', '.join(sorted(PURPOSES))}"
@@ -200,7 +233,7 @@ def load_run_record(path: Path) -> RunRecord:
                 "must not be able to fall inside the line harvest window"
             )
     fields = {k: body[k] for k in _REQUIRED} | {k: body[k] for k in _OPTIONAL if k in body}
-    fields["isolation"] = Isolation(body["isolation"])
+    fields["confinement"] = confinement
     return RunRecord(**fields)
 
 
@@ -249,10 +282,11 @@ def gate(
         )
     if record.previous_result is not None and previous_result_committed is not True:
         raise RunRecordError(f"previous_result {record.previous_result} is not committed")
-    if record.purpose in DECIDING_PURPOSES and not record.isolation.isolating:
+    if record.confinement != CONFINEMENT:
+        profile = record.confinement.removeprefix("retired:")
         raise RunRecordError(
-            f"{record.purpose} records run only under the isolated profile; "
-            "the local profile is for development records"
+            f"this record names the retired profile {profile!r}; its condition is historical. "
+            f"Write a {CONFINEMENT!r} record to run the current harness"
         )
 
 
@@ -319,7 +353,7 @@ def new_record(
     k: int,
     rung: str | None,
     purpose: str,
-    isolation: str,
+    confinement: str = CONFINEMENT,
     mode: str,
     max_minutes: int,
     token_budget: int,
@@ -353,7 +387,7 @@ def new_record(
         "version": 1, "task": task, "task_tree_sha256": tree_digest(task_dir), "arm": arm, "model": model,
         "condition": "cold", "n": n, "mode": mode, "max_minutes": max_minutes, "stop_rule": stop_rule,
         "decision_rule": decision_rule, "previous_result": previous_result, "token_budget": token_budget,
-        "turn_budget": turn_budget, "isolation": isolation, "purpose": purpose, "k": k, "rung": rung,
+        "turn_budget": turn_budget, "confinement": confinement, "purpose": purpose, "k": k, "rung": rung,
         "authority": authority, "command_backstop_s": command_backstop_s, "backend": backend,
     }
     if line_token_budget is not None or line_turn_budget is not None:

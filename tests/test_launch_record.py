@@ -1,13 +1,12 @@
 """``launch RECORD``'s gates and wiring, with every git, sudo and spawn fact faked: nothing spawns."""
 
 import json
-import os
 from pathlib import Path
 
 import pytest
 
 from satyrn_evals.arms import Arm, ArmPins
-from satyrn_evals.cell import CELL_PATH_PREFIX_ENV, CELLS_ROOT, Isolation
+from satyrn_evals.cell import CELL_PATH_PREFIX_ENV, Isolation
 from satyrn_evals.cell_preflight import CellPreflight
 from satyrn_evals.cli import main
 from satyrn_evals.errors import SatyrnError
@@ -26,7 +25,7 @@ SETTINGS = '{"arm_sha256": "a"}'
 def _record(tmp_path: Path, **over: object) -> Path:
     body = new_record(
         task=TASK, tasks_root=DEFAULT_TASKS_ROOT, arm="baseline", model="omlx/Ornith-1.5-9B-MLX-8bit", n=2, k=1,
-        rung="R1", purpose="admission", isolation="isolated", mode="attended", max_minutes=60,
+        rung="R1", purpose="admission", confinement="extension", mode="attended", max_minutes=60,
         token_budget=32000, turn_budget=48, previous_result=None, authority="test", decision_rule=None,
     )
     path = tmp_path / "records" / "depth-3.json"
@@ -44,7 +43,7 @@ def _facts(**over: object) -> LaunchFacts:
 
     base = dict(
         frozen=lambda path: True, committed=lambda path: True, head=lambda: "f" * 40,
-        preflight=lambda **kw: CellPreflight([], {"pi_version": "0.85.1"}), settings=lambda path, cell: (0, SETTINGS),
+        confinement_preflight=lambda **kw: CellPreflight([], {"pi_version": "0.85.1"}), settings=lambda path, cell: (0, SETTINGS),
         spawn_cell=spawn, model_server=lambda base_url, server_model, api_key=None: [], pi_models=lambda cell: {},
         task_self_test=lambda task_dir, manifest: TaskSelfTest([], {}),
         engine_self_test=lambda *a, **k: TaskSelfTest([], {}),
@@ -65,7 +64,7 @@ def test_a_clean_admission_record_reaches_its_first_cell_with_the_records_settin
     assert _launch(tmp_path, record, _facts()) == 3  # the fake spawn raised: interrupted
     spec = json.loads((tmp_path / "runs" / "depth-3" / SLOTS_DIR / "00.spec.json").read_text())
     assert spec["command"] == ["satyrn-evals-attempt-pi", "--model", "omlx/Ornith-1.5-9B-MLX-8bit", "--tools", "read,bash,edit,write"]
-    assert (spec["rung"], spec["token_budget"], spec["turn_budget"], spec["isolation"]) == ("R1", 32000, 48, "isolated")
+    assert (spec["rung"], spec["token_budget"], spec["turn_budget"], spec["isolation"]) == ("R1", 32000, 48, "local")
     assert (spec["timeout"], spec["attempt_timeout"]) == (1800.0, 2100.0)
     assert spec["output"] == str(tmp_path / "runs" / "depth-3" / "baseline")
     result = json.loads(record.with_suffix(".result.json").read_text())
@@ -157,7 +156,7 @@ def test_an_arm_on_another_backend_than_the_record_is_refused(tmp_path: Path) ->
 @pytest.mark.parametrize(
     "facts",
     [
-        _facts(preflight=lambda **kw: CellPreflight(["the cell can find /x/known-good.patch"], {})),
+        _facts(confinement_preflight=lambda **kw: CellPreflight(["the cell can find /x/known-good.patch"], {})),
         _facts(settings=lambda path, cell: (1, "preflight_settings FAILED: temperature")),
         _facts(model_server=lambda base_url, server_model, api_key=None: [f"the model server at {base_url} is unreachable: refused"]),
     ],
@@ -307,34 +306,13 @@ def test_model_server_checks_reports_an_unreadable_pi_config_instead_of_raising(
 def test_the_preflight_protects_the_runs_root_and_hunts_by_default(tmp_path: Path) -> None:
     seen: dict[str, object] = {}
 
-    def preflight(**kwargs: object) -> CellPreflight:
+    def confinement_preflight(**kwargs: object) -> CellPreflight:
         seen.update(kwargs)
         return CellPreflight(["stop here"], {})
 
-    assert _launch(tmp_path, _record(tmp_path), _facts(preflight=preflight)) == 1
+    assert _launch(tmp_path, _record(tmp_path), _facts(confinement_preflight=confinement_preflight)) == 1
     assert seen["hunt_root"] == "/" and seen["pinned_pi"] == "0.85.1"
     assert tmp_path / "runs" in seen["protected"]  # type: ignore[operator]
-
-
-def test_the_preflight_tolerates_only_the_cell_path_prefixs_own_entry_under_the_cells_root(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """R5: without the test PATH seam, nothing is tolerated; with it set under
-    the real cells root, only its direct child there is passed through."""
-    seen: dict[str, object] = {}
-
-    def preflight(**kwargs: object) -> CellPreflight:
-        seen.update(kwargs)
-        return CellPreflight([], {"pi_version": "0.85.1"})
-
-    record = _record(tmp_path, purpose="development", decision_rule="none")
-    assert _launch(tmp_path, record, _facts(preflight=preflight)) == 3
-    assert seen["tolerated"] == ()
-
-    monkeypatch.setenv(CELL_PATH_PREFIX_ENV, os.fspath(CELLS_ROOT / "satyrn-test-abc123" / "bin"))
-    seen.clear()
-    assert _launch(tmp_path, record, _facts(preflight=preflight)) == 3
-    assert seen["tolerated"] == (CELLS_ROOT / "satyrn-test-abc123",)
 
 
 class Finishing:
@@ -474,7 +452,7 @@ ROUTE_PROOF_RULE = "route proof: guards fire where retained Baseline evidence sa
 def _route_proof(tmp_path: Path) -> Path:
     body = new_record(
         task=TASK, tasks_root=DEFAULT_TASKS_ROOT, arm="engine", model="omlx/Ornith-1.5-9B-MLX-8bit", n=1, k=1,
-        rung="R1", purpose="route-proof", isolation="isolated", mode="attended", max_minutes=60,
+        rung="R1", purpose="route-proof", confinement="extension", mode="attended", max_minutes=60,
         token_budget=32000, turn_budget=48, previous_result="records/x.result.json", authority="test",
         decision_rule=ROUTE_PROOF_RULE,
     )
@@ -501,7 +479,7 @@ def test_a_route_proof_record_runs_the_committed_engine_arm(tmp_path: Path) -> N
         "satyrn-evals-attempt-engine",
         "--model", "omlx/Ornith-1.5-9B-MLX-8bit",
     ]
-    assert (spec["arm"], spec["rung"], spec["isolation"]) == ("engine", "R1", "isolated")
+    assert (spec["arm"], spec["rung"], spec["isolation"]) == ("engine", "R1", "local")
 
 
 def test_an_engine_export_problem_exits_1_and_runs_nothing(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -575,7 +553,7 @@ def test_a_deciding_record_refuses_a_timeout_override(tmp_path: Path) -> None:
 
 
 def test_a_development_record_may_override_the_timeout(tmp_path: Path) -> None:
-    _record(tmp_path, purpose="development", isolation="local")
+    _record(tmp_path, purpose="development", confinement="extension")
     launch_record(
         tmp_path / "records" / "depth-3.json", [ARM], tasks_root=DEFAULT_TASKS_ROOT,
         runs_root=tmp_path / "runs", timeout=60.0, attempt_timeout=90.0, facts=_facts(),

@@ -34,7 +34,7 @@ GOOD = {
     "mode": "attended", "max_minutes": 60,
     "stop_rule": "established infrastructure failure only", "decision_rule": "presence counts; no rate",
     "previous_result": None, "token_budget": 32000, "turn_budget": 48,
-    "isolation": "isolated", "purpose": "admission",
+    "confinement": "extension", "purpose": "admission",
 }
 
 
@@ -142,7 +142,7 @@ def test_a_line_field_wrong_type_is_refused(tmp_path: Path) -> None:
 def test_new_record_with_a_line_writes_both_fields(tmp_path: Path) -> None:
     body = new_record(
         task="agentclinic-repair-depth-3", tasks_root=DEFAULT_TASKS_ROOT,
-        arm="baseline", model="m", n=4, k=1, rung=None, purpose="admission", isolation="isolated",
+        arm="baseline", model="m", n=4, k=1, rung=None, purpose="admission", confinement="extension",
         mode="attended", max_minutes=60, token_budget=32000, turn_budget=48, previous_result=None,
         authority=None, decision_rule=None, line_token_budget=16000, line_turn_budget=24,
     )
@@ -153,7 +153,7 @@ def test_new_record_with_a_line_writes_both_fields(tmp_path: Path) -> None:
 def test_new_record_without_a_line_writes_neither_field(tmp_path: Path) -> None:
     body = new_record(
         task="agentclinic-repair-depth-3", tasks_root=DEFAULT_TASKS_ROOT,
-        arm="baseline", model="m", n=4, k=1, rung=None, purpose="admission", isolation="isolated",
+        arm="baseline", model="m", n=4, k=1, rung=None, purpose="admission", confinement="extension",
         mode="attended", max_minutes=60, token_budget=32000, turn_budget=48, previous_result=None,
         authority=None, decision_rule=None,
     )
