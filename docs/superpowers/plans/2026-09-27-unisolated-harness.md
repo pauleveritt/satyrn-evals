@@ -21,9 +21,15 @@ are green. Re-deriving the census and the comparison is a separate plan.
 | 1 | The confinement extension | done, `f309d2d` |
 | 2 | The audit core | done, `11ff95f` |
 | 3 | Both arms load the extension | done (eval `e31c3da`; engine seam below) |
-| 4 | Retire OS isolation and the export; pin via the checkout | open — replaces old 4 + old 6 |
-| 5 | The `confinement` record field | open |
-| 6 | Refusal counts, and the stated limit | open |
+| 4 | Retire OS isolation and the export; pin via the checkout | done, `df7e355` (4a) + `fd3cd6b` (4b/4c) |
+| 5 | The `confinement` record field | done, `c74fdaf` |
+| 6 | Refusal counts, and the stated limit | done, `a616087` |
+
+**All six tasks are done.** `just gates` exits 0 and the integration tier is
+319 passed / 24 skipped with no `satyrn-cell` user and no `bwrap`. The Engine
+arms pin `54d814d` on the unmerged `harness-extension-seam` branch; re-pin to
+the merge commit once the engine PR lands. The re-qualification and
+re-derivation below remain.
 
 Task 3's engine half lives on the engine branch `harness-extension-seam` at
 `54d814d98f69fdf399884276c7d00cd5052e3ca1`, based on `release-one` `803df2d`,
