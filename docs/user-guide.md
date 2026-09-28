@@ -4,6 +4,11 @@ This is a **user's guide**, not a contributor's guide. It shows a developer or
 a non-developer how to run the Satyrn stack on their own machine and grade a
 task, using one of three local model backends:
 
+> **Guided tour?** [Your first run](user-journey.md) walks the whole thing as a
+> journey, ollama-only, from first principles to reporting your own result.
+> This page is the reference it links back to: denser, and covering all three
+> backends.
+
 - **unsloth** — a locally quantised model on a GPU (Linux or Windows), served
   through [unsloth](https://unsloth.ai).
 - **ollama** — a locally quantised model on CPU or GPU (Linux or Windows),

@@ -20,6 +20,10 @@ The evidence is in [the numbers](numbers.md): a pre-registered comparison of
 `/implement` against bare Pi on medium-build tasks, read once when complete,
 with where it did not help and what it costs.
 
+**New here?** [Your first run](user-journey.md) is the guided journey: what an
+engine is, what evals are for, and then a real task run end to end on ollama,
+both arms, and how to send what you saw back to the people building it.
+
 **The shape.** Evals is the star; Engine is the petri dish where remedies get
 tested. Later, Engine becomes a routine-Python tool for Laptop AI. For now, we
 are a group of people learning how to measure and investigate for Laptop AI.
