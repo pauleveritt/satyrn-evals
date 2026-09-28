@@ -26,16 +26,17 @@ are green. Re-deriving the census and the comparison is a separate plan.
 | 6 | Refusal counts, and the stated limit | done, `a616087` |
 
 **All six tasks are done.** `just gates` exits 0 and the integration tier is
-319 passed / 24 skipped with no `satyrn-cell` user and no `bwrap`. The Engine
-arms pin `54d814d` on the unmerged `harness-extension-seam` branch; re-pin to
-the merge commit once the engine PR lands. The re-qualification and
-re-derivation below remain.
+319 passed / 24 skipped with no `satyrn-cell` user and no `bwrap`. The engine
+PR merged into `release-one` at `1869397d605f887483d626e7434ccca2bdace340`
+(parents `803df2d` and `54d814d`; tree identical to `54d814d`); all three
+Engine arms now pin that merge commit. The re-qualification and re-derivation
+below remain.
 
 Task 3's engine half lives on the engine branch `harness-extension-seam` at
 `54d814d98f69fdf399884276c7d00cd5052e3ca1`, based on `release-one` `803df2d`,
 author Nicola Jordan. It adds `build_pi_command(..., extra_extensions=())` and
-reads `$SATYRN_EXTRA_EXTENSIONS` in `attempt`. The eval pins it only once the
-PR merges (Task 4 re-pins for development in the meantime).
+reads `$SATYRN_EXTRA_EXTENSIONS` in `attempt`. The eval pinned it on the branch
+while the PR was open; since the merge it pins the merge commit.
 
 ## Task 4 — retire OS isolation and the export; pin via the checkout
 
