@@ -49,9 +49,34 @@ settled, and what it leaves for that sitting:
 | R0 | Design sitting under `docs/superpowers/specs/2026-09-15-release-two-r0-constraints.md`: the claim, the workload, what counts as a ceiling task | attended | a spec the maintainer approves that meets those constraints. Knowledge stage: the finishing counterfactual ran `not-the-lever` and, corrected in run 2, **Verify** — a small, real finishing class (power 0.26) (evidence/2026-09-15-finishing-counterfactual/README.md and run-2/README.md). Maintainer's decision 2026-09-15, later the same day: the "ship as a product with no claim" direction is withdrawn; a Baseline-only pathology census runs first under `docs/superpowers/specs/2026-09-15-release-two-census-design.md` (five tasks, n = 6, 48k/72, per-turn cap 16k, tripped worktrees graded), and the claim shape is chosen from its classified table. Census night 1 ran 2026-09-16 (30 cells; classifier outputs evidence/2026-09-16-census/): depth-3 at R2 is floor (6/6); run-record-gate and docs-linter are finishing-bound (9 of 12 cells reached green inside the 32k line, 2 stopped); cell-loop and speed-probe reached no pass state; 9 cells wall-clock-cut on a shared machine. Night 2 ran 2026-09-17 (nine replacement cells, 4,800 s backstop, quiet machine, no timeouts; run-record-gate 3/3 reached green inside the line, none stopped; large builds unchanged; the third-candidate record was withdrawn by the section 4 amendment). No plan holds a third medium-build task; it is authored (docs/superpowers/specs/2026-09-17-release-two-authored-task-design.md). Census page draft: evidence/2026-09-16-census/README.md. Next: class columns, R0 sitting, Engine spec. The third medium-build task is authored, not cut: selfhost-preflight-quiet (docs/superpowers/specs/2026-09-17-release-two-authored-task-design.md, approved 2026-09-17), cut 2026-09-18, validity-checked under R0 §1.2, 20 hidden tests and a public suite measured at roughly 34.8-34.9 s wall clock (a ceiling on a contended machine), both inside the 15-20 and under-40-s targets; four ungraded-literal gaps in the hidden suite are disclosed and pre-registered for a post-hoc read in evidence/2026-09-18-census-3/postreg.md; one Baseline admission record frozen for census night 3 (n = 6, 48,000 tokens, 72 turns, 4,800 s, k = 3); wiring the check into launch --preflight is a separate later commit. |
 | R1 | Measurement validity: rung fix (assertion explanations), a qualification check that the prompt determines the hidden suite's structural choices, per-turn output cap, grade tripped worktrees as a declared secondary, re-measure k | overnight | fixture tests both directions; re-probe; every candidate re-qualified |
 | R2 | Engine parity and hygiene: multi-edit, prompt collapse, writable paths from `Files:`, finish-on-green nudge | overnight | replay and fixture tests; Engine and Baseline tool surfaces equivalent |
-| R3 | Workload: new ceiling candidates cut and admitted under isolation | attended | a ceiling set whose Baseline failures are budget- or finish-shaped, not information-bound |
+| R3 | Workload: new ceiling candidates cut and admitted under confinement | attended | a ceiling set whose Baseline failures are budget- or finish-shaped, not information-bound |
 | R4 | Development measurement on a hard, build-shaped dev cut; route proof | attended | the target behaviour moves on development cells |
 | R5 | Comparison and decision | batch, frozen in daylight | result pages, or a stated negative |
+
+## Next — re-derive on the confinement harness
+
+Design: `docs/superpowers/specs/2026-09-27-unisolated-harness-design.md`;
+plan: `docs/superpowers/plans/2026-09-27-unisolated-harness.md`.
+
+The two-uid and `bwrap` profiles are retired. A cell now runs as the
+maintainer on a plain checkout on macOS or Linux, with an eval-owned Pi
+extension loaded by both arms (in-worktree confinement), a post-hoc reach
+audit, and a mechanical admission tally. The serving backend is a declared arm
+field (`omlx` or `openai`), and cells from different backends never pool.
+
+That is a harness change, so every deciding result produced under isolation is
+unconfirmed until re-derived here (spec §5): the 39-cell census and its signed
+class columns, the release-two comparison in `docs/numbers.md`, both route
+proofs and the red-stop replay, and the sandbox Baseline set (historical).
+Nothing is built on any of them in the meantime.
+
+| # | Step | Mode | Done when |
+|---|---|---|---|
+| C0 | Mark each result above unconfirmed in `evidence/2026-09-15-release-one-decision-ledger.md`, naming this harness change | attended | every listed decision carries the mark and the commit that re-opened it |
+| C1 | Re-qualify on the new harness: same task, model and budgets, extension loaded on both arms, no host setup | attended | a qualification record under `confinement` that passes preflight on this machine |
+| C2 | Re-read the census process classes from retained transcripts; re-sign the class columns where `hunting` becomes live | attended | signed columns that state which cells reclassified and why |
+| C3 | Re-run the census outcome cells under confinement | batch, frozen in daylight | a classified table on this harness, with refused and flagged cells counted |
+| C4 | Re-derive the finishing counterfactual, then resume R0's order | attended | the counterfactual's verdict on the new census, before any Engine build |
 
 ## Rules that bind every phase
 
