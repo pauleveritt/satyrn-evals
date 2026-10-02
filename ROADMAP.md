@@ -98,11 +98,11 @@ Nothing is built on any of them in the meantime.
 ## Deferred
 
 **Parked 2026-10-02: the satyrn-engine branch `derive-new-top-level-module`.**
-Two local commits on `release-one` `803df2d`: `c5798b5` lets `derive` admit a
-new top-level module the request names, and `8d131d9` adds a backlog note
-(`/implement` defaults `SATYRN_ENGINE_REPO` and `SATYRN_MODEL` itself). It
-merges cleanly onto `1869397` and touches no digest-pinned `packages/engine`
-file. But it changes Engine behaviour, so landing it means re-pinning the
+Two local commits, rebased 2026-10-02 onto engine `main` `1869397`: `d4abd65`
+lets `derive` admit a new top-level module the request names, and `92c9282`
+adds a backlog note (`/implement` defaults `SATYRN_ENGINE_REPO` and
+`SATYRN_MODEL` itself). The rebase was clean and touches no digest-pinned
+`packages/engine` file. But it changes Engine behaviour, so landing it means re-pinning the
 Engine arms, which is a new Engine condition. It is also a remedy that no
 diagnosed admission on this harness has asked for yet. Reopens at C4, only if
 the re-derived counterfactual names it. Until then the Engine arms stay on
