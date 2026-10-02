@@ -29,7 +29,15 @@ from satyrn_evals.attempt_record import (
     write_attempt_record,
 )
 from satyrn_evals.budget import AttemptBudget, LineBudget
-from satyrn_evals.cell import CELL_PARENT_ENV, ISOLATION_ENV, Isolation
+from satyrn_evals.cell import Isolation
+from satyrn_evals.confinement import (
+    EXTENSION_ENV,
+    EXTENSION_PATH,
+    ROOT_ENV,
+    ROOTS_ENV,
+    finding,
+    protected,
+)
 from satyrn_evals.deadline import AttemptDeadline, AttemptDeadlineExceeded
 from satyrn_evals.engine_contract import (
     engine_contract_path,
@@ -241,6 +249,11 @@ def attempt(
     line_budget: LineBudget | None = None,
 ) -> AttemptRecord:
     """Run an unbounded attempt through the stable public API."""
+    if isolation.isolating:
+        raise UsageError(
+            f"the {isolation} profile retired on 2026-09-27: the harness runs the shared "
+            "confinement extension, not an OS profile (design C1), and cannot honour this one"
+        )
     return _attempt(
         task=task,
         tasks_root=tasks_root,
@@ -294,13 +307,6 @@ def _attempt(
     transcript_path = attempt_dir / "transcript.txt"
 
     env = dict(os.environ)
-    if isolation is Isolation.LOCAL:
-        # F8/R13: a stray SATYRN_ISOLATION/SATYRN_CELL_PARENT in the
-        # maintainer's own shell must never reach a local-profile command --
-        # an adapter reading it would believe it is isolated and try to run
-        # as the cell. Isolated attempts set these explicitly below.
-        env[ISOLATION_ENV] = Isolation.LOCAL.value
-        env.pop(CELL_PARENT_ENV, None)
     env[TASK_NAME_ENV] = manifest.name
     env[TASK_CONTRACT_ENV] = contract_text
     env[PATCH_ENV] = str(patch_path)
@@ -418,13 +424,17 @@ def _attempt(
                 # above) so prepare_workspace still receives it for anything
                 # that materializes the task workspace's environment.
                 workspace_lease._environment.pop("UV_PROJECT_ENVIRONMENT", None)
-            exported = {BASE_SHA_ENV: workspace_lease.base_sha}
+            exported = {
+                BASE_SHA_ENV: workspace_lease.base_sha,
+                # The shared confinement condition, both arms: the Baseline
+                # adapter loads the extension from its own argv, and the
+                # Engine arm loads it because the harness names it here (the
+                # engine appends $SATYRN_EXTRA_EXTENSIONS to Pi's argv).
+                EXTENSION_ENV: os.fspath(EXTENSION_PATH),
+                ROOT_ENV: os.fspath(workspace_lease.worktree),
+                ROOTS_ENV: os.pathsep.join((os.fspath(tasks_root), os.fspath(task_dir))),
+            }
             live_transcript = transcript_path
-            if isolation is Isolation.ISOLATED:
-                live_transcript = workspace_lease.parent / LIVE_TRANSCRIPT_NAME
-                exported[ISOLATION_ENV] = isolation.value
-                exported[CELL_PARENT_ENV] = os.fspath(workspace_lease.parent)
-                exported[TRANSCRIPT_ENV] = os.fspath(live_transcript)
             # C2 (Opus review of a113f0b..3ecf068): pre-bound to None so the
             # except clause below can pass it to `_write_deadline_refusal`
             # either way. `run_prepared_command` itself can raise
@@ -1113,6 +1123,15 @@ def _finish_attempt(
     transcript_hash = (
         patch_digest(transcript_bytes) if transcript_bytes is not None else None
     )
+    # C3 (design): audit the retained transcript once, here, so the finding is
+    # part of the durable per-cell evidence -- for a refused cell too, and for
+    # a single attempt with no summary. An absent or empty transcript is
+    # unmeasured (no Finding); the summary's tally reads the same field.
+    confinement = (
+        finding(transcript_text, protected_=protected(task_dir.parent, task_dir.name))
+        if transcript_text
+        else None
+    )
     if deadline is not None:
         deadline.remaining(DeadlinePhase.PRESERVATION)
 
@@ -1220,6 +1239,7 @@ def _finish_attempt(
             line_crossed=line_crossed,
             line_patch_path=line_patch_path,
             line_harvest_error=line_harvest_error,
+            confinement=confinement,
         )
         write_attempt_record(attempt_dir / "attempt.json", record)
         return record
@@ -1251,6 +1271,7 @@ def _finish_attempt(
         line_crossed=line_crossed,
         line_patch_path=line_patch_path,
         line_harvest_error=line_harvest_error,
+        confinement=confinement,
     )
     write_attempt_record(attempt_dir / "attempt.json", base_record)
     try:

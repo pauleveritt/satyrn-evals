@@ -1,0 +1,117 @@
+{
+  "record": "records/2026-09-25-unsloth-smoke-format-number.json",
+  "record_sha256": "e82450dd5507b498a0465dc02a2e41bcda4ff4686d104250ace4e1af72a5e2c4",
+  "arm_sha256": {
+    "baseline": "b149b04acb0d658a145691a3793fe78a39cbf7985173d02fed80d2e1824c2b88"
+  },
+  "status": "complete",
+  "reason": null,
+  "night": "/home/ubuntu/satyrn-runs/2026-09-25-unsloth-smoke-format-number",
+  "task": "format_number",
+  "rung": null,
+  "k": 1,
+  "n": 1,
+  "purpose": "development",
+  "arms": {
+    "baseline": {
+      "finished": 1,
+      "n": 1,
+      "code_counts": {
+        "OK": 1
+      },
+      "passes": 1,
+      "summary": "/home/ubuntu/satyrn-runs/2026-09-25-unsloth-smoke-format-number/baseline/summary.json",
+      "infrastructure": [],
+      "contamination": null
+    }
+  },
+  "cells": [
+    {
+      "slot": 0,
+      "arm": "baseline",
+      "attempt_dir": "format_number-20260925-160551-691199",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    }
+  ],
+  "replaced": [],
+  "sittings": [
+    {
+      "record": "records/2026-09-25-unsloth-smoke-format-number.json",
+      "started": "2026-09-25T16:05:51+00:00",
+      "k": 1,
+      "evals_head": "f99e7092c569736963313a6b3648a16e92156a6d",
+      "preflight": {
+        "cell_user": "satyrn-cell",
+        "cells_root": "/srv/satyrn-cells",
+        "tolerated": [],
+        "pi_version": "0.85.1",
+        "unreadable_checked": [
+          "/home/ubuntu/dev/dogfooding/satyrn-evals",
+          "/home/ubuntu/dev/dogfooding/satyrn-evals/src/satyrn_evals/tasks",
+          "/home/ubuntu",
+          "/home/ubuntu/satyrn-runs"
+        ],
+        "hunt_root": "/",
+        "hunt_names": [
+          "known-broken.patch",
+          "known-good.patch",
+          "satyrn_evals",
+          "test_acceptance.py",
+          "test_doc_caps.py",
+          "test_hook_guard.py",
+          "test_launch.py",
+          "test_phase1_home.py",
+          "test_phase2_board.py",
+          "test_phase3_add.py",
+          "test_phase4_resolve_reopen.py",
+          "test_preflight_quiet.py",
+          "test_review.py",
+          "test_run_record.py",
+          "test_speed_probe.py"
+        ],
+        "hunt_hits": [],
+        "stale_processes": []
+      },
+      "task_self_test": {},
+      "model_server": {
+        "ornith-ai/Ornith-1.5-9B-GGUF": {
+          "base_url": "http://localhost:8888",
+          "authenticated": true
+        }
+      },
+      "settings": {
+        "baseline": {
+          "arm_sha256": "5646cf03a039ab5340ed12c3adb9be195f1a903107e7cc717b77242b3f098215",
+          "backend": "openai",
+          "omlx_entry": null,
+          "omlx_entry_sha256": null,
+          "pi_entry": {
+            "contextWindow": 262144,
+            "id": "ornith-ai/Ornith-1.5-9B-GGUF",
+            "input": [
+              "text",
+              "image"
+            ],
+            "maxTokens": 16000,
+            "reasoning": true,
+            "samplingParams": {
+              "min_p": 0.0,
+              "presence_penalty": 0.0,
+              "repetition_penalty": 1.0,
+              "temperature": 0.6,
+              "top_k": 20,
+              "top_p": 0.95
+            }
+          },
+          "pi_entry_sha256": "40f0980b50c005e34b557292b5a9d1b8397c2d48ca92f7a5bb0b20988d4a50e7",
+          "pi_models": "satyrn-cell:/home/satyrn-cell/.pi/agent/models.json"
+        }
+      },
+      "ended": "2026-09-25T16:05:59+00:00",
+      "status": "complete",
+      "reason": null
+    }
+  ]
+}

@@ -59,6 +59,7 @@ def test_baseline_file_loads_with_the_four_baseline_tools() -> None:
     assert arm.tools == ("read", "bash", "edit", "write")
     assert arm.model == "omlx/gemma-4-12B-it-MLX-8bit"
     assert arm.server_model == "gemma-4-12B-it-MLX-8bit"
+    assert arm.backend == "omlx"
     assert arm.pins.pi == "0.85.1"
     assert arm.pins.engine_commit is None
     assert arm.pins.digests == {}
@@ -135,6 +136,21 @@ def test_missing_server_model_is_refused(tmp_path: Path) -> None:
     path = _write(tmp_path, BASELINE, server_model=None)
     with pytest.raises(ArmError, match="server_model"):
         load_arm(path)
+
+
+def test_an_unknown_backend_is_refused(tmp_path: Path) -> None:
+    """A backend this tree does not model is an authoring error: preflight
+    would otherwise have no settings source to hold the arm's claims to."""
+    path = _write(tmp_path, BASELINE, backend="telepathy")
+    with pytest.raises(ArmError, match="backend"):
+        load_arm(path)
+
+
+def test_an_openai_backend_arm_loads(tmp_path: Path) -> None:
+    """The sibling success: the same model served by an OpenAI-compatible
+    server (unsloth/vLLM) is a declared backend, not a refusal."""
+    path = _write(tmp_path, BASELINE, backend="openai")
+    assert load_arm(path).backend == "openai"
 
 
 def test_a_file_that_is_not_a_json_object_is_refused(tmp_path: Path) -> None:
@@ -339,7 +355,7 @@ def test_the_engine_arm_file_loads_with_the_engines_derived_contract_tool_surfac
     arm = load_arm(ENGINE)
     assert arm.arm == "engine"
     assert arm.tools == ENGINE_TOOLS == ("read", "bash", "edit", "write", "self_test")
-    assert arm.pins.engine_commit == "78ab87dbab3381dd585986c43fd49e6e4974f6b6"
+    assert arm.pins.engine_commit == "1869397d605f887483d626e7434ccca2bdace340"
     assert sorted(arm.pins.digests) == sorted(ENGINE_SOURCES)
 
 
@@ -351,25 +367,25 @@ def test_the_engine_arm_pins_all_seven_engine_package_sources() -> None:
     ]
 
 
-def test_the_engine_arm_runs_the_export_of_its_pinned_commit_on_the_baselines_model_and_settings() -> None:
+def test_the_engine_arm_pins_its_commit_on_the_baselines_model_and_settings() -> None:
     engine = json.loads(ENGINE.read_text(encoding="utf-8"))
     baseline = json.loads(ORNITH_BASELINE.read_text(encoding="utf-8"))
-    commit = engine["pins"]["engine_commit"]
-    assert engine["argv"] == ["satyrn-evals-attempt-engine", "--engine-repo", f"/Users/Shared/satyrn-cells/engine-{commit}"]
+    assert engine["argv"] == ["satyrn-evals-attempt-engine"]
     for key in ("model", "server_model", "inference", "settings_verified_by"):
         assert engine[key] == baseline[key], key
     assert engine["pins"]["pi"] == baseline["pins"]["pi"]
     assert build_argv(load_arm(ENGINE)) == [*engine["argv"], "--model", "omlx/Ornith-1.5-9B-MLX-8bit"]
 
 
-def test_the_engine_arms_export_path_and_pinned_commit_cannot_drift_apart() -> None:
-    """A re-pin edits `argv[2]`'s export path and `pins.engine_commit`
-    together. Nothing else enforces that they name the same commit -- a
-    re-pin that edits one and forgets the other is exactly the failure
-    this test exists to catch, pinning the invariant rather than only
-    today's literal shas."""
+def test_the_engine_arm_names_no_export_path_and_pins_a_full_commit() -> None:
+    """The arm names a commit, not an export path: the checkout is resolved
+    from `$SATYRN_ENGINE_REPO` or the sibling, and `engine_checkout_problems`
+    checks the running checkout against the pin (design section 7 B)."""
     arm = load_arm(ENGINE)
-    assert Path(arm.argv[2]).name == f"engine-{arm.pins.engine_commit}"
+    assert arm.argv == ("satyrn-evals-attempt-engine",)
+    assert "--engine-repo" not in arm.argv
+    assert arm.pins.engine_commit is not None
+    assert len(arm.pins.engine_commit) == 40
 
 
 def test_an_engine_arm_missing_a_source_digest_is_refused(tmp_path: Path) -> None:

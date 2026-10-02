@@ -1,0 +1,148 @@
+{
+  "record": "records/2026-09-25-sandbox2-baseline-selfhost-preflight-quiet.json",
+  "record_sha256": "8e18c52b1cf895824c3fda4bbb2d54b431619a0c52a8af64c39a62a04006315d",
+  "arm_sha256": {
+    "baseline": "a646b3f9303c4dc45ccd77ba328695f832f161f9c6cd7a402a3d2bb021cb1e16"
+  },
+  "status": "complete",
+  "reason": null,
+  "night": "/home/ubuntu/satyrn-runs/2026-09-25-sandbox2-baseline-selfhost-preflight-quiet",
+  "task": "selfhost-preflight-quiet",
+  "rung": "R1-plan",
+  "k": 3,
+  "n": 6,
+  "purpose": "admission",
+  "arms": {
+    "baseline": {
+      "finished": 6,
+      "n": 6,
+      "code_counts": {
+        "BUDGET_EXCEEDED": 2,
+        "OK": 4
+      },
+      "passes": 3,
+      "summary": "/home/ubuntu/satyrn-runs/2026-09-25-sandbox2-baseline-selfhost-preflight-quiet/baseline/summary.json",
+      "infrastructure": [],
+      "contamination": {
+        "graded": 4,
+        "flagged": 1,
+        "clean": 3,
+        "unmeasured": 0
+      }
+    }
+  },
+  "cells": [
+    {
+      "slot": 0,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-preflight-quiet-20260925-214033-745898",
+      "code": "BUDGET_EXCEEDED",
+      "verdict": null,
+      "infrastructure": false
+    },
+    {
+      "slot": 1,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-preflight-quiet-20260925-214034-031236",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 2,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-preflight-quiet-20260925-214034-324744",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 3,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-preflight-quiet-20260925-215921-698233",
+      "code": "OK",
+      "verdict": "fail",
+      "infrastructure": false
+    },
+    {
+      "slot": 4,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-preflight-quiet-20260925-220841-052877",
+      "code": "BUDGET_EXCEEDED",
+      "verdict": null,
+      "infrastructure": false
+    },
+    {
+      "slot": 5,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-preflight-quiet-20260925-220942-369168",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    }
+  ],
+  "replaced": [],
+  "sittings": [
+    {
+      "record": "records/2026-09-25-sandbox2-baseline-selfhost-preflight-quiet.json",
+      "started": "2026-09-25T21:40:33+00:00",
+      "k": 3,
+      "evals_head": "3111fe2d1582f03200178f1fa2c4fdee0503c127",
+      "preflight": {
+        "sandbox": "bwrap",
+        "pi_version": "0.87.1",
+        "hidden_checked": [
+          "/home/ubuntu/dev/dogfooding/satyrn-evals",
+          "/home/ubuntu/dev/dogfooding/satyrn-evals/src/satyrn_evals/tasks",
+          "/home/ubuntu",
+          "/home/ubuntu/satyrn-runs"
+        ],
+        "hidden_visible": [],
+        "hunt_root": "/",
+        "hunt_hits": []
+      },
+      "task_self_test": {
+        "base_exit": 0,
+        "known_good_exit": 0,
+        "repair_base": false
+      },
+      "model_server": {
+        "ornith-ai/Ornith-1.5-9B-GGUF": {
+          "base_url": "http://localhost:8888",
+          "authenticated": true
+        }
+      },
+      "settings": {
+        "baseline": {
+          "arm_sha256": "f08b063b2375d974c6efaee008f78f09eda79c10c9765ac9fa740fe918c60460",
+          "backend": "openai",
+          "omlx_entry": null,
+          "omlx_entry_sha256": null,
+          "pi_entry": {
+            "contextWindow": 262144,
+            "id": "ornith-ai/Ornith-1.5-9B-GGUF",
+            "input": [
+              "text",
+              "image"
+            ],
+            "maxTokens": 16000,
+            "reasoning": true,
+            "samplingParams": {
+              "min_p": 0.0,
+              "presence_penalty": 0.0,
+              "repetition_penalty": 1.0,
+              "temperature": 0.6,
+              "top_k": 20,
+              "top_p": 0.95
+            }
+          },
+          "pi_entry_sha256": "40f0980b50c005e34b557292b5a9d1b8397c2d48ca92f7a5bb0b20988d4a50e7",
+          "pi_models": "/home/ubuntu/.pi/agent/models.json"
+        }
+      },
+      "ended": "2026-09-25T22:34:57+00:00",
+      "status": "complete",
+      "reason": null
+    }
+  ]
+}

@@ -2,9 +2,7 @@
   "arm": "engine",
   "settings_verified_by": "scripts/preflight_settings.py",
   "argv": [
-    "satyrn-evals-attempt-engine",
-    "--engine-repo",
-    "/Users/Shared/satyrn-cells/engine-803df2d40d28dbf2a92d9931e8e093eb64728683"
+    "satyrn-evals-attempt-engine"
   ],
   "tools": [
     "read",
@@ -17,7 +15,7 @@
   "server_model": "swe-pi-m23-mix4s100-think-ae10k-init800-20260917-bulat-step-500-mellum-MLX-8bit",
   "pins": {
     "pi": "0.85.1",
-    "engine_commit": "803df2d40d28dbf2a92d9931e8e093eb64728683",
+    "engine_commit": "1869397d605f887483d626e7434ccca2bdace340",
     "digests": {
       "engine.ts": "0f581ffeed8931fb0f656f6df7d547ad14893eb2c3edd1d8e203b819d4b2f9d1",
       "mutator.ts": "7bc8942d129c54761c2d99ff9001135a2cda5253d4b44317ae6f76d42490ffa7",

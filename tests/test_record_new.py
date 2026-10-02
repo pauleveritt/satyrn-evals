@@ -34,7 +34,7 @@ def test_an_admission_record_is_written_with_the_tree_digest_and_the_spec_rule(t
     record = load_run_record(tmp_path / "records" / "depth-3.json")
     assert record.task_tree_sha256 == tree_digest(DEFAULT_TASKS_ROOT / TASK)
     assert (record.n, record.k, record.rung, record.purpose) == (4, 2, "R1", "admission")
-    assert record.isolation is Isolation.ISOLATED
+    assert record.isolation is Isolation.LOCAL
     assert (record.token_budget, record.turn_budget, record.max_minutes) == (32000, 48, 60)
     assert record.decision_rule == ADMISSION_DECISION_RULE and record.authority == AUTHORITY
     assert record.model == "omlx/Ornith-1.5-9B-MLX-8bit" and record.previous_result is None
@@ -53,7 +53,6 @@ def test_an_unknown_rung_writes_nothing(tmp_path: Path) -> None:
 
 
 def test_a_record_the_gate_refuses_is_not_left_behind(tmp_path: Path) -> None:
-    assert main(_new(tmp_path, "--isolation", "local")) == 2
     assert main(_new(tmp_path, "--n", "9")) == 2
     assert not (tmp_path / "records" / "depth-3.json").exists()
 
@@ -68,7 +67,7 @@ def test_a_campaign_record_must_state_its_decision_rule(tmp_path: Path) -> None:
     with pytest.raises(RunRecordError, match="needs --decision-rule"):
         new_record(
             task=TASK, tasks_root=DEFAULT_TASKS_ROOT, arm="baseline+engine", model="omlx/m", n=12, k=2,
-            rung="R1", purpose="campaign", isolation="isolated", mode="batch", max_minutes=720,
+            rung="R1", purpose="campaign", confinement="extension", mode="batch", max_minutes=720,
             token_budget=32000, turn_budget=48, previous_result=None, authority=None, decision_rule=None,
         )
 
@@ -77,7 +76,7 @@ def test_an_interleaved_development_record_names_both_arms_in_order(tmp_path: Pa
     out = tmp_path / "r.json"
     assert main([
         "record", "new", "--output", str(out), "--task", TASK, "--arm", "baseline+engine", "--rung", "R1",
-        "--n", "2", "--k", "2", "--purpose", "development", "--isolation", "local",
+        "--n", "2", "--k", "2", "--purpose", "development", "--confinement", "extension",
     ]) == 0
     assert record_arms(load_run_record(out)) == ("baseline", "engine")
     assert json.loads(out.read_text())["decision_rule"] == "none: development, no task outcome"
@@ -128,3 +127,15 @@ def test_record_new_without_a_line_writes_neither_field(tmp_path: Path) -> None:
 def test_record_new_refuses_only_one_line_flag(tmp_path: Path) -> None:
     assert main(_new(tmp_path, "--line-token-budget", "16000")) == 2
     assert not (tmp_path / "records" / "depth-3.json").exists()
+
+
+def test_record_new_defaults_the_backend_to_omlx(tmp_path: Path) -> None:
+    assert main(_new(tmp_path)) == 0
+    assert load_run_record(tmp_path / "records" / "depth-3.json").backend == "omlx"
+
+
+def test_record_new_takes_a_backend(tmp_path: Path) -> None:
+    """A record served by another backend is written, not silently defaulted
+    to omlx -- otherwise its arm files could never match it."""
+    assert main(_new(tmp_path, "--backend", "openai")) == 0
+    assert load_run_record(tmp_path / "records" / "depth-3.json").backend == "openai"

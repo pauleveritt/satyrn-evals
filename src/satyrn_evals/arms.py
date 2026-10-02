@@ -31,6 +31,15 @@ from typing import Literal
 from satyrn_evals.errors import UsageError
 
 type ArmName = Literal["baseline", "baseline-compaction", "envelope", "engine"]
+#: How the arm's model is served. ``omlx`` is the MLX server whose
+#: ``model_settings.json`` this tree's preflight compares against; ``openai``
+#: is any other OpenAI-compatible server (unsloth/vLLM, llama.cpp, ...) whose
+#: per-request sampling is set by pi's client config and has no server
+#: settings file this tree can read. Declared per arm so serving the same
+#: model from a different backend is a recorded condition, not an inferred
+#: one. Absent means ``omlx``: every arm written before this field existed.
+type Backend = Literal["omlx", "openai"]
+BACKENDS: frozenset[str] = frozenset({"omlx", "openai"})
 #: ``baseline-compaction`` is **historical**. It named the arm of the
 #: 2026-09-05 compaction probe, run while ``baseline`` still declared a
 #: 262,144 context window; the name kept those cells from pooling with
@@ -98,12 +107,15 @@ class Arm:
     arm: ArmName
     argv: tuple[str, ...]
     tools: tuple[str, ...]
-    #: The pi-facing model string, `omlx/<id>`.
+    #: The pi-facing model string, ``<provider>/<id>``.
     model: str
-    #: The bare id the omlx server advertises. Both surfaces are recorded
+    #: The bare id the arm's server advertises. Both surfaces are recorded
     #: because they differ, and a preflight talks to the server.
     server_model: str
     pins: ArmPins
+    #: The serving backend. Defaulted, so an arm written before the field
+    #: existed loads as ``omlx``, the only backend this tree then knew.
+    backend: Backend = "omlx"
 
 
 def _arm_name(raw: str, source: Path) -> ArmName:
@@ -113,6 +125,22 @@ def _arm_name(raw: str, source: Path) -> ArmName:
             return raw
         case _:
             raise ArmError(f"{source}: unknown arm {raw!r}")
+
+
+def _backend_name(raw: object, source: Path) -> Backend:
+    """The serving backend, narrowed to the ones this tree models.
+
+    Refused rather than defaulted on an unknown value: a typo'd backend
+    would otherwise weaken preflight silently by taking the no-server-file
+    path. Absence is handled by the caller, which defaults to ``omlx``.
+    """
+    match raw:
+        case "omlx" | "openai":
+            return raw
+        case _:
+            raise ArmError(
+                f"{source}: backend must be one of {', '.join(sorted(BACKENDS))}, got {raw!r}"
+            )
 
 
 def _require_str(data: Mapping[str, object], key: str, source: Path) -> str:
@@ -211,6 +239,7 @@ def load_arm(path: Path) -> Arm:
         model=model,
         server_model=server_model,
         pins=_load_pins(data["pins"], arm_name, source),
+        backend=_backend_name(data.get("backend", "omlx"), source),
     )
 
 

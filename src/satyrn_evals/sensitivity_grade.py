@@ -304,8 +304,10 @@ def fisher_exact_greater(k1: int, n1: int, k0: int, n0: int) -> float:
 #: Fields that must agree for two parts to be summed together (the
 #: decision rule: "identical in task, rung, arms, model, engine commit,
 #: budgets and machine"; engine commit/machine are not RunRecord fields, so
-#: this checks what the record itself carries).
-_COMBINE_FIELDS = ("task", "rung", "arm", "model", "token_budget", "turn_budget")
+#: this checks what the record itself carries). ``backend`` is the serving
+#: stack: the same model on oMLX and on an OpenAI-compatible server are
+#: different conditions and must not be summed.
+_COMBINE_FIELDS = ("task", "rung", "arm", "model", "backend", "token_budget", "turn_budget")
 
 
 def check_combinable(a: RunRecord, b: RunRecord) -> None:

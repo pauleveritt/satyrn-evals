@@ -30,15 +30,7 @@ from satyrn_evals.budget import (
     LineCrossing,
     LineTripwire,
 )
-from satyrn_evals.cell import (
-    CELLS_ROOT,
-    Isolation,
-    cell_gitconfig,
-    cell_paths,
-    grant_maintainer,
-    kill_cell_group,
-    share_with_cell,
-)
+from satyrn_evals.cell import Isolation
 from satyrn_evals.deadline import AttemptDeadline, AttemptDeadlineExceeded
 from satyrn_evals.errors import OracleError, OverlayError, SatyrnError
 from satyrn_evals.overlay import OverlaySpec, assert_overlay_absent
@@ -49,11 +41,6 @@ DEFAULT_TIMEOUT = 900.0
 # 900 s = the corrected probes' observed per-cell ceiling (2-15 min).
 # Longer paths pass --timeout explicitly.
 DEFAULT_TEARDOWN_GRACE = 0.25
-#: F6/R13: the cell-side kill (`cell.kill_cell_group`, a second sudo call)
-#: needs its own floor independent of the teardown grace -- a small grace
-#: (the default is 0.25s) left ``max(remaining(), 0.05)`` at ~0.125s under a
-#: slow sudo, which reported CLEANUP_FAILED and retained the workspace.
-CELL_KILL_TIMEOUT_FLOOR = 2.0
 #: Where a BUDGET_EXCEEDED teardown leaves the worktree's cumulative diff
 #: (design section 3.2). Written beside the attempt's own artifacts.
 TRIPPED_PATCH_NAME = "tripped.diff"
@@ -977,12 +964,6 @@ def _teardown_process(
                 pass
             except OSError as exc:
                 details.append(f"cannot signal process group with SIGKILL: {exc}")
-            if cell and (
-                failure := kill_cell_group(
-                    process.pid, timeout=max(remaining(), CELL_KILL_TIMEOUT_FLOOR)
-                )
-            ):
-                details.append(failure)
     else:  # Windows is a direct-child fallback, not part of V4's proof.
         try:
             process.terminate()
@@ -1013,9 +994,7 @@ def _teardown_process(
 def _teardown(
     process: subprocess.Popen[bytes], grace: float, state: _WorkspaceState
 ) -> tuple[bool, str | None]:
-    """Tear down the command, from the cell side too when the attempt is isolated."""
-    if state.isolation is Isolation.ISOLATED:
-        return _teardown_process(process, grace, cell=True)
+    """Tear down the command's whole process group."""
     return _teardown_process(process, grace)
 
 
@@ -1269,8 +1248,6 @@ def _engine_worktree_search_roots(state: _WorkspaceState) -> tuple[Path, ...]:
     resolved identity -- scanning only the first candidate would miss a
     worktree Engine itself put in a fallback root.
     """
-    if state.isolation is Isolation.ISOLATED:
-        return (state.parent / "tmp",)
     seen: dict[Path, None] = {}
     for root in (Path(tempfile.gettempdir()), *_LOCAL_TMP_FALLBACKS):
         try:
@@ -1380,8 +1357,6 @@ def _engine_worktree_no_candidate_message(state: _WorkspaceState) -> str:
     (``_engine_worktree_search_roots``), so the same wording would be false
     -- name what was actually scanned instead.
     """
-    if state.isolation is Isolation.ISOLATED:
-        return "engine arm: no satyrn-engine-* worktree found under the cell TMPDIR"
     roots = ", ".join(os.fspath(root) for root in _engine_worktree_search_roots(state))
     return f"engine arm: no satyrn-engine-* worktree found under any scanned root ({roots})"
 
@@ -1765,6 +1740,27 @@ def _cleanup_worktree(
         )
     except _WorkspaceError as exc:
         remove_error = exc
+    if remove_error is not None:
+        # `git worktree remove` refuses when the worktree's own `.git` -- or the
+        # repository's admin data for it -- is gone (a model can delete either)
+        # with "validation failed, cannot remove working tree". The directory is
+        # the harness's own temp workspace, so remove it directly and prune the
+        # now-stale registration; the confirmation below is what decides.
+        try:
+            if os.path.lexists(state.worktree):
+                _remove_parent(state.worktree)
+        except OSError as exc:
+            remove_error = _WorkspaceError(f"cannot remove {state.worktree} directly: {exc}")
+        else:
+            with contextlib.suppress(_WorkspaceError):
+                _deadline_git(
+                    state.repository,
+                    ("worktree", "prune"),
+                    environment,
+                    deadline=deadline,
+                    phase=DeadlinePhase.CLEANUP,
+                )
+            remove_error = None
     registered = (
         _worktree_registered(
             state.repository,
@@ -2067,30 +2063,6 @@ def _validate_command_limits(
         )
 
 
-def _share_workspace(
-    state: _WorkspaceState,
-    environment: Mapping[str, str],
-    *,
-    deadline: AttemptDeadline | None = None,
-) -> None:
-    """Hand the cell user a group-shared repository and its own TMPDIR, uv environment and git config."""
-    _deadline_git(
-        state.repository,
-        ("config", "core.sharedRepository", "group"),
-        environment,
-        deadline=deadline,
-        phase=DeadlinePhase.SETUP,
-    )
-    tmpdir, uv_environment, gitconfig = cell_paths(state.parent)
-    try:
-        tmpdir.mkdir()
-        uv_environment.mkdir()
-        gitconfig.write_text(cell_gitconfig(state.worktree), encoding="utf-8")
-        share_with_cell(state.parent)
-    except OSError as exc:
-        raise _WorkspaceError(f"cannot share the workspace with the cell user: {exc}") from exc
-
-
 def prepare_workspace(
     *,
     base: Path,
@@ -2102,10 +2074,10 @@ def prepare_workspace(
 ) -> PreparedWorkspace:
     """Reconstruct a detached worktree and retain its cleaned environment.
 
-    ``Isolation.ISOLATED`` allocates the parent under the cells root and,
-    once the base is verified, shares it with the cell user: a group-shared
-    repository, the cell's TMPDIR, uv environment and git config beside the
-    worktree, every entry group-writable.
+    ``isolation`` is a legacy parameter the retired two-uid and ``bwrap``
+    profiles once selected on. No run uses one: the public entry points refuse
+    an isolating profile rather than silently running the confinement
+    condition, and the parent is always a private temp directory.
     """
     state: _WorkspaceState | None = None
     parent: Path | None = None
@@ -2128,13 +2100,7 @@ def prepare_workspace(
             git_protected = _git_protected_paths(requested_protected, git_environment)
         if deadline is not None:
             deadline.remaining(DeadlinePhase.SETUP)
-        parent = (
-            _safe_temp_parent((*requested_protected, *git_protected), (CELLS_ROOT,))
-            if isolation is Isolation.ISOLATED
-            else _safe_temp_parent((*requested_protected, *git_protected))
-        )
-        if isolation is Isolation.ISOLATED and (failure := grant_maintainer(parent)):
-            raise _WorkspaceError(f"cannot keep the maintainer's access to {parent}: {failure}")
+        parent = _safe_temp_parent((*requested_protected, *git_protected))
         if deadline is not None:
             deadline.remaining(DeadlinePhase.SETUP)
         state = _WorkspaceState(
@@ -2156,8 +2122,6 @@ def prepare_workspace(
             assert_overlay_absent(state.worktree, overlay)
             if deadline is not None:
                 deadline.remaining(DeadlinePhase.SETUP)
-        if isolation is Isolation.ISOLATED:
-            _share_workspace(state, git_environment, deadline=deadline)
         assert state.base_sha is not None
         return PreparedWorkspace(
             parent=parent,

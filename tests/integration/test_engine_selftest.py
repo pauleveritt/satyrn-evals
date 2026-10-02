@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from satyrn_evals.arms import load_arm
-from satyrn_evals.cell_engine import arm_export
+from satyrn_evals.cell_engine import checkout_root
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, load_manifest
 from satyrn_evals.qualify import CENSUS_TASKS
 from satyrn_evals.task_selftest import engine_self_test
@@ -25,9 +25,9 @@ ENGINE_ARM = Path(__file__).resolve().parents[2] / "arms" / "engine-ornith15-9b.
 @pytest.mark.parametrize("task", sorted(CENSUS_TASKS))
 def test_the_engine_argv_preflight_is_green_on_a_real_base_and_known_good(task: str) -> None:
     arm = load_arm(ENGINE_ARM)
-    export = arm_export(arm)
-    if export is None or not export.is_dir():
-        pytest.skip(f"the Engine export is not present yet: {export} (the maintainer's step)")
+    export = checkout_root(arm)
+    if not (export / ".venv").is_dir():
+        pytest.skip(f"the Engine checkout is not set up yet: {export} (run `just fetch-engine`)")
     task_dir = Path(DEFAULT_TASKS_ROOT) / task
     manifest = load_manifest(task_dir)
     report = engine_self_test(

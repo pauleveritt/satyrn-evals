@@ -20,4 +20,4 @@ and the Python core that does the work. Terms are in the engine
 [glossary](engine-glossary.md); the product is described on
 [About Satyrn Engine](engine.md).
 
-Describes the engine synced at `78ab87dbab3381dd585986c43fd49e6e4974f6b6`.
+Describes the engine synced at `1869397d605f887483d626e7434ccca2bdace340`.

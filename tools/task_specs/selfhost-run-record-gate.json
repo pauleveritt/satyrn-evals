@@ -32,5 +32,13 @@
       "new": "Validation rules. `load_run_record` enforces these as it reads the file, raising `RunRecordError`: `condition` is `cold` or `warm`; `mode` is `attended` or `batch`; `task_tree_sha256` is 64 lowercase hex; `stop_rule` and `decision_rule` are non-empty. `gate` then enforces the cadence on an already-loaded record, raising `RunRecordError`: `attended` is n ≤ 8 and `max_minutes` ≤ 60, `batch` is n ≤ 12 and `max_minutes` ≤ 720; and when `previous_result` is a path, `previous_result_committed` must be `True` (the CLI computes it; the pure gate is told).",
       "reason": "release-one admission: with errors.py allowed, 8 of 9 cells read every rule here as gate()'s and left load_run_record permissive, while the hidden suite asserts load_run_record refuses (tasks/KNOWN_DEFECTS.md)"
     }
+  ],
+  "base_edits": [
+    {
+      "path": "tests/test_timing.py",
+      "old": "    result = measure_timing(cell_dir, wrapper_start=_BASE, wrapper_end=_BASE + 30)\n\n    assert \"residual\" not in result.phases\n",
+      "new": "    result = measure_timing(\n        cell_dir,\n        wrapper_start=_BASE,\n        wrapper_end=_BASE + 30,\n        birthtime_reader=_births(**{\"transcript.txt\": _BASE + 5}),\n    )\n\n    assert \"residual\" not in result.phases\n",
+      "reason": "Linux records no st_birthtime, so the copied public suite's residual-phase test left the setup/command boundary unobservable and task_self_test refused this base before any cell. The parent made the same test hermetic in f6302ca (2026-09-23), after this BASE was cut, so the base carries that fix as a recorded edit."
+    }
   ]
 }

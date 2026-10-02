@@ -17,6 +17,8 @@ from satyrn_evals.attempt_record import (
     load_attempt_record,
 )
 from satyrn_evals.budget import AttemptBudget, LineCrossing
+from satyrn_evals.cell import Isolation
+from satyrn_evals.confinement import Finding
 from satyrn_evals.deadline import AttemptDeadline
 from satyrn_evals.errors import HookError, UsageError
 from satyrn_evals.receipt import Receipt, write_receipt
@@ -56,6 +58,7 @@ class _FakeLease:
     def __init__(self, prepared: dict[str, Any]) -> None:
         self.prepared = prepared
         self.parent = Path("/tmp/fake-prepared-workspace")
+        self.worktree = Path("/tmp/fake-prepared-workspace/worktree")
         self.base_sha = "b" * 40
         self._environment = dict(prepared.get("environment", {}))
 
@@ -172,35 +175,6 @@ def _run_attempt(
 # --- F8/R13: the local profile never inherits the maintainer's cell variables ---
 
 
-def test_local_profile_strips_a_stray_isolation_and_cell_parent_from_the_environment(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """A stray SATYRN_ISOLATION/SATYRN_CELL_PARENT in the maintainer's own
-    shell must not reach the local-profile command: the adapter would then
-    believe it is isolated and try to run as the cell."""
-    from satyrn_evals.cell import CELL_PARENT_ENV, ISOLATION_ENV
-
-    monkeypatch.setenv(ISOLATION_ENV, "isolated")
-    monkeypatch.setenv(CELL_PARENT_ENV, "/Users/Shared/satyrn-cells/stray")
-    tasks_root = tmp_path / "tasks"
-    _task(tasks_root)
-    seen: dict[str, str] = {}
-
-    def fake_run_workspace(**kwargs: Any) -> WorkspaceResult:
-        seen.update(kwargs["environment"])
-        # Leave the patch/transcript unwritten: the attempt refuses NO_PATCH
-        # before grading, so nothing here spawns a subprocess (this row is
-        # about the exported environment, not the grade path).
-        return WorkspaceResult(WorkspaceCode.OK, "attempt command completed", 0, "b" * 40)
-
-    _install_workspace_double(monkeypatch, fake_run_workspace)
-    attempt_module.attempt(
-        task="t", tasks_root=tasks_root, output=tmp_path / "attempts", command=["fake-agent"], timeout=1.0
-    )
-    assert seen[ISOLATION_ENV] == "local"
-    assert CELL_PARENT_ENV not in seen
-
-
 def test_attempt_exports_the_command_backstop_beside_the_other_satyrn_variables(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -243,6 +217,57 @@ def test_attempt_exports_the_records_budgets_beside_the_backstop(
     )
     assert seen[attempt_module.TOKEN_BUDGET_ENV] == "48000"
     assert seen[attempt_module.TURN_BUDGET_ENV] == "72"
+
+
+def test_attempt_refuses_a_retired_isolating_profile(tmp_path: Path) -> None:
+    """Design C1: the harness runs the confinement extension, not an OS
+    profile, and must refuse one by name rather than silently run another."""
+    for profile in (Isolation.ISOLATED, Isolation.SANDBOX):
+        with pytest.raises(UsageError, match="retired"):
+            attempt_module.attempt(
+                task="t", tasks_root=tmp_path / "tasks", output=tmp_path / "attempts",
+                command=["fake-agent"], isolation=profile,
+            )
+
+
+@pytest.mark.parametrize(
+    ("transcript", "expected"),
+    [
+        (
+            b'{"type": "session", "cwd": "/work"}\n'
+            b'{"type": "tool_execution_start", "toolName": "bash", "args": {"command": "uv run pytest -q"}}\n',
+            Finding(refusals=0, reaches=0),
+        ),
+        (
+            b'{"type": "session", "cwd": "/work"}\n'
+            b'{"type": "tool_execution_start", "toolName": "read", "args": {"path": "/elsewhere/known-good.patch"}}\n',
+            Finding(refusals=0, reaches=1),
+        ),
+        (
+            b'{"type": "session", "cwd": "/work"}\n'
+            b'{"type": "entry_appended", "entry": {"customType": "confinement_refused"}}\n',
+            Finding(refusals=1, reaches=0),
+        ),
+    ],
+)
+def test_attempt_records_the_confinement_finding_from_the_transcript(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    transcript: bytes,
+    expected: Finding,
+) -> None:
+    """Design C3: the durable per-cell record carries the audit's outcome, for
+    a refused cell too, computed from the one retained transcript."""
+    record, _ = _run_attempt(tmp_path, monkeypatch, patch=None, transcript=transcript)
+    assert record.confinement == expected
+
+
+def test_attempt_leaves_the_finding_unmeasured_without_a_transcript(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The sibling: no transcript is not a clean cell."""
+    record, _ = _run_attempt(tmp_path, monkeypatch, patch=None, transcript=None)
+    assert record.confinement is None
 
 
 def test_valid_artifacts_proceed() -> None:
@@ -2302,5 +2327,10 @@ def test_the_command_learns_the_workspace_base_commit(
         task="t", tasks_root=tasks_root, output=tmp_path / "attempts", command=["fake-agent"]
     )
     assert record.code is AttemptCode.OK
-    assert seen["extra_environment"] == {attempt_module.BASE_SHA_ENV: "b" * 40}
+    assert seen["extra_environment"] == {
+        attempt_module.BASE_SHA_ENV: "b" * 40,
+        attempt_module.EXTENSION_ENV: os.fspath(attempt_module.EXTENSION_PATH),
+        attempt_module.ROOT_ENV: "/tmp/fake-prepared-workspace/worktree",
+        attempt_module.ROOTS_ENV: os.pathsep.join((os.fspath(tasks_root), os.fspath(tasks_root / "t"))),
+    }
     assert attempt_module.BASE_SHA_ENV not in seen["environment"]

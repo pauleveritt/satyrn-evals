@@ -162,6 +162,9 @@ class CellEvidence:
     self_stop: dict[str, int] | None = None
     finish_nudges: int = 0
     runaway_resumes: int = 0
+    #: The eval's own confinement extension's refusals; a nonzero count is the
+    #: audit's call-time leg, beside the post-hoc reach audit (design C3).
+    confinement_refusals: int = 0
     turns_after_nudge: int | None = None
     guard_messages_delivered: dict[str, int] = field(default_factory=dict)
     finish_nudge_turns: tuple[int, ...] = ()
@@ -193,6 +196,7 @@ class CellEvidence:
             "self_stop": self.self_stop,
             "finish_nudges": self.finish_nudges,
             "runaway_resumes": self.runaway_resumes,
+            "confinement_refusals": self.confinement_refusals,
             "turns_after_nudge": self.turns_after_nudge,
             "guard_messages_delivered": dict(sorted(self.guard_messages_delivered.items())),
             "finish_nudge_turns": list(self.finish_nudge_turns),
@@ -674,6 +678,7 @@ def collect_evidence(
         self_stop=self_stop,
         finish_nudges=guard_firings.get("finish_nudged", 0),
         runaway_resumes=guard_firings.get("runaway_resumed", 0),
+        confinement_refusals=guard_firings.get("confinement_refused", 0),
         turns_after_nudge=turns_after_nudge,
         guard_messages_delivered=dict(guard_messages_delivered),
         finish_nudge_turns=tuple(finish_nudge_turns),

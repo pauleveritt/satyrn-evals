@@ -475,6 +475,7 @@ def run_and_measure(
     *,
     cwd: Path | str | None = None,
     env: Mapping[str, str] | None = None,
+    birthtime_reader: Callable[[Path], float | None] = _birthtime,
 ) -> TimingResult:
     """Run ``command`` once, timing it, then measure the cell it wrote into.
 
@@ -489,6 +490,12 @@ def run_and_measure(
     long-running attempt. ``time.time()`` is captured separately, right
     alongside it, purely to compare against file mtimes -- the two clocks
     are never conflated into one figure.
+
+    ``birthtime_reader`` is threaded through to ``measure_timing``. Its
+    default reads the filesystem's birth time; on a filesystem that records
+    none (Linux has no ``st_birthtime``) the setup/command boundary is
+    unobservable and reported as one combined span. An integration test that
+    needs a complete result on either host injects a reader.
     """
     wall_start = time.time()
     mono_start = time.monotonic()
@@ -505,6 +512,7 @@ def run_and_measure(
             "clock as the wall-clock wrapper_start/wrapper_end above, which "
             "are time.time() readings captured only for the mtime comparisons"
         ),
+        birthtime_reader=birthtime_reader,
     )
 
 

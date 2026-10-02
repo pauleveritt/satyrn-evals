@@ -266,6 +266,24 @@ def test_run_rejects_an_empty_command_directly(tmp_path: Path) -> None:
         )
 
 
+def test_run_refuses_a_retired_isolating_profile(tmp_path: Path) -> None:
+    """Design C1: the retired profiles must be refused, never silently
+    downgraded to the confinement condition."""
+    from satyrn_evals.cell import Isolation
+
+    for profile in (Isolation.ISOLATED, Isolation.SANDBOX):
+        with pytest.raises(UsageError, match="retired"):
+            run_module.run(
+                task="format_number",
+                tasks_root=tmp_path,
+                output=tmp_path / "out",
+                command=["fake"],
+                n=1,
+                timeout=5.0,
+                isolation=profile,
+            )
+
+
 def test_run_summary_names_the_arm(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(run_module, "attempt", _fake_attempt())
     summary = run_module.run(

@@ -12,6 +12,7 @@ from enum import Enum, StrEnum, auto
 from pathlib import Path
 
 from satyrn_evals.budget import LineCrossing
+from satyrn_evals.confinement import Finding
 from satyrn_evals.receipt import write_json_atomically
 from satyrn_evals.verdict import Verdict
 
@@ -100,6 +101,10 @@ _V15_COMBOS: tuple[frozenset[str], ...] = (
     frozenset({"line_crossed", "line_patch_path"}),
     frozenset({"line_crossed", "line_harvest_error"}),
 )
+# V16: the confinement finding (design C3). Additive on whichever generation
+# the record already is, so every earlier record's field set still loads; a
+# cell whose transcript was not audited carries no key.
+_V16_FIELDS = frozenset({"confinement"})
 
 
 class AttemptOutcome(StrEnum):
@@ -303,6 +308,7 @@ class AttemptRecord:
     line_crossed: LineCrossing | None = None
     line_patch_path: str | None = None
     line_harvest_error: str | None = None
+    confinement: Finding | None = None
     _legacy: bool = field(default=False, repr=False, compare=False, kw_only=True)
 
     def __post_init__(self) -> None:
@@ -442,6 +448,8 @@ class AttemptRecord:
             raise ValueError(
                 "attempt record cannot both carry a line_patch_path and a line_harvest_error"
             )
+        if self.confinement is not None and not isinstance(self.confinement, Finding):
+            raise ValueError("attempt record confinement must be a Finding or null")
         if policy.receipt is _Presence.REQUIRED and self.receipt_path is None:
             raise ValueError(f"{self.code} requires a receipt path")
         if policy.receipt is _Presence.FORBIDDEN and self.receipt_path is not None:
@@ -616,6 +624,8 @@ def write_attempt_record(path: Path, record: AttemptRecord) -> None:
             data.pop("line_patch_path", None)
         if data.get("line_harvest_error") is None:
             data.pop("line_harvest_error", None)
+    if data.get("confinement") is None:
+        data.pop("confinement", None)
     if legacy:
         for name in _V4_FIELDS:
             data.pop(name)
@@ -639,6 +649,7 @@ def load_attempt_record(path: Path) -> AttemptRecord:
     v13_fields = v12_fields | _V13_FIELDS
     v14_fields = v13_fields | _V14_FIELDS
     v15_fields = v14_fields | _V15_FIELDS
+    v16_fields = v15_fields | _V16_FIELDS
     generations = (
         legacy_fields,
         v4_fields,
@@ -648,19 +659,21 @@ def load_attempt_record(path: Path) -> AttemptRecord:
         v12_fields,
         v13_fields,
     )
-    # V14 and V15 are both additive: `tripped_patch_path` and the line-harvest
-    # trio each ride on whichever generation the record already is
-    # independently of one another, so every generation crossed with either
-    # combination is accepted. The removed `tripped_verdict` shape is not.
+    # V14, V15 and V16 are all additive: `tripped_patch_path`, the line-harvest
+    # trio and the confinement finding each ride on whichever generation the
+    # record already is independently of one another, so every generation
+    # crossed with any combination is accepted. The removed `tripped_verdict`
+    # shape is not.
     if fields not in {
-        generation | tripped | line
+        generation | tripped | line | confined
         for generation in generations
         for tripped in (frozenset(), _V14_FIELDS)
         for line in _V15_COMBOS
+        for confined in (frozenset(), _V16_FIELDS)
     }:
         if missing := _LEGACY_FIELDS - fields:
             raise ValueError(f"attempt record missing a field: {sorted(missing)}")
-        if unexpected := fields - v15_fields:
+        if unexpected := fields - v16_fields:
             raise ValueError(
                 f"attempt record has unexpected fields: {sorted(unexpected)}"
             )
@@ -703,6 +716,17 @@ def load_attempt_record(path: Path) -> AttemptRecord:
             line_crossed = LineCrossing(**raw_crossing)
         except (TypeError, ValueError) as exc:
             raise ValueError(f"invalid attempt record line_crossed: {exc}") from exc
+    confinement: Finding | None = None
+    if "confinement" in fields:
+        raw_confinement = data["confinement"]
+        if not isinstance(raw_confinement, dict):
+            raise ValueError("attempt record confinement is not an object")
+        try:
+            confinement = Finding(**raw_confinement)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"invalid attempt record confinement: {exc}"
+            ) from exc
     try:
         return AttemptRecord(
             version=data["version"],
@@ -730,6 +754,7 @@ def load_attempt_record(path: Path) -> AttemptRecord:
             line_crossed=line_crossed,
             line_patch_path=data.get("line_patch_path"),
             line_harvest_error=data.get("line_harvest_error"),
+            confinement=confinement,
             _legacy=legacy,
         )
     except (KeyError, TypeError, ValueError) as e:

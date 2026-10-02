@@ -333,7 +333,7 @@ def _record(tmp_path: Path, **over: object) -> Path:
         "arm": "baseline", "model": "omlx/Ornith-1.5-9B-MLX-8bit", "condition": "cold", "n": 4, "mode": "attended",
         "max_minutes": 60, "stop_rule": "infrastructure only", "decision_rule": "fisher",
         "previous_result": None, "token_budget": 24000, "turn_budget": 36,
-        "isolation": "local", "purpose": "development", **over,
+        "confinement": "extension", "purpose": "development", **over,
     }))
     return path
 
@@ -354,9 +354,9 @@ def test_attempt_takes_the_isolated_profile_from_the_run_record(tmp_path: Path, 
         raise UsageError("stop here")
 
     monkeypatch.setattr(cli_module, "attempt", fake_attempt)
-    record = _record(tmp_path, isolation="isolated", purpose="admission")
+    record = _record(tmp_path, confinement="extension", purpose="admission")
     assert main(["attempt", "format_number", "--run-record", str(record), "--", *PI]) == 2
-    assert seen["isolation"] is Isolation.ISOLATED
+    assert seen["isolation"] is Isolation.LOCAL
 
 
 def test_attempt_takes_the_line_budget_from_the_run_record(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -420,23 +420,6 @@ def test_attempt_with_an_unreadable_record_is_a_usage_error(tmp_path: Path) -> N
 # --- F3/R13: attempt/run --run-record calls gate(); run --n must match record.n ---
 
 
-def test_attempt_refuses_an_admission_record_under_the_local_profile(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """gate() runs the same as launch --check: a deciding purpose refuses local."""
-    monkeypatch.setattr(cli_module, "attempt", lambda **kw: pytest.fail("no cell may start"))
-    record = _record(tmp_path, isolation="local", purpose="admission")
-    assert main(["attempt", "format_number", "--run-record", str(record), "--", *PI]) == 2
-
-
-def test_run_refuses_an_admission_record_under_the_local_profile(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(cli_module, "run", lambda **kw: pytest.fail("no cell may start"))
-    record = _record(tmp_path, isolation="local", purpose="admission", n=1)
-    assert main(["run", "format_number", "--n", "1", "--run-record", str(record), "--", *PI]) == 2
-
-
 def test_attempt_gate_still_accepts_a_development_record_under_local(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -447,7 +430,7 @@ def test_attempt_gate_still_accepts_a_development_record_under_local(
         raise UsageError("stop here")
 
     monkeypatch.setattr(cli_module, "attempt", fake_attempt)
-    record = _record(tmp_path, isolation="local", purpose="development")
+    record = _record(tmp_path, confinement="extension", purpose="development")
     assert main(["attempt", "format_number", "--run-record", str(record), "--", *PI]) == 2
     assert seen["isolation"] is Isolation.LOCAL
 
@@ -474,17 +457,17 @@ ARM = Path(__file__).resolve().parent.parent / "arms" / "baseline-ornith15-9b.js
 
 
 def _preflight_record(tmp_path: Path, **over: object) -> Path:
-    return _record(tmp_path, isolation="isolated", purpose="admission", **over)
+    return _record(tmp_path, confinement="extension", purpose="admission", **over)
 
 
 def _fake_preflight(monkeypatch: pytest.MonkeyPatch, *, model_server_problems: list[str] | None = None) -> None:
     from satyrn_evals.cell_preflight import CellPreflight
 
-    monkeypatch.setattr(cli_module, "preflight_cell", lambda **kw: CellPreflight([], {"pi_version": "0.85.1"}))
-    monkeypatch.setattr(cli_module, "arm_export_problems", lambda arm: [])
+    monkeypatch.setattr(cli_module, "preflight_confinement", lambda **kw: CellPreflight([], {"pi_version": "0.85.1"}))
+    monkeypatch.setattr(cli_module, "engine_checkout_problems", lambda arm: [])
     monkeypatch.setattr(
         cli_module, "model_server_checks",
-        lambda arms, isolation, **kw: (model_server_problems or [], {arm.server_model: {"base_url": "http://x"} for arm in arms}),
+        lambda arms, **kw: (model_server_problems or [], {arm.server_model: {"base_url": "http://x"} for arm in arms}),
     )
 
 
@@ -514,18 +497,17 @@ def test_launch_preflight_asks_the_model_server_check_about_this_arm(
     from satyrn_evals.cell_preflight import CellPreflight
 
     seen: dict[str, object] = {}
-    monkeypatch.setattr(cli_module, "preflight_cell", lambda **kw: CellPreflight([], {}))
-    monkeypatch.setattr(cli_module, "arm_export_problems", lambda arm: [])
+    monkeypatch.setattr(cli_module, "preflight_confinement", lambda **kw: CellPreflight([], {}))
+    monkeypatch.setattr(cli_module, "engine_checkout_problems", lambda arm: [])
 
-    def model_server_checks(arms: list, isolation: Isolation, **kw: object) -> tuple[list[str], dict]:
+    def model_server_checks(arms: list, **kw: object) -> tuple[list[str], dict]:
         seen["arms"] = [arm.server_model for arm in arms]
-        seen["isolation"] = isolation
         return [], {}
 
     monkeypatch.setattr(cli_module, "model_server_checks", model_server_checks)
     record = _preflight_record(tmp_path)
     assert main(["launch", "--preflight", str(record), "--arm", str(ARM)]) == 0
-    assert seen == {"arms": ["Ornith-1.5-9B-MLX-8bit"], "isolation": Isolation.ISOLATED}
+    assert seen == {"arms": ["Ornith-1.5-9B-MLX-8bit"]}
 
 
 # --- Part C: grade-line ---
@@ -793,11 +775,11 @@ def test_launch_preflight_skips_the_model_server_check_on_the_fake_pi_seam(
     from satyrn_evals.cell_preflight import CellPreflight
 
     monkeypatch.setenv(CELL_PATH_PREFIX_ENV, "/fake/bin")
-    monkeypatch.setattr(cli_module, "preflight_cell", lambda **kw: CellPreflight([], {}))
-    monkeypatch.setattr(cli_module, "arm_export_problems", lambda arm: [])
+    monkeypatch.setattr(cli_module, "preflight_confinement", lambda **kw: CellPreflight([], {}))
+    monkeypatch.setattr(cli_module, "engine_checkout_problems", lambda arm: [])
     monkeypatch.setattr(
         cli_module, "model_server_checks",
-        lambda arms, isolation, **kw: pytest.fail("model_server_checks must not be consulted on the fake-pi seam"),
+        lambda arms, **kw: pytest.fail("model_server_checks must not be consulted on the fake-pi seam"),
     )
     record = _preflight_record(tmp_path)
     # exits 1 regardless (the seam itself is flagged as a problem), but must not have blown up

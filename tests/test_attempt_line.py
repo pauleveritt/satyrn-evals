@@ -39,6 +39,7 @@ class _FakeLease:
     def __init__(self, prepared: dict[str, Any]) -> None:
         self.prepared = prepared
         self.parent = Path("/tmp/fake-prepared-workspace")
+        self.worktree = Path("/tmp/fake-prepared-workspace/worktree")
         self.base_sha = "b" * 40
         self._environment = dict(prepared.get("environment", {}))
 

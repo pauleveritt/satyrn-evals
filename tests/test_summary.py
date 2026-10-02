@@ -20,6 +20,7 @@ from satyrn_evals.attempt_record import (
     DeadlinePhase,
     DeadlineProvenance,
 )
+from satyrn_evals.confinement import CONFINEMENT_LIMIT, EXTENSION_PATH, Finding
 from satyrn_evals.summary import (
     AttemptCell,
     Summary,
@@ -157,6 +158,59 @@ def test_summary_names_cells_and_visibility() -> None:
     assert summary.cells == ["task-1", "task-2"]
     assert summary.oracle_visibility == "visible"
     assert summary.contamination is None
+
+
+def test_the_summary_carries_the_confinement_condition_and_its_limit() -> None:
+    """Design C1, C4: every summary names the condition and states that the
+    audit reports observed access, never the impossibility of it."""
+    summary = _compute([_cell("task-1")])
+    assert summary.confinement is not None
+    assert str(summary.confinement["extension"]).endswith("packages/confinement/confinement.ts")
+    assert summary.confinement["limit"] == CONFINEMENT_LIMIT
+
+
+def test_the_confinement_tally_admits_clean_passes_and_flags_the_rest() -> None:
+    """Design C3: a flagged cell's pass is not an admitted pass, and a cell with
+    no finding (a pre-V16 record) is unmeasured, never admitted."""
+    clean = dataclasses.replace(
+        make_record(AttemptCode.OK, Verdict.PASS), confinement=Finding(0, 0)
+    )
+    reached = dataclasses.replace(
+        make_record(AttemptCode.OK, Verdict.PASS), confinement=Finding(0, 1)
+    )
+    refused = dataclasses.replace(
+        make_record(AttemptCode.OK, Verdict.PASS), confinement=Finding(2, 0)
+    )
+    unmeasured = make_record(AttemptCode.OK, Verdict.PASS)  # no finding field
+    summary = _compute(
+        [("a", clean, None), ("b", reached, None), ("c", refused, None), ("d", unmeasured, None)]
+    )
+    assert summary.confinement == {
+        "extension": str(EXTENSION_PATH),
+        "limit": CONFINEMENT_LIMIT,
+        "measured": 3,
+        "admitted": 1,
+        "flagged": 2,
+        "unmeasured": 1,
+        "admitted_pass": 1,
+        "flagged_pass": 2,
+        "unmeasured_pass": 1,
+    }
+
+
+def test_the_confinement_tally_reads_an_old_records_evidence_block() -> None:
+    """A pre-V16 record has no confinement field; the offline audit in its
+    evidence block is what re-reads it from the retained transcript."""
+    cells = [("a", make_record(AttemptCode.OK, Verdict.PASS), None)]
+    summary = compute_summary(
+        cells,
+        oracle_visibility="visible",
+        pathology=absent_pathology(cells),
+        evidence={"a": {"transcript": True, "confinement_admitted": False}},
+    )
+    assert summary.confinement is not None
+    assert summary.confinement["admitted"] == 0
+    assert summary.confinement["flagged_pass"] == 1
 
 
 def test_hidden_summary_counts_and_invariant() -> None:

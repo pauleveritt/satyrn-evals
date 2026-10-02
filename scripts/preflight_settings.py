@@ -34,6 +34,14 @@ deliberately separate rather than merged into one wider one.
 config files say", never "the server actually samples this way" -- that
 would take a live completion, which is a different check's job.
 
+**Backends.** An arm declares a ``backend`` (``arms.load_arm``), default
+``omlx``. Only ``omlx`` has a server settings file this tree can read, so
+an ``openai`` backend (unsloth/vLLM and other OpenAI-compatible servers)
+is checked against pi's client config alone and reports that its server
+half is unverified-by-file. That is what lets the same model run from
+oMLX on one machine and an OpenAI-compatible server on another without
+editing this script.
+
 File reads, with one exception: ``--cell`` reads the cell user's
 ``models.json`` -- the config Pi actually loads under isolation -- through
 ``sudo -n -H -u satyrn-cell cat``, because the maintainer cannot open that
@@ -52,17 +60,12 @@ import hashlib
 import json
 import subprocess
 import sys
-from collections.abc import Callable
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from satyrn_evals.arms import ArmError, load_arm  # noqa: E402
-from satyrn_evals.cell import CELL_USER  # noqa: E402
-from satyrn_evals.pi_models import CELL_PI_MODELS, DEFAULT_PI_MODELS  # noqa: E402
-from satyrn_evals.pi_models import (
-    read_cell_pi_models as _read_cell_pi_models,  # noqa: E402
-)
+from satyrn_evals.pi_models import DEFAULT_PI_MODELS  # noqa: E402
 
 DEFAULT_OMLX_SETTINGS = Path.home() / ".omlx" / "model_settings.json"
 
@@ -124,38 +127,44 @@ def _agrees(arm_val: object, entry_val: object) -> bool:
     return arm_val == entry_val
 
 
-def compare(arm_inference: dict, omlx: dict | None, pi: dict | None) -> list[str]:
+def compare(arm_inference: dict, omlx: dict | None, pi: dict | None, *, check_server: bool = True) -> list[str]:
     """Human-readable mismatch lines; empty when the arm's claims agree.
 
     A missing entry (``None``) is one mismatch line naming which side
     lacks the id. A field the arm declares that a present entry lacks is
     also a mismatch. Comparison is exact: these are config values, not
     measurements with tolerance.
+
+    ``check_server=False`` skips the server-settings half entirely: an arm
+    whose ``backend`` has no settings file this tree can read (``openai``)
+    is checked against pi's client config only, and the absent server half
+    is a property of the backend, not a mismatch to report.
     """
     lines: list[str] = []
 
-    if omlx is None:
-        lines.append(
-            "omlx: no entry for this model in model_settings.json -- the "
-            "server applies its own defaults, not the arm's inference block"
-        )
-    else:
-        for arm_field, omlx_field in _OMLX_FIELDS.items():
-            if arm_field not in arm_inference:
-                continue
-            arm_val = arm_inference[arm_field]
-            if omlx_field not in omlx:
-                lines.append(
-                    f"omlx: arm declares {arm_field}={arm_val!r} but "
-                    f"model_settings.json has no {omlx_field!r}"
-                )
-                continue
-            omlx_val = omlx[omlx_field]
-            if not _agrees(arm_val, omlx_val):
-                lines.append(
-                    f"omlx: {arm_field} arm={arm_val!r} but "
-                    f"model_settings.json {omlx_field}={omlx_val!r}"
-                )
+    if check_server:
+        if omlx is None:
+            lines.append(
+                "omlx: no entry for this model in model_settings.json -- the "
+                "server applies its own defaults, not the arm's inference block"
+            )
+        else:
+            for arm_field, omlx_field in _OMLX_FIELDS.items():
+                if arm_field not in arm_inference:
+                    continue
+                arm_val = arm_inference[arm_field]
+                if omlx_field not in omlx:
+                    lines.append(
+                        f"omlx: arm declares {arm_field}={arm_val!r} but "
+                        f"model_settings.json has no {omlx_field!r}"
+                    )
+                    continue
+                omlx_val = omlx[omlx_field]
+                if not _agrees(arm_val, omlx_val):
+                    lines.append(
+                        f"omlx: {arm_field} arm={arm_val!r} but "
+                        f"model_settings.json {omlx_field}={omlx_val!r}"
+                    )
 
     if pi is None:
         lines.append(
@@ -213,31 +222,24 @@ def _digest(obj: object) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def provenance(arm_path_text: str, omlx: dict | None, pi: dict | None) -> dict:
+def provenance(arm_path_text: str, omlx: dict | None, pi: dict | None, *, backend: str = "omlx") -> dict:
     """The record a pre-run note pastes: what was compared, and its digests.
 
     Digests are over canonical JSON (`sort_keys=True`), so a dict with the
     same content in a different key order digests the same -- the digest
     names *content*, not the byte layout of whichever file it came from.
+    ``backend`` names which server-settings source this arm's check used, so
+    a record from one backend is never read as another's.
     """
     arm_obj = json.loads(arm_path_text)
     return {
+        "backend": backend,
         "arm_sha256": _digest(arm_obj),
         "omlx_entry_sha256": _digest(omlx) if omlx is not None else None,
         "pi_entry_sha256": _digest(pi) if pi is not None else None,
         "omlx_entry": omlx,
         "pi_entry": pi,
     }
-
-
-def read_cell_pi_models(run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run) -> dict:
-    """The cell user's Pi model config, read as the cell user; OSError when it cannot be.
-
-    Delegates to `satyrn_evals.pi_models` -- the same reader `launch`'s
-    model-server check uses for the base URL -- so there is exactly one
-    place that knows how to read the cell's `models.json`.
-    """
-    return _read_cell_pi_models(run=run)
 
 
 def _read_json(path: Path) -> dict:
@@ -253,10 +255,14 @@ def _read_json(path: Path) -> dict:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("arm", type=Path)
-    parser.add_argument("--omlx-settings", type=Path, default=DEFAULT_OMLX_SETTINGS)
+    parser.add_argument(
+        "--omlx-settings",
+        type=Path,
+        default=DEFAULT_OMLX_SETTINGS,
+        help="only read for an arm whose backend is 'omlx'",
+    )
     sources = parser.add_mutually_exclusive_group()
     sources.add_argument("--pi-models", type=Path, default=DEFAULT_PI_MODELS)
-    sources.add_argument("--cell", action="store_true", help=f"read {CELL_USER}'s models.json as {CELL_USER}")
     parser.add_argument("--record", type=Path, default=None)
     args = parser.parse_args(argv)
 
@@ -272,8 +278,8 @@ def main(argv: list[str] | None = None) -> int:
         # digests.
         arm_text = args.arm.read_text(encoding="utf-8")
         arm = json.loads(arm_text)
-        omlx_settings = _read_json(args.omlx_settings)
-        pi_models = read_cell_pi_models() if args.cell else _read_json(args.pi_models)
+        omlx_settings = _read_json(args.omlx_settings) if loaded_arm.backend == "omlx" else None
+        pi_models = _read_json(args.pi_models)
     except (OSError, json.JSONDecodeError, subprocess.SubprocessError, ArmError) as exc:
         print(f"preflight_settings: unreadable input: {exc}", file=sys.stderr)
         return 2
@@ -281,13 +287,13 @@ def main(argv: list[str] | None = None) -> int:
     provider, _, model_id = loaded_arm.model.partition("/")
     server_model = loaded_arm.server_model
 
-    omlx = omlx_entry(omlx_settings, server_model)
+    omlx = omlx_entry(omlx_settings, server_model) if omlx_settings is not None else None
     pi = pi_entry(pi_models, provider, model_id)
     inference = arm.get("inference") or {}
 
-    mismatches = compare(inference, omlx, pi)
-    record = provenance(arm_text, omlx, pi)
-    record["pi_models"] = f"{CELL_USER}:{CELL_PI_MODELS}" if args.cell else str(args.pi_models)
+    mismatches = compare(inference, omlx, pi, check_server=loaded_arm.backend == "omlx")
+    record = provenance(arm_text, omlx, pi, backend=loaded_arm.backend)
+    record["pi_models"] = str(args.pi_models)
 
     payload = json.dumps(record, indent=2, sort_keys=True)
     print(payload)
@@ -303,11 +309,14 @@ def main(argv: list[str] | None = None) -> int:
             print(f"preflight_settings FAILED: {line}", file=sys.stderr)
         return 1
 
-    print(
-        f"preflight_settings ok: {loaded_arm.arm!r} settings verified "
-        f"against oMLX and pi config",
-        file=sys.stderr,
-    )
+    if loaded_arm.backend == "omlx":
+        verified = f"{loaded_arm.arm!r} settings verified against oMLX and pi config"
+    else:
+        verified = (
+            f"{loaded_arm.arm!r} settings verified against pi config; backend "
+            f"{loaded_arm.backend!r} has no server settings file this tree reads"
+        )
+    print(f"preflight_settings ok: {verified}", file=sys.stderr)
     return 0
 
 

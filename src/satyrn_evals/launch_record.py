@@ -13,7 +13,7 @@ The spec's launcher gates ("Process"), in order, before any cell:
    and a deciding purpose is isolated;
 4. under isolation, the cell preflight (``cell_preflight.preflight_cell``) is clean,
    and an Engine arm's export is the commit and bytes it pins
-   (``cell_engine.arm_export_problems``);
+   (``cell_engine.engine_checkout_problems``);
 5. the arm's model server answers ``GET <base_url>/v1/models`` and lists
    its ``server_model`` (``model_server.model_server_problems``), skipped
    only on the test PATH seam a deciding record already refused above;
@@ -48,9 +48,9 @@ from typing import TextIO
 
 from satyrn_evals.arms import Arm, build_argv, load_arm
 from satyrn_evals.attempt import resolve_contract
-from satyrn_evals.cell import CELL_PATH_PREFIX_ENV, CELLS_ROOT, Isolation
-from satyrn_evals.cell_engine import arm_export, arm_export_problems
-from satyrn_evals.cell_preflight import CellPreflight, preflight_cell
+from satyrn_evals.cell import CELL_PATH_PREFIX_ENV
+from satyrn_evals.cell_engine import checkout_root, engine_checkout_problems
+from satyrn_evals.cell_preflight import CellPreflight, preflight_confinement
 from satyrn_evals.errors import SatyrnError
 from satyrn_evals.launch import (
     SLOTS_DIR,
@@ -69,7 +69,7 @@ from satyrn_evals.launch import (
 from satyrn_evals.launch_cell import popen_cell
 from satyrn_evals.manifest import TaskManifest, load_manifest, resolve_task
 from satyrn_evals.model_server import model_server_base_url, model_server_problems
-from satyrn_evals.pi_models import read_pi_models
+from satyrn_evals.pi_models import provider_api_key, read_pi_models
 from satyrn_evals.rescore import (
     _load_cell,
     compute_evidence,
@@ -129,15 +129,14 @@ def settings_provenance(arm_path: Path, cell: bool) -> tuple[int, str]:
 
 def model_server_checks(
     arms: Sequence[Arm],
-    isolation: Isolation,
     *,
-    pi_models: Callable[[bool], dict] = read_pi_models,
-    model_server: Callable[[str, str], list[str]] = model_server_problems,
+    pi_models: Callable[[], dict] = read_pi_models,
+    model_server: Callable[..., list[str]] = model_server_problems,
 ) -> tuple[list[str], dict[str, dict]]:
     """``model_server_problems`` for every distinct ``server_model`` among ``arms``.
 
-    Reads the Pi model config once -- the cell user's under isolation, the
-    maintainer's own otherwise -- and derives each arm's base URL from its
+    Reads the Pi model config once -- the maintainer's own, since confinement
+    runs the model as the maintainer -- and derives each arm's base URL from its
     own provider block (``model_server_base_url``), falling back to
     ``DEFAULT_MODEL_SERVER_URL`` -- named in both the problem text and the
     returned receipt -- only when the config has no such provider or could
@@ -148,7 +147,7 @@ def model_server_checks(
     should that ever change.
     """
     try:
-        pi_config = pi_models(isolation is Isolation.ISOLATED)
+        pi_config = pi_models()
     except OSError as exc:
         pi_config, read_problem = None, f"the Pi model config is unreadable: {exc}"
     else:
@@ -159,13 +158,15 @@ def model_server_checks(
         if arm.server_model in checked:
             continue
         base_url, fallback = model_server_base_url(pi_config, arm.model)
-        server_problems = model_server(base_url, arm.server_model)
+        api_key = provider_api_key(pi_config, arm.model.partition("/")[0]) if pi_config is not None else None
+        server_problems = model_server(base_url, arm.server_model, api_key=api_key)
         if server_problems and (fallback or read_problem):
             note = "; ".join(text for text in (read_problem, fallback) if text)
             server_problems = [f"{problem} ({note})" for problem in server_problems]
         problems += server_problems
         checked[arm.server_model] = {
             "base_url": base_url,
+            **({"authenticated": True} if api_key else {}),
             **({"fallback": fallback} if fallback else {}),
             **({"read_problem": read_problem} if read_problem else {}),
         }
@@ -179,13 +180,13 @@ class LaunchFacts:
     frozen: Callable[[Path], bool] = git_frozen
     committed: Callable[[str], bool] = git_committed
     head: Callable[[], str] = git_head
-    preflight: Callable[..., CellPreflight] = preflight_cell
+    confinement_preflight: Callable[..., CellPreflight] = preflight_confinement
     settings: Callable[[Path, bool], tuple[int, str]] = settings_provenance
     spawn_cell: Callable[[Path, Path], CellProcess] = popen_cell
-    engine_export: Callable[[Arm], list[str]] = arm_export_problems
+    engine_export: Callable[[Arm], list[str]] = engine_checkout_problems
     engine_self_test: Callable[..., TaskSelfTest] = run_engine_self_test
     task_self_test: Callable[[Path, TaskManifest], TaskSelfTest] = run_task_self_test
-    model_server: Callable[[str, str], list[str]] = model_server_problems
+    model_server: Callable[..., list[str]] = model_server_problems
     pi_models: Callable[[bool], dict] = read_pi_models
 
 
@@ -205,33 +206,13 @@ def _arms(record: RunRecord, arm_paths: Sequence[Path]) -> dict[str, tuple[Path,
     for path, arm in loaded.values():
         if arm.model != record.model:
             raise RunRecordError(f"arm file {path} is on {arm.model}; the record is on {record.model}")
+        if arm.backend != record.backend:
+            raise RunRecordError(
+                f"arm file {path} runs backend {arm.backend!r}; the record is on {record.backend!r}"
+            )
     if len({arm.pins.pi for _, arm in loaded.values()}) != 1:
         raise RunRecordError("the arms pin different pi versions; interleaved arms run one pi")
     return loaded
-
-
-def _tolerated(cells_root: Path = CELLS_ROOT) -> tuple[Path, ...]:
-    """The cells-root child a deciding record has already refused the env for (R5).
-
-    ``launch --preflight`` never tolerates: only ``launch_record`` calls
-    this. The test PATH seam (``CELL_PATH_PREFIX_ENV``) may name several
-    directories separated by ``os.pathsep``; only the first is under
-    ``cells_root`` in the fixtures this needs (``cell_scratch``'s
-    ``satyrn-test-*`` directory), so its direct child under ``cells_root``
-    is the one entry preflight is told to look past.
-    """
-    prefix = os.environ.get(CELL_PATH_PREFIX_ENV)
-    if not prefix:
-        return ()
-    first = Path(prefix.split(os.pathsep)[0]).resolve()
-    root = cells_root.resolve()
-    try:
-        relative = first.relative_to(root)
-    except ValueError:
-        return ()
-    if not relative.parts:
-        return ()
-    return (root / relative.parts[0],)
 
 
 def _arm_results(finished: dict[int, dict], arm: str) -> tuple[list[dict], list[dict]]:
@@ -341,45 +322,46 @@ def launch_record(
 
     problems: list[str] = []
     checked: dict[str, object] = {}
-    if record.isolation is Isolation.ISOLATED:
-        report = facts.preflight(
-            pinned_pi=next(iter(arms.values()))[1].pins.pi,
-            protected=(Path.cwd(), tasks_root, Path.home(), runs_root),
-            tasks_root=tasks_root, hunt_root="/" if hunt else None,
-            tolerated=_tolerated(),
+    # The confinement condition's preflight, then the checks that bind on it:
+    # the Engine arm's checkout, the Engine's own self-test and the task's. No
+    # OS profile is consulted (design C1, C2).
+    report = facts.confinement_preflight(
+        pinned_pi=next(iter(arms.values()))[1].pins.pi,
+        protected=(Path.cwd(), tasks_root, Path.home(), runs_root),
+        tasks_root=tasks_root, hunt_root="/" if hunt else None,
+    )
+    problems += report.problems
+    checked["preflight"] = report.checked
+    for name, (_, arm) in arms.items():
+        problems += [f"{name}: {problem}" for problem in facts.engine_export(arm)]
+    for name, (_, arm) in arms.items():
+        if arm.arm != "engine":
+            continue
+        export = checkout_root(arm)
+        engine_test = facts.engine_self_test(
+            task_dir, manifest,
+            engine=("uv", "run", "--no-sync", "--project", os.fspath(export), "satyrn-engine"),
+            request=contract_text,
+            token_budget=record.token_budget, turn_budget=record.turn_budget,
         )
-        problems += report.problems
-        checked["preflight"] = report.checked
-        for name, (_, arm) in arms.items():
-            problems += [f"{name}: {problem}" for problem in facts.engine_export(arm)]
-        for name, (_, arm) in arms.items():
-            export = arm_export(arm)
-            if export is None:
-                continue
-            engine_test = facts.engine_self_test(
-                task_dir, manifest,
-                engine=("uv", "run", "--no-sync", "--project", os.fspath(export), "satyrn-engine"),
-                request=contract_text,
-                token_budget=record.token_budget, turn_budget=record.turn_budget,
-            )
-            problems += [f"{name} engine self-test: {problem}" for problem in engine_test.problems]
-            checked[f"{name}_engine_self_test"] = engine_test.checked
-        self_test = facts.task_self_test(task_dir, manifest)
-        problems += [f"task self-test: {problem}" for problem in self_test.problems]
-        checked["task_self_test"] = self_test.checked
+        problems += [f"{name} engine self-test: {problem}" for problem in engine_test.problems]
+        checked[f"{name}_engine_self_test"] = engine_test.checked
+    self_test = facts.task_self_test(task_dir, manifest)
+    problems += [f"task self-test: {problem}" for problem in self_test.problems]
+    checked["task_self_test"] = self_test.checked
     if not os.environ.get(CELL_PATH_PREFIX_ENV):
         # A development record on the fake-pi seam (`CELL_PATH_PREFIX_ENV`) never
         # reaches a real model server, the same reason it may skip settings; a
         # deciding record has already refused that seam above, so it never skips.
         server_problems, checked["model_server"] = model_server_checks(
-            [arm for _, arm in arms.values()], record.isolation,
+            [arm for _, arm in arms.values()],
             pi_models=facts.pi_models, model_server=facts.model_server,
         )
         problems += server_problems
     baseline_settings: dict[str, str] = {}
     if settings:
         for name, (path, _) in arms.items():
-            code, text = facts.settings(path, record.isolation is Isolation.ISOLATED)
+            code, text = facts.settings(path, False)
             if code != 0:
                 problems.append(f"preflight_settings for {name} exited {code}: {text.strip()}")
             baseline_settings[name] = text
@@ -408,7 +390,7 @@ def launch_record(
         if tree_digest(task_dir) != tree:
             return f"the {record.task} task tree no longer matches task_tree_sha256"
         for name, (path, _) in arms.items() if settings else ():
-            if facts.settings(path, record.isolation is Isolation.ISOLATED)[1] != baseline_settings[name]:
+            if facts.settings(path, False)[1] != baseline_settings[name]:
                 return f"the settings provenance for {name} changed"
         return None
 

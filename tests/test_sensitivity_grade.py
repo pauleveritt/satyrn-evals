@@ -65,7 +65,7 @@ def _run_record(**overrides: object) -> RunRecord:
         version=1, task="t", task_tree_sha256=DIGEST, arm="baseline", model="omlx/m",
         condition="cold", n=1, mode="batch", max_minutes=60, stop_rule="infrastructure only",
         decision_rule="fisher", previous_result=None, token_budget=24000, turn_budget=36,
-        isolation="local", purpose="development",
+        confinement="extension", purpose="development",
     )
     return RunRecord(**(fields | overrides))
 
@@ -358,6 +358,15 @@ def test_check_combinable_refuses_a_differing_field() -> None:
     a = _run_record(rung="R1")
     b = _run_record(rung="R1-plan")
     with pytest.raises(UsageError, match="rung"):
+        check_combinable(a, b)
+
+
+def test_check_combinable_refuses_a_differing_backend() -> None:
+    """The same model on two serving stacks is two conditions: summing the
+    parts would pool oMLX cells with OpenAI-compatible-server cells."""
+    a = _run_record(backend="omlx")
+    b = _run_record(backend="openai")
+    with pytest.raises(UsageError, match="backend"):
         check_combinable(a, b)
 
 

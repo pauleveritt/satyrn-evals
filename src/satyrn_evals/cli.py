@@ -8,15 +8,15 @@ import subprocess
 import sys
 from pathlib import Path
 
-from satyrn_evals.arms import load_arm
+from satyrn_evals.arms import BACKENDS, load_arm
 from satyrn_evals.attempt import attempt, resolve_contract
 from satyrn_evals.attempt_record import AttemptCode, AttemptOutcome
 from satyrn_evals.budget import AttemptBudget, LineBudget
 from satyrn_evals.capture import capture
 from satyrn_evals.capture_record import CaptureOutcome
 from satyrn_evals.cell import CELL_PATH_PREFIX_ENV, Isolation
-from satyrn_evals.cell_engine import arm_export, arm_export_problems, export_engine
-from satyrn_evals.cell_preflight import preflight_cell
+from satyrn_evals.cell_engine import checkout_root, engine_checkout_problems
+from satyrn_evals.cell_preflight import preflight_confinement
 from satyrn_evals.census import build_arg_parser as build_census_parser
 from satyrn_evals.census import run_cli as run_census
 from satyrn_evals.errors import SatyrnError, UsageError
@@ -39,6 +39,7 @@ from satyrn_evals.qualify import qualify
 from satyrn_evals.rescore import regrade_attempt, summarize_output
 from satyrn_evals.run import run
 from satyrn_evals.run_record import (
+    CONFINEMENT,
     DEFAULT_COMMAND_BACKSTOP_S,
     K_VALUES,
     PURPOSES,
@@ -271,9 +272,6 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "record":
             return _record_new(args)
-        if args.command == "cell-engine":
-            print(export_engine(Path(args.engine_repo), args.commit))
-            return 0
         if args.command == "qualify":
             failed = False
             for task in args.tasks:
@@ -336,8 +334,6 @@ def main(argv: list[str] | None = None) -> int:
 def _launch_preflight(args: argparse.Namespace) -> int:
     """The isolated sitting's cell checks, for every arm the record runs; the JSON report goes to stdout, each problem to stderr."""
     record = load_run_record(Path(args.preflight))
-    if record.isolation is not Isolation.ISOLATED:
-        raise RunRecordError(f"launch --preflight checks the cell user; {args.preflight} is a local record")
     if not args.arm:
         raise UsageError("launch --preflight needs --arm ARM.json, one per arm the record runs")
     names = record_arms(record)
@@ -350,6 +346,10 @@ def _launch_preflight(args: argparse.Namespace) -> int:
             raise RunRecordError(
                 f"arm file {arm_path} is {arm.arm} on {arm.model}; the record is {record.arm} on {record.model}"
             )
+        if arm.backend != record.backend:
+            raise RunRecordError(
+                f"arm file {arm_path} runs backend {arm.backend!r}; the record is on {record.backend!r}"
+            )
         loaded[arm.arm] = arm
     if sorted(loaded) != sorted(names):
         raise RunRecordError(
@@ -359,7 +359,8 @@ def _launch_preflight(args: argparse.Namespace) -> int:
     # line must not matter to what gets checked or how it is keyed below.
     arms = [loaded[name] for name in names]
     tasks_root = Path(args.tasks_root)
-    report = preflight_cell(
+    checker = preflight_confinement
+    report = checker(
         pinned_pi=arms[0].pins.pi,
         protected=(Path.cwd(), tasks_root, Path.home()),
         tasks_root=tasks_root,
@@ -370,7 +371,7 @@ def _launch_preflight(args: argparse.Namespace) -> int:
     if len(pins) != 1:
         problems.append(f"the arms pin different pi versions: {', '.join(sorted(pins))}")
     for name, arm in zip(names, arms, strict=True):
-        problems += [f"{name}: {problem}" for problem in arm_export_problems(arm)]
+        problems += [f"{name}: {problem}" for problem in engine_checkout_problems(arm)]
     checked: dict[str, object] = dict(report.checked)
     # The task's own self-test, and the Engine's derived self-test, on the base
     # and the known-good state: the check the void night lacked, run here for
@@ -384,9 +385,9 @@ def _launch_preflight(args: argparse.Namespace) -> int:
     problems += [f"task self-test: {problem}" for problem in task_check.problems]
     checked["task_self_test"] = task_check.checked
     for name, arm in zip(names, arms, strict=True):
-        export = arm_export(arm)
-        if export is None:
+        if arm.arm != "engine":
             continue
+        export = checkout_root(arm)
         engine_check = engine_self_test(
             task_dir, manifest,
             engine=("uv", "run", "--no-sync", "--project", os.fspath(export), "satyrn-engine"),
@@ -398,7 +399,7 @@ def _launch_preflight(args: argparse.Namespace) -> int:
         # Same check, same skip rule as `launch_record`'s: a real preflight run
         # never carries the test PATH seam (flagged just below when it does),
         # so this only ever skips there, never for a record this path accepts.
-        server_problems, checked["model_server"] = model_server_checks(arms, record.isolation)
+        server_problems, checked["model_server"] = model_server_checks(arms)
         problems += server_problems
     if os.environ.get(CELL_PATH_PREFIX_ENV):
         problems.append(f"{CELL_PATH_PREFIX_ENV} is set; it is a test seam, never a sitting's PATH")
@@ -445,12 +446,13 @@ def _record_new(args: argparse.Namespace) -> int:
     """Write one run record from flags, read it back through the loader and gate, print its path."""
     body = new_record(
         task=args.task, tasks_root=Path(args.tasks_root), arm=args.arm, model=args.model, n=args.n, k=args.k,
-        rung=None if args.rung == "contract" else args.rung, purpose=args.purpose, isolation=args.isolation,
+        rung=None if args.rung == "contract" else args.rung, purpose=args.purpose, confinement=args.confinement,
         mode=args.mode, max_minutes=args.max_minutes, command_backstop_s=args.command_backstop,
         token_budget=args.token_budget,
         turn_budget=args.turn_budget, previous_result=args.previous_result, authority=args.authority,
         decision_rule=args.decision_rule,
         line_token_budget=args.line_token_budget, line_turn_budget=args.line_turn_budget,
+        backend=args.backend,
     )
     write_new_record(Path(args.output), body)
     print(f"record: wrote {args.output} (task_tree_sha256 {body['task_tree_sha256']}); commit it before launch")
@@ -474,12 +476,6 @@ grade_p.add_argument(
     default=str(DEFAULT_TASKS_ROOT),
     help="task root (default: bundled tasks)",
 )
-
-cell_engine_p = sub.add_parser(
-    "cell-engine", help="export one engine commit under the cells root for the isolated Engine arm"
-)
-cell_engine_p.add_argument("--engine-repo", required=True, help="the maintainer's engine checkout")
-cell_engine_p.add_argument("--commit", required=True, help="the engine commit the arm runs")
 
 qualify_p = sub.add_parser(
     "qualify", help="offline qualification: fixtures both ways, a live harvest, known-good three times"
@@ -748,8 +744,12 @@ record_new_p.add_argument(
 record_new_p.add_argument("--n", type=positive_int, required=True, help="cells per arm")
 record_new_p.add_argument("--k", type=int, choices=K_VALUES, required=True, help="cells at a time")
 record_new_p.add_argument("--purpose", required=True, choices=sorted(PURPOSES))
-record_new_p.add_argument("--isolation", default="isolated", choices=["isolated", "local"])
+record_new_p.add_argument("--confinement", default=CONFINEMENT, choices=[CONFINEMENT])
 record_new_p.add_argument("--model", default="omlx/Ornith-1.5-9B-MLX-8bit")
+record_new_p.add_argument(
+    "--backend", default="omlx", choices=sorted(BACKENDS),
+    help="the serving backend the arm files must also declare; records on different backends never pool",
+)
 record_new_p.add_argument("--mode", default="attended", choices=["attended", "batch"])
 record_new_p.add_argument("--max-minutes", type=positive_int, default=60)
 record_new_p.add_argument(

@@ -147,7 +147,7 @@ def test_a_timed_out_cell_without_agent_end_still_yields_every_count() -> None:
         "unfinished_commands": 0, "longest_command_seconds": None, "overlay_windows": None,
         "tool_span_seconds": None, "exploration_turns": None,
         "biggest_turn": {"turn": 1, "output_tokens": 1500, "share": 1.0}, "self_stop": None,
-        "finish_nudges": 0, "runaway_resumes": 0, "turns_after_nudge": None,
+        "finish_nudges": 0, "runaway_resumes": 0, "confinement_refusals": 0, "turns_after_nudge": None,
         "guard_messages_delivered": {}, "finish_nudge_turns": [], "resumes_followed_by_tool_call": 0,
     }
 

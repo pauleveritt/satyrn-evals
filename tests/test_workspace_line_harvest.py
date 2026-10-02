@@ -10,6 +10,7 @@ worktree, not the Evals one.
 
 import os
 import subprocess
+import tempfile
 import time
 from pathlib import Path
 
@@ -231,9 +232,11 @@ def _bind_everything(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_the_engine_arm_harvest_reads_its_own_internal_worktree(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    state = _default_state(tmp_path, isolation=Isolation.ISOLATED)
-    engine_tmp = state.parent / "tmp"
+    state = _default_state(tmp_path)
+    engine_tmp = tmp_path / "engine-tmp"
     engine_tmp.mkdir()
+    monkeypatch.setattr(workspace_module.tempfile, "gettempdir", lambda: os.fspath(engine_tmp))
+    monkeypatch.setattr(workspace_module, "_LOCAL_TMP_FALLBACKS", ())
     internal = engine_tmp / "satyrn-engine-abc123" / "worktree"
     internal.mkdir(parents=True)
     _bind_everything(monkeypatch)
@@ -266,9 +269,11 @@ def test_the_engine_arm_harvest_trusts_only_its_own_internal_worktree(
     maintainer-run git harvest against it hits "dubious ownership" unless the
     harvest scopes ``safe.directory`` to that one resolved path -- never a
     blanket trust of every path (C1)."""
-    state = _default_state(tmp_path, isolation=Isolation.ISOLATED)
-    engine_tmp = state.parent / "tmp"
+    state = _default_state(tmp_path)
+    engine_tmp = tmp_path / "engine-tmp"
     engine_tmp.mkdir()
+    monkeypatch.setattr(workspace_module.tempfile, "gettempdir", lambda: os.fspath(engine_tmp))
+    monkeypatch.setattr(workspace_module, "_LOCAL_TMP_FALLBACKS", ())
     internal = engine_tmp / "satyrn-engine-abc123" / "worktree"
     internal.mkdir(parents=True)
     _bind_everything(monkeypatch)
@@ -527,13 +532,18 @@ def test_the_engine_arm_records_an_error_when_the_worktree_cannot_be_found(
 # --- I4: the candidate is bound to this attempt before it is accepted ------
 
 
-def _make_candidates(state: workspace_module._WorkspaceState, *names: str) -> list[Path]:
-    engine_tmp = state.parent / "tmp"
-    engine_tmp.mkdir(exist_ok=True)
+def _make_candidates(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, *names: str
+) -> list[Path]:
+    """Candidates under a test-local root, with the search scoped to it."""
+    root = tmp_path / "engine-tmp"
+    root.mkdir(exist_ok=True)
+    monkeypatch.setattr(workspace_module.tempfile, "gettempdir", lambda: os.fspath(root))
+    monkeypatch.setattr(workspace_module, "_LOCAL_TMP_FALLBACKS", ())
     paths = []
     for name in names:
-        candidate = engine_tmp / name / "worktree"
-        candidate.mkdir(parents=True)
+        candidate = root / name / "worktree"
+        candidate.mkdir(parents=True, exist_ok=True)
         paths.append(candidate)
     return paths
 
@@ -561,7 +571,7 @@ def test_two_unbound_candidates_are_refused_not_the_first_of_several(
     of refusing several' -- both candidates here are unbound (foreign), so
     accepting either would silently harvest the wrong tree."""
     state = _default_state(tmp_path, isolation=Isolation.ISOLATED)
-    a, b = _make_candidates(state, "satyrn-engine-aaa", "satyrn-engine-bbb")
+    a, b = _make_candidates(monkeypatch, tmp_path, "satyrn-engine-aaa", "satyrn-engine-bbb")
     _bind_only(monkeypatch)  # nothing is bound
 
     result, _out = _run(
@@ -586,7 +596,7 @@ def test_one_foreign_candidate_is_refused_and_named(
     directory (same glob shape, different repository) is refused and named,
     never silently diffed."""
     state = _default_state(tmp_path, isolation=Isolation.ISOLATED)
-    (foreign,) = _make_candidates(state, "satyrn-engine-foreign")
+    (foreign,) = _make_candidates(monkeypatch, tmp_path, "satyrn-engine-foreign")
     _bind_only(monkeypatch)  # nothing is bound
 
     result, _out = _run(
@@ -614,7 +624,7 @@ def test_several_candidates_with_exactly_one_own_is_accepted(
     the point of binding, so the one candidate that binds to this attempt is
     still accepted."""
     state = _default_state(tmp_path, isolation=Isolation.ISOLATED)
-    foreign, own = _make_candidates(state, "satyrn-engine-foreign", "satyrn-engine-own")
+    foreign, own = _make_candidates(monkeypatch, tmp_path, "satyrn-engine-foreign", "satyrn-engine-own")
     _bind_only(monkeypatch, own)
 
     seen: dict[str, Path] = {}
@@ -641,7 +651,7 @@ def test_several_all_foreign_candidates_are_refused(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     state = _default_state(tmp_path, isolation=Isolation.ISOLATED)
-    _make_candidates(state, "satyrn-engine-a", "satyrn-engine-b", "satyrn-engine-c")
+    _make_candidates(monkeypatch, tmp_path, "satyrn-engine-a", "satyrn-engine-b", "satyrn-engine-c")
     _bind_only(monkeypatch)  # nothing is bound
 
     result, _out = _run(
@@ -665,7 +675,7 @@ def test_several_own_candidates_are_ambiguous_and_refused(
     practice (satyrn-engine keeps one deliver worktree per attempt), but if
     it ever does, refuse rather than guess which one is current."""
     state = _default_state(tmp_path, isolation=Isolation.ISOLATED)
-    a, b = _make_candidates(state, "satyrn-engine-a", "satyrn-engine-b")
+    a, b = _make_candidates(monkeypatch, tmp_path, "satyrn-engine-a", "satyrn-engine-b")
     _bind_only(monkeypatch, a, b)
 
     result, _out = _run(
@@ -698,6 +708,7 @@ def _init_repo(path: Path, environment: dict[str, str]) -> None:
 @pytest.mark.integration
 def test_a_genuinely_foreign_worktree_is_refused_while_an_own_worktree_beside_it_is_accepted(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """N13: `_engine_worktree_bound` is stubbed (`_bind_only`/`_bind_everything`)
     in every other test in this file. This one uses real git throughout: a
@@ -717,8 +728,9 @@ def test_a_genuinely_foreign_worktree_is_refused_while_an_own_worktree_beside_it
     state = _default_state(tmp_path, isolation=Isolation.ISOLATED)
     _init_repo(state.worktree, environment)
 
-    engine_tmp = state.parent / "tmp"
-    engine_tmp.mkdir()
+    engine_tmp = Path(tempfile.mkdtemp(prefix="satyrn-engine-", dir=tempfile.gettempdir()))
+    monkeypatch.setattr(workspace_module.tempfile, "gettempdir", lambda: os.fspath(engine_tmp))
+    monkeypatch.setattr(workspace_module, "_LOCAL_TMP_FALLBACKS", ())
 
     # Own: git-worktree-add'd from this attempt's own worktree, so it shares
     # state.worktree's git-common-dir -- exactly how satyrn-engine creates
@@ -860,7 +872,7 @@ def test_a_hanging_git_call_during_binding_is_cut_off_within_the_bound(
     still-running cell's poll loop indefinitely -- and the failure must
     become a recorded `line_harvest_error`, never an uncaught exception."""
     state = _default_state(tmp_path, isolation=Isolation.ISOLATED)
-    _make_candidates(state, "satyrn-engine-abc")
+    _make_candidates(monkeypatch, tmp_path, "satyrn-engine-abc")
     clock = _FakeClock()
     monkeypatch.setattr(workspace_module.time, "monotonic", clock)
 
@@ -902,7 +914,7 @@ def test_remaining_time_shrinks_across_binding_and_patch_calls(
     whole line harvest -- time binding spends must come out of what the
     patch build gets, not be forgotten and re-granted a fresh full budget."""
     state = _default_state(tmp_path, isolation=Isolation.ISOLATED)
-    (candidate,) = _make_candidates(state, "satyrn-engine-abc")
+    (candidate,) = _make_candidates(monkeypatch, tmp_path, "satyrn-engine-abc")
     clock = _FakeClock()
     monkeypatch.setattr(workspace_module.time, "monotonic", clock)
 

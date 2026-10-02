@@ -152,6 +152,19 @@ def test_compare_undeclared_field_is_not_checked() -> None:
     assert compare({}, {}, {}) == []
 
 
+def test_compare_check_server_false_skips_the_server_half() -> None:
+    """An ``openai`` backend has no server settings file: the absent server
+    entry is a property of the backend, not a mismatch."""
+    assert compare(_ARM_INFERENCE, None, _pi_model(), check_server=False) == []
+
+
+def test_compare_check_server_false_still_reports_pi() -> None:
+    """The sibling that keeps the skip from silencing the pi half too."""
+    lines = compare(_ARM_INFERENCE, None, None, check_server=False)
+    assert len(lines) == 1
+    assert lines[0].startswith("pi:")
+
+
 # --- compare: one mismatch per mapped field ---------------------------------
 
 _OMLX_MISMATCH_FIELDS = [
@@ -334,6 +347,12 @@ def test_provenance_carries_the_entries_verbatim() -> None:
     assert record["pi_entry"] == pi
 
 
+def test_provenance_names_the_backend() -> None:
+    """A record from one backend must never be read as another's."""
+    assert provenance("{}", None, None)["backend"] == "omlx"
+    assert provenance("{}", None, None, backend="openai")["backend"] == "openai"
+
+
 # --- CLI via main(argv) ------------------------------------------------------
 
 
@@ -360,6 +379,21 @@ def _base_arm_data() -> dict:
 
 def _arm_file(tmp_path: Path, data: dict | None = None) -> Path:
     return _write(tmp_path / "arm.json", data if data is not None else _base_arm_data())
+
+
+def _openai_arm_data() -> dict:
+    """The same model on an OpenAI-compatible backend (unsloth/vLLM)."""
+    data = _base_arm_data()
+    data["model"] = "unsloth/Ornith-1.5-9B-MLX-8bit"
+    data["backend"] = "openai"
+    return data
+
+
+def _unsloth_pi_models() -> dict:
+    """The pi config for that backend: the same entry, under its provider."""
+    models = json.loads(json.dumps(_PI_MODELS))
+    models["providers"]["unsloth"] = models["providers"].pop("omlx")
+    return models
 
 
 def test_cli_exit_0_when_clean(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -421,6 +455,41 @@ def test_cli_exit_1_on_missing_entry(tmp_path: Path, capsys: pytest.CaptureFixtu
     err = capsys.readouterr().err
     assert "omlx:" in err
     assert "pi:" in err
+
+
+def test_cli_openai_backend_does_not_read_omlx_settings(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The point of the backend field: an OpenAI-compatible server
+    (unsloth/vLLM) has no oMLX settings file, so pointing the arm at one
+    that does not exist must not fail the check."""
+    arm = _arm_file(tmp_path, _openai_arm_data())
+    pi_path = _write(tmp_path / "models.json", _unsloth_pi_models())
+    missing_omlx = tmp_path / "no-such-model_settings.json"
+
+    code = main([str(arm), "--omlx-settings", str(missing_omlx), "--pi-models", str(pi_path)])
+    assert code == 0
+    captured = capsys.readouterr()
+    record = json.loads(captured.out)
+    assert record["backend"] == "openai"
+    assert record["omlx_entry"] is None
+    assert record["omlx_entry_sha256"] is None
+    assert record["pi_entry_sha256"] is not None
+    assert "unverified-by-file" in captured.err or "openai" in captured.err
+
+
+def test_cli_openai_backend_pi_mismatch_exits_1(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The sibling refusal: skipping the server half does not skip pi."""
+    data = _openai_arm_data()
+    data["inference"] = dict(data["inference"], temperature=0.9)
+    arm = _arm_file(tmp_path, data)
+    pi_path = _write(tmp_path / "models.json", _unsloth_pi_models())
+
+    code = main([str(arm), "--pi-models", str(pi_path)])
+    assert code == 1
+    assert "pi: temperature" in capsys.readouterr().err
 
 
 def test_cli_exit_2_on_unreadable_arm(tmp_path: Path) -> None:
@@ -626,47 +695,3 @@ def test_every_arm_names_a_settings_checker_that_exists(arm_path: Path) -> None:
     assert named == "scripts/preflight_settings.py"
     assert (_REPO_ROOT / named).is_file()
 
-
-# --- 2b: the cell user's models.json -----------------------------------------
-
-import subprocess  # noqa: E402
-
-import preflight_settings as preflight_settings_module  # noqa: E402
-from preflight_settings import CELL_PI_MODELS, read_cell_pi_models  # noqa: E402
-
-
-def test_the_cell_models_are_read_as_the_cell_user() -> None:
-    seen: list[list[str]] = []
-
-    def run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
-        seen.append(argv)
-        return subprocess.CompletedProcess(argv, 0, json.dumps(_PI_MODELS), "")
-
-    assert read_cell_pi_models(run) == _PI_MODELS
-    assert seen == [["sudo", "-n", "-H", "-u", "satyrn-cell", "--", "/bin/cat", str(CELL_PI_MODELS)]]
-
-
-def test_unreadable_cell_models_are_an_os_error() -> None:
-    def run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
-        return subprocess.CompletedProcess(argv, 1, "", "sudo: a password is required")
-
-    with pytest.raises(OSError, match="a password is required"):
-        read_cell_pi_models(run)
-
-
-def test_cli_cell_compares_against_the_cell_users_models(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    monkeypatch.setattr(preflight_settings_module, "read_cell_pi_models", lambda: _PI_MODELS)
-    omlx_path = _write(tmp_path / "model_settings.json", _OMLX_SETTINGS)
-    assert main([str(_arm_file(tmp_path)), "--omlx-settings", str(omlx_path), "--cell"]) == 0
-    assert json.loads(capsys.readouterr().out)["pi_models"] == f"satyrn-cell:{CELL_PI_MODELS}"
-
-
-def test_cli_cell_exits_2_when_the_cell_models_cannot_be_read(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    def unreadable() -> dict:
-        raise OSError("cannot read as satyrn-cell")
-
-    monkeypatch.setattr(preflight_settings_module, "read_cell_pi_models", unreadable)
-    omlx_path = _write(tmp_path / "model_settings.json", _OMLX_SETTINGS)
-    assert main([str(_arm_file(tmp_path)), "--omlx-settings", str(omlx_path), "--cell"]) == 2

@@ -15,7 +15,8 @@ not agent engineering. Two repositories, both on branch `release-one`:
   census build, its fix wave, both census nights and the night-2 build are in.
 - **`satyrn-engine`** — the product: `/implement`, a derived contract, four
   guards, symbol preservation, carried tests, `self_test`, a receipt. Pinned
-  at `78ab87dbab3381dd585986c43fd49e6e4974f6b6` (`arms/engine-ornith15-9b.json`).
+  at `1869397d605f887483d626e7434ccca2bdace340` (`arms/engine-ornith15-9b.json`),
+  the merge of the `harness-extension-seam` PR into `release-one`.
 
 ## Where release one ended
 
@@ -178,10 +179,12 @@ phase rows.
   the n = 6 record, two before the implementation existed. The detector in
   `evidence/2026-09-22-mellum-tool-surface/compare_ornith.py` is a regex over
   the last reasoning line, not a harness counter; none is built.
-- **Engine pins are split.** satyrn-engine `release-one` now ends at
-  `803df2d` (the red-stop gate); only `arms/engine-mellum-class-swe-pi-redstop.json`
-  pins it. Every other Engine arm pins `78ab87d`. Decide which commit the next
-  Engine record runs before freezing it, and re-pin every arm it uses
+- **Engine pins are unified.** satyrn-engine `release-one` ends at
+  `1869397d605f887483d626e7434ccca2bdace340`, the merge of the
+  `harness-extension-seam` PR (tree identical to `54d814d`, which is
+  `803df2d` plus the `$SATYRN_EXTRA_EXTENSIONS` seam). All three Engine arms
+  pin it, closing the `78ab87d` / `803df2d` split for arms; no Engine record
+  has run on the re-pinned harness, and re-derivation is a separate plan
   (`evidence/2026-09-23-red-stop-gate/`).
 - **Mellum vs Ornith reruns owed before any model claim**
   (`evidence/2026-09-22-mellum-tool-surface/README.md`): Ornith at n = 6 on

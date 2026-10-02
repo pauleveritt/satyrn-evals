@@ -1,13 +1,12 @@
 """``launch RECORD``'s gates and wiring, with every git, sudo and spawn fact faked: nothing spawns."""
 
 import json
-import os
 from pathlib import Path
 
 import pytest
 
 from satyrn_evals.arms import Arm, ArmPins
-from satyrn_evals.cell import CELL_PATH_PREFIX_ENV, CELLS_ROOT, Isolation
+from satyrn_evals.cell import CELL_PATH_PREFIX_ENV
 from satyrn_evals.cell_preflight import CellPreflight
 from satyrn_evals.cli import main
 from satyrn_evals.errors import SatyrnError
@@ -26,7 +25,7 @@ SETTINGS = '{"arm_sha256": "a"}'
 def _record(tmp_path: Path, **over: object) -> Path:
     body = new_record(
         task=TASK, tasks_root=DEFAULT_TASKS_ROOT, arm="baseline", model="omlx/Ornith-1.5-9B-MLX-8bit", n=2, k=1,
-        rung="R1", purpose="admission", isolation="isolated", mode="attended", max_minutes=60,
+        rung="R1", purpose="admission", confinement="extension", mode="attended", max_minutes=60,
         token_budget=32000, turn_budget=48, previous_result=None, authority="test", decision_rule=None,
     )
     path = tmp_path / "records" / "depth-3.json"
@@ -44,10 +43,13 @@ def _facts(**over: object) -> LaunchFacts:
 
     base = dict(
         frozen=lambda path: True, committed=lambda path: True, head=lambda: "f" * 40,
-        preflight=lambda **kw: CellPreflight([], {"pi_version": "0.85.1"}), settings=lambda path, cell: (0, SETTINGS),
-        spawn_cell=spawn, model_server=lambda base_url, server_model: [], pi_models=lambda cell: {},
+        confinement_preflight=lambda **kw: CellPreflight([], {"pi_version": "0.85.1"}), settings=lambda path, cell: (0, SETTINGS),
+        spawn_cell=spawn, model_server=lambda base_url, server_model, api_key=None: [], pi_models=lambda: {},
         task_self_test=lambda task_dir, manifest: TaskSelfTest([], {}),
         engine_self_test=lambda *a, **k: TaskSelfTest([], {}),
+        # `engine_checkout_problems` runs `git`; the default tier forbids it,
+        # so the launch tests fake it unless a case wants a problem.
+        engine_export=lambda arm: [],
     )
     return LaunchFacts(**{**base, **over})  # type: ignore[arg-type]
 
@@ -62,7 +64,7 @@ def test_a_clean_admission_record_reaches_its_first_cell_with_the_records_settin
     assert _launch(tmp_path, record, _facts()) == 3  # the fake spawn raised: interrupted
     spec = json.loads((tmp_path / "runs" / "depth-3" / SLOTS_DIR / "00.spec.json").read_text())
     assert spec["command"] == ["satyrn-evals-attempt-pi", "--model", "omlx/Ornith-1.5-9B-MLX-8bit", "--tools", "read,bash,edit,write"]
-    assert (spec["rung"], spec["token_budget"], spec["turn_budget"], spec["isolation"]) == ("R1", 32000, 48, "isolated")
+    assert (spec["rung"], spec["token_budget"], spec["turn_budget"], spec["isolation"]) == ("R1", 32000, 48, "local")
     assert (spec["timeout"], spec["attempt_timeout"]) == (1800.0, 2100.0)
     assert spec["output"] == str(tmp_path / "runs" / "depth-3" / "baseline")
     result = json.loads(record.with_suffix(".result.json").read_text())
@@ -142,12 +144,21 @@ def test_an_arm_file_the_record_does_not_run_is_refused(tmp_path: Path) -> None:
     assert "the --arm files are baseline" in _refused(tmp_path, record, _facts())
 
 
+def test_an_arm_on_another_backend_than_the_record_is_refused(tmp_path: Path) -> None:
+    """The guard the model string cannot give: the same model served by a
+    different stack has the same ``--model`` value, so the record's backend
+    is what keeps their cells from ever sharing a denominator."""
+    record = _record(tmp_path, backend="openai")
+    assert "runs backend 'omlx'" in _refused(tmp_path, record, _facts())
+    assert not (tmp_path / "runs").exists()
+
+
 @pytest.mark.parametrize(
     "facts",
     [
-        _facts(preflight=lambda **kw: CellPreflight(["the cell can find /x/known-good.patch"], {})),
+        _facts(confinement_preflight=lambda **kw: CellPreflight(["the cell can find /x/known-good.patch"], {})),
         _facts(settings=lambda path, cell: (1, "preflight_settings FAILED: temperature")),
-        _facts(model_server=lambda base_url, server_model: [f"the model server at {base_url} is unreachable: refused"]),
+        _facts(model_server=lambda base_url, server_model, api_key=None: [f"the model server at {base_url} is unreachable: refused"]),
     ],
     ids=["cell-preflight", "settings", "model-server"],
 )
@@ -164,7 +175,7 @@ def test_the_model_server_check_is_asked_about_the_default_base_url_and_the_arms
 
     seen: dict[str, object] = {}
 
-    def model_server(base_url: str, server_model: str) -> list[str]:
+    def model_server(base_url: str, server_model: str, api_key: str | None = None) -> list[str]:
         seen["base_url"], seen["server_model"] = base_url, server_model
         return []
 
@@ -175,7 +186,7 @@ def test_the_model_server_check_is_asked_about_the_default_base_url_and_the_arms
 def test_an_unreachable_model_server_names_the_url_and_reason_in_the_launch_failure(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    facts = _facts(model_server=lambda base_url, server_model: [f"the model server at {base_url} is unreachable: [Errno 61] Connection refused"])
+    facts = _facts(model_server=lambda base_url, server_model, api_key=None: [f"the model server at {base_url} is unreachable: [Errno 61] Connection refused"])
     assert _launch(tmp_path, _record(tmp_path), facts) == 1
     err = capsys.readouterr().err
     assert "launch FAILED: the model server at http://127.0.0.1:8001 is unreachable: [Errno 61] Connection refused" in err
@@ -189,7 +200,7 @@ def test_a_development_record_on_the_fake_pi_seam_skips_the_model_server_check(
     a development record uses to skip this check, the same way it skips settings."""
     monkeypatch.setenv(CELL_PATH_PREFIX_ENV, "/fake/bin")
 
-    def boom(base_url: str, server_model: str) -> list[str]:
+    def boom(base_url: str, server_model: str, api_key: str | None = None) -> list[str]:
         raise AssertionError("model_server must not be consulted on the fake-pi seam")
 
     record = _record(tmp_path, purpose="development", decision_rule="none")
@@ -207,13 +218,13 @@ def _arm(server_model: str, arm: str = "baseline") -> Arm:
 def test_model_server_checks_asks_once_per_distinct_server_model() -> None:
     asked: list[str] = []
 
-    def model_server(base_url: str, server_model: str) -> list[str]:
+    def model_server(base_url: str, server_model: str, api_key: str | None = None) -> list[str]:
         asked.append(server_model)
         return []
 
     arms = [_arm("model-a"), _arm("model-a"), _arm("model-b")]
     problems, checked = model_server_checks(
-        arms, Isolation.LOCAL, pi_models=lambda cell: {}, model_server=model_server
+        arms, pi_models=lambda: {}, model_server=model_server
     )
     assert problems == []
     assert asked == ["model-a", "model-b"]
@@ -224,28 +235,51 @@ def test_model_server_checks_derives_the_base_url_from_the_arms_own_provider() -
     pi_models = {"providers": {"omlx": {"baseUrl": "http://10.0.0.5:9001/v1"}}}
     seen: dict[str, object] = {}
 
-    def model_server(base_url: str, server_model: str) -> list[str]:
+    def model_server(base_url: str, server_model: str, api_key: str | None = None) -> list[str]:
         seen["base_url"] = base_url
         return []
 
     problems, checked = model_server_checks(
-        [_arm("model-a")], Isolation.ISOLATED, pi_models=lambda cell: pi_models, model_server=model_server
+        [_arm("model-a")], pi_models=lambda: pi_models, model_server=model_server
     )
     assert problems == [] and seen["base_url"] == "http://10.0.0.5:9001"
     assert checked == {"model-a": {"base_url": "http://10.0.0.5:9001"}}
 
 
+def test_model_server_checks_sends_the_providers_api_key() -> None:
+    """An authenticated provider (unsloth's proxy) must be probed with its key,
+    or a reachable server 401s and the sitting is refused."""
+    pi_models = {"providers": {"unsloth": {"baseUrl": "http://10.0.0.5:9001/v1", "apiKey": "sk-x"}}}
+    seen: dict[str, object] = {}
+
+    def model_server(base_url: str, server_model: str, api_key: str | None = None) -> list[str]:
+        seen["api_key"] = api_key
+        return []
+
+    arm = Arm(
+        arm="baseline", argv=("satyrn-evals-attempt-pi",), tools=("read", "bash", "edit", "write"),
+        model="unsloth/model-a", server_model="model-a",
+        pins=ArmPins(pi="0.85.1", engine_commit=None, digests={}), backend="openai",
+    )
+    problems, checked = model_server_checks(
+        [arm], pi_models=lambda: pi_models, model_server=model_server
+    )
+    assert problems == []
+    assert seen["api_key"] == "sk-x"
+    assert checked["model-a"]["authenticated"] is True
+
+
 def test_model_server_checks_falls_back_and_says_so_only_when_the_check_fails() -> None:
     problems, checked = model_server_checks(
-        [_arm("model-a")], Isolation.LOCAL, pi_models=lambda cell: {"providers": {}},
-        model_server=lambda base_url, server_model: [],
+        [_arm("model-a")], pi_models=lambda: {"providers": {}},
+        model_server=lambda base_url, server_model, api_key=None: [],
     )
     assert problems == []
     assert checked["model-a"]["fallback"].startswith("no 'omlx' provider")
 
     problems, _ = model_server_checks(
-        [_arm("model-a")], Isolation.LOCAL, pi_models=lambda cell: {"providers": {}},
-        model_server=lambda base_url, server_model: [f"the model server at {base_url} is unreachable: refused"],
+        [_arm("model-a")], pi_models=lambda: {"providers": {}},
+        model_server=lambda base_url, server_model, api_key=None: [f"the model server at {base_url} is unreachable: refused"],
     )
     assert problems == [
         "the model server at http://127.0.0.1:8001 is unreachable: refused "
@@ -254,12 +288,12 @@ def test_model_server_checks_falls_back_and_says_so_only_when_the_check_fails() 
 
 
 def test_model_server_checks_reports_an_unreadable_pi_config_instead_of_raising() -> None:
-    def pi_models(cell: bool) -> dict:
+    def pi_models() -> dict:
         raise OSError("cannot read models.json as satyrn-cell: no password")
 
     problems, checked = model_server_checks(
-        [_arm("model-a")], Isolation.ISOLATED, pi_models=pi_models,
-        model_server=lambda base_url, server_model: [f"the model server at {base_url} is unreachable: refused"],
+        [_arm("model-a")], pi_models=pi_models,
+        model_server=lambda base_url, server_model, api_key=None: [f"the model server at {base_url} is unreachable: refused"],
     )
     assert problems == [
         "the model server at http://127.0.0.1:8001 is unreachable: refused "
@@ -272,34 +306,13 @@ def test_model_server_checks_reports_an_unreadable_pi_config_instead_of_raising(
 def test_the_preflight_protects_the_runs_root_and_hunts_by_default(tmp_path: Path) -> None:
     seen: dict[str, object] = {}
 
-    def preflight(**kwargs: object) -> CellPreflight:
+    def confinement_preflight(**kwargs: object) -> CellPreflight:
         seen.update(kwargs)
         return CellPreflight(["stop here"], {})
 
-    assert _launch(tmp_path, _record(tmp_path), _facts(preflight=preflight)) == 1
+    assert _launch(tmp_path, _record(tmp_path), _facts(confinement_preflight=confinement_preflight)) == 1
     assert seen["hunt_root"] == "/" and seen["pinned_pi"] == "0.85.1"
     assert tmp_path / "runs" in seen["protected"]  # type: ignore[operator]
-
-
-def test_the_preflight_tolerates_only_the_cell_path_prefixs_own_entry_under_the_cells_root(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """R5: without the test PATH seam, nothing is tolerated; with it set under
-    the real cells root, only its direct child there is passed through."""
-    seen: dict[str, object] = {}
-
-    def preflight(**kwargs: object) -> CellPreflight:
-        seen.update(kwargs)
-        return CellPreflight([], {"pi_version": "0.85.1"})
-
-    record = _record(tmp_path, purpose="development", decision_rule="none")
-    assert _launch(tmp_path, record, _facts(preflight=preflight)) == 3
-    assert seen["tolerated"] == ()
-
-    monkeypatch.setenv(CELL_PATH_PREFIX_ENV, os.fspath(CELLS_ROOT / "satyrn-test-abc123" / "bin"))
-    seen.clear()
-    assert _launch(tmp_path, record, _facts(preflight=preflight)) == 3
-    assert seen["tolerated"] == (CELLS_ROOT / "satyrn-test-abc123",)
 
 
 class Finishing:
@@ -439,7 +452,7 @@ ROUTE_PROOF_RULE = "route proof: guards fire where retained Baseline evidence sa
 def _route_proof(tmp_path: Path) -> Path:
     body = new_record(
         task=TASK, tasks_root=DEFAULT_TASKS_ROOT, arm="engine", model="omlx/Ornith-1.5-9B-MLX-8bit", n=1, k=1,
-        rung="R1", purpose="route-proof", isolation="isolated", mode="attended", max_minutes=60,
+        rung="R1", purpose="route-proof", confinement="extension", mode="attended", max_minutes=60,
         token_budget=32000, turn_budget=48, previous_result="records/x.result.json", authority="test",
         decision_rule=ROUTE_PROOF_RULE,
     )
@@ -448,7 +461,7 @@ def _route_proof(tmp_path: Path) -> Path:
     return path
 
 
-def test_a_route_proof_record_runs_the_committed_engine_arm_on_its_export(tmp_path: Path) -> None:
+def test_a_route_proof_record_runs_the_committed_engine_arm(tmp_path: Path) -> None:
     seen: list[str] = []
 
     def export(arm: Arm) -> list[str]:
@@ -462,12 +475,11 @@ def test_a_route_proof_record_runs_the_committed_engine_arm_on_its_export(tmp_pa
     ) == 3  # the fake spawn raised: interrupted
     assert seen == ["engine"]
     spec = json.loads((tmp_path / "runs" / "route-proof" / SLOTS_DIR / "00.spec.json").read_text())
-    commit = "78ab87dbab3381dd585986c43fd49e6e4974f6b6"
     assert spec["command"] == [
-        "satyrn-evals-attempt-engine", "--engine-repo", f"/Users/Shared/satyrn-cells/engine-{commit}",
+        "satyrn-evals-attempt-engine",
         "--model", "omlx/Ornith-1.5-9B-MLX-8bit",
     ]
-    assert (spec["arm"], spec["rung"], spec["isolation"]) == ("engine", "R1", "isolated")
+    assert (spec["arm"], spec["rung"], spec["isolation"]) == ("engine", "R1", "local")
 
 
 def test_an_engine_export_problem_exits_1_and_runs_nothing(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -541,7 +553,7 @@ def test_a_deciding_record_refuses_a_timeout_override(tmp_path: Path) -> None:
 
 
 def test_a_development_record_may_override_the_timeout(tmp_path: Path) -> None:
-    _record(tmp_path, purpose="development", isolation="local")
+    _record(tmp_path, purpose="development", confinement="extension")
     launch_record(
         tmp_path / "records" / "depth-3.json", [ARM], tasks_root=DEFAULT_TASKS_ROOT,
         runs_root=tmp_path / "runs", timeout=60.0, attempt_timeout=90.0, facts=_facts(),

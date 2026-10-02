@@ -1,0 +1,223 @@
+{
+  "record": "records/2026-09-25-sandbox2-baseline-selfhost-run-record-gate.json",
+  "record_sha256": "3c7c550a3a4fd9bacb8b496dcc9426514ebc3fd6ee7cf63d6b25e4b1e7aed1ef",
+  "arm_sha256": {
+    "baseline": "a646b3f9303c4dc45ccd77ba328695f832f161f9c6cd7a402a3d2bb021cb1e16"
+  },
+  "status": "complete",
+  "reason": null,
+  "night": "/home/ubuntu/satyrn-runs/2026-09-25-sandbox2-baseline-selfhost-run-record-gate",
+  "task": "selfhost-run-record-gate",
+  "rung": "R1-plan",
+  "k": 3,
+  "n": 6,
+  "purpose": "admission",
+  "arms": {
+    "baseline": {
+      "finished": 6,
+      "n": 6,
+      "code_counts": {
+        "BUDGET_EXCEEDED": 3,
+        "OK": 2,
+        "NO_PATCH": 1
+      },
+      "passes": 2,
+      "summary": "/home/ubuntu/satyrn-runs/2026-09-25-sandbox2-baseline-selfhost-run-record-gate/baseline/summary.json",
+      "infrastructure": [],
+      "contamination": {
+        "graded": 2,
+        "flagged": 0,
+        "clean": 2,
+        "unmeasured": 0
+      }
+    }
+  },
+  "cells": [
+    {
+      "slot": 0,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-run-record-gate-20260925-223724-258776",
+      "code": "BUDGET_EXCEEDED",
+      "verdict": null,
+      "infrastructure": false
+    },
+    {
+      "slot": 1,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-run-record-gate-20260925-223724-293787",
+      "code": "BUDGET_EXCEEDED",
+      "verdict": null,
+      "infrastructure": false
+    },
+    {
+      "slot": 2,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-run-record-gate-20260925-223724-330848",
+      "code": "BUDGET_EXCEEDED",
+      "verdict": null,
+      "infrastructure": false
+    },
+    {
+      "slot": 3,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-run-record-gate-20260926-052931-855257",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 4,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-run-record-gate-20260925-225950-515828",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 5,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-run-record-gate-20260925-230255-569797",
+      "code": "NO_PATCH",
+      "verdict": null,
+      "infrastructure": false
+    }
+  ],
+  "replaced": [
+    {
+      "slot": 3,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-run-record-gate-20260925-225838-470857",
+      "code": "CLEANUP_FAILED",
+      "verdict": null,
+      "message": "workspace cleanup is unconfirmed: worktree cleanup unconfirmed for /tmp/satyrn-attempt-ik5646qx/worktree; workspace parent retained at /tmp/satyrn-attempt-ik5646qx; command worktree /tmp/satyrn-attempt-ik5646qx/worktree: git worktree remove --force /tmp/satyrn-attempt-ik5646qx/worktree failed: fatal: validation failed, cannot remove working tree: '/tmp/satyrn-attempt-ik5646qx/worktree/.git' does not exist; displaced BUDGET_EXCEEDED: attempt command started turn 73, over the budget of 72 turns",
+      "command_exit": null,
+      "deadline_phase": null,
+      "line_crossed": null,
+      "replaced_because": "slot 03 (baseline): CLEANUP_FAILED: workspace cleanup is unconfirmed: worktree cleanup unconfirmed for /tmp/satyrn-attempt-ik5646qx/worktree; workspace parent retained at /tmp/satyrn-attempt-ik5646qx; command worktree /tmp/satyrn-attempt-ik5646qx/worktree: git worktree remove --force /tmp/satyrn-attempt-ik5646qx/worktree failed: fatal: validation failed, cannot remove working tree: '/tmp/satyrn-attempt-ik5646qx/worktree/.git' does not exist; displaced BUDGET_EXCEEDED: attempt command started turn 73, over the budget of 72 turns"
+    }
+  ],
+  "sittings": [
+    {
+      "record": "records/2026-09-25-sandbox2-baseline-selfhost-run-record-gate.json",
+      "started": "2026-09-25T22:37:24+00:00",
+      "k": 3,
+      "evals_head": "3111fe2d1582f03200178f1fa2c4fdee0503c127",
+      "preflight": {
+        "sandbox": "bwrap",
+        "pi_version": "0.87.1",
+        "hidden_checked": [
+          "/home/ubuntu/dev/dogfooding/satyrn-evals",
+          "/home/ubuntu/dev/dogfooding/satyrn-evals/src/satyrn_evals/tasks",
+          "/home/ubuntu",
+          "/home/ubuntu/satyrn-runs"
+        ],
+        "hidden_visible": [],
+        "hunt_root": "/",
+        "hunt_hits": []
+      },
+      "task_self_test": {
+        "base_exit": 0,
+        "known_good_exit": 0,
+        "repair_base": false
+      },
+      "model_server": {
+        "ornith-ai/Ornith-1.5-9B-GGUF": {
+          "base_url": "http://localhost:8888",
+          "authenticated": true
+        }
+      },
+      "settings": {
+        "baseline": {
+          "arm_sha256": "f08b063b2375d974c6efaee008f78f09eda79c10c9765ac9fa740fe918c60460",
+          "backend": "openai",
+          "omlx_entry": null,
+          "omlx_entry_sha256": null,
+          "pi_entry": {
+            "contextWindow": 262144,
+            "id": "ornith-ai/Ornith-1.5-9B-GGUF",
+            "input": [
+              "text",
+              "image"
+            ],
+            "maxTokens": 16000,
+            "reasoning": true,
+            "samplingParams": {
+              "min_p": 0.0,
+              "presence_penalty": 0.0,
+              "repetition_penalty": 1.0,
+              "temperature": 0.6,
+              "top_k": 20,
+              "top_p": 0.95
+            }
+          },
+          "pi_entry_sha256": "40f0980b50c005e34b557292b5a9d1b8397c2d48ca92f7a5bb0b20988d4a50e7",
+          "pi_models": "/home/ubuntu/.pi/agent/models.json"
+        }
+      },
+      "ended": "2026-09-25T23:23:24+00:00",
+      "status": "infrastructure",
+      "reason": "slot 03 (baseline): CLEANUP_FAILED: workspace cleanup is unconfirmed: worktree cleanup unconfirmed for /tmp/satyrn-attempt-ik5646qx/worktree; workspace parent retained at /tmp/satyrn-attempt-ik5646qx; command worktree /tmp/satyrn-attempt-ik5646qx/worktree: git worktree remove --force /tmp/satyrn-attempt-ik5646qx/worktree failed: fatal: validation failed, cannot remove working tree: '/tmp/satyrn-attempt-ik5646qx/worktree/.git' does not exist; displaced BUDGET_EXCEEDED: attempt command started turn 73, over the budget of 72 turns"
+    },
+    {
+      "record": "records/2026-09-25-sandbox2-baseline-selfhost-run-record-gate.json",
+      "started": "2026-09-26T05:29:31+00:00",
+      "k": 3,
+      "evals_head": "eadffc947f125e988b856f8732af622772ee5baa",
+      "preflight": {
+        "sandbox": "bwrap",
+        "pi_version": "0.87.1",
+        "hidden_checked": [
+          "/home/ubuntu/dev/dogfooding/satyrn-evals",
+          "/home/ubuntu/dev/dogfooding/satyrn-evals/src/satyrn_evals/tasks",
+          "/home/ubuntu",
+          "/home/ubuntu/satyrn-runs"
+        ],
+        "hidden_visible": [],
+        "hunt_root": "/",
+        "hunt_hits": []
+      },
+      "task_self_test": {
+        "base_exit": 0,
+        "known_good_exit": 0,
+        "repair_base": false
+      },
+      "model_server": {
+        "ornith-ai/Ornith-1.5-9B-GGUF": {
+          "base_url": "http://localhost:8888",
+          "authenticated": true
+        }
+      },
+      "settings": {
+        "baseline": {
+          "arm_sha256": "f08b063b2375d974c6efaee008f78f09eda79c10c9765ac9fa740fe918c60460",
+          "backend": "openai",
+          "omlx_entry": null,
+          "omlx_entry_sha256": null,
+          "pi_entry": {
+            "contextWindow": 262144,
+            "id": "ornith-ai/Ornith-1.5-9B-GGUF",
+            "input": [
+              "text",
+              "image"
+            ],
+            "maxTokens": 16000,
+            "reasoning": true,
+            "samplingParams": {
+              "min_p": 0.0,
+              "presence_penalty": 0.0,
+              "repetition_penalty": 1.0,
+              "temperature": 0.6,
+              "top_k": 20,
+              "top_p": 0.95
+            }
+          },
+          "pi_entry_sha256": "40f0980b50c005e34b557292b5a9d1b8397c2d48ca92f7a5bb0b20988d4a50e7",
+          "pi_models": "/home/ubuntu/.pi/agent/models.json"
+        }
+      },
+      "ended": "2026-09-26T05:44:27+00:00",
+      "status": "complete",
+      "reason": null
+    }
+  ]
+}

@@ -44,7 +44,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from satyrn_evals.arms import KNOWN_TOOLS
-from satyrn_evals.cell import Isolation, cell_command, isolation_from, model_environment
+from satyrn_evals.confinement import EXTENSION_PATH
 from satyrn_evals.errors import UsageError
 from satyrn_evals.session_patch import RESIDUE_EXCLUDES, build_cumulative_patch
 
@@ -146,6 +146,8 @@ def build_pi_argv(args: AdapterArgs, prompt: str) -> list[str]:
         "--model",
         args.model,
         "--no-extensions",
+        "--extension",
+        os.fspath(EXTENSION_PATH),
         "--no-skills",
         "--no-prompt-templates",
         "--no-themes",
@@ -158,20 +160,14 @@ def build_pi_argv(args: AdapterArgs, prompt: str) -> list[str]:
 
 
 def pi_command(args: AdapterArgs, prompt: str, environment: Mapping[str, str], worktree: Path) -> list[str]:
-    """The pi argv, run as the cell user when the harness exported the isolated profile.
+    """The pi argv. Confinement is the shared extension on ``build_pi_argv``,
+    not a process wrapper: the command runs where the harness runs it, and the
+    transcript reaches the file this adapter opened through inherited stdout.
 
-    Under isolation Pi sees only the cell environment (`cell.cell_environment`):
-    its own home, PATH, TMPDIR and uv project environment, never the
-    maintainer's. The transcript still reaches the file this adapter opened,
-    through the inherited stdout.
+    ``environment`` and ``worktree`` are accepted for the callers' uniform
+    shape and unused.
     """
-    command = build_pi_argv(args, prompt)
-    try:
-        if isolation_from(environment) is Isolation.LOCAL:
-            return command
-        return cell_command(command, cwd=worktree, environment=model_environment(environment))
-    except ValueError as exc:
-        raise AdapterError(str(exc)) from exc
+    return build_pi_argv(args, prompt)
 
 
 def read_prompt(environment: Mapping[str, str]) -> str:

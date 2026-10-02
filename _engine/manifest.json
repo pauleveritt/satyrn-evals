@@ -1,5 +1,5 @@
 {
-  "engine_commit": "78ab87dbab3381dd585986c43fd49e6e4974f6b6",
+  "engine_commit": "1869397d605f887483d626e7434ccca2bdace340",
   "files": {
     "README.md": {
       "rendered_sha256": "56fcca41f648ce0fd730b00baf2fade8ed05f6cda569bf51b809b7c32a708097",
@@ -7,13 +7,13 @@
       "source": "README.md"
     },
     "glossary.md": {
-      "rendered_sha256": "d2361cda0cf9c15b6cd5e22212f6426536b6f2fdc6b12ed1fc970e3577e23252",
-      "sha256": "e4efe8078227c3ef50787b63e861c6d6061c188cd79abd282c183d501a6559d7",
+      "rendered_sha256": "5b4f19695558004858cecc250c801e3282bf17cb76950983ecd5fdc53804bb0e",
+      "sha256": "6123b52b103d656e4784bff56c3771ba557dffd00e2a752493ab981890e72d33",
       "source": "docs/glossary.md"
     },
     "usage.md": {
-      "rendered_sha256": "154dcc9bab51b876b5b09de9612a6aefffec1e1cb58ed66aba2dbca6421fc3f5",
-      "sha256": "8c796fcd69c0c43eed52363bd755400e547cb2a1871fa07a1bf9d35392beca71",
+      "rendered_sha256": "05269a1ab1004fa9c295d566c8823b8c855b872a80c1c43c0829782c74a01eaf",
+      "sha256": "4a98c41af26b0b6dc464d5487efbfd1bed9dc537b3984f3da724f670da044fad",
       "source": "docs/usage.md"
     }
   },

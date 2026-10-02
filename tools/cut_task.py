@@ -16,7 +16,12 @@ spec file under ``tools/task_specs/`` (spec, "The self-hosted generator"):
   file beside the manifest) and the digest of the ``R1-plan`` prompt;
 - ``prompt_edits`` in the spec are applied to the cut prompt in order, each
   ``old`` required exactly once, and recorded in the manifest's ``generator``
-  block; the plan document is never edited.
+  block; the plan document is never edited;
+- ``base_edits`` in the spec patch named files in ``base/`` after the
+  archive, each ``old`` required exactly once and recorded in the same
+  ``generator`` block. This is how a host fix the parent repository made
+  after BASE was cut stays reproducible from the spec instead of being
+  hand-applied to the committed tree.
 
 The R1-plan prompt is the plan task's title, Files, Interfaces minus its
 Consumes lines, and the prose of every step with fenced code removed, plus
@@ -54,7 +59,7 @@ import tarfile
 import tempfile
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from satyrn_evals.attempt import contract_digest
 from satyrn_evals.qualify import SELF_HOSTED_CONVENTION_FILES
@@ -74,8 +79,9 @@ _SHA = re.compile(r"\A[0-9a-f]{40}\Z")
 _SPEC_KEYS = frozenset({"name", "base", "good", "files", "hidden", "plan", "formats", "broken", "oracle_env"})
 #: Optional in a spec, so every already-cut task re-cuts byte-identically
 #: (a required key would move every task tree's digest).
-_OPTIONAL_SPEC_KEYS = frozenset({"prompt_edits", "authored"})
+_OPTIONAL_SPEC_KEYS = frozenset({"prompt_edits", "authored", "base_edits"})
 _EDIT_KEYS = frozenset({"old", "new", "reason"})
+_BASE_EDIT_KEYS = frozenset({"path", "old", "new", "reason"})
 _AUTHORED_KEYS = frozenset({"spec", "roles"})
 
 
@@ -98,6 +104,22 @@ class PromptEdit:
     historical plan plus this named patch, recorded in the manifest.
     """
 
+    old: str
+    new: str
+    reason: str
+
+
+@dataclass(frozen=True, slots=True)
+class BaseEdit:
+    """One recorded patch to a file in ``base/`` (the host-fix case).
+
+    ``base/`` is ``git archive BASE``, so a change the parent repository made
+    after BASE was cut has to be written down here for the committed task to
+    re-cut byte-identically. Applied in order exactly like a ``PromptEdit``;
+    unlike one, ``new`` may contain ``old`` when the edit is an insertion.
+    """
+
+    path: str
     old: str
     new: str
     reason: str
@@ -128,6 +150,7 @@ class TaskSpec:
     broken: dict[str, str]
     oracle_env: dict[str, str]
     prompt_edits: tuple[PromptEdit, ...] = ()
+    base_edits: tuple[BaseEdit, ...] = ()
     authored: Authored | None = None
 
 
@@ -188,6 +211,23 @@ def load_spec(path: Path) -> TaskSpec:
                 "(qualification asks whether the old text is gone from the prompt)"
             )
         edits.append(PromptEdit(item["old"], item["new"], item["reason"]))
+    raw_base_edits = body.get("base_edits", [])
+    if not isinstance(raw_base_edits, list):
+        raise CutError(f"spec {path}: base_edits must be a list of {sorted(_BASE_EDIT_KEYS)}")
+    base_edits: list[BaseEdit] = []
+    for index, item in enumerate(raw_base_edits, 1):
+        if not isinstance(item, dict) or set(item) != _BASE_EDIT_KEYS:
+            raise CutError(f"spec {path}: base_edits[{index}] must have exactly {sorted(_BASE_EDIT_KEYS)}")
+        if not all(isinstance(item[key], str) and item[key] for key in _BASE_EDIT_KEYS):
+            raise CutError(f"spec {path}: base_edits[{index}] fields must be non-empty strings")
+        if item["old"] == item["new"]:
+            raise CutError(f"spec {path}: base_edits[{index}] new text must differ from its old text")
+        target = PurePosixPath(item["path"])
+        if target.is_absolute() or ".." in target.parts:
+            raise CutError(
+                f"spec {path}: base_edits[{index}] path must stay inside the base tree, got {item['path']!r}"
+            )
+        base_edits.append(BaseEdit(item["path"], item["old"], item["new"], item["reason"]))
     raw_authored = body.get("authored")
     authored: Authored | None = None
     if raw_authored is not None:
@@ -212,6 +252,7 @@ def load_spec(path: Path) -> TaskSpec:
         broken=dict(body["broken"]),
         oracle_env=dict(body["oracle_env"]),
         prompt_edits=tuple(edits),
+        base_edits=tuple(base_edits),
         authored=authored,
     )
 
@@ -326,6 +367,24 @@ def apply_prompt_edits(prompt: str, edits: Sequence[PromptEdit]) -> str:
     return text
 
 
+def apply_base_edits(base: Path, edits: Sequence[BaseEdit]) -> None:
+    """Apply each recorded ``base/`` edit in order; each ``old`` must occur exactly once.
+
+    Order matters exactly as it does for ``apply_prompt_edits``: a later edit
+    may anchor on text an earlier one introduced. The count is checked against
+    the file as it stands when the edit's turn comes.
+    """
+    for index, edit in enumerate(edits, 1):
+        path = base / edit.path
+        if not path.is_file():
+            raise CutError(f"base_edits[{index}]: {edit.path} is not a file in BASE")
+        text = path.read_text(encoding="utf-8")
+        count = text.count(edit.old)
+        if count != 1:
+            raise CutError(f"base_edits[{index}]: its old text occurs {count} times in {edit.path}, want 1")
+        path.write_text(text.replace(edit.old, edit.new, 1), encoding="utf-8")
+
+
 def broken_patch(base_texts: Mapping[str, str | None], broken: Mapping[str, str]) -> str:
     """A git-style patch replacing each broken file with its stub (new file when absent at BASE)."""
     chunks: list[str] = []
@@ -361,6 +420,11 @@ def manifest_body(
     if spec.prompt_edits:
         generator["prompt_edits"] = [
             {"old": edit.old, "new": edit.new, "reason": edit.reason} for edit in spec.prompt_edits
+        ]
+    if spec.base_edits:
+        generator["base_edits"] = [
+            {"path": edit.path, "old": edit.old, "new": edit.new, "reason": edit.reason}
+            for edit in spec.base_edits
         ]
     if spec.authored is not None:
         generator["authored"] = True
@@ -461,6 +525,7 @@ def cut(spec: TaskSpec, repo: Path, tasks_root: Path) -> Path:
     gitignore = dest / "base" / ".gitignore"
     if (text := residue_gitignore(gitignore.read_text() if gitignore.exists() else None)) is not None:
         gitignore.write_text(text)
+    apply_base_edits(dest / "base", spec.base_edits)
     (dest / "overlay").mkdir()
     for hidden in spec.hidden:
         if (body := show(repo, spec.good, hidden)) is None:

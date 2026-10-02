@@ -75,6 +75,12 @@ GUARD_KINDS = frozenset(
     }
 )
 
+#: Guard entries the eval's own extension emits. Kept out of ``GUARD_KINDS``,
+#: which mirrors the engine's own list and is pinned against it by the
+#: integration tier; the transcript vocabulary accepts the union, so a
+#: confinement refusal is a count, never an ``unknown_event``.
+EVAL_GUARD_KINDS = frozenset({"confinement_refused"})
+
 type PathologyReason = Literal[
     "absent", "empty", "unparseable", "unsupported_version",
     "unknown_event", "malformed", "multi_session", "partial",
@@ -97,6 +103,10 @@ class CellPathology:
     tool_free_terminal_turns: int = 0
     workspace_escapes: int = 0
     loop_broken: int = 0
+    #: The eval's own confinement extension's refusals (design C1). Counted
+    #: beside the engine's guard kinds; a nonzero count on a deciding cell is
+    #: the audit's ``confinement_refused`` leg.
+    confinement_refusals: int = 0
 
     def to_block(self) -> dict[str, object]:
         if not self.measured:
@@ -113,6 +123,7 @@ class CellPathology:
             "tool_free_terminal_turns": self.tool_free_terminal_turns,
             "workspace_escapes": self.workspace_escapes,
             "loop_broken": self.loop_broken,
+            "confinement_refusals": self.confinement_refusals,
         }
 
 
@@ -241,7 +252,7 @@ def _vocabulary_ok(events: list[dict]) -> PathologyReason | None:
             entry = event.get("entry")
             if not isinstance(entry, dict) or not isinstance(entry.get("customType"), str):
                 return "malformed"
-            if entry["customType"] not in GUARD_KINDS:
+            if entry["customType"] not in GUARD_KINDS | EVAL_GUARD_KINDS:
                 return "unknown_event"
     return None
 
@@ -428,12 +439,16 @@ def _count(events: list[dict], *, had_patch: bool, truncated: bool = False) -> C
         if event["toolName"] in FILE_TOOLS
         and _escapes(events[0]["cwd"], (event.get("args") or {})["path"])
     )
-    loop_broken = sum(
-        1
-        for event in events
-        if event.get("type") == "entry_appended"
-        and event["entry"]["customType"] == "loop_broken"
-    )
+    def _entries(kind: str) -> int:
+        return sum(
+            1
+            for event in events
+            if event.get("type") == "entry_appended"
+            and event["entry"]["customType"] == kind
+        )
+
+    loop_broken = _entries("loop_broken")
+    confinement_refusals = _entries("confinement_refused")
     return CellPathology(
         measured=True,
         truncated=truncated,
@@ -446,6 +461,7 @@ def _count(events: list[dict], *, had_patch: bool, truncated: bool = False) -> C
         tool_free_terminal_turns=tool_free,
         workspace_escapes=escapes,
         loop_broken=loop_broken,
+        confinement_refusals=confinement_refusals,
     )
 
 
