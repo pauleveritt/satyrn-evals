@@ -8,7 +8,7 @@ that holds it.
 
 Keep a small local model on track so a Python developer can use local AI and
 stay at the wheel: the developer does domain engineering (specs and tests),
-not agent engineering. Two repositories, both on branch `release-one`:
+not agent engineering. Two repositories, both on branch `main`:
 
 - **`satyrn-evals`** — the eval harness: tasks, isolated cells, launcher,
   grading from retained evidence. Head: the commit that adds this line; the
@@ -179,7 +179,7 @@ phase rows.
   the n = 6 record, two before the implementation existed. The detector in
   `evidence/2026-09-22-mellum-tool-surface/compare_ornith.py` is a regex over
   the last reasoning line, not a harness counter; none is built.
-- **Engine pins are unified.** satyrn-engine `release-one` ends at
+- **Engine pins are unified.** satyrn-engine `main` (formerly `release-one`) ends at
   `1869397d605f887483d626e7434ccca2bdace340`, the merge of the
   `harness-extension-seam` PR (tree identical to `54d814d`, which is
   `803df2d` plus the `$SATYRN_EXTRA_EXTENSIONS` seam). All three Engine arms
