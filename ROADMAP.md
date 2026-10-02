@@ -72,7 +72,7 @@ Nothing is built on any of them in the meantime.
 
 | # | Step | Mode | Done when |
 |---|---|---|---|
-| C0 | Mark each result above unconfirmed in `evidence/2026-09-15-release-one-decision-ledger.md`, naming this harness change | attended | every listed decision carries the mark and the commit that re-opened it |
+| C0 | Mark each result above unconfirmed in `evidence/2026-09-15-release-one-decision-ledger.md`, naming this harness change | attended | every listed decision carries the mark and the commit that re-opened it  done 2026-10-02: ledger entry "C0", marks name `35c298d`; census night 3 added to the list |
 | C1 | Re-qualify on the new harness: same task, model and budgets, extension loaded on both arms, no host setup | attended | a qualification record under `confinement` that passes preflight on this machine |
 | C2 | Re-read the census process classes from retained transcripts; re-sign the class columns where `hunting` becomes live | attended | signed columns that state which cells reclassified and why |
 | C3 | Re-run the census outcome cells under confinement | batch, frozen in daylight | a classified table on this harness, with refused and flagged cells counted |
