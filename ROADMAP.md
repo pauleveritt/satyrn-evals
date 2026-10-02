@@ -78,6 +78,29 @@ Nothing is built on any of them in the meantime.
 | C3 | Re-run the census outcome cells under confinement | batch, frozen in daylight | a classified table on this harness, with refused and flagged cells counted  done 2026-10-03: ledger entry "C3", evidence/2026-10-03-c3-census/ |
 | C4 | Re-derive the finishing counterfactual, then resume R0's order | attended | the counterfactual's verdict on the new census, before any Engine build  done 2026-10-03: ledger entry "C4", verify; next: R0 sitting (census design §8) |
 
+## Next — Phase EB, engine budget
+
+Design: `docs/superpowers/specs/2026-10-02-engine-budget-design.md`;
+evidence: `evidence/2026-10-02-engine-budget/README.md` (UNCONFIRMED:
+isolation harness, engine `78ab87d`).
+
+Release two's floor-parity secondary failed: on tasks both arms pass, the
+Engine delivers the same and costs more. The decider is output tokens per
+delivered pass; peak context and wall clock are declared secondaries.
+**Parity is not a remedy:** restoring what bare Pi already has (the `edit`
+tool's descriptions, guidelines, argument tolerance and anchor matching) is
+R2 work and lands with the fixes confinement itself requires, before the
+first post-C4 Engine read; everything that adds behaviour waits for C4 and an
+offline estimate.
+
+| # | Step | Mode | Done when |
+|---|---|---|---|
+| EB0 | Development record, both arms, floor tasks, confinement, engine at the pin; run after C3 | batch, frozen in daylight | `records/2026-10-02-eb0-*` complete, cells retained whole |
+| EB1 | Re-derive the cost attribution on EB0 cells; choose the floor set by robust pairwise difference; state the parity rule's power | offline, no model | an evidence README with denominators and the floor set |
+| — | Confinement fixes the Engine arm needs anyway: the inner Pi's `SATYRN_CONFINEMENT_ROOT`; `self_test_red_stop` in receipts. R2 parity for `edit` in the same re-pin | overnight build | tests both directions; one admitted Engine smoke cell |
+| EB2 | Remedies in R0's order, each with an offline estimate that names its class: the contract's test lines, edit-result echo, self-test dedup and note hygiene, a light path for small requests | after C4 | an approved spec per remedy |
+| EB3 | Floor read under the pre-registered rule; primary task re-measured | batch | result files; ledger updated |
+
 ## Rules that bind every phase
 
 - Attended sittings are ≤ 60 min and n ≤ 8; a batch sitting is 720 minutes
