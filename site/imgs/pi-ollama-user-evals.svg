@@ -1,0 +1,497 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 1568 882"
+   font-family="'Courier New', Courier, monospace"
+   version="1.1"
+   id="svg31"
+   sodipodi:docname="pi-ollama-user-evals.svg"
+   inkscape:version="1.4.4 (dcaf3e7d9e, 2026-05-05)"
+   inkscape:export-filename="pi-ollama-user-evals.png"
+   inkscape:export-xdpi="90"
+   inkscape:export-ydpi="90"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview31"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="1.8808078"
+     inkscape:cx="653.70848"
+     inkscape:cy="417.6397"
+     inkscape:window-width="3440"
+     inkscape:window-height="1382"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg31" />
+  <defs
+     id="defs1">
+    <marker
+       id="arrow"
+       viewBox="0 0 10 10"
+       refX="9"
+       refY="5"
+       markerWidth="7"
+       markerHeight="7"
+       orient="auto-start-reverse"
+       preserveAspectRatio="xMidYMid">
+      <path
+         d="M 0 0 L 10 5 L 0 10 z"
+         fill="#000"
+         id="path1" />
+    </marker>
+  </defs>
+  <!-- background -->
+  <rect
+     x="0"
+     y="0"
+     width="1568"
+     height="882"
+     fill="#fff"
+     id="rect1" />
+  <!-- outer boundary -->
+  <rect
+     x="14"
+     y="14"
+     width="1540"
+     height="854"
+     rx="10"
+     fill="none"
+     stroke="#000"
+     stroke-width="2.5"
+     id="rect2" />
+  <text
+     x="784"
+     y="58"
+     font-size="30"
+     text-anchor="middle"
+     id="text2">Local Machine</text>
+  <!-- user -->
+  <rect
+     x="55"
+     y="290"
+     width="130"
+     height="185"
+     rx="6"
+     fill="#fff"
+     stroke="#000"
+     stroke-width="2"
+     id="rect3" />
+  <text
+     x="120"
+     y="328"
+     font-size="24"
+     text-anchor="middle"
+     id="text3">user</text>
+  <circle
+     cx="120"
+     cy="375"
+     r="16"
+     fill="none"
+     stroke="#000"
+     stroke-width="2.5"
+     id="circle3" />
+  <path
+     d="M 90 442 C 90 412, 150 412, 150 442"
+     fill="none"
+     stroke="#000"
+     stroke-width="2.5"
+     id="path3" />
+  <!-- Pi -->
+  <rect
+     x="315"
+     y="140"
+     width="270"
+     height="457.97531"
+     rx="8"
+     fill="#ffffff"
+     stroke="#000000"
+     stroke-width="2"
+     id="rect4" />
+  <rect
+     x="336"
+     y="530"
+     width="230"
+     height="52"
+     fill="#ffffff"
+     stroke="#000000"
+     stroke-width="1.8"
+     id="rect9-7" />
+  <text
+     x="450"
+     y="562.93555"
+     font-size="22px"
+     text-anchor="middle"
+     id="text10-5">engine-plugin</text>
+  <text
+     x="450"
+     y="182"
+     font-size="26"
+     text-anchor="middle"
+     id="text4">Pi</text>
+  <text
+     x="450"
+     y="214"
+     font-size="26"
+     text-anchor="middle"
+     id="text5">(agent harness)</text>
+  <rect
+     x="335"
+     y="240"
+     width="230"
+     height="52"
+     fill="#fff"
+     stroke="#000"
+     stroke-width="1.8"
+     id="rect5" />
+  <text
+     x="450"
+     y="273"
+     font-size="22"
+     text-anchor="middle"
+     id="text6">system prompt</text>
+  <rect
+     x="335"
+     y="298"
+     width="230"
+     height="52"
+     fill="#fff"
+     stroke="#000"
+     stroke-width="1.8"
+     id="rect6" />
+  <text
+     x="450"
+     y="331"
+     font-size="22"
+     text-anchor="middle"
+     id="text7">AGENTS.md</text>
+  <rect
+     x="335"
+     y="356"
+     width="230"
+     height="52"
+     fill="#fff"
+     stroke="#000"
+     stroke-width="1.8"
+     id="rect7" />
+  <text
+     x="450"
+     y="389"
+     font-size="22"
+     text-anchor="middle"
+     id="text8">history</text>
+  <rect
+     x="335"
+     y="414"
+     width="230"
+     height="52"
+     fill="#fff"
+     stroke="#000"
+     stroke-width="1.8"
+     id="rect8" />
+  <text
+     x="450"
+     y="447"
+     font-size="22"
+     text-anchor="middle"
+     id="text9">tools</text>
+  <rect
+     x="335"
+     y="472"
+     width="230"
+     height="52"
+     fill="#fff"
+     stroke="#000"
+     stroke-width="1.8"
+     id="rect9" />
+  <text
+     x="450"
+     y="505"
+     font-size="22"
+     text-anchor="middle"
+     id="text10">compaction</text>
+  <!-- Ollama -->
+  <rect
+     x="735"
+     y="140"
+     width="340"
+     height="460"
+     rx="8"
+     fill="#fff"
+     stroke="#000"
+     stroke-width="2"
+     id="rect10" />
+  <text
+     x="905"
+     y="182"
+     font-size="26"
+     text-anchor="middle"
+     id="text11">Ollama (server)</text>
+  <!-- engine -->
+  <rect
+     x="755.11621"
+     y="203.50629"
+     width="299.76761"
+     height="376.37753"
+     rx="5.9953523"
+     fill="#ffffff"
+     stroke="#000000"
+     stroke-width="1.8"
+     id="rect13" />
+  <text
+     x="904.92041"
+     y="229.99405"
+     font-size="24px"
+     text-anchor="middle"
+     id="text14"><tspan
+       sodipodi:role="line"
+       id="tspan3"
+       x="904.92041"
+       y="229.99405">executable</tspan><tspan
+       sodipodi:role="line"
+       id="tspan4"
+       x="904.92041"
+       y="259.99405">(llama.cpp)</tspan></text>
+  <rect
+     x="770.33472"
+     y="269.49731"
+     width="269.14795"
+     height="118.39392"
+     fill="#ffffff"
+     stroke="#000000"
+     stroke-width="2.35206"
+     id="rect14"
+     style="stroke-width:1.5;stroke-dasharray:none" />
+  <text
+     x="905"
+     y="299.85449"
+     font-size="22px"
+     text-anchor="middle"
+     id="text15">GGUF → RAM/VRAM</text>
+  <rect
+     x="770"
+     y="396"
+     width="270"
+     height="48"
+     fill="#fff"
+     stroke="#000"
+     stroke-width="1.5"
+     id="rect15" />
+  <text
+     x="905"
+     y="427"
+     font-size="22"
+     text-anchor="middle"
+     id="text16">tokenizer</text>
+  <rect
+     x="770"
+     y="452"
+     width="270"
+     height="48"
+     fill="#fff"
+     stroke="#000"
+     stroke-width="1.5"
+     id="rect16" />
+  <text
+     x="905"
+     y="483"
+     font-size="22"
+     text-anchor="middle"
+     id="text17">KV cache</text>
+  <rect
+     x="770"
+     y="508"
+     width="270"
+     height="48"
+     fill="#fff"
+     stroke="#000"
+     stroke-width="1.5"
+     id="rect17" />
+  <text
+     x="905"
+     y="539"
+     font-size="22"
+     text-anchor="middle"
+     id="text18">sampler</text>
+  <!-- Mellum2 -->
+  <g
+     id="g2"
+     transform="translate(10.207733)"
+     style="stroke-width:1.5;stroke-dasharray:none">
+    <rect
+       x="818.13074"
+       y="319.7579"
+       width="153.14044"
+       height="55.803543"
+       rx="4.0167985"
+       fill="#ffffff"
+       stroke="#000000"
+       stroke-width="1.23205"
+       id="rect18"
+       style="stroke-width:1.5;stroke-dasharray:none" />
+    <text
+       x="894.71136"
+       y="339.84198"
+       font-size="26px"
+       text-anchor="middle"
+       id="text19"
+       style="font-size:21.3333px;stroke-width:1.5;stroke-dasharray:none"><tspan
+         sodipodi:role="line"
+         id="tspan1"
+         x="894.71136"
+         y="339.84198"
+         style="font-size:21.3333px;stroke-width:1.5;stroke-dasharray:none">Model</tspan><tspan
+         sodipodi:role="line"
+         id="tspan2"
+         x="894.71136"
+         y="366.50861"
+         style="font-size:21.3333px;stroke-width:1.5;stroke-dasharray:none">(Mellum2)</tspan></text>
+  </g>
+  <!-- arrows -->
+  <!-- user -> Pi -->
+  <line
+     x1="185"
+     y1="386"
+     x2="312.48743"
+     y2="386"
+     stroke="#000000"
+     stroke-width="2"
+     marker-end="url(#arrow)"
+     id="line21" />
+  <text
+     x="244"
+     y="366"
+     font-size="22"
+     text-anchor="middle"
+     id="text22">prompt</text>
+  <!-- Pi -> Ollama -->
+  <line
+     x1="585"
+     y1="386"
+     x2="732.83484"
+     y2="386"
+     stroke="#000000"
+     stroke-width="2"
+     marker-end="url(#arrow)"
+     id="line22" />
+  <text
+     x="654"
+     y="360"
+     font-size="22"
+     text-anchor="middle"
+     id="text23">API</text>
+  <text
+     x="654"
+     y="416"
+     font-size="22"
+     text-anchor="middle"
+     id="text24">request</text>
+  <!-- Ollama -> Mellum2 -->
+  <g
+     id="g3"
+     transform="translate(7.9752966,2.6878815)">
+    <text
+       x="1149.6982"
+       y="334.94931"
+       font-size="22px"
+       text-anchor="middle"
+       id="text25">forward</text>
+    <text
+       x="1149.4189"
+       y="366.37024"
+       font-size="22px"
+       text-anchor="middle"
+       id="text26">pass</text>
+  </g>
+  <!-- tokens: Mellum2 -> Pi (top route) -->
+  <text
+     x="1157.325"
+     y="82.226562"
+     font-size="24px"
+     text-anchor="middle"
+     id="text27">tokens</text>
+  <!-- Pi -> user (answer) -->
+  <path
+     d="m 313.49616,229.64531 h -195 l 0,60.35469"
+     fill="none"
+     stroke="#000000"
+     stroke-width="2"
+     marker-end="url(#arrow)"
+     id="path27"
+     sodipodi:nodetypes="ccc" />
+  <text
+     x="200.2711"
+     y="225.20703"
+     font-size="22px"
+     text-anchor="middle"
+     id="text28">answer</text>
+  <!-- evals box -->
+  <rect
+     x="565"
+     y="680"
+     width="505"
+     height="125"
+     rx="6"
+     fill="#fff"
+     stroke="#000"
+     stroke-width="2"
+     stroke-dasharray="9 7"
+     id="rect28" />
+  <text
+     x="817"
+     y="724"
+     font-size="26"
+     text-anchor="middle"
+     id="text29">evals</text>
+  <text
+     x="817"
+     y="760"
+     font-size="24"
+     text-anchor="middle"
+     id="text30">(lm-eval-harness / SWE-bench)</text>
+  <!-- evals -> Pi (dashed) -->
+  <path
+     d="M 565 730 L 458 730 L 458 596"
+     fill="none"
+     stroke="#000"
+     stroke-width="2"
+     stroke-dasharray="9 7"
+     marker-end="url(#arrow)"
+     id="path30" />
+  <!-- evals -> Ollama (dashed) -->
+  <path
+     d="M 872 680 L 872 636 L 905 636 L 905 606"
+     fill="none"
+     stroke="#000"
+     stroke-width="2"
+     stroke-dasharray="9 7"
+     marker-end="url(#arrow)"
+     id="path31" />
+  <!-- evals -> scores -->
+  <line
+     x1="1070"
+     y1="743"
+     x2="1140"
+     y2="743"
+     stroke="#000"
+     stroke-width="2"
+     marker-end="url(#arrow)"
+     id="line31" />
+  <text
+     x="1156"
+     y="752"
+     font-size="24"
+     id="text31">scores</text>
+  <path
+     style="fill:none;stroke:#000000;stroke-width:2;stroke-dasharray:none;marker-end:url(#arrow)"
+     d="m 981.47891,347.65968 321.75579,-10e-6 L 1303.0563,92 H 430 v 48"
+     id="path4"
+     sodipodi:nodetypes="ccccc" />
+</svg>
