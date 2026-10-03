@@ -2784,3 +2784,4 @@
 | docs/superpowers/plans/2026-10-02-c2-hunting-reread-DRAFT.md | created 2026-10-02 on phase-c1; UNAPPROVED draft plan written read-only by an Opus agent for the maintainer's review; not guidance until approved |
 | docs/superpowers/plans/2026-10-02-c3-census-rerun-DRAFT.md | created 2026-10-02 on phase-c1; UNAPPROVED draft plan written read-only by an Opus agent for the maintainer's review; not guidance until approved |
 | docs/superpowers/plans/2026-10-02-c4-counterfactual-DRAFT.md | created 2026-10-02 on phase-c1; UNAPPROVED draft plan written read-only by an Opus agent for the maintainer's review; not guidance until approved |
+| tests/test_retired_cell_flag.py | created 2026-10-02 on phase-c1; guard that no live file passes the retired --cell flag (C1 design §4) |

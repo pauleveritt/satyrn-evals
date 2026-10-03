@@ -1,4 +1,8 @@
 #!/bin/sh
+# HISTORICAL: frozen evidence for the isolated census nights (two-uid harness,
+# retired 2026-09-27, 35c298d). Not runnable under confinement: it calls
+# `preflight_settings.py --cell`, a flag that no longer exists. C3 runs from its
+# own driver (docs/superpowers/specs/2026-10-02-c1-requalify-design.md §4).
 # census_night.sh -- run the 2026-09-16 pathology census, in order, from the evals checkout.
 # One record per task; each record's result is committed before the next record launches,
 # because a chained record's `previous_result` must be committed at launch.

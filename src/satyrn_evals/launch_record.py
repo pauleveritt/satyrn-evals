@@ -10,15 +10,15 @@ The spec's launcher gates ("Process"), in order, before any cell:
    hunt and no test PATH seam (Ruling 7);
 3. ``gate``: the record is frozen (tracked, unchanged against ``HEAD``), the
    previous result is committed, n and wall clock are under the cadence cap,
-   and a deciding purpose is isolated;
-4. under isolation, the cell preflight (``cell_preflight.preflight_cell``) is clean,
-   and an Engine arm's export is the commit and bytes it pins
+   and the record names the current `confinement`;
+4. the confinement preflight (``cell_preflight.preflight_confinement``) is clean,
+   and an Engine arm's checkout is the commit and bytes it pins
    (``cell_engine.engine_checkout_problems``);
 5. the arm's model server answers ``GET <base_url>/v1/models`` and lists
    its ``server_model`` (``model_server.model_server_problems``), skipped
    only on the test PATH seam a deciding record already refused above;
-6. ``scripts/preflight_settings.py`` exits 0 for every arm (``--cell`` under
-   isolation); its provenance block is kept for the drift check.
+6. ``scripts/preflight_settings.py`` exits 0 for every arm; its provenance block
+   is kept for the drift check.
 
 Between cells the drift probe re-reads the record and arm file bytes, the
 task tree digest and the settings provenance; any change stops the night.
@@ -118,10 +118,10 @@ def git_head() -> str:
     return _git(["rev-parse", "HEAD"], Path.cwd()).stdout.strip()
 
 
-def settings_provenance(arm_path: Path, cell: bool) -> tuple[int, str]:
+def settings_provenance(arm_path: Path) -> tuple[int, str]:
     """``preflight_settings.py`` for one arm: its exit code and its provenance JSON."""
     ran = subprocess.run(
-        [sys.executable, os.fspath(SETTINGS_SCRIPT), os.fspath(arm_path), *(["--cell"] if cell else [])],
+        [sys.executable, os.fspath(SETTINGS_SCRIPT), os.fspath(arm_path)],
         capture_output=True, text=True, check=False,
     )
     return ran.returncode, ran.stdout if ran.returncode == 0 else ran.stdout + ran.stderr
@@ -181,7 +181,7 @@ class LaunchFacts:
     committed: Callable[[str], bool] = git_committed
     head: Callable[[], str] = git_head
     confinement_preflight: Callable[..., CellPreflight] = preflight_confinement
-    settings: Callable[[Path, bool], tuple[int, str]] = settings_provenance
+    settings: Callable[[Path], tuple[int, str]] = settings_provenance
     spawn_cell: Callable[[Path, Path], CellProcess] = popen_cell
     engine_export: Callable[[Arm], list[str]] = engine_checkout_problems
     engine_self_test: Callable[..., TaskSelfTest] = run_engine_self_test
@@ -361,7 +361,7 @@ def launch_record(
     baseline_settings: dict[str, str] = {}
     if settings:
         for name, (path, _) in arms.items():
-            code, text = facts.settings(path, False)
+            code, text = facts.settings(path)
             if code != 0:
                 problems.append(f"preflight_settings for {name} exited {code}: {text.strip()}")
             baseline_settings[name] = text
@@ -390,7 +390,7 @@ def launch_record(
         if tree_digest(task_dir) != tree:
             return f"the {record.task} task tree no longer matches task_tree_sha256"
         for name, (path, _) in arms.items() if settings else ():
-            if facts.settings(path, False)[1] != baseline_settings[name]:
+            if facts.settings(path)[1] != baseline_settings[name]:
                 return f"the settings provenance for {name} changed"
         return None
 
