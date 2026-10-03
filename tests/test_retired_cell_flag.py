@@ -1,6 +1,8 @@
 """No live code passes ``--cell``, the flag ``preflight_settings.py`` lost with
 the two-uid harness (2026-09-27); only files headed as historical may still
-name it (2026-10-02-c1-requalify-design.md §4). No model, network, or subprocess.
+name it (2026-10-02-c1-requalify-design.md §4). ``src/satyrn_evals/tasks/`` is
+excluded because the task bases are frozen copies of older trees. No model,
+network, or subprocess.
 """
 
 import re
@@ -22,7 +24,19 @@ def retired_flag_callers(paths: Iterable[Path]) -> list[str]:
 
 
 def _live() -> list[Path]:
-    return sorted([*(ROOT / "src" / "satyrn_evals").glob("*.py"), *(ROOT / "scripts").glob("*")])
+    package = ROOT / "src" / "satyrn_evals"
+    frozen = package / "tasks"
+    return sorted(
+        [
+            *(
+                p
+                for p in package.rglob("*.py")
+                if "__pycache__" not in p.parts and frozen not in p.parents
+            ),
+            *(p for p in (ROOT / "tools").rglob("*.py") if "__pycache__" not in p.parts),
+            *(ROOT / "scripts").glob("*"),
+        ]
+    )
 
 
 def test_no_live_file_names_the_retired_cell_flag() -> None:
