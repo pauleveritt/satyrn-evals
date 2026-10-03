@@ -2855,3 +2855,4 @@
 | records/2026-10-02-eb0-agentclinic-repair-depth-3.json | created 2026-10-02 on worktree-engine-budget by `satyrn-evals record new`; EB0 development record under confinement, mirrors records/2026-09-21-comparison-agentclinic-repair-depth-3.json |
 | records/2026-10-02-eb0-selfhost-guard-prefixes.json | created 2026-10-02 on worktree-engine-budget by `satyrn-evals record new`; EB0 development record under confinement, mirrors records/2026-09-21-comparison-selfhost-guard-prefixes.json |
 | records/2026-10-02-eb0-selfhost-review-script.json | created 2026-10-02 on worktree-engine-budget by `satyrn-evals record new`; EB0 development record under confinement, mirrors records/2026-09-21-comparison-selfhost-review-script.json |
+| records/2026-10-02-eb0-smoke-agentclinic-repair-depth-3.json | created 2026-10-02 on worktree-engine-budget by `satyrn-evals record new`; EB0 smoke: one attended Engine cell under confinement, read for confinement_refused |
