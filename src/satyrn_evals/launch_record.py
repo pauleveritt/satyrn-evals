@@ -5,9 +5,11 @@ The spec's launcher gates ("Process"), in order, before any cell:
 1. the record loads, and every ``--arm`` file is one of the record's arms on
    the record's model, with a command ``check_invocation`` accepts (task,
    task tree, arm, model) and a rung the task declares;
-2. a deciding record (admission, route-proof, campaign) runs with the spec's
-   backstop (1,800 s command, 2,100 s deadline), the settings check, the full
-   hunt and no test PATH seam (Ruling 7);
+2. a deciding record (admission, route-proof, campaign) refuses
+   ``--no-settings``, ``--no-hunt``, ``--timeout``, ``--attempt-timeout`` and the
+   test PATH seam, so it runs with the record's own ``command_backstop_s`` and
+   the attempt deadline that backstop implies, the settings check and the full
+   hunt (Ruling 7);
 3. ``gate``: the record is frozen (tracked, unchanged against ``HEAD``), the
    previous result is committed, n and wall clock are under the cadence cap,
    and the record names the current `confinement`;

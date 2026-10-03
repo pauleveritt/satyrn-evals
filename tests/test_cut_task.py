@@ -135,8 +135,8 @@ def test_a_tasks_own_cut_tree_stays_out_of_its_own_base() -> None:
 
 
 def test_another_tasks_cut_tree_stays_in_the_base() -> None:
-    """The sibling: cutting `t` must not blind a cell to an unrelated task's
-    already-committed tree."""
+    """The sibling: cutting `t` must not blind a cell to an unrelated external
+    task's already-committed tree. Self-hosted tasks are excluded (C1, ruling R3)."""
     assert not excluded("src/satyrn_evals/tasks/other/manifest.json", [], "t")
 
 

@@ -710,7 +710,7 @@ session_p.add_argument(
 )
 
 launch_p = sub.add_parser(
-    "launch", help="run a frozen record's cells; or check a record, or preflight the cell user for one"
+    "launch", help="run a frozen record's cells; or check a record, or run the confinement preflight for one"
 )
 launch_p.add_argument("record", nargs="?", default=None, help="frozen run record JSON whose cells to run")
 launch_p.add_argument("--check", default=None, help="run record JSON path to check")
