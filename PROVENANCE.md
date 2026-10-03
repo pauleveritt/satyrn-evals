@@ -2781,7 +2781,7 @@
 | evidence/2026-10-02-cleanup-audit/README.md | created 2026-10-02, cleanup audit of both trees |
 | docs/superpowers/specs/2026-10-02-c1-requalify-design.md | created 2026-10-02 on phase-c1; the C1 design note (re-cut, Baseline-only re-qualification under confinement), approved in conversation |
 | docs/superpowers/plans/2026-10-02-c1-requalify.md | created 2026-10-02 on phase-c1; the C1 implementation plan (re-cut, records, attended preflight, close-out) |
-| docs/superpowers/plans/2026-10-02-c2-hunting-reread-DRAFT.md | created 2026-10-02 on phase-c1; UNAPPROVED draft plan written read-only by an Opus agent for the maintainer's review; not guidance until approved |
+| docs/superpowers/plans/2026-10-03-c2-hunting-reread.md | created 2026-10-02 on phase-c1 as 2026-10-02-c2-hunting-reread-DRAFT.md (draft plan written read-only by an Opus agent); renamed and approved 2026-10-03: the maintainer ruled D1-D7 in session, D4 amended (ledger "2026-10-03 — C2 and three C3 decisions ruled") |
 | docs/superpowers/plans/2026-10-02-c3-census-rerun-DRAFT.md | created 2026-10-02 on phase-c1; UNAPPROVED draft plan written read-only by an Opus agent for the maintainer's review; not guidance until approved |
 | docs/superpowers/plans/2026-10-02-c4-counterfactual-DRAFT.md | created 2026-10-02 on phase-c1; UNAPPROVED draft plan written read-only by an Opus agent for the maintainer's review; not guidance until approved |
 | tests/test_retired_cell_flag.py | created 2026-10-02 on phase-c1; guard that no live file passes the retired --cell flag (C1 design §4) |
@@ -2799,3 +2799,4 @@
 | evidence/2026-10-02-c1-preflight/selfhost-preflight-quiet.json | created 2026-10-03 on phase-c1; C1 Task 5 preflight evidence (launch --preflight under confinement, no model) |
 | evidence/2026-10-02-c1-preflight/selfhost-run-record-gate.json | created 2026-10-03 on phase-c1; C1 Task 5 preflight evidence (launch --preflight under confinement, no model) |
 | evidence/2026-10-02-c1-preflight/selfhost-speed-probe.json | created 2026-10-03 on phase-c1; C1 Task 5 preflight evidence (launch --preflight under confinement, no model) |
+| evidence/2026-10-03-c2-hunting-reread/prereg.md | created 2026-10-03 on phase-c1; C2 Task 1 pre-registration, drafted by an agent for the maintainer's approval; not yet approved |

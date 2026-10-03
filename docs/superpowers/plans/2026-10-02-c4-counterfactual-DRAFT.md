@@ -59,7 +59,7 @@
 | **not-the-lever** | no budget-shaped task has net ≥ 1 | R0 §5 question 3 (is 9B at 48k the honest setting?), and another Engine-addressable class from C3's table (for example runaway's completion-gate trigger), each with its own offline estimate (R0 §1.4) | finish-on-green spec |
 
 Under any verdict:
-- EB2 remedies need offline estimates on EB0 cells, and EB0 runs in its own sitting after C3.
+- EB2 remedies need offline estimates on EB0 cells~~, and EB0 runs in its own sitting after C3~~. Struck 2026-10-03: EB0 ran 2026-10-02 21:50 to 2026-10-03 00:27, before any C3 sitting; its cells and results exist (`worktree-engine-budget` `c805ab1`).
 - The Engine's inner-Pi `SATYRN_CONFINEMENT_ROOT` fix lands before the first post-C4 Engine read.
 - `derive-new-top-level-module` **stays parked**. This counterfactual scores a stop rule on Baseline cells and cannot name a derive remedy, and EB names EB1 as its only reopener. Spell out the contradiction with ROADMAP's "reopens at C4, only if the re-derived counterfactual names it": the condition cannot be met by this instrument.
 
@@ -315,7 +315,7 @@ if __name__ == "__main__":
 
 - [ ] Schedule the R0 sitting (≤ 60 min) with three inputs: C3's signed table, C4's verdict, and census design §8 items 1–4 as the agenda.
 - [ ] Hold Engine spec work until that sitting fixes §8.3.
-- [ ] EB0, the confinement fixes and EB2 follow EB's own (unapproved) order, never before this sitting's rule.
+- [ ] The confinement fixes and EB2 follow EB's own (unapproved) order, never before this sitting's rule. EB0 has already run (2026-10-02 21:50 to 2026-10-03 00:27, development cells; struck from this step 2026-10-03).
 
 ## Done when (ROADMAP C4)
 
