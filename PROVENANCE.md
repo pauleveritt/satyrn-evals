@@ -2802,3 +2802,5 @@
 | evidence/2026-10-03-c2-hunting-reread/prereg.md | created 2026-10-03 on phase-c1; C2 Task 1 pre-registration, drafted by an agent; approved by the maintainer in session 2026-10-03 |
 | evidence/2026-10-03-c2-hunting-reread/reread.py | created 2026-10-03 on phase-c1; C2 Task 2 read-only script (existing pure functions only; not yet run on real data) |
 | tests/test_c2_reread.py | created 2026-10-03 on phase-c1; default-tier tests for the C2 re-read columns, both directions, fixtures built in the file |
+| evidence/2026-10-03-c2-hunting-reread/cells.json | written by reread.py on 2026-10-03 at evals HEAD 29404dc; C2 Task 3 mechanical re-read, no outcome read |
+| evidence/2026-10-03-c2-hunting-reread/table.md | written by reread.py on 2026-10-03 at evals HEAD 29404dc; C2 Task 3 mechanical re-read, no outcome read |
