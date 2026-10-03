@@ -52,12 +52,14 @@ def _shipped() -> list[str]:
     )
 
 
+@pytest.mark.skip(reason="C1: names a self-hosted task the C1 cut excludes from this base")
 def test_the_golden_table_covers_every_shipped_task() -> None:
     """A task added without a row would otherwise never be checked."""
     assert sorted(FLEET) == _shipped()
 
 
 @pytest.mark.parametrize("name", sorted(FLEET))
+@pytest.mark.skip(reason="C1: names a self-hosted task the C1 cut excludes from this base")
 def test_each_shipped_task_renders_its_pinned_patterns(name: str) -> None:
     task_dir = DEFAULT_TASKS_ROOT / name
     manifest = load_manifest(task_dir)

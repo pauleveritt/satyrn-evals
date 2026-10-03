@@ -47,6 +47,14 @@ def residue_paths(base: Path) -> list[Path]:
     )
 
 
+def nested_selfhost_roots(base: Path) -> list[Path]:
+    """Self-hosted task directories inside a base, relative to it (C1, ruling R3)."""
+    tasks = base / "src" / "satyrn_evals" / "tasks"
+    if not tasks.is_dir():
+        return []
+    return sorted(path.relative_to(base) for path in tasks.glob("selfhost-*") if path.is_dir())
+
+
 def test_every_persisted_task_base_is_free_of_residue() -> None:
     bases = sorted(TASKS_ROOT.glob("*/base"))
     assert bases, "expected at least one committed task base under src/satyrn_evals/tasks"
@@ -69,6 +77,26 @@ def test_the_residue_predicate_names_the_offending_path(tmp_path: Path) -> None:
     (base / ".venv" / "bin" / "activate.bat").write_text("REM\r\n")
     (base / "real.py").write_text("x = 1\n")
     assert residue_paths(base) == [Path(".venv/bin/activate.bat")]
+
+
+def test_no_persisted_task_base_nests_a_self_hosted_task() -> None:
+    nested = {
+        str(base.relative_to(TASKS_ROOT)): found
+        for base in sorted(TASKS_ROOT.glob("*/base"))
+        if (found := nested_selfhost_roots(base))
+    }
+    assert nested == {}
+
+
+def test_the_nesting_predicate_finds_nothing_beside_external_tasks(tmp_path: Path) -> None:
+    """The success sibling: external fixture tasks stay and are not nesting."""
+    (tmp_path / "src" / "satyrn_evals" / "tasks" / "format_number" / "base").mkdir(parents=True)
+    assert nested_selfhost_roots(tmp_path) == []
+
+
+def test_the_nesting_predicate_names_a_nested_self_hosted_task(tmp_path: Path) -> None:
+    (tmp_path / "src" / "satyrn_evals" / "tasks" / "selfhost-x" / "base").mkdir(parents=True)
+    assert nested_selfhost_roots(tmp_path) == [Path("src/satyrn_evals/tasks/selfhost-x")]
 
 
 def test_tree_digest_ignores_residue_while_snapshot_tree_does_not() -> None:

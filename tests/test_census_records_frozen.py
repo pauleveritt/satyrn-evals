@@ -62,10 +62,24 @@ DECISION_RULE = (
 #: bases byte for byte; the manifest is inside `tree_digest(task_dir)`, so the
 #: recorded revised digest moved even though no model-facing byte changed. The
 #: census records still pin the pre-2026-09-25 digest, unchanged.
+#:
+#: C1 (2026-10-02-c1-requalify-design.md): every self-hosted base was re-cut
+#: without the other self-hosted task trees nested in it (the cleanup audit's
+#: P0, evidence/2026-10-02-cleanup-audit/README.md §1); the prompt is
+#: byte-identical, and the census records still pin the pre-2026-09-25 digest.
+#: The re-cut moved three of the five trees below: selfhost-cell-loop,
+#: selfhost-speed-probe and selfhost-preflight-quiet each gain a third entry
+#: (they also carry recorded `base_edits` skipping the public tests that read a
+#: removed self-hosted task). selfhost-docs-linter and selfhost-run-record-gate
+#: nest no self-hosted task and re-cut byte-identical, so their chains stay at
+#: two entries. Before C1 each chain had two entries, not three, because the
+#: 2026-09-27 regeneration replaced the 2026-09-25 entry in place; read the
+#: dated paragraphs above as history, not as one paragraph per entry.
 TASK_TREE_REVISIONS: dict[str, tuple[str, ...]] = {
     "selfhost-cell-loop": (
         "406487a854b78b38b615d23de3c20f18eed39b04610ce3e905ff997e542f3173",
         "65ea33d4b34f2b27e6271e6af9bc78a8da5af7348ede832171f40453f2e0b74b",
+        "e7ae152a6da6fc6b804f217dffb318df0dc1056e10b021c4a5de2317bdbb6643",
     ),
     "selfhost-docs-linter": (
         "a8c1aaf0e2d5136be35ed6e5d2bf49cb88e06e15c7217ed0b481edfbd090b1c6",
@@ -78,10 +92,12 @@ TASK_TREE_REVISIONS: dict[str, tuple[str, ...]] = {
     "selfhost-speed-probe": (
         "dbb752affe8df090fa8594e8f046383c3ac57e6657fbb7c6181f31331270df28",
         "be6946cd336d318a1e5d3d2e04a6be6ab0fdbfa4be9f145841fdc52145cc26cd",
+        "a892abda9c2a4c452fe3cb0a85637ed04c38ecdd472cbe7f5a9fb2f17eed28a3",
     ),
     "selfhost-preflight-quiet": (
         "1edcf796591ec22e9c19187744d43706f840e4fdc05dbe790f925c06cac86aa0",
         "0567373a69595a8c642b8332df407f83feedb06c4aefc706c2269bba122a5e25",
+        "991c51ab1b3ebab8a52992829350e8f353d19e9fa7f430eb26531f51ea5c0a71",
     ),
 }
 
@@ -279,6 +295,15 @@ def test_a_cut_census_task_carries_no_authored_disclosure() -> None:
     for task in NIGHT1_TASKS:
         body = json.loads((DEFAULT_TASKS_ROOT / task / "manifest.json").read_text())
         assert "authored" not in (body.get("generator") or {})
+
+
+@pytest.mark.parametrize("task", sorted(t for t in CENSUS_TASKS if t.startswith("selfhost-")))
+def test_every_census_selfhost_task_keeps_its_validity_block(task: str) -> None:
+    """A re-cut does not write the R0 §1.2 `validity` block (`cut_task.py`
+    POST_CUT_MANIFEST_KEYS); C1 carries it over by hand, and this catches a
+    re-cut that dropped it."""
+    validity = json.loads((DEFAULT_TASKS_ROOT / task / "manifest.json").read_text()).get("validity")
+    assert validity is not None and validity["passed"] is True, task
 
 
 # The route-proof records. Two nights: the void 2026-09-18 night (records dated

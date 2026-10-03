@@ -85,6 +85,54 @@
         "old": "    (export / \"packages\" / \"engine\").mkdir(parents=True)\n",
         "new": "    (export / \"packages\" / \"engine\").mkdir(parents=True)\n    # verify_export refuses group-/other-writable exports, and mkdir honors the\n    # ambient umask (0775 under umask 002): pin the mode the check wants so\n    # these rows test the check, not the shell they ran in.\n    export.chmod(0o700)\n",
         "reason": "mkdir honors the ambient umask (0775 under umask 002), so this base's stand-in engine export was group-writable and verify_export refused task_self_test. The parent pinned the same chmod on 2026-09-25, after this BASE was cut, so the base carries that fix as a recorded edit."
+      },
+      {
+        "path": "tests/test_agentclinic_manifests.py",
+        "old": "def test_the_census_rung_map_names_five_tasks_that_exist() -> None:",
+        "new": "@pytest.mark.skip(reason=\"C1: names a self-hosted task the C1 cut excludes from this base\")\ndef test_the_census_rung_map_names_five_tasks_that_exist() -> None:",
+        "reason": "This test loads each census task's manifest, and the census map names selfhost-cell-loop, selfhost-docs-linter, selfhost-run-record-gate and selfhost-speed-probe, which the C1 cut (docs/superpowers/specs/2026-10-02-c1-requalify-design.md §2.3) excludes from this base."
+      },
+      {
+        "path": "tests/test_cell_engine.py",
+        "old": "def test_an_unsafe_export_is_a_problem(tmp_path: Path) -> None:",
+        "new": "@pytest.mark.skip(reason=\"C1: plants selfhost-docs-linter's hidden basename, which the C1 cut excludes from this base, so overlay_digests() no longer knows it\")\ndef test_an_unsafe_export_is_a_problem(tmp_path: Path) -> None:",
+        "reason": "This test plants test_doc_caps.py, selfhost-docs-linter's hidden overlay basename, and expects verify_export to flag it; the C1 cut (docs/superpowers/specs/2026-10-02-c1-requalify-design.md §2.3) excludes selfhost-docs-linter from this base, so overlay_digests() no longer knows the name and the planted file is no longer grader material."
+      },
+      {
+        "path": "tests/test_census_records_frozen.py",
+        "old": "def test_a_frozen_census_record_pins_the_current_task_tree(record_path: Path) -> None:",
+        "new": "@pytest.mark.skip(reason=\"C1: names a self-hosted task the C1 cut excludes from this base\")\ndef test_a_frozen_census_record_pins_the_current_task_tree(record_path: Path) -> None:",
+        "reason": "This test resolves each frozen census record's task under the bundled tasks, and the records name selfhost-cell-loop, selfhost-docs-linter, selfhost-run-record-gate and selfhost-speed-probe, which the C1 cut (docs/superpowers/specs/2026-10-02-c1-requalify-design.md §2.3) excludes from this base."
+      },
+      {
+        "path": "tests/test_qualify.py",
+        "old": "def test_every_candidate_is_bundled_hidden_and_carries_its_rung(name: str, rung: str) -> None:",
+        "new": "@pytest.mark.skip(reason=\"C1: names a self-hosted task the C1 cut excludes from this base\")\ndef test_every_candidate_is_bundled_hidden_and_carries_its_rung(name: str, rung: str) -> None:",
+        "reason": "Parametrized over the candidate tasks, this test loads each one's manifest from the bundled tasks, among them selfhost-cell-loop, selfhost-docs-linter, selfhost-guard-prefixes, selfhost-review-script, selfhost-run-record-gate and selfhost-speed-probe, which the C1 cut (docs/superpowers/specs/2026-10-02-c1-requalify-design.md §2.3) excludes from this base."
+      },
+      {
+        "path": "tests/test_qualify.py",
+        "old": "def test_every_candidate_prompt_qualifies(name: str) -> None:",
+        "new": "@pytest.mark.skip(reason=\"C1: names a self-hosted task the C1 cut excludes from this base\")\ndef test_every_candidate_prompt_qualifies(name: str) -> None:",
+        "reason": "Parametrized over the candidate tasks, this test loads each one's manifest and base from the bundled tasks, among them selfhost-cell-loop, selfhost-docs-linter, selfhost-guard-prefixes, selfhost-review-script, selfhost-run-record-gate and selfhost-speed-probe, which the C1 cut (docs/superpowers/specs/2026-10-02-c1-requalify-design.md §2.3) excludes from this base."
+      },
+      {
+        "path": "tests/test_qualify.py",
+        "old": "def test_every_generated_candidate_ignores_the_convention_files_and_no_other_task_ignores_any(name: str) -> None:",
+        "new": "@pytest.mark.skip(reason=\"C1: names a self-hosted task the C1 cut excludes from this base\")\ndef test_every_generated_candidate_ignores_the_convention_files_and_no_other_task_ignores_any(name: str) -> None:",
+        "reason": "Parametrized over the candidate tasks, this test reads each one's manifest from the bundled tasks, among them selfhost-cell-loop, selfhost-docs-linter, selfhost-guard-prefixes, selfhost-review-script, selfhost-run-record-gate and selfhost-speed-probe, which the C1 cut (docs/superpowers/specs/2026-10-02-c1-requalify-design.md §2.3) excludes from this base."
+      },
+      {
+        "path": "tests/test_writable_paths_declaration.py",
+        "old": "def test_the_golden_table_covers_every_shipped_task() -> None:",
+        "new": "@pytest.mark.skip(reason=\"C1: names a self-hosted task the C1 cut excludes from this base\")\ndef test_the_golden_table_covers_every_shipped_task() -> None:",
+        "reason": "This test compares the golden table's task names with the shipped tasks, and the table names selfhost-cell-loop, selfhost-docs-linter, selfhost-guard-prefixes, selfhost-review-script, selfhost-run-record-gate and selfhost-speed-probe, which the C1 cut (docs/superpowers/specs/2026-10-02-c1-requalify-design.md §2.3) excludes from this base."
+      },
+      {
+        "path": "tests/test_writable_paths_declaration.py",
+        "old": "def test_each_shipped_task_renders_its_pinned_patterns(name: str) -> None:",
+        "new": "@pytest.mark.skip(reason=\"C1: names a self-hosted task the C1 cut excludes from this base\")\ndef test_each_shipped_task_renders_its_pinned_patterns(name: str) -> None:",
+        "reason": "Parametrized over the golden table, this test loads each task's manifest, among them selfhost-cell-loop, selfhost-docs-linter, selfhost-guard-prefixes, selfhost-review-script, selfhost-run-record-gate and selfhost-speed-probe, which the C1 cut (docs/superpowers/specs/2026-10-02-c1-requalify-design.md §2.3) excludes from this base."
       }
     ],
     "authored": true,
@@ -98,7 +146,7 @@
     }
   },
   "digests": {
-    "task_tree": "9ce421a4a2146d98b579d95b7fb37bb049d0025e863fba5e2ed535a9119fca99",
+    "task_tree": "6c9e0e27e82c447c3b015a56b52e405d128ab8b25ceddfa1dac7c74cd4ac8cba",
     "prompt": "df04f00587106515f9358218df0e921f69b733fc2571b4ccd8574bf98e477bbd"
   },
   "validity": {
