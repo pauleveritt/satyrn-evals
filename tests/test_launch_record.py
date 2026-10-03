@@ -170,6 +170,21 @@ def test_a_preflight_or_settings_problem_exits_1_and_runs_nothing(
     assert not (tmp_path / "runs").exists()
 
 
+def test_a_settings_refusal_whose_text_starts_with_json_is_named_not_crashed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`preflight_settings.py` prints its provenance JSON before it refuses, and
+    `settings_provenance` joins stdout and stderr on a non-zero exit. The 2026-10-02
+    EB0 smoke hit this: the joined text starts with `{`, `json.loads` raised, and the
+    traceback replaced the `launch FAILED:` line that named the refusal."""
+    refused = SETTINGS + "\npreflight_settings FAILED: pi: max_tokens arm=16000 but models.json maxTokens=32000\n"
+    assert _launch(tmp_path, _record(tmp_path), _facts(settings=lambda path: (1, refused))) == 1
+    err = capsys.readouterr().err
+    assert "launch FAILED: preflight_settings for baseline exited 1" in err
+    assert "maxTokens=32000" in err
+    assert not (tmp_path / "runs").exists()
+
+
 def test_the_model_server_check_is_asked_about_the_default_base_url_and_the_arms_server_model(tmp_path: Path) -> None:
     from satyrn_evals.model_server import DEFAULT_MODEL_SERVER_URL
 

@@ -362,12 +362,17 @@ def launch_record(
         problems += server_problems
     baseline_settings: dict[str, str] = {}
     if settings:
+        checked["settings"] = {}
         for name, (path, _) in arms.items():
             code, text = facts.settings(path)
-            if code != 0:
-                problems.append(f"preflight_settings for {name} exited {code}: {text.strip()}")
             baseline_settings[name] = text
-        checked["settings"] = {name: json.loads(text) for name, text in baseline_settings.items() if text.startswith("{")}
+            if code != 0:
+                # On a refusal `settings_provenance` joins stdout and stderr, so the
+                # text still starts with the provenance JSON; parsing it raised and
+                # the traceback hid the refusal (EB0 smoke, 2026-10-02).
+                problems.append(f"preflight_settings for {name} exited {code}: {text.strip()}")
+            elif text.startswith("{"):
+                checked["settings"][name] = json.loads(text)
     if problems:
         for problem in problems:
             print(f"launch FAILED: {problem}", file=err)
