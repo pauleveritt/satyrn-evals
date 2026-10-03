@@ -39,9 +39,23 @@ def hunting(root_searches: int, tool_reported_timeouts: int) -> bool:
     return root_searches > 0 or tool_reported_timeouts > 0
 
 
+def drift_reasons(recomputed: bool, committed: bool | None, script_searches: int, evidence_searches: int) -> list[str]:
+    """prereg section 6: why a cell drifted, by cause; an empty list is no drift."""
+    reasons = []
+    if committed is None:
+        reasons.append("no committed flag for this attempt")
+    elif committed is not recomputed:
+        reasons.append(f"hunting: committed {committed!r}, recomputed {recomputed!r}")
+    if script_searches != evidence_searches:
+        reasons.append(f"root_searches: script {script_searches}, collect_evidence {evidence_searches}")
+    return reasons
+
+
 def columns(text: str, terms: Protected) -> dict[str, int | None]:
     """prereg section 3: what confinement would have met, counted, with first turns."""
     events = _events(text)
+    if events and not (events[0].get("type") == "session" and isinstance(events[0].get("cwd"), str)):
+        raise SystemExit("reread: the transcript's first event is not the session event; cwd is ambiguous; stop")
     cwd = next((e["cwd"] for e in events if e.get("type") == "session" and isinstance(e.get("cwd"), str)), None)
     usage, turn_at = UsageCounter(), []
     count, first = dict.fromkeys(KEYS, 0), dict.fromkeys(KEYS)
@@ -100,8 +114,9 @@ def main() -> int:
             evidence, attempt = collect_evidence(text), attempt_dir.rsplit("-", 1)[-1]
             row = {"night": stem, "task": task, "attempt": attempt, "tool_reported_timeouts": evidence.tool_reported_timeouts,
                    "hunting": hunting(evidence.root_searches, evidence.tool_reported_timeouts), **columns(text, terms)}
-            if row["root_searches"] != evidence.root_searches or committed.get(attempt) is not row["hunting"]:
-                drift.append(f"{stem} {attempt}: committed hunting {committed.get(attempt)!r}, recomputed {row['hunting']!r}")
+            reasons = drift_reasons(row["hunting"], committed.get(attempt), row["root_searches"], evidence.root_searches)
+            if reasons:
+                drift.append(f"{stem} {attempt}: " + "; ".join(reasons))
             rows.append(row)
     head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=EVALS, capture_output=True, text=True).stdout.strip()
     (HERE / "cells.json").write_text(json.dumps({"head": head, "cells": rows}, indent=1) + "\n")
