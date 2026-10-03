@@ -55,6 +55,9 @@ class Reach:
     source: str  # the file-tool path or the bash command
     protected: str  # the root or filename it reached
     index: int  # the 0-based transcript event index
+    #: A protected basename on a path that resolves inside the transcript's cwd:
+    #: the cell's own file (C3 D5). Reported, never counted by admission.
+    in_worktree: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -151,6 +154,14 @@ def _candidate_tokens(words: Sequence[str]) -> list[str]:
     return tokens
 
 
+def _in_worktree(term: str, path: str, cwd: str | None, protected_: Protected) -> bool:
+    """True only for a protected basename on a path inside the session cwd."""
+    if term not in protected_.names or cwd is None:
+        return False
+    resolved = _resolve(cwd, path)
+    return resolved is not None and _under(resolved, (cwd,)) is not None
+
+
 def audit(transcript: str, *, protected_: Protected) -> tuple[Reach, ...]:
     """Every file-tool path and bash path token that reached protected material."""
     events = _events(transcript)
@@ -165,13 +176,20 @@ def audit(transcript: str, *, protected_: Protected) -> tuple[Reach, ...]:
         if tool in ("read", "edit", "write") and isinstance(args.get("path"), str):
             path = args["path"]
             if (term := _reaches(path, cwd, protected_)) is not None:
-                reached.append(Reach("file_tool", path, term, index))
+                reached.append(
+                    Reach("file_tool", path, term, index, _in_worktree(term, path, cwd, protected_))
+                )
         elif tool == "bash" and isinstance(args.get("command"), str):
             command = args["command"]
             for segment in _segments(command):
                 for token in _candidate_tokens(segment):
                     if (term := _reaches(token, cwd, protected_)) is not None:
-                        reached.append(Reach("bash", command, term, index))
+                        reached.append(
+                            Reach(
+                                "bash", command, term, index,
+                                _in_worktree(term, token, cwd, protected_),
+                            )
+                        )
                         break
                 else:
                     continue
@@ -199,6 +217,12 @@ def finding(transcript: str, *, protected_: Protected) -> Finding | None:
         and isinstance(event.get("entry"), dict)
         and event["entry"].get("customType") == "confinement_refused"
     )
-    return Finding(
-        refusals=refusals, reaches=len(audit(transcript, protected_=protected_))
-    )
+    reaches = sum(1 for reach in audit(transcript, protected_=protected_) if not reach.in_worktree)
+    return Finding(refusals=refusals, reaches=reaches)
+
+
+def in_worktree_reaches(transcript: str, *, protected_: Protected) -> int:
+    """The reported count of reaches that are the cell's own files (C3 D5).
+
+    Never part of admission: :func:`finding` counts only the other reaches."""
+    return sum(1 for reach in audit(transcript, protected_=protected_) if reach.in_worktree)

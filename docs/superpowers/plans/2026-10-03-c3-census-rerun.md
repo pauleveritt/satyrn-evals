@@ -164,6 +164,7 @@ echo "c3 EXIT: $S"; exit "$S"
   - a file-tool `write` of `tests/test_hidden.py` inside the worktree is not a reach, and a bash `grep -rn tzinfo test_hidden.py` inside the worktree is not a reach. The second replaces `test_a_bash_command_naming_a_hidden_basename_relatively_is_flagged`, whose assertion the ruling reverses; say so in the commit message;
   - its siblings stay red: `read /elsewhere/known-good.patch` (outside) is still a reach, `cat ../../corpus/selfhost-x/overlay/test_hidden.py` is still a reach, and a relative hidden basename with no session cwd is still a reach.
   - Run `uv run pytest -q tests/test_confinement.py; echo "exit $?"` and `just gates; echo "exit $?"`; commit as "confinement: a hidden basename inside the cell's own worktree is not a reach (C3 D5)", with the attribution trailer. If any other test or `summary.py` path asserts the old rule, stop and ask.
+  - Amended 2026-10-03 (maintainer, in session: "Go with option 1"): the fix as first written made `audit` drop in-worktree basename reaches, which broke the signed C2 re-read (five tests in `tests/test_c2_reread.py`; its `reach_in_worktree` count) and left Task 7's flagged-in-worktree column without a source. Ruled instead: `audit` returns every reach and marks each `in_worktree`; `finding` counts only the others, so a cell touching its own test file is admitted; the in-worktree count is reported as `confinement_reaches_in_worktree`.
 
 **An executing agent stops here.**
 
@@ -257,7 +258,7 @@ done
 - [ ] **Step 2:** Write `$OUT/README.md`, ≤ 120 lines:
   - "What ran": night, records, cells, machine, and the decode range from `classify.py`'s `decode_tok_s` column.
   - The reading at 32k/48 per task and night, never pooled.
-  - Columns: admitted / refused / flagged-outside / flagged-in-worktree / unmeasured / replaced / wall-clock-cut.
+  - Columns: admitted / refused / flagged-outside / flagged-in-worktree / unmeasured / replaced / wall-clock-cut. The flagged-in-worktree source is `confinement_reaches_in_worktree` (reported, never admission).
   - Class counts.
   - Deviations.
   - A fenced recompute: Task 7's loop.

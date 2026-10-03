@@ -393,3 +393,9 @@ Write your review to `/private/tmp/claude-501/-Users-pauleveritt-projects-paulev
   Documented limit that remains, pinned by tests: a search inside `$(...)` or a quoted `sh -c` body is not seen; two census calls, no cell flipped.
 - Clears nothing: the C0 marks on the census stand until C3's table; outcomes need the re-run.
 - For C3: in-worktree hidden-basename reaches on 17 of 39 cells (209 calls) and 6 of 6 night-3 cells (162 calls); every in-worktree reach is the task's hidden test basename, 0 a `fixtures/*.patch` name (C3 decision D5, ruled B 2026-10-03).
+
+## 2026-10-03 — C3 D5: admission ignores in-worktree basename reaches; they are still reported
+- Ruled by the maintainer in session on 2026-10-03: "Go with option 1" (`confinement.audit` keeps returning every reach and marks each in-worktree or not; admission ignores the in-worktree ones; they are reported as a separate count). This supersedes the first form of D5 B, which dropped them from `audit`.
+- Rests on: the first form broke five tests in `tests/test_c2_reread.py` (the signed C2 re-read's `reach_in_worktree` columns); the signed C2 README reports 371 in-worktree reaches (209 calls on 17 of 39 cells, 162 on 6 of 6 night-3 cells); and Task 7's flagged-in-worktree column needs a source.
+- Implementation: `Reach.in_worktree` (a protected basename on a path inside the transcript's cwd); `finding` counts only reaches with `in_worktree` False; `confinement.in_worktree_reaches` and the evidence field `confinement_reaches_in_worktree` report the rest.
+- Unchanged: C2's script, tests and committed outputs; `Finding` and the attempt record's `confinement` shape and version (its `reaches` is now the admission-relevant count).
