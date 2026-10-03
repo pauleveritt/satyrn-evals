@@ -212,6 +212,27 @@ review-script 1/7). Fitted to eight tasks with three on the small side;
   repository it misses `test_hook_guard.py` and proposes a second file. Not
   measurable in the eval (that test is hidden).
 
+## 8a. EB0 smoke, 2026-10-02 (confinement harness, engine `1869397`, M5 Max)
+
+`records/2026-10-02-eb0-smoke-agentclinic-repair-depth-3.json`: one Engine
+cell on depth-3, `confinement: extension`. **Pass, admitted**: 0
+`confinement_refused`, 0 reaches; 4,877 output tokens, 8 turns, 15 tool
+calls, peak context 10,242, 2.1 min; one finish steer, stop on the next
+turn; 0 rejected edits. All seven file-tool calls used relative paths
+(`app.py`, `models.py`, `templates/*.html`, `tests/test_app.py`), so the
+root check in §8 passed them; the absolute-path case stays untested. The
+engine receipt's `validation_output` holds two identical suite runs ("4
+passed … in 0.41s", then "in 0.40s") and the `VIRTUAL_ENV … will be
+ignored` warning: the double run in §4 is confirmed on `deliver`'s
+validation path; the `self_test` path is still to read on EB0 cells. The
+receipt's `guard_firings` carries the retired `self_test_redirected` key
+and no red-stop key (the cleanup audit's item). Launching also found a
+launcher crash: a settings refusal whose text starts with the provenance
+JSON raised `JSONDecodeError` before `launch FAILED:` printed; fixed at
+`cd0c9fe` with a test both ways. The refusal itself was host drift —
+`~/.pi/agent/models.json` had `maxTokens: 32000` for Ornith against the
+arms' 16,000 — set back to 16,000 before the run.
+
 ## 9. Against `docs/numbers.md`
 
 Agrees: every floor median; parity fails on guard and review. Disagrees:

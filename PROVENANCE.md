@@ -2856,3 +2856,4 @@
 | records/2026-10-02-eb0-selfhost-guard-prefixes.json | created 2026-10-02 on worktree-engine-budget by `satyrn-evals record new`; EB0 development record under confinement, mirrors records/2026-09-21-comparison-selfhost-guard-prefixes.json |
 | records/2026-10-02-eb0-selfhost-review-script.json | created 2026-10-02 on worktree-engine-budget by `satyrn-evals record new`; EB0 development record under confinement, mirrors records/2026-09-21-comparison-selfhost-review-script.json |
 | records/2026-10-02-eb0-smoke-agentclinic-repair-depth-3.json | created 2026-10-02 on worktree-engine-budget by `satyrn-evals record new`; EB0 smoke: one attended Engine cell under confinement, read for confinement_refused |
+| records/2026-10-02-eb0-smoke-agentclinic-repair-depth-3.result.json | written 2026-10-02 by `satyrn-evals launch` on worktree-engine-budget; the EB0 smoke's result: 1 of 1 pass, admitted, 0 confinement refusals |
