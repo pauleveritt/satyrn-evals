@@ -2785,3 +2785,10 @@
 | docs/superpowers/plans/2026-10-02-c3-census-rerun-DRAFT.md | created 2026-10-02 on phase-c1; UNAPPROVED draft plan written read-only by an Opus agent for the maintainer's review; not guidance until approved |
 | docs/superpowers/plans/2026-10-02-c4-counterfactual-DRAFT.md | created 2026-10-02 on phase-c1; UNAPPROVED draft plan written read-only by an Opus agent for the maintainer's review; not guidance until approved |
 | tests/test_retired_cell_flag.py | created 2026-10-02 on phase-c1; guard that no live file passes the retired --cell flag (C1 design §4) |
+| tests/test_c1_records.py | created 2026-10-02 on phase-c1; guard that the C1 records carry the design's parameters and pin the current trees |
+| records/2026-10-02-c1-agentclinic-repair-depth-3.json | created 2026-10-02 on phase-c1 by `satyrn-evals record new`; C1 Baseline census record under confinement (C1 design §5) |
+| records/2026-10-02-c1-selfhost-run-record-gate.json | created 2026-10-02 on phase-c1 by `satyrn-evals record new`; C1 Baseline census record under confinement (C1 design §5) |
+| records/2026-10-02-c1-selfhost-docs-linter.json | created 2026-10-02 on phase-c1 by `satyrn-evals record new`; C1 Baseline census record under confinement (C1 design §5) |
+| records/2026-10-02-c1-selfhost-cell-loop.json | created 2026-10-02 on phase-c1 by `satyrn-evals record new`; C1 Baseline census record under confinement (C1 design §5) |
+| records/2026-10-02-c1-selfhost-speed-probe.json | created 2026-10-02 on phase-c1 by `satyrn-evals record new`; C1 Baseline census record under confinement (C1 design §5) |
+| records/2026-10-02-c1-selfhost-preflight-quiet.json | created 2026-10-02 on phase-c1 by `satyrn-evals record new`; C1 Baseline census record under confinement (C1 design §5) |
