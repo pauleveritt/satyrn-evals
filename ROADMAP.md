@@ -114,3 +114,36 @@ for `/implement`; the orchestrator skill; a depth-4 AgentClinic task; any
 course-derived claim; an integration test that drives the real
 `adapters/pi_session.py` through a full four-phase session protocol (the
 tag's only such test was built on the dropped `session-mechanics` task).
+
+**Cleanup, 2026-10-02** — findings and evidence in
+`evidence/2026-10-02-cleanup-audit/README.md`; engine-side items
+in satyrn-engine `BACKLOG.md`. Each item names what closes or reopens it.
+
+- **Un-nest the task bases.** `cut_task.py` archives every other task's
+  `base/` into a new base; `selfhost-preflight-quiet` carries 3,821 nested
+  task files, four levels deep, and cells work in that tree. Do at C1, where
+  the tasks are re-qualified anyway: one re-cut, one re-pin.
+- **Propagate the C0 unconfirmed mark** to `docs/numbers.md`, the site, the
+  census and red-stop evidence READMEs, and the records the ledger names.
+  Prose only; do before the site next deploys.
+- **Rewrite `STATE.md`; one reading order** across `AGENTS.md`, `README.md`
+  and `STATE.md`; retired local state removed. Do with the mark above.
+- **This file's shape:** a Status column for the release-two table, R0's
+  cell reduced to a pointer, 2d closed, the list below given reopen
+  conditions or moved to `TODO.md`, one backlog home chosen. Do with `STATE.md`.
+- **Session route:** `packet.py`, `turn_ledger.py`, `hygiene.py`,
+  `session_repeat_limit.py`, the `session_*` family, 25 test files and the
+  263 KB transcript fixture have no product caller. Reopens if a plan names a
+  multi-phase workload; otherwise delete at the next instrument-free window.
+- **Frozen census scripts call `preflight_settings.py --cell`, a flag that no
+  longer exists**; `launch_record.py` keeps the dead branch. Header or fix,
+  with the engine's red-stop receipt fix, before the first re-derivation record.
+- **Gates that nothing runs:** coverage and pyrefly configured in both
+  repos, Node installed in CI with no Node gate, the confinement extension
+  outside `just gates`. Decide once for both repos: gate it or remove it.
+- **Fossil files:** `scripts/seq_design.py`, `scripts/suite_durations.json`,
+  `tools/agentclinic_gate.sh`, `arms/baseline.json`, the duplicate
+  `engine-mellum-class-swe-pi-redstop.json`, 92 duplicate Mellum request
+  files; catalogue marks for lessons, pathologies 21-23 and the two "clean
+  harness" banners; the three spec headers; the misfiled task plan. One
+  provenance row and one commit each.
