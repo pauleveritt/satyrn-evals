@@ -215,7 +215,7 @@ uv run satyrn-evals record new --output records/<date>-c3-smoke-agentclinic-repa
   - `id satyrn-cell; echo "exit $?"` and `sudo -n true; echo "exit $?"`: both non-zero (D6). Otherwise remove the user and its sudoers rule before night B (D6, ruled A).
   - `git status --short`: clean.
   - No other agent works in this checkout during either sitting. The drift probe stops a night on a changed task tree or arm.
-- [ ] **Step 2:** Confirm that C2 is signed (ledger "C2") and that C4's pre-registration is committed (`git log --oneline -- docs/superpowers/specs/*-c4-*`). If C4's is not, nights may still run, but Task 7 may not.
+- [ ] **Step 2:** Confirm that C2 is signed (ledger "C2") and that C4's pre-registration is committed and approved: `git log --oneline -- docs/superpowers/specs/*-c4-*` prints its commit, and `grep -c '^\*\*Approved by the maintainer' docs/superpowers/specs/2026-10-03-c4-finishing-counterfactual-rederive.md` prints 1. If it is not, nights may still run, but Task 7 may not. (Tightened 2026-10-03: a commit to the path alone would have passed an unapproved draft.)
 - [ ] **Step 3:** Record the freeze: the HEAD sha, the split, and the start times planned. Write them as a ledger line "C3 frozen <sha>", committed before night A.
 
 ### Task 4: Night A (batch — the maintainer starts it)
@@ -238,7 +238,7 @@ uv run satyrn-evals record new --output records/<date>-c3-smoke-agentclinic-repa
 
 ### Task 7: Classify and tally (attended — the maintainer, or an agent with his go)
 
-- [ ] **Step 1: Gate.** `git log --oneline -- docs/superpowers/specs/*-c4-*` must print the approved pre-registration. Otherwise stop (D8).
+- [ ] **Step 1: Gate.** `git log --oneline -- docs/superpowers/specs/*-c4-*` must print the pre-registration's commit, `grep -c '^\*\*Approved by the maintainer' docs/superpowers/specs/2026-10-03-c4-finishing-counterfactual-rederive.md` must print 1, and `git status --short` must show that file unmodified. Otherwise stop (D8).
 - [ ] **Step 2: Classify.**
 
 ```bash

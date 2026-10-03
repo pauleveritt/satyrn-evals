@@ -1,6 +1,6 @@
-# C4 Re-derive the finishing counterfactual on the C3 census, then resume R0's order — Implementation Plan (DRAFT)
+# C4 Re-derive the finishing counterfactual on the C3 census, then resume R0's order — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development or superpowers:executing-plans. Steps use `- [ ]`. **DRAFT, 2026-10-02: nothing here is approved. Do not execute.** No census cell, result JSON, night directory, grade output or counterfactual tally was opened while drafting.
+> **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development or superpowers:executing-plans. Steps use `- [ ]`. **Approved 2026-10-03: the maintainer ruled D1-D10 in session ("go with recommendations on C4's decisions"; ledger "2026-10-03 — C4's decisions ruled; the C4 plan approved"). Drafted 2026-10-02 as `2026-10-02-c4-counterfactual-DRAFT.md`, renamed on approval. Task 1's pre-registration is drafted at `docs/superpowers/specs/2026-10-03-c4-finishing-counterfactual-rederive.md` and is not yet approved; it is approved and committed before C3's daylight freeze (D1).** No census cell, result JSON, night directory, grade output or counterfactual tally was opened while drafting.
 
 **Goal:** Pre-register the counterfactual's verdict rule on the C3 census before any C3 tally exists. Read it once, on admitted cells, per task. Then record which C0 marks it clears and which it keeps, and hand R0 its next sitting.
 
@@ -15,9 +15,10 @@
 - `ROADMAP.md` "Deferred" (the parked `derive-new-top-level-module` branch);
 - the EB design draft §3 (`.claude/worktrees/engine-budget/docs/superpowers/specs/2026-10-02-engine-budget-design.md`).
 
-## Decisions for the maintainer (unapproved)
+## Rulings, 2026-10-03
 
 **D1. When the rule is fixed.** `classify.py` prints run 1 and run 2 changes for every cell, so C3's classification step is also C4's data. Options: (A) commit the pre-registration at C3's daylight freeze, before night A; (B) commit it any time before C3 Task 7; (C) after C3's table, which breaks pre-registration. **Recommend A.** C3 Task 7 Step 1 refuses to classify without it either way. The author must have read no C3 cell, result or tally.
+- **Ruled 2026-10-03: A.** The rule is fixed at C3's daylight freeze: the pre-registration is approved and committed before night A.
 
 **D2. The method.**
 - (A) `classify.py`'s two readings unchanged:
@@ -26,31 +27,40 @@
 - (B) Run 2 proper, with `trajectory.py` `ext` replay.
 - (C) A new instrument.
 - **Recommend A.** It is the census's instrument, and changing it re-opens the comparison with the isolated census. Recorded contradiction: census design §7 says "run 2's replay method", but `classify.py` `_snapshot_replay` says "The `ext` replay is not carried over — it executed model-written Python, which needs its own review."
+- **Ruled 2026-10-03: A.** `classify.py`'s two readings, unchanged.
 
 **D3. Which reading decides.**
 - (A) Run 2 decides, with one amendment: a cell whose run 1 reasons include `fidelity:` or `raised:` is unmeasured under run 2 too. That is §4's fidelity rule; `classify.py`'s run 2 column applies no fidelity check. Run 1 is recorded beside.
 - (B) Run 1 decides.
 - (C) Both must agree, or the verdict is Verify.
 - **Recommend A.** Run 2's README documents three of run 1's rules as bugs (`write_text` heuristic, BSD `sed -i` error, 7.4's read-only list), and ROADMAP's R0 cell already quotes run 2's Verify. A disagreement between the readings is stated on the page.
+- **Ruled 2026-10-03: A.** Run 2 decides, with the fidelity amendment: a cell whose run 1 reasons include `fidelity:` or `raised:` is unmeasured under run 2 too. Run 1 is recorded beside.
 
 **D4. The denominator under confinement.**
-- (A) Admitted cells only: refusals 0 and reaches 0, per `confinement.Finding.admitted`. Flagged, unmeasured and infrastructure-replaced cells are listed, never rescue or harm.
+- (A) Admitted cells only: refusals 0 and reaches 0, per `confinement.Finding.admitted` as of `df3b68f`, where `reaches` counts only reaches that leave the cell's worktree; a hidden basename inside the cell's own worktree is reported as `confinement_reaches_in_worktree` and does not un-admit a cell (C3 D5). Flagged, unmeasured and infrastructure-replaced cells are listed, never rescue or harm.
 - (B) Also count a flagged cell whose first refusal or reach falls after its trigger turn, since stopping at green would have avoided it.
-- **Recommend A**, with B's count reported beside. If C3 took D5(C), "admitted" means C3's pre-registered reading.
+- **Recommend A**, with B's count reported beside. C3 took D5 B in its option-1 form (`df3b68f`), so "admitted" means `Finding.admitted` as of `df3b68f`, which is the per-cell `confinement_admitted` in each night's `summary.json`.
+- **Ruled 2026-10-03: A, with B beside, plus a third count.** The denominator is admitted cells only. Two counts are reported beside it and never decide:
+  - **Flagged after trigger (B):** a flagged cell whose first refusal or reach (a reach `finding` counts, so outside the worktree) falls after its trigger turn.
+  - **Flagged only by non-protected refusals:** a cell whose transcript yields a `confinement.finding` with `reaches` 0 and `refusals` ≥ 1, where every `confinement_refused` entry (`entry_appended` with `entry.customType == "confinement_refused"`) has `entry.data.toolName` in `read`, `edit`, `write` and a string `entry.data.path` for which `confinement._reaches(path, cwd, confinement.protected(task_dir.parent, task_dir.name))` is `None`, with the terms admission uses (`attempt.py`, `rescore.py`) and `cwd` from the transcript's first event. A bash refusal never qualifies, since the extension refuses bash only when the command names a protected root (`confinement.ts` `namesRoot`); an entry without a string `path` does not qualify. Example: a `write` to `/tmp/test_guard.py`. These cells stay outside the denominator, and the count shows how much a non-leak refusal shrank it.
+  - The two counts may overlap; each is listed per task with its cells.
 
 **D5. Task kinds and thresholds at n = 6, read at the 32,000 / 48 line.** §2 picked budget-shaped tasks as "at least 2 of 4 ended `BUDGET_EXCEEDED` or `COMMAND_TIMEOUT`" at a 32k budget. At a 48k budget, codes miss cells that pass between 32k and 48k.
 - (A) A task is budget-shaped when it has ≥ 3 admitted cells and at least half of them are not a pass at the line (`actual_32k` false), which is §2's proportion read at the line (census Ruling 3). Every other task is floor, in scope for harm. Keep §4–§5's thresholds as written: net ≥ 1, insufficient at more than 1 unmeasured, floor harm < 2. Add: fewer than 3 admitted cells is insufficient.
 - (B) §2's code rule literally.
 - (C) Name the kinds now from the census (depth-3 floor, others budget-shaped), which uses unconfirmed evidence.
 - **Recommend A.**
+- **Ruled 2026-10-03: A.** A task is budget-shaped when it has at least 3 admitted cells and at least half of them are not a pass at the 32,000 / 48 line; every other task is floor. The thresholds stay as written.
 
 **D6. Scope.**
 - (A) Five tasks decide: run-record-gate, docs-linter, preflight-quiet, depth-3 and cell-loop. speed-probe is reported outside the decision, as §2 treated the Engine column: it was dropped for a prompt ambiguity, and R0 §2 never claims against one.
 - (B) All six.
 - (C) The two cut medium tasks only.
 - **Recommend A.** preflight-quiet stays its own row, never pooled ("authored and mixed", census README).
+- **Ruled 2026-10-03: A.** Five tasks decide: run-record-gate, docs-linter, preflight-quiet, depth-3 and cell-loop. speed-probe is reported outside the decision.
 
 **D7. What each verdict opens.** These are fixed now and are not re-argued after the read.
+- **Ruled 2026-10-03: as written below** (its stale "EB0 runs after C3" text was struck before the ruling).
 
 | verdict | condition (deciding reading) | opens | does not open |
 |---|---|---|---|
@@ -64,18 +74,21 @@ Under any verdict:
 - `derive-new-top-level-module` **stays parked**. This counterfactual scores a stop rule on Baseline cells and cannot name a derive remedy, and EB names EB1 as its only reopener. Spell out the contradiction with ROADMAP's "reopens at C4, only if the re-derived counterfactual names it": the condition cannot be met by this instrument.
 
 **D8. Where the result goes.** Same contradiction as C3 D9 (ROADMAP, versus the hook and §6 "`docs/results/` stays launcher-only"). **Recommend:** an evidence README, and the maintainer writes `docs/results/<date>-c4-counterfactual.md`.
+- **Ruled 2026-10-03: the same as C3 D9 as ruled (B).** An agent drafts the evidence README; the maintainer writes `docs/results/<date>-c4-counterfactual.md`.
 
 **D9. How the ledger names a re-derived mark.**
 - (A) **SUPERSEDED**: the confinement reading is what is built on, and the isolated reading stays evidence for the isolated condition. **KEPT** for marks not re-derived. No post-hoc "agrees or disagrees" judgment.
 - (B) CONFIRMED or DISAGREES, judged after reading.
 - **Recommend A.** Also recorded: C0 did not mark the 2026-09-15 counterfactual (runs 1 and 2, release-one cells, isolated), yet ROADMAP C4 re-derives it. The C4 entry names it as SUPERSEDED for building.
+- **Ruled 2026-10-03: A.** SUPERSEDED / KEPT.
 
 **D10. The R0 text the sitting resumes under.** `2026-09-15-release-two-r0-constraints.md` §4 still says "Two-uid isolation for every deciding record". The unisolated-harness design says it changes that line, but the file was never amended. Options: (A) annotate R0 §4 with a dated pointer to the confinement design before the R0 sitting; (B) leave it, and let the sitting read the two together. **Recommend A.** It is one line, and the maintainer records it.
+- **Ruled 2026-10-03: A.** Annotate R0 §4.
 
 ## Global Constraints
 
 - **The line:** 32,000 output tokens / 48 turns (`census_classify.TOKEN_LINE`, `TURN_LINE`).
-- **Data:** the C3 census only: `records/<c1-date>-c1-*.json`, `evidence/<c3-date>-c3-census/<task>/cells.json`, and `~/satyrn-runs/<c1-date>-c1-<task>/baseline/summary.json`. Nothing pools with the isolated census, the 2026-09-15 counterfactual, EB0 or any Engine cell. Per task, never summed.
+- **Data:** the C3 census only: `records/<c1-date>-c1-*.json`, `evidence/<c3-date>-c3-census/<task>/cells.json`, and `~/satyrn-runs/<c1-date>-c1-<task>/baseline/summary.json` (and, for D4's beside counts, the same nights' transcripts). Nothing pools with the isolated census, the 2026-09-15 counterfactual, EB0 or any Engine cell. Per task, never summed.
 - **One decision run.** A bug found afterwards is fixed and re-run only with both results recorded beside each other (the pre-registration header's clause).
 - No Engine component is designed, planned or built before this verdict and the R0 sitting (R0 §1; AGENTS.md).
 - The default tier uses no model, network or subprocess. Every refusal test has a success sibling. Read exit codes and never pipe a gate. Every new file gets a PROVENANCE row.
@@ -84,7 +97,7 @@ Under any verdict:
 
 ## Review Focus
 
-1. **The rule committed after a C3 tally was visible.** Check the commit order against C3 Task 7.
+1. **The rule committed after a C3 tally was visible.** Check the commit order against C3's daylight freeze (D1) and C3 Task 7.
 2. **A flagged or unmeasured cell entering a rescue or harm.**
 3. **The deciding reading switched after the read.**
 4. **Nets pooled across tasks**, or speed-probe counted in.
@@ -92,9 +105,9 @@ Under any verdict:
 
 ---
 
-### Task 1: The pre-registration (agent drafts; attended — the maintainer approves; before C3 Task 7)
+### Task 1: The pre-registration (agent drafts; attended — the maintainer approves; before C3's daylight freeze, Task 3, D1)
 
-**Files:** Create `docs/superpowers/specs/<date>-c4-finishing-counterfactual-rederive.md` (≤ 200 lines; the spec cap is 400). Modify `PROVENANCE.md`.
+**Files:** Create `docs/superpowers/specs/2026-10-03-c4-finishing-counterfactual-rederive.md` (≤ 200 lines; the spec cap is 400). Modify `PROVENANCE.md`.
 
 - [ ] **Step 1:** Draft it with the same section numbers as the 2026-09-15 pre-registration:
   1. The question, unchanged.
@@ -167,7 +180,7 @@ def test_run2_withholds_on_fidelity_and_not_on_an_unverified_rescue():
 #!/usr/bin/env python3
 """C4: the finishing counterfactual's verdict on the C3 census.
 
-Pre-registration: docs/superpowers/specs/<date>-c4-finishing-counterfactual-rederive.md.
+Pre-registration: docs/superpowers/specs/2026-10-03-c4-finishing-counterfactual-rederive.md.
 Reads classify.py's per-cell rows and each night's summary.json admission; one run.
 """
 from __future__ import annotations
@@ -277,7 +290,7 @@ if __name__ == "__main__":
 
 ### Task 3: The one decision run (attended — the maintainer)
 
-- [ ] **Step 1:** Check the order. `git log --format='%h %ad %s' --date=iso -- docs/superpowers/specs/*-c4-* evidence/<c3-date>-c3-census/` must show the pre-registration commit before the first C3 classifier output.
+- [ ] **Step 1:** Check the order. `git log --format='%h %ad %s' --date=iso -- docs/superpowers/specs/*-c4-* evidence/<c3-date>-c3-census/ evidence/2026-09-15-release-one-decision-ledger.md` must show the pre-registration commit before the first C3 classifier output, and before the ledger line "C3 frozen <sha>" (D1).
 - [ ] **Step 2:** Run `uv run --project . python evidence/<c4-date>-c4-counterfactual/decide.py --census evidence/<c3-date>-c3-census --c1-date <c1-date>; echo "exit $?"`. Expect `exit 0`. A stamp with `dirty=True` is a review failure.
 - [ ] **Step 3:** Add PROVENANCE rows. Commit `decision.txt` and `table.md` as "C4: the counterfactual's verdict on the C3 census (<verdict>)".
 
@@ -286,14 +299,14 @@ if __name__ == "__main__":
 - [ ] **Step 1:** Write `evidence/<c4-date>-c4-counterfactual/README.md`, ≤ 120 lines:
   - the verdict under both readings, and any disagreement stated;
   - the per-task table;
-  - D4's "flagged after trigger" count beside it;
+  - D4's two beside counts: flagged after trigger, and flagged only by non-protected refusals (pre-registration §2);
   - every unmeasured cell with its reason;
   - D7's row for the verdict;
   - the disclosure (Task 1 §7);
   - the replay limits (classify.py std replay; 7.4);
   - the power, if `go` or `verify`: one-sided Fisher at the R0 sitting's candidate n, against Baseline's C3 rate, labelled as an input to §8.3, not a rule;
   - a fenced recompute (Task 3 Step 2's command against a copy without `decision.txt`).
-- [ ] **Step 2 (attended — the maintainer):** Sign it. If D8 is approved, write `docs/results/<date>-c4-counterfactual.md` (≤ 120 lines, fenced recompute). Run gates and commit.
+- [ ] **Step 2 (attended — the maintainer):** Sign it. Write `docs/results/<date>-c4-counterfactual.md` (≤ 120 lines, fenced recompute; D8, ruled as C3 D9). Run gates and commit.
 
 ### Task 5: Ledger and roadmap (attended — the maintainer)
 
@@ -315,7 +328,7 @@ if __name__ == "__main__":
 
 - [ ] Schedule the R0 sitting (≤ 60 min) with three inputs: C3's signed table, C4's verdict, and census design §8 items 1–4 as the agenda.
 - [ ] Hold Engine spec work until that sitting fixes §8.3.
-- [ ] The confinement fixes and EB2 follow EB's own (unapproved) order, never before this sitting's rule. EB0 has already run (2026-10-02 21:50 to 2026-10-03 00:27, development cells; struck from this step 2026-10-03).
+- [ ] The confinement fixes follow the engine-side plan, approved on its own branch, whose re-pin waits for C4's verdict. EB2 follows EB's own (unapproved) order, never before this sitting's rule. EB0 has already run (2026-10-02 21:50 to 2026-10-03 00:27, development cells; struck from this step 2026-10-03).
 
 ## Done when (ROADMAP C4)
 
