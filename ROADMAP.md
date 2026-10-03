@@ -74,7 +74,7 @@ Nothing is built on any of them in the meantime.
 |---|---|---|---|
 | C0 | Mark each result above unconfirmed in `evidence/2026-09-15-release-one-decision-ledger.md`, naming this harness change | attended | every listed decision carries the mark and the commit that re-opened it  done 2026-10-02: ledger entry "C0", marks name `35c298d`; census night 3 added to the list |
 | C1 | Re-qualify on the new harness: same task, model and budgets, extension loaded on both arms, no host setup | attended | a qualification record under `confinement` that passes preflight on this machine  done 2026-10-03: ledger entry "C1", re-cut 7fc679f (task bases un-nested), records records/2026-10-02-c1-* |
-| C2 | Re-read the census process classes from retained transcripts; re-sign the class columns where `hunting` becomes live | attended | signed columns that state which cells reclassified and why |
+| C2 | Re-read the census process classes from retained transcripts; re-sign the class columns where `hunting` becomes live | attended | signed columns that state which cells reclassified and why  done 2026-10-03: ledger entry "C2", evidence/2026-10-03-c2-hunting-reread/ |
 | C3 | Re-run the census outcome cells under confinement | batch, frozen in daylight | a classified table on this harness, with refused and flagged cells counted |
 | C4 | Re-derive the finishing counterfactual, then resume R0's order | attended | the counterfactual's verdict on the new census, before any Engine build |
 

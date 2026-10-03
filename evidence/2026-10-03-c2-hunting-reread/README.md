@@ -1,8 +1,8 @@
-# C2: census `hunting` column re-signed, mechanical (DRAFT FOR THE MAINTAINER'S SIGNATURE)
+# C2: census `hunting` column re-signed, mechanical
 
-**Not signed.** Drafted 2026-10-03 by an agent (Opus), C2 Task 4 of
-`docs/superpowers/plans/2026-10-03-c2-hunting-reread.md`, under `prereg.md` beside this file.
-Task 5 (signature, ledger entry, ROADMAP) is the maintainer's. Every number below comes from
+**Signed by the maintainer 2026-10-03** (in session: "Signed"). Drafted 2026-10-03 by an agent
+(Opus), C2 Task 4 of `docs/superpowers/plans/2026-10-03-c2-hunting-reread.md`, under `prereg.md`
+beside this file; the text below is the draft committed at `d12ab0b`, unchanged. Every number below comes from
 `cells.json` as committed at `61a1d94` (written by `reread.py` at evals `c9ce8e5`; slots equal
 each record's `n`; exit 3 on one drift line, ruled below). The signed column compared is the
 `hunting` column of `evidence/2026-09-16-census/<task>/classes.md` and
