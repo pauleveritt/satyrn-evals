@@ -1,6 +1,6 @@
 # Pre-registration: C2, census process classes re-read with `hunting` live
 
-**Drafted for the maintainer's approval; not yet approved.** Drafted 2026-10-03 by an agent from `docs/superpowers/plans/2026-10-03-c2-hunting-reread.md` (Task 1) and the maintainer's rulings of 2026-10-03 (plan "Rulings, 2026-10-03"; ledger "2026-10-03 — C2 and three C3 decisions ruled"). Its author opened no census transcript, no night directory, no census `cells.json` and no `classes.md` per-cell row. This page must be committed before `reread.py` runs on any census transcript.
+**Approved by the maintainer in session, 2026-10-03** ("Approve prereg, plan approved, agent runs the read"); the text below is unchanged from the draft committed at `4f6a2ba`, before the script and before any read. Drafted 2026-10-03 by an agent from `docs/superpowers/plans/2026-10-03-c2-hunting-reread.md` (Task 1) and the maintainer's rulings of 2026-10-03 (plan "Rulings, 2026-10-03"; ledger "2026-10-03 — C2 and three C3 decisions ruled"). Its author opened no census transcript, no night directory, no census `cells.json` and no `classes.md` per-cell row. This page must be committed before `reread.py` runs on any census transcript.
 
 ## 1. Question (D1 = A)
 
