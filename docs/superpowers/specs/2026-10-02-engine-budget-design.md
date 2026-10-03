@@ -122,3 +122,15 @@ machines or backends; no Engine behaviour change before the first post-C4
 read except section 3's confinement fixes and R2 parity; no instrument-only
 piece — the context and wall-clock secondaries are computed from retained
 `transcript.txt` and `timeline.jsonl`, which already carry them.
+
+## 7. Amendments after EB1 (2026-10-03)
+
+Recorded from `evidence/2026-10-03-eb1-read/README.md`; nothing above is rewritten.
+
+- **Floor set.** Guard-prefixes (Engine higher in 20 of 20 pass pairs) and review-script (25 of 25). Depth-3 is out (22 of 36; 27 needed).
+- **Section 2, item 3, is corrected.** The second suite run in a self-test is the declared + `preserve` run over the carried tests only; it is a distinct check, not a duplicate, and dropping it is not proposed. In section 3's EB2 row, "self-test dedup" means only skipping the automatic run after the model's own red targeted run: in 0 of 7 such runs did the Engine's run report a failure outside the files the model had just run.
+- **Section 3, EB0 row.** EB0 ran before C3 (2026-10-02 21:50 to 2026-10-03 00:27), not after it. No census cell existed then, so nothing shared the GPU and nothing is contaminated.
+- **Section 4's rule is weak at n = 6.** An Engine truly at 1.25 x Baseline is declared at parity 27-47% of the time; the rule separates 1.0 x from 1.5 x and above. The Baseline spread alone supports a margin of about 1.35 on guard-prefixes and 1.2-1.25 on review-script. To rule at EB3's pre-registration: a larger n, or a wider margin stated as a coarse screen.
+- **A cost the remedy list does not cover.** On guard-prefixes about half the mean gap is inline `python3 -c` probing after the first edit, in 2 of 5 passes; in one the Engine's scope guard refused the model's scratch files (`/tmp/t.py`, `tests/test_scratch.py`) first. Named here, not proposed: adding a scratch path to the contract is a new remedy and needs a ruling before EB2 estimates it.
+- **Admission is arm-asymmetric.** The same `/tmp` scratch write un-admits a Baseline cell (the confinement extension refuses it) and leaves an Engine cell admitted (the Engine's scope guard refuses it first). To rule before any cross-arm floor read.
+- **Remedy ranking** (output tokens per delivered pass, upper bounds where replay cannot score them): the light path, up to 14,722 on guard-prefixes; the contract's test lines, up to 11,690 on guard-prefixes and 3,618 on review-script, overlapping the light path; the `edit` normalizer, median 536 on guard-prefixes and mean 1,176 on review-script. Echo trimming and self-test hygiene save context and wall clock, not output tokens.

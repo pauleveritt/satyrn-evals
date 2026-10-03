@@ -2860,3 +2860,5 @@
 | records/2026-10-02-eb0-agentclinic-repair-depth-3.result.json | written 2026-10-02 by `satyrn-evals launch` on worktree-engine-budget; EB0 depth-3: 6 of 6 both arms, all admitted |
 | records/2026-10-02-eb0-selfhost-guard-prefixes.result.json | written 2026-10-02 by `satyrn-evals launch` on worktree-engine-budget; EB0 guard-prefixes: Baseline 4 of 6, Engine 5 of 6 |
 | records/2026-10-02-eb0-selfhost-review-script.result.json | written 2026-10-03 by `satyrn-evals launch` on worktree-engine-budget; EB0 review-script: 5 of 6 both arms, all 12 flagged by the basename reach rule |
+| evidence/2026-10-03-eb1-read/README.md | created 2026-10-03 on worktree-engine-budget; EB1, the offline read of the EB0 cells: floor set, attribution, self-test path, remedy ranking, power of the parity rule |
+| evidence/2026-10-03-eb1-read/eb1.py | created 2026-10-03 on worktree-engine-budget; recompute script for EB1, stdlib only, no model |

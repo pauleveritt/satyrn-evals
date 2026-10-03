@@ -246,7 +246,7 @@ harness).
 |---|---|---|---|---|---|---|---|
 | depth-3 | B | 6 of 6 | 7,095 (3,566–16,077) | 14 | 12,903 | 5.4 | |
 | | E | 6 of 6 | 8,410 (4,165–16,876) | 11 | 14,593 | 6.0 | 22 of 36 |
-| guard-prefixes | B | 4 of 6 (1 over budget) | 6,364 (3,654–6,769) | 11 | 10,531 | 3.4 | |
+| guard-prefixes | B | 4 of 6 (1 over budget, 1 unavailable) | 6,364 (3,654–6,769) | 11 | 10,531 | 3.4 | |
 | | E | 5 of 6 | 21,086 (9,918–45,268) | 35 | 29,823 | 15.0 | **20 of 20** |
 | review-script | B | 5 of 6 | 8,047 (6,390–9,300) | 21 | 20,758 | 5.7 | |
 | | E | 5 of 6 | 13,102 (11,364–17,744) | 19 | 29,147 | 10.3 | **25 of 25** |
@@ -270,16 +270,14 @@ tasks, in every pair; depth-3 again without a robust difference. Schema-
 rejected `edit` calls on the Engine arm only (26 against 1 across 18 cells
 each). The test-file survey and writing on guard-prefixes (4 of 6 against 0
 of 6; 7 calls before the first edit against 1). The edit-result echo (3,910 B
-per guard cell). On the `self_test` path: 21 of 23 results carry two suite
-summaries (the declared run and the declared + `preserve` run), and all 23
-carry dot lines and the `VIRTUAL_ENV` warning — §4's suspicion is confirmed.
+per guard cell). On the `self_test` path: all 31 Engine self-test events (13 model-called tool results, 18 automatic notes) carry two suite summaries, and 29 of 31 carry the `VIRTUAL_ENV` warning (the two red depth-3 results are compacted). The two runs are not duplicates: the second, declared + `preserve`, counts only the carried tests and leaves out the model's new test file, so it re-verifies the carried tests and never sees the model's own failure; each run takes about 31 s on the self-hosted base (EB1 §3). Corrected 2026-10-03 from EB1: this sentence first said 21 of 23 and 'all 23', and called the second run a double run.
 No `confinement_refused` on the Engine arm in 18 cells; every Engine
 file-tool path was relative, so §8's absolute-path case remains untested.
 
 **Harness findings, not EB's.**
 - Confinement bites Baseline, not the Engine: two guard-prefixes Baseline
   cells tried to `write` scratch tests to `/tmp/test_*.py`, were refused, and
-  are un-admitted (Baseline 4 admitted / 2 flagged; Engine 6 / 0).
+  are un-admitted (Baseline 4 admitted / 2 flagged; Engine 6 / 0). Three of six Engine guard-prefixes cells made the same kind of write (`/tmp/t.py`, `/tmp/probe.py`); the Engine's contract scope refused them first, the extension logged nothing, and those cells stay admitted. Admission is therefore arm-asymmetric on this task, to be ruled before any cross-arm floor read (EB3, R5).
 - The reach audit flags a cell for touching **its own** file when the
   basename matches a hidden test's: review-script's hidden suite is
   `tests/test_review.py`, the name every model gives the test it writes for
@@ -291,6 +289,8 @@ file-tool path was relative, so §8's absolute-path case remains untested.
   cells (one a fail) because the test file the contract told the model to
   create reproduces a block of the hidden `test_hook_guard.py`; the prompt
   enumerates the cases, so convergence is expected. Verdicts unchanged.
+
+EB1's read of these cells is `evidence/2026-10-03-eb1-read/README.md`.
 
 ## 9. Against `docs/numbers.md`
 
