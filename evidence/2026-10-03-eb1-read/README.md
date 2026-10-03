@@ -148,6 +148,7 @@ All figures are in output tokens per delivered pass, over Engine passes. Each re
 
 - **Remedies 1 and 2 overlap on guard-prefixes**, so their figures do not add. The whole guard-prefixes gap is 14.7k.
 - **None of the five is aimed at the largest unexplained guard cost**: inline regex probing (section 7).
+- **Reviewer's note, 2026-10-03: rank 3 is a remedy, not R2 parity.** Pi 0.85.1's `edit` requires a top-level `path` and never hoists one; its three argument repairs rescue 0 of EB0's 26 Engine schema rejections. Hoisting the unambiguous shapes goes beyond Pi and moves to EB2 (design spec section 7). R2 parity is the descriptions, the guidelines and Pi's three repairs, whose effect a replay cannot score.
 
 ## 6. The parity rule's power
 
