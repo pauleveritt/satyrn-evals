@@ -2792,3 +2792,10 @@
 | records/2026-10-02-c1-selfhost-cell-loop.json | created 2026-10-02 on phase-c1 by `satyrn-evals record new`; C1 Baseline census record under confinement (C1 design §5) |
 | records/2026-10-02-c1-selfhost-speed-probe.json | created 2026-10-02 on phase-c1 by `satyrn-evals record new`; C1 Baseline census record under confinement (C1 design §5) |
 | records/2026-10-02-c1-selfhost-preflight-quiet.json | created 2026-10-02 on phase-c1 by `satyrn-evals record new`; C1 Baseline census record under confinement (C1 design §5) |
+| evidence/2026-10-02-c1-preflight/README.md | created 2026-10-03 on phase-c1; C1 Task 5 preflight evidence (launch --preflight under confinement, no model) |
+| evidence/2026-10-02-c1-preflight/agentclinic-repair-depth-3.json | created 2026-10-03 on phase-c1; C1 Task 5 preflight evidence (launch --preflight under confinement, no model) |
+| evidence/2026-10-02-c1-preflight/selfhost-cell-loop.json | created 2026-10-03 on phase-c1; C1 Task 5 preflight evidence (launch --preflight under confinement, no model) |
+| evidence/2026-10-02-c1-preflight/selfhost-docs-linter.json | created 2026-10-03 on phase-c1; C1 Task 5 preflight evidence (launch --preflight under confinement, no model) |
+| evidence/2026-10-02-c1-preflight/selfhost-preflight-quiet.json | created 2026-10-03 on phase-c1; C1 Task 5 preflight evidence (launch --preflight under confinement, no model) |
+| evidence/2026-10-02-c1-preflight/selfhost-run-record-gate.json | created 2026-10-03 on phase-c1; C1 Task 5 preflight evidence (launch --preflight under confinement, no model) |
+| evidence/2026-10-02-c1-preflight/selfhost-speed-probe.json | created 2026-10-03 on phase-c1; C1 Task 5 preflight evidence (launch --preflight under confinement, no model) |
