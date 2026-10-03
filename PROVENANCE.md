@@ -2781,3 +2781,6 @@
 | evidence/2026-10-02-cleanup-audit/README.md | created 2026-10-02, cleanup audit of both trees |
 | docs/superpowers/specs/2026-10-02-c1-requalify-design.md | created 2026-10-02 on phase-c1; the C1 design note (re-cut, Baseline-only re-qualification under confinement), approved in conversation |
 | docs/superpowers/plans/2026-10-02-c1-requalify.md | created 2026-10-02 on phase-c1; the C1 implementation plan (re-cut, records, attended preflight, close-out) |
+| docs/superpowers/plans/2026-10-02-c2-hunting-reread-DRAFT.md | created 2026-10-02 on phase-c1; UNAPPROVED draft plan written read-only by an Opus agent for the maintainer's review; not guidance until approved |
+| docs/superpowers/plans/2026-10-02-c3-census-rerun-DRAFT.md | created 2026-10-02 on phase-c1; UNAPPROVED draft plan written read-only by an Opus agent for the maintainer's review; not guidance until approved |
+| docs/superpowers/plans/2026-10-02-c4-counterfactual-DRAFT.md | created 2026-10-02 on phase-c1; UNAPPROVED draft plan written read-only by an Opus agent for the maintainer's review; not guidance until approved |
