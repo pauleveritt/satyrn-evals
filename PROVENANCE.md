@@ -8581,3 +8581,5 @@
 | docs/user-journey.md | created 2026-09-28 on docs/user-journey; the guided journey (ollama-only) that fuses the collector's framing with the harness steps |
 | site/user-journey.md | created 2026-09-28 on docs/user-journey; Zensical page wrapping docs/user-journey.md |
 | site/imgs/pi-ollama-user-evals.svg | copied 2026-09-28 from satyrn-evals-collector @ f7b553260a810d5447d56f1d13ba92da88be83bd (docs/imgs/pi-ollama-user-evals.svg), the community briefing's own picture of the same cast |
+| docs/why-satyrn-evals.md | created 2026-10-03: charter-led rationale for the harness, with Harbor as a compared example |
+| site/why-satyrn-evals.md | created 2026-10-03: site include of docs/why-satyrn-evals.md |

@@ -12,6 +12,7 @@ nav = [
   { "Release one — the stated negative" = "release-one-negative.md" },
   { "Evals" = [
     { "About Satyrn Evals" = "evals-about.md" },
+    { "Why our own evals" = "why-satyrn-evals.md" },
     { "Architecture" = "evals-architecture.md" },
     { "Using Evals" = "use-evals.md" },
     { "Authoring" = "authoring.md" },

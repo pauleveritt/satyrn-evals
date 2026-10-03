@@ -9,7 +9,9 @@ title: About Satyrn Evals
 Small models need help, and help is only help if you can measure it. Before
 Satyrn, we built remedies for failures we had not diagnosed — and the failures
 turned out to be our own harness's. Evals exists so a claim about a model or
-an engine is a measurement, not a story.
+an engine is a measurement, not a story. Why that needed its own harness,
+rather than an existing agent benchmark, is in
+[why Satyrn has its own evals](why-satyrn-evals.md).
 
 ## How
 
