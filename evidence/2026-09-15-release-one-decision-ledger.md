@@ -308,3 +308,32 @@ Write your review to `/private/tmp/claude-501/-Users-pauleveritt-projects-paulev
 - **UNCONFIRMED (35c298d), historical** — the sandbox Baseline set, `records/2026-09-25-sandbox-baseline-*` and `records/2026-09-25-sandbox2-baseline-*`. Kept as historical evidence per the 2026-09-27 ruling; it will not be re-derived, so the mark is permanent.
 - Not re-opened: the release-one readings in this ledger (09-14 and 09-15 admissions, the 09-15 route proofs, the Phase 3b cells, and the stated negative at `58742be`) also ran under two-uid isolation. They are concluded, and spec §5 does not list them. They stand as evidence for the isolated condition only. Re-open them if anything new is built on them.
 - Superseded procedure: the 09-15 11:30 and ~12:40 entries above describe re-pinning the Engine by re-exporting it into the cells root. That export is retired. The Engine arm now pins a satyrn-engine commit, and launch refuses a checkout whose HEAD differs from the pin (`src/satyrn_evals/cell_engine.py`, `engine_checkout_problems`). Read those entries as history, not as the current procedure.
+
+## 2026-10-03 — C1: the census re-qualified under confinement (re-cut 7fc679f)
+
+- Design: docs/superpowers/specs/2026-10-02-c1-requalify-design.md (approved 2026-10-02; rulings R1-R4).
+- Re-cut 7fc679f:
+  - `cut_task.excluded()` drops every nested `src/satyrn_evals/tasks/selfhost-*/` from every base.
+  - Three bases changed: selfhost-cell-loop, selfhost-speed-probe and selfhost-preflight-quiet, with 1,018 / 1,018 / 3,746 nested files removed. The other four re-cut byte-identical.
+  - Prompts are byte-identical.
+  - The R0 §1.2 validity blocks were carried over. They were measured on the nested bases; the prompt they certify is unchanged.
+- Task trees, old -> new. The manifest field `digests.task_tree` and `tree_digest(task_dir)` are different values; the second is what the C1 records pin and what the revision chains end on:
+  - selfhost-cell-loop: manifest digests.task_tree 31ae08eaa585ea10994a1b27dbb8568ec0428b91b0d348a7b097063e25b6603e -> 5f43275865bfc3ef3febfb7181b194eef5de096f22366922a8b4408f319c4af7; record pin / chain tail (tree_digest) 65ea33d4b34f2b27e6271e6af9bc78a8da5af7348ede832171f40453f2e0b74b -> e7ae152a6da6fc6b804f217dffb318df0dc1056e10b021c4a5de2317bdbb6643
+  - selfhost-docs-linter: manifest digests.task_tree unchanged; record pin / chain tail (tree_digest) unchanged
+  - selfhost-guard-prefixes: manifest digests.task_tree unchanged; record pin / chain tail (tree_digest) unchanged
+  - selfhost-preflight-quiet: manifest digests.task_tree 9ce421a4a2146d98b579d95b7fb37bb049d0025e863fba5e2ed535a9119fca99 -> 6c9e0e27e82c447c3b015a56b52e405d128ab8b25ceddfa1dac7c74cd4ac8cba; record pin / chain tail (tree_digest) 0567373a69595a8c642b8332df407f83feedb06c4aefc706c2269bba122a5e25 -> 991c51ab1b3ebab8a52992829350e8f353d19e9fa7f430eb26531f51ea5c0a71
+  - selfhost-review-script: manifest digests.task_tree unchanged; record pin / chain tail (tree_digest) unchanged
+  - selfhost-run-record-gate: manifest digests.task_tree unchanged; record pin / chain tail (tree_digest) unchanged
+  - selfhost-speed-probe: manifest digests.task_tree 8bf4a51beb47c54ceb90b94bf7e78c99881bba04dc351a1e4139b19f045e3b4d -> 2d732049f8b13928cc21246050520e2ecb9943e41cdfa4816ba0c91213115af2; record pin / chain tail (tree_digest) be6946cd336d318a1e5d3d2e04a6be6ab0fdbfa4be9f145841fdc52145cc26cd -> a892abda9c2a4c452fe3cb0a85637ed04c38ecdd472cbe7f5a9fb2f17eed28a3
+- Recorded `base_edits`, approved by the maintainer on 2026-10-02:
+  - 8 distinct public-test functions are skipped across the three changed bases (3 / 3 / 8 entries, in the order cell-loop / speed-probe / preflight-quiet). Each skip names the removed selfhost task its test reads.
+  - One of them, `tests/test_cell_engine.py::test_an_unsafe_export_is_a_problem` in the preflight-quiet base, is skipped because it plants selfhost-docs-linter's hidden basename, which the cut removed.
+  - Public-suite skips at known-good: 16 / 16 / 46. Base and known-good exit codes are unchanged.
+- Revision chains (tests/test_census_records_frozen.py): a third entry only for the three moved census tasks. docs-linter and run-record-gate are unchanged.
+- PROVENANCE.md: 5,803 rows dropped. That is the nested paths plus 21 rows already stale at 1432bff (`src/satyrn_evals/tasks/selfhost-preflight-quiet/base/evidence/2026-09-16-census/validity/**`).
+- Plan corrections made during execution:
+  - Task 2 Step 9's patch path was resolved to an absolute path.
+  - The Step 2, 8 and 12 expectations were corrected to three changed bases.
+- Records: records/2026-10-02-c1-*.json (six, Baseline, admission, confinement), issued 2026-10-02 at 591a519; preflight run 2026-10-03, exit 0 on each with no problems (commit 2278fd1), evidence/2026-10-02-c1-preflight/README.md. `scripts/preflight_settings.py` exited 0, with oMLX and pi both at 16,000.
+- Machine: Apple M5 Max, 128 GiB; the census evidence names no machine, so nothing here pools with it.
+- Clears nothing: every C0 mark stands until C3's table and C4's counterfactual name their re-derivations. Next piece is C2 (measurement), not another instrument fix.

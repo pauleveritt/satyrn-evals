@@ -73,7 +73,7 @@ Nothing is built on any of them in the meantime.
 | # | Step | Mode | Done when |
 |---|---|---|---|
 | C0 | Mark each result above unconfirmed in `evidence/2026-09-15-release-one-decision-ledger.md`, naming this harness change | attended | every listed decision carries the mark and the commit that re-opened it  done 2026-10-02: ledger entry "C0", marks name `35c298d`; census night 3 added to the list |
-| C1 | Re-qualify on the new harness: same task, model and budgets, extension loaded on both arms, no host setup | attended | a qualification record under `confinement` that passes preflight on this machine |
+| C1 | Re-qualify on the new harness: same task, model and budgets, extension loaded on both arms, no host setup | attended | a qualification record under `confinement` that passes preflight on this machine done 2026-10-03: ledger entry "C1", re-cut 7fc679f, records records/2026-10-02-c1-* |
 | C2 | Re-read the census process classes from retained transcripts; re-sign the class columns where `hunting` becomes live | attended | signed columns that state which cells reclassified and why |
 | C3 | Re-run the census outcome cells under confinement | batch, frozen in daylight | a classified table on this harness, with refused and flagged cells counted |
 | C4 | Re-derive the finishing counterfactual, then resume R0's order | attended | the counterfactual's verdict on the new census, before any Engine build |
@@ -119,10 +119,6 @@ tag's only such test was built on the dropped `session-mechanics` task).
 `evidence/2026-10-02-cleanup-audit/README.md`; engine-side items
 in satyrn-engine `BACKLOG.md`. Each item names what closes or reopens it.
 
-- **Un-nest the task bases.** `cut_task.py` archives every other task's
-  `base/` into a new base; `selfhost-preflight-quiet` carries 3,821 nested
-  task files, four levels deep, and cells work in that tree. Do at C1, where
-  the tasks are re-qualified anyway: one re-cut, one re-pin.
 - **Propagate the C0 unconfirmed mark** to `docs/numbers.md`, the site, the
   census and red-stop evidence READMEs, and the records the ledger names.
   Prose only; do before the site next deploys.
@@ -136,8 +132,8 @@ in satyrn-engine `BACKLOG.md`. Each item names what closes or reopens it.
   263 KB transcript fixture have no product caller. Reopens if a plan names a
   multi-phase workload; otherwise delete at the next instrument-free window.
 - **Frozen census scripts call `preflight_settings.py --cell`, a flag that no
-  longer exists**; `launch_record.py` keeps the dead branch. Header or fix,
-  with the engine's red-stop receipt fix, before the first re-derivation record.
+  longer exists** — headed as historical and the launcher's dead branch removed
+  at C1; the engine's red-stop receipt fix remains.
 - **Gates that nothing runs:** coverage and pyrefly configured in both
   repos, Node installed in CI with no Node gate, the confinement extension
   outside `just gates`. Decide once for both repos: gate it or remove it.
