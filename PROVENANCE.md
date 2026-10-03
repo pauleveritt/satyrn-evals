@@ -2805,3 +2805,4 @@
 | evidence/2026-10-03-c2-hunting-reread/cells.json | written by reread.py on 2026-10-03 at evals HEAD c9ce8e5 (second run, after the root_search fix; first run at 29404dc is commit d36a06a); C2 Task 3 mechanical re-read, no outcome read |
 | evidence/2026-10-03-c2-hunting-reread/table.md | written by reread.py on 2026-10-03 at evals HEAD c9ce8e5 (second run, after the root_search fix; first run at 29404dc is commit d36a06a); C2 Task 3 mechanical re-read, no outcome read |
 | evidence/2026-10-03-c2-hunting-reread/README.md | created 2026-10-03 on phase-c1; C2 Task 4 re-signed hunting column, drafted by an Opus agent from cells.json and signed by the maintainer 2026-10-03 |
+| scripts/c3_night.sh | created 2026-10-03 on phase-c1; C3 sitting driver (A|B, three C1 records per sitting, no relaunch on 4); never run by an agent |
