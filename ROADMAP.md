@@ -73,7 +73,7 @@ Nothing is built on any of them in the meantime.
 | # | Step | Mode | Done when |
 |---|---|---|---|
 | C0 | Mark each result above unconfirmed in `evidence/2026-09-15-release-one-decision-ledger.md`, naming this harness change | attended | every listed decision carries the mark and the commit that re-opened it  done 2026-10-02: ledger entry "C0", marks name `35c298d`; census night 3 added to the list |
-| C1 | Re-qualify on the new harness: same task, model and budgets, extension loaded on both arms, no host setup | attended | a qualification record under `confinement` that passes preflight on this machine done 2026-10-03: ledger entry "C1", re-cut 7fc679f, records records/2026-10-02-c1-* |
+| C1 | Re-qualify on the new harness: same task, model and budgets, extension loaded on both arms, no host setup | attended | a qualification record under `confinement` that passes preflight on this machine  done 2026-10-03: ledger entry "C1", re-cut 7fc679f (task bases un-nested), records records/2026-10-02-c1-* |
 | C2 | Re-read the census process classes from retained transcripts; re-sign the class columns where `hunting` becomes live | attended | signed columns that state which cells reclassified and why |
 | C3 | Re-run the census outcome cells under confinement | batch, frozen in daylight | a classified table on this harness, with refused and flagged cells counted |
 | C4 | Re-derive the finishing counterfactual, then resume R0's order | attended | the counterfactual's verdict on the new census, before any Engine build |
@@ -133,7 +133,8 @@ in satyrn-engine `BACKLOG.md`. Each item names what closes or reopens it.
   multi-phase workload; otherwise delete at the next instrument-free window.
 - **Frozen census scripts call `preflight_settings.py --cell`, a flag that no
   longer exists** — headed as historical and the launcher's dead branch removed
-  at C1; the engine's red-stop receipt fix remains.
+  at C1; the engine's red-stop receipt fix remains (EB, before the first Engine
+  record of the re-derivation).
 - **Gates that nothing runs:** coverage and pyrefly configured in both
   repos, Node installed in CI with no Node gate, the confinement extension
   outside `just gates`. Decide once for both repos: gate it or remove it.
