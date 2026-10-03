@@ -2800,3 +2800,5 @@
 | evidence/2026-10-02-c1-preflight/selfhost-run-record-gate.json | created 2026-10-03 on phase-c1; C1 Task 5 preflight evidence (launch --preflight under confinement, no model) |
 | evidence/2026-10-02-c1-preflight/selfhost-speed-probe.json | created 2026-10-03 on phase-c1; C1 Task 5 preflight evidence (launch --preflight under confinement, no model) |
 | evidence/2026-10-03-c2-hunting-reread/prereg.md | created 2026-10-03 on phase-c1; C2 Task 1 pre-registration, drafted by an agent for the maintainer's approval; not yet approved |
+| evidence/2026-10-03-c2-hunting-reread/reread.py | created 2026-10-03 on phase-c1; C2 Task 2 read-only script (existing pure functions only; not yet run on real data) |
+| tests/test_c2_reread.py | created 2026-10-03 on phase-c1; default-tier tests for the C2 re-read columns, both directions, fixtures built in the file |
