@@ -97,7 +97,7 @@ def revision_problem(task: str, pinned: str, current: str, chain: tuple[str, ...
     if chain is None:
         if pinned == current:
             return None
-        return f"{task}: the record pins {pinned}, the tree is {current}; re-issue the record with `record new` before a night"
+        return f"{task}: the record pins {pinned}, the tree is {current}; record the revision in TASK_TREE_REVISIONS, never re-issue a frozen record"
     if current != chain[-1]:
         return f"{task} is {current}, not its last recorded revision {chain[-1]}; record the revision in TASK_TREE_REVISIONS"
     if pinned != chain[0]:
@@ -397,7 +397,7 @@ def test_an_unrevised_task_that_matches_its_record_has_no_problem() -> None:
 
 def test_an_unrevised_task_that_drifted_is_named() -> None:
     assert revision_problem("t", A, B, None) == (
-        f"t: the record pins {A}, the tree is {B}; re-issue the record with `record new` before a night"
+        f"t: the record pins {A}, the tree is {B}; record the revision in TASK_TREE_REVISIONS, never re-issue a frozen record"
     )
 
 
