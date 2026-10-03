@@ -32,7 +32,7 @@
 - (C) A fake-pi night only.
 - **Recommend A.** "Prototype on debug cells only, never read decision cells" (counterfactual plan; ledger 2026-09-15 ~18:00).
 
-**D5. The audit flags a cell's own test file.** `confinement._reaches` matches a hidden basename anywhere, including inside the worktree, and each task's hidden file has its module's natural test name (C2 D4 lists them). A flagged cell is not admitted (`confinement.Finding.admitted`), so C3 could admit few cells for an artifact. The extension does not refuse these calls, so the process is unchanged; only the tally is.
+**D5. The audit flags a cell's own test file.** `confinement._reaches` matches a hidden basename anywhere, including inside the worktree, and each task's hidden file has its module's natural test name (C2 D4 lists them). A flagged cell is not admitted (`confinement.Finding.admitted`), so C3 could admit few cells for an artifact. The extension does not refuse these calls, so the process is unchanged; only the tally is. There is a second source of in-worktree flags. Each selfhost base still holds 19-26 `fixtures/*.patch` files from the external tasks' fixtures and `tests/data` (19 in four bases, 26 in cell-loop, speed-probe and preflight-quiet), 12-18 of them named `known-good.patch` / `known-broken.patch`. Every `fixtures/*.patch` basename is a protected name for any task with fixtures (`confinement.protected`), so reading one inside the worktree flags the cell. C2's in-worktree count runs on census-night transcripts made with the nested bases, which held many more such files, so it is an upper bound for C3. (Measured read-only with `git ls-files src/satyrn_evals/tasks/<selfhost task>/base | grep -cE '/fixtures/[^/]*\.patch$'`; the `known-(good|broken)` subset is 12-18.)
 - (A) Run as is and report.
 - (B) Before the freeze, narrow the basename rule to paths that leave the worktree. This is a harness fix with both-direction tests and changes no record; it is one instrument piece after C2's measurement.
 - (C) Leave the code and pre-register a reading: a cell flagged only by in-worktree basename reaches is admitted in C3's table and listed.
@@ -229,7 +229,9 @@ done
 - Next: C4's single decision run on evidence/<c3-date>-c3-census.
 ```
 
-- [ ] **Step 2:** Append ` done <date>: ledger entry "C3", evidence/<c3-date>-c3-census/` to the ROADMAP C3 row. Run `just gates; echo "exit $?"` and commit.
+- [ ] **Step 2 (attended — the maintainer):** Decide the retirement condition for `tests/test_c1_records.py`. It guards that the six C1 records carry the C1 design's parameters and pin the current task trees, which holds only before a sitting. Once the C1 records have results, either retire it (delete it and its PROVENANCE row), or skip it once a `records/<c1-date>-c1-<task>.result.json` exists. Add the choice to Step 1's ledger entry before the commit in Step 4.
+- [ ] **Step 3:** Check that the census page's "Deviations" (Task 8 Step 2, and `docs/results/<date>-c3-census.md` if D9 is B) lists, as deviations from the census condition, the removed nested trees (1,018 / 1,018 / 3,746 files out of the cell-loop, speed-probe and preflight-quiet bases at C1's re-cut) and the C1 skip markers (`@pytest.mark.skip(reason="C1: ...")` on eight public tests in those three bases, 3 / 3 / 8 entries, visible to the model in the base). Add them if not.
+- [ ] **Step 4:** Append ` done <date>: ledger entry "C3", evidence/<c3-date>-c3-census/` to the ROADMAP C3 row. Run `just gates; echo "exit $?"` and commit.
 
 ## Done when (ROADMAP C3)
 
