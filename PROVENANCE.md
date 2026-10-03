@@ -2782,7 +2782,7 @@
 | docs/superpowers/specs/2026-10-02-c1-requalify-design.md | created 2026-10-02 on phase-c1; the C1 design note (re-cut, Baseline-only re-qualification under confinement), approved in conversation |
 | docs/superpowers/plans/2026-10-02-c1-requalify.md | created 2026-10-02 on phase-c1; the C1 implementation plan (re-cut, records, attended preflight, close-out) |
 | docs/superpowers/plans/2026-10-03-c2-hunting-reread.md | created 2026-10-02 on phase-c1 as 2026-10-02-c2-hunting-reread-DRAFT.md (draft plan written read-only by an Opus agent); renamed and approved 2026-10-03: the maintainer ruled D1-D7 in session, D4 amended (ledger "2026-10-03 — C2 and three C3 decisions ruled") |
-| docs/superpowers/plans/2026-10-02-c3-census-rerun-DRAFT.md | created 2026-10-02 on phase-c1; UNAPPROVED draft plan written read-only by an Opus agent for the maintainer's review; not guidance until approved |
+| docs/superpowers/plans/2026-10-03-c3-census-rerun.md | created 2026-10-02 on phase-c1 as 2026-10-02-c3-census-rerun-DRAFT.md, written read-only by an Opus agent; renamed and approved 2026-10-03 by the maintainer's rulings on D1-D9 (ledger "2026-10-03 — C3's remaining decisions ruled; the C3 plan approved") |
 | docs/superpowers/plans/2026-10-02-c4-counterfactual-DRAFT.md | created 2026-10-02 on phase-c1; UNAPPROVED draft plan written read-only by an Opus agent for the maintainer's review; not guidance until approved |
 | tests/test_retired_cell_flag.py | created 2026-10-02 on phase-c1; guard that no live file passes the retired --cell flag (C1 design §4) |
 | tests/test_c1_records.py | created 2026-10-02 on phase-c1; guard that the C1 records carry the design's parameters and pin the current trees |
