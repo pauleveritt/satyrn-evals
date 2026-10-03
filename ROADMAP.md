@@ -95,7 +95,7 @@ offline estimate.
 
 | # | Step | Mode | Done when |
 |---|---|---|---|
-| EB0 | Development record, both arms, floor tasks, confinement, engine at the pin; run after C3 | batch, frozen in daylight | `records/2026-10-02-eb0-*` complete, cells retained whole |
+| EB0 | Development record, both arms, floor tasks, confinement, engine at the pin | batch, frozen in daylight | `records/2026-10-02-eb0-*` complete, cells retained whole — done 2026-10-03: 36 cells, no infrastructure failure; the gap reproduces on guard-prefixes (20 of 20 pairs) and review-script (25 of 25), not on depth-3 (22 of 36); evidence README §8b |
 | EB1 | Re-derive the cost attribution on EB0 cells; choose the floor set by robust pairwise difference; state the parity rule's power | offline, no model | an evidence README with denominators and the floor set |
 | — | Confinement fixes the Engine arm needs anyway: the inner Pi's `SATYRN_CONFINEMENT_ROOT`; `self_test_red_stop` in receipts. R2 parity for `edit` in the same re-pin | overnight build | tests both directions; one admitted Engine smoke cell |
 | EB2 | Remedies in R0's order, each with an offline estimate that names its class: the contract's test lines, edit-result echo, self-test dedup and note hygiene, a light path for small requests | after C4 | an approved spec per remedy |

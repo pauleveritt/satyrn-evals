@@ -79,7 +79,7 @@ def read_cell(cell: Path) -> dict:
                 if "test" in json.dumps(args):
                     pre_test_calls += 1
             continue
-        if kind == "entry_appended" and event.get("entryType") == "confinement_refused":
+        if kind == "entry_appended" and (event.get("entry") or {}).get("customType") == "confinement_refused":
             confinement_refused += 1
             continue
         if kind != "message_end":

@@ -2857,3 +2857,6 @@
 | records/2026-10-02-eb0-selfhost-review-script.json | created 2026-10-02 on worktree-engine-budget by `satyrn-evals record new`; EB0 development record under confinement, mirrors records/2026-09-21-comparison-selfhost-review-script.json |
 | records/2026-10-02-eb0-smoke-agentclinic-repair-depth-3.json | created 2026-10-02 on worktree-engine-budget by `satyrn-evals record new`; EB0 smoke: one attended Engine cell under confinement, read for confinement_refused |
 | records/2026-10-02-eb0-smoke-agentclinic-repair-depth-3.result.json | written 2026-10-02 by `satyrn-evals launch` on worktree-engine-budget; the EB0 smoke's result: 1 of 1 pass, admitted, 0 confinement refusals |
+| records/2026-10-02-eb0-agentclinic-repair-depth-3.result.json | written 2026-10-02 by `satyrn-evals launch` on worktree-engine-budget; EB0 depth-3: 6 of 6 both arms, all admitted |
+| records/2026-10-02-eb0-selfhost-guard-prefixes.result.json | written 2026-10-02 by `satyrn-evals launch` on worktree-engine-budget; EB0 guard-prefixes: Baseline 4 of 6, Engine 5 of 6 |
+| records/2026-10-02-eb0-selfhost-review-script.result.json | written 2026-10-03 by `satyrn-evals launch` on worktree-engine-budget; EB0 review-script: 5 of 6 both arms, all 12 flagged by the basename reach rule |

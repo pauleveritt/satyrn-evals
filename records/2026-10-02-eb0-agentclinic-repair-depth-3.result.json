@@ -1,0 +1,279 @@
+{
+  "record": "records/2026-10-02-eb0-agentclinic-repair-depth-3.json",
+  "record_sha256": "672f71b23e52213a6c19a43f2f1e493538b93d512cf9c833c18d79c124ac04e7",
+  "arm_sha256": {
+    "baseline": "e98db02835b809c9eb240bc691d8a6fe7b1600bf8ac73b3855a351948bb661c9",
+    "engine": "f74387d31c0885b661b7222f4a92260825499328119280db52ffc5159da3d757"
+  },
+  "status": "complete",
+  "reason": null,
+  "night": "/Users/pauleveritt/satyrn-runs/2026-10-02-eb0-agentclinic-repair-depth-3",
+  "task": "agentclinic-repair-depth-3",
+  "rung": "R2",
+  "k": 3,
+  "n": 6,
+  "purpose": "development",
+  "arms": {
+    "baseline": {
+      "finished": 6,
+      "n": 6,
+      "code_counts": {
+        "OK": 6
+      },
+      "passes": 6,
+      "summary": "/Users/pauleveritt/satyrn-runs/2026-10-02-eb0-agentclinic-repair-depth-3/baseline/summary.json",
+      "infrastructure": [],
+      "contamination": {
+        "graded": 6,
+        "flagged": 0,
+        "clean": 6,
+        "unmeasured": 0
+      }
+    },
+    "engine": {
+      "finished": 6,
+      "n": 6,
+      "code_counts": {
+        "OK": 6
+      },
+      "passes": 6,
+      "summary": "/Users/pauleveritt/satyrn-runs/2026-10-02-eb0-agentclinic-repair-depth-3/engine/summary.json",
+      "infrastructure": [],
+      "contamination": {
+        "graded": 6,
+        "flagged": 0,
+        "clean": 6,
+        "unmeasured": 0
+      }
+    }
+  },
+  "cells": [
+    {
+      "slot": 0,
+      "arm": "baseline",
+      "attempt_dir": "agentclinic-repair-depth-3-20261003-015032-473542",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 1,
+      "arm": "engine",
+      "attempt_dir": "agentclinic-repair-depth-3-20261003-015032-558006",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 2,
+      "arm": "baseline",
+      "attempt_dir": "agentclinic-repair-depth-3-20261003-015032-643915",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 3,
+      "arm": "engine",
+      "attempt_dir": "agentclinic-repair-depth-3-20261003-015326-428491",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 4,
+      "arm": "baseline",
+      "attempt_dir": "agentclinic-repair-depth-3-20261003-015603-071369",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 5,
+      "arm": "engine",
+      "attempt_dir": "agentclinic-repair-depth-3-20261003-020155-346531",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 6,
+      "arm": "baseline",
+      "attempt_dir": "agentclinic-repair-depth-3-20261003-020235-740743",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 7,
+      "arm": "engine",
+      "attempt_dir": "agentclinic-repair-depth-3-20261003-020406-408558",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 8,
+      "arm": "baseline",
+      "attempt_dir": "agentclinic-repair-depth-3-20261003-020540-245576",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 9,
+      "arm": "engine",
+      "attempt_dir": "agentclinic-repair-depth-3-20261003-020731-993244",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 10,
+      "arm": "baseline",
+      "attempt_dir": "agentclinic-repair-depth-3-20261003-021151-728457",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 11,
+      "arm": "engine",
+      "attempt_dir": "agentclinic-repair-depth-3-20261003-021458-014520",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    }
+  ],
+  "replaced": [],
+  "sittings": [
+    {
+      "record": "records/2026-10-02-eb0-agentclinic-repair-depth-3.json",
+      "started": "2026-10-03T01:50:32+00:00",
+      "k": 3,
+      "evals_head": "61bc0d137af7a009a499be5c7d0cf353a6b42c4e",
+      "preflight": {
+        "confinement": "extension",
+        "extension": "/Users/pauleveritt/projects/pauleveritt/satyrn-evals/.claude/worktrees/engine-budget/packages/confinement/confinement.ts",
+        "tasks_root": "/Users/pauleveritt/projects/pauleveritt/satyrn-evals/.claude/worktrees/engine-budget/src/satyrn_evals/tasks"
+      },
+      "engine_engine_self_test": {
+        "base_exit": 1,
+        "known_good_exit": 0,
+        "repair_base": true
+      },
+      "task_self_test": {
+        "base_exit": 1,
+        "known_good_exit": 0,
+        "repair_base": true
+      },
+      "model_server": {
+        "Ornith-1.5-9B-MLX-8bit": {
+          "base_url": "http://127.0.0.1:8001",
+          "authenticated": true
+        }
+      },
+      "settings": {
+        "baseline": {
+          "arm_sha256": "e5936f49e2c5d1d9dad732c3adec8d0bde438835f520a15bb3ab4bb12ed9df79",
+          "backend": "omlx",
+          "omlx_entry": {
+            "enable_thinking": true,
+            "force_sampling": false,
+            "is_default": true,
+            "is_pinned": false,
+            "max_context_window": 262144,
+            "max_tokens": 16000,
+            "min_p": 0.0,
+            "preserve_thinking": true,
+            "reasoning_parser": "qwen_3",
+            "temperature": 0.6,
+            "thinking_budget_enabled": false,
+            "top_k": 20,
+            "top_p": 0.95,
+            "trust_remote_code": false,
+            "turboquant_kv_enabled": false
+          },
+          "omlx_entry_sha256": "d84e6f974c7086a626b61f65d156f56c153e60fd1de5c51d921da929db2235bc",
+          "pi_entry": {
+            "contextWindow": 262144,
+            "cost": {
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "input": 0,
+              "output": 0
+            },
+            "id": "Ornith-1.5-9B-MLX-8bit",
+            "input": [
+              "text"
+            ],
+            "maxTokens": 16000,
+            "name": "Ornith 1.5 9B (MLX 8-bit local, served)",
+            "reasoning": true,
+            "samplingParams": {
+              "min_p": 0.0,
+              "presence_penalty": 0.0,
+              "repetition_penalty": 1.0,
+              "temperature": 0.6,
+              "top_k": 20,
+              "top_p": 0.95
+            }
+          },
+          "pi_entry_sha256": "ab238d1883f4a4bf150d0f4e55dedd8adf8292ff647eefe593a063d3b51eba23",
+          "pi_models": "/Users/pauleveritt/.pi/agent/models.json"
+        },
+        "engine": {
+          "arm_sha256": "9a4a0c1b38058563d6ba025f1c9a313250a1a9c0bc0cb30b8124683132950c81",
+          "backend": "omlx",
+          "omlx_entry": {
+            "enable_thinking": true,
+            "force_sampling": false,
+            "is_default": true,
+            "is_pinned": false,
+            "max_context_window": 262144,
+            "max_tokens": 16000,
+            "min_p": 0.0,
+            "preserve_thinking": true,
+            "reasoning_parser": "qwen_3",
+            "temperature": 0.6,
+            "thinking_budget_enabled": false,
+            "top_k": 20,
+            "top_p": 0.95,
+            "trust_remote_code": false,
+            "turboquant_kv_enabled": false
+          },
+          "omlx_entry_sha256": "d84e6f974c7086a626b61f65d156f56c153e60fd1de5c51d921da929db2235bc",
+          "pi_entry": {
+            "contextWindow": 262144,
+            "cost": {
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "input": 0,
+              "output": 0
+            },
+            "id": "Ornith-1.5-9B-MLX-8bit",
+            "input": [
+              "text"
+            ],
+            "maxTokens": 16000,
+            "name": "Ornith 1.5 9B (MLX 8-bit local, served)",
+            "reasoning": true,
+            "samplingParams": {
+              "min_p": 0.0,
+              "presence_penalty": 0.0,
+              "repetition_penalty": 1.0,
+              "temperature": 0.6,
+              "top_k": 20,
+              "top_p": 0.95
+            }
+          },
+          "pi_entry_sha256": "ab238d1883f4a4bf150d0f4e55dedd8adf8292ff647eefe593a063d3b51eba23",
+          "pi_models": "/Users/pauleveritt/.pi/agent/models.json"
+        }
+      },
+      "ended": "2026-10-03T02:22:12+00:00",
+      "status": "complete",
+      "reason": null
+    }
+  ]
+}
