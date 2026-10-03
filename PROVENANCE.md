@@ -8582,3 +8582,4 @@
 | site/user-journey.md | created 2026-09-28 on docs/user-journey; Zensical page wrapping docs/user-journey.md |
 | site/imgs/pi-ollama-user-evals.svg | copied 2026-09-28 from satyrn-evals-collector @ f7b553260a810d5447d56f1d13ba92da88be83bd (docs/imgs/pi-ollama-user-evals.svg), the community briefing's own picture of the same cast |
 | evidence/2026-10-02-cleanup-audit/README.md | created 2026-10-02, cleanup audit of both trees |
+| docs/superpowers/specs/2026-10-02-c1-requalify-design.md | created 2026-10-02 on phase-c1; the C1 design note (re-cut, Baseline-only re-qualification under confinement), approved in conversation |
