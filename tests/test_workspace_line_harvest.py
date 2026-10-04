@@ -513,6 +513,13 @@ def test_the_engine_arm_records_an_error_when_the_worktree_cannot_be_found(
 ) -> None:
     state = _default_state(tmp_path, isolation=Isolation.ISOLATED)
     (state.parent / "tmp").mkdir()  # empty: no satyrn-engine-* directory yet
+    # Hermetic: the search scans the ambient temp dir and the fallback roots,
+    # so scope both to an empty test-local root; a foreign leftover in the real
+    # $TMPDIR must not be found.
+    empty_root = tmp_path / "engine-tmp"
+    empty_root.mkdir()
+    monkeypatch.setattr(workspace_module.tempfile, "gettempdir", lambda: os.fspath(empty_root))
+    monkeypatch.setattr(workspace_module, "_LOCAL_TMP_FALLBACKS", ())
 
     result, _out = _run(
         tmp_path,

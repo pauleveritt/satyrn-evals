@@ -1240,13 +1240,12 @@ _LOCAL_TMP_FALLBACKS: tuple[Path, ...] = (Path("/tmp"), Path("/var/tmp"))
 def _engine_worktree_search_roots(state: _WorkspaceState) -> tuple[Path, ...]:
     """Where an Engine arm's transient deliver worktree could be rooted.
 
-    Isolated: exactly the cell's own private ``TMPDIR`` (``cell.cell_paths``:
-    ``parent / "tmp"``) -- no other cell's Engine subprocess can write there,
-    so one root is both necessary and sufficient. Local (development only,
-    never a deciding record): the ambient ``TMPDIR`` plus the two roots
-    Engine's own ``_temporary_parent`` falls back to, deduplicated by
-    resolved identity -- scanning only the first candidate would miss a
-    worktree Engine itself put in a fallback root.
+    The same roots for every isolation profile (the body ignores ``state``):
+    the ambient ``tempfile.gettempdir()`` plus the two roots Engine's own
+    ``_temporary_parent`` falls back to, deduplicated by resolved identity.
+    Scanning only the first candidate would miss a worktree Engine itself put
+    in a fallback root. Foreign ``satyrn-engine-*`` directories found here are
+    harmless: every candidate is bound to this attempt before it is accepted.
     """
     seen: dict[Path, None] = {}
     for root in (Path(tempfile.gettempdir()), *_LOCAL_TMP_FALLBACKS):

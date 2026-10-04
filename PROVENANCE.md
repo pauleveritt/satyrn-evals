@@ -2128,7 +2128,7 @@
 | tests/test_workspace_tripped_harvest.py | created in release-one |
 | tests/test_attempt_tripped_patch.py | created in release-one |
 | tests/test_line_budget.py | created in release-one |
-| tests/test_workspace_line_harvest.py | created in release-one |
+| tests/test_workspace_line_harvest.py | created in release-one; modified 2026-10-04 on phase-c1: the Engine-worktree-not-found test scopes the temp search to a test-local root (hermetic against a leftover satyrn-engine-* in the ambient TMPDIR) |
 | tests/test_attempt_record_line.py | created in release-one |
 | tests/test_attempt_line.py | created in release-one |
 | tests/test_run_record_line.py | created in release-one |
