@@ -103,7 +103,7 @@ from pathlib import PurePosixPath
 from satyrn_evals.budget import UsageCounter
 from satyrn_evals.contamination import scan_transcript
 from satyrn_evals.overlay import OverlaySpec
-from satyrn_evals.pathology import GUARD_KINDS, decoded_scan_text
+from satyrn_evals.pathology import GUARD_KINDS, RETIRED_GUARD_KINDS, decoded_scan_text
 from satyrn_evals.timeline import read_timeline
 
 #: The spec's per-command threshold: "commands over 120 s".
@@ -681,7 +681,7 @@ def collect_evidence(
         if e.get("type") == "message_start"
         and isinstance(e.get("message"), dict)
         and e["message"].get("role") == "custom"
-        and e["message"].get("customType") in GUARD_KINDS
+        and e["message"].get("customType") in GUARD_KINDS | RETIRED_GUARD_KINDS
     )
     timeouts = sum(
         1

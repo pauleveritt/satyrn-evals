@@ -40,7 +40,7 @@
 | src/satyrn_evals/overlay.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | src/satyrn_evals/packet.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | src/satyrn_evals/patch.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
-| src/satyrn_evals/pathology.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
+| src/satyrn_evals/pathology.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92; modified 2026-10-04 on phase-c1 (Engine re-pin Task 5): GUARD_KINDS equals the engine's list at the re-pin commit; RETIRED_GUARD_KINDS added |
 | src/satyrn_evals/receipt.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | src/satyrn_evals/repeat_limit.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | src/satyrn_evals/rescore.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
@@ -69,7 +69,7 @@
 | tests/test_adapter_process_errors.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/test_agentclinic_manifests.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/test_agentclinic_reconstruction.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
-| tests/test_arms.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
+| tests/test_arms.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92; modified 2026-10-04 on phase-c1 (Engine re-pin Task 5): engine pin literal moved to the re-pin commit |
 | tests/test_attempt.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/test_attempt_pi.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/test_attempt_record.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
@@ -97,7 +97,7 @@
 | tests/test_packet_build.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/test_packet_render.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/test_patch.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
-| tests/test_pathology.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
+| tests/test_pathology.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92; modified 2026-10-04 on phase-c1 (Engine re-pin Task 5): red-stop, retired-redirect and unknown-kind vocabulary tests |
 | tests/test_pi_session_driver.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/test_pi_session_mapping.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/test_pi_session_tool_boundary.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
@@ -283,7 +283,7 @@
 | tests/test_budget.py | created in release-one |
 | tests/integration/test_budget_attempt.py | created in release-one |
 | src/satyrn_evals/timeline.py | created in release-one |
-| src/satyrn_evals/cell_evidence.py | created in release-one |
+| src/satyrn_evals/cell_evidence.py | created in release-one; modified 2026-10-04 on phase-c1 (Engine re-pin Task 5): guard-message count accepts RETIRED_GUARD_KINDS so old transcripts count as before |
 | tests/test_timeline.py | created in release-one |
 | tests/test_cell_evidence.py | created in release-one |
 | tests/integration/test_timeline_attempt.py | created in release-one |
@@ -1378,7 +1378,7 @@
 | tests/integration/test_launch_record.py | created in release-one |
 | docs/superpowers/plans/2026-09-15-generator-fix.md | created in release-one |
 | docs/superpowers/plans/2026-09-15-engine-arm-route-proof.md | created in release-one |
-| arms/engine-ornith15-9b.json | created in release-one |
+| arms/engine-ornith15-9b.json | created in release-one; modified 2026-10-04 on phase-c1 (Engine re-pin Task 5): engine_commit and mutator.ts digest moved to the re-pin commit |
 | tests/integration/test_engine_arm_pins.py | created in release-one |
 | src/satyrn_evals/tasks/selfhost-cell-loop/base/.gitattributes | created in release-one |
 | src/satyrn_evals/tasks/selfhost-cell-loop/base/.gitignore | created in release-one |
@@ -2725,7 +2725,7 @@
 | docs/superpowers/specs/2026-09-21-workspace-seam-design.md | created in release-one |
 | docs/superpowers/plans/2026-09-21-workspace-seam.md | created in release-one |
 | tools/engine_sync.py | created in release-one |
-| tests/test_engine_sync.py | created in release-one |
+| tests/test_engine_sync.py | created in release-one; modified 2026-10-04 on phase-c1 (Engine re-pin Task 5): engine pin literal moved to the re-pin commit |
 | tests/integration/test_engine_sync.py | created in release-one |
 | tests/test_engine_docs.py | created in release-one |
 | site/engine.md | created in release-one |
@@ -2734,8 +2734,8 @@
 | tests/test_engine_pages.py | created in release-one |
 | arms/baseline-mellum-swe-pi.json | created in the mellum shootout spike 2026-09-22 |
 | arms/baseline-mellum-class-swe-pi.json | created in the mellum-class rerun 2026-09-23 |
-| arms/engine-mellum-class-swe-pi.json | created for the mellum-class n=6 run 2026-09-23 |
-| arms/engine-mellum-class-swe-pi-redstop.json | created for the red-stop engine rerun 2026-09-23 (engine 803df2d) |
+| arms/engine-mellum-class-swe-pi.json | created for the mellum-class n=6 run 2026-09-23; modified 2026-10-04 on phase-c1 (Engine re-pin Task 5): engine_commit and mutator.ts digest moved to the re-pin commit |
+| arms/engine-mellum-class-swe-pi-redstop.json | created for the red-stop engine rerun 2026-09-23 (engine 803df2d); modified 2026-10-04 on phase-c1 (Engine re-pin Task 5): engine_commit and mutator.ts digest moved to the re-pin commit |
 | arms/baseline-unsloth-ornith15-9b.json | created 2026-09-25 for the local unsloth/GGUF Baseline smoke on the Linux port |
 | arms/baseline-unsloth-ornith15-9b-sandbox.json | created 2026-09-25 for the unprivileged bwrap sandbox profile (maintainer's pi 0.87.1) |
 | site/how-it-works.md | created in release-one |
@@ -2764,13 +2764,6 @@
 | src/satyrn_evals/confinement.py | created in release-one |
 | tests/test_confinement.py | created in release-one |
 | tests/integration/test_cell_engine.py | created in release-one |
-| _engine/README.md | satyrn-engine @ 1869397d605f887483d626e7434ccca2bdace340 |
-| _engine/usage.md | satyrn-engine @ 1869397d605f887483d626e7434ccca2bdace340 |
-| _engine/glossary.md | satyrn-engine @ 1869397d605f887483d626e7434ccca2bdace340 |
-| _engine/rendered/README.md | rendered from satyrn-engine @ 1869397d605f887483d626e7434ccca2bdace340 by tools/engine_sync.py (myst-to-markdown-v1) |
-| _engine/rendered/usage.md | rendered from satyrn-engine @ 1869397d605f887483d626e7434ccca2bdace340 by tools/engine_sync.py (myst-to-markdown-v1) |
-| _engine/rendered/glossary.md | rendered from satyrn-engine @ 1869397d605f887483d626e7434ccca2bdace340 by tools/engine_sync.py (myst-to-markdown-v1) |
-| _engine/manifest.json | generated by tools/engine_sync.py from satyrn-engine @ 1869397d605f887483d626e7434ccca2bdace340 |
 | docs/user-guide.md | created 2026-09-27 on docs/user-guide for the user's getting-started guide (unsloth, ollama, oMLX); the abandoned ../QUICKSTART.md draft was the seed |
 | site/user-guide.md | created 2026-09-27 on docs/user-guide; Zensical page wrapping docs/user-guide.md |
 | scripts/prereqs.py | created 2026-09-27 on docs/user-guide; checks git/python/uv/pi and one local backend, with fix messages |
@@ -2840,3 +2833,11 @@
 | evidence/2026-10-03-c4-counterfactual/decision.txt | written 2026-10-03 on phase-c1 by decide.py at evals c6f51ba, dirty=False; C4 Task 3, the one decision run, made by the maintainer |
 | evidence/2026-10-03-c4-counterfactual/table.md | written 2026-10-03 on phase-c1 by decide.py at evals c6f51ba, dirty=False; C4 Task 3, the per-task tallies under both readings and the two beside counts |
 | evidence/2026-10-03-c4-counterfactual/README.md | created 2026-10-03 on phase-c1; C4 Task 4 Step 1 result page, drafted by an Opus agent from decision.txt, table.md and the six C3 cells.json; unsigned until the maintainer signs it (Task 4 Step 2) |
+| tests/fixtures/confinement/engine-worktree-root.json | created 2026-10-04 on phase-c1; Engine re-pin Task 5 Step 4 (the confinement root is the Engine's own worktree; the eval worktree is outside it) |
+| _engine/README.md | satyrn-engine @ 6d304794d9e4818503c3b51151353a24f8deeaae |
+| _engine/usage.md | satyrn-engine @ 6d304794d9e4818503c3b51151353a24f8deeaae |
+| _engine/glossary.md | satyrn-engine @ 6d304794d9e4818503c3b51151353a24f8deeaae |
+| _engine/rendered/README.md | rendered from satyrn-engine @ 6d304794d9e4818503c3b51151353a24f8deeaae by tools/engine_sync.py (myst-to-markdown-v1) |
+| _engine/rendered/usage.md | rendered from satyrn-engine @ 6d304794d9e4818503c3b51151353a24f8deeaae by tools/engine_sync.py (myst-to-markdown-v1) |
+| _engine/rendered/glossary.md | rendered from satyrn-engine @ 6d304794d9e4818503c3b51151353a24f8deeaae by tools/engine_sync.py (myst-to-markdown-v1) |
+| _engine/manifest.json | generated by tools/engine_sync.py from satyrn-engine @ 6d304794d9e4818503c3b51151353a24f8deeaae |
