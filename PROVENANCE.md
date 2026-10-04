@@ -2833,3 +2833,4 @@
 | evidence/2026-10-03-c3-census/selfhost-speed-probe/table.md | written by evidence/2026-09-16-census/classify.py on 2026-10-03 at evals HEAD 0c3ad1f; C3 Task 7 offline replay and grading of retained cells, one record, never pooled |
 | evidence/2026-10-03-c3-census/selfhost-speed-probe/classes.md | written by evidence/2026-09-16-census/classify.py on 2026-10-03 at evals HEAD 0c3ad1f; C3 Task 7 class-column skeleton, columns unfilled until Task 8 |
 | evidence/2026-10-03-c3-census/selfhost-speed-probe/confinement.json | written 2026-10-03 on phase-c1 from the night's baseline/summary.json by a one-line python -c (recorded in the census README); C3 Task 7 confinement tally |
+| evidence/2026-10-03-c3-census/README.md | created 2026-10-03 on phase-c1; C3 Task 8 Step 2 census page, drafted by an Opus agent from cells.json, confinement.json, classes.md and the six C1 result files; unsigned until the maintainer signs it (Task 8 Step 3) |
