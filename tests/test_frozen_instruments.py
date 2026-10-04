@@ -1,0 +1,31 @@
+"""The frozen census instruments equal their blobs at 0c3ad1f.
+
+C3 and C4 outputs are reproduced by running these files unmodified; an edit
+changes signed rows. Digests computed with ``git show 0c3ad1f:<path> | shasum -a 256``.
+"""
+
+import hashlib
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parent.parent
+
+FROZEN = {
+    "evidence/2026-09-16-census/classify.py": "2951b12b7f9500738827aa857daea3d43d57fc01725837cef376f352d09ad4db",
+    "evidence/2026-09-15-finishing-counterfactual/counterfactual.py": "8a213fc3ce0724e1c3dea14edfd39a1198610f7b8cdb3c99c84e634e2738dce5",
+    "src/satyrn_evals/census_classify.py": "637d0ef7fbf12e84a03d5b6f97551e46a9193de4976cd352fdb5554556244fea",
+}
+
+
+def digest(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def test_digest_function_known_value():
+    assert digest(b"abc") == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+
+
+@pytest.mark.parametrize("path", sorted(FROZEN))
+def test_frozen_instrument_unchanged(path: str):
+    assert digest((ROOT / path).read_bytes()) == FROZEN[path], f"{path} drifted from 0c3ad1f"
