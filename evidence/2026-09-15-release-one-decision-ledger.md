@@ -454,3 +454,11 @@ Write your review to `/private/tmp/claude-501/-Users-pauleveritt-projects-paulev
 - Ruled at signing: `capability` False on both cut cells (depth-3 `499793`, cell-loop `389181`; neither spent its budget, design §7), primary hunting; `allowlist` False on run-record-gate `688591` and docs-linter `556770`, `007105` (replay artifact; harness patches clean); speed-probe's shared hidden-test failure is `ambiguity`, a task defect, outside C4's deciding set; preflight-quiet's three judgement calls stand.
 - The results page (`docs/results/2026-10-03-c3-census.md`, D9 ruled B) is drafted by an agent outside `docs/results/` at the maintainer's request and placed there by the maintainer; the hook keeps that directory from agents.
 - Clears nothing: every C0 mark stands until C4's read. Next: Task 9 close-out, then C4's single decision run (the maintainer's).
+
+## 2026-10-03 — C3: the census re-run under confinement (records/2026-10-02-c1-*, sittings b56e5dd, c49717e/8c1dd3e)
+- Cells: 36 (6 × 6) on Apple M5 Max; admitted 36, refused 0, flagged 0, unmeasured 0, replaced 0, wall-clock-cut 2 (depth-3 `499793`, cell-loop `389181`; both stand, ruled above).
+- SUPERSEDED for building: census nights 1-3 and their class columns (C0 marks); the isolated readings stay evidence for the isolated condition.
+- Signed: the class columns and `evidence/2026-10-03-c3-census/README.md`; the results page is `docs/results/2026-10-03-c3-census.md`, placed by the maintainer.
+- `tests/test_c1_records.py` (Task 9 Step 2), **ruled by the maintainer 2026-10-03 ("go with the skip")**: kept; the per-record check is skipped once that record's `.result.json` exists, and stays live for a C1 record that has not run.
+- Limits carried to C4 and after: the root-search and outside-worktree bash gap (harness build item after C4); the replay's skipped bash writers (three `fidelity:` rows, withheld by C4's rule); speed-probe's `ambiguity`.
+- Next: C4's single decision run on evidence/2026-10-03-c3-census (the maintainer's). Clears nothing until then.

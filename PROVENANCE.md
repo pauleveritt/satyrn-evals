@@ -2786,7 +2786,7 @@
 | docs/superpowers/plans/2026-10-03-c4-counterfactual.md | created 2026-10-02 on phase-c1 as 2026-10-02-c4-counterfactual-DRAFT.md, written read-only by an Opus agent; renamed and approved 2026-10-03 by the maintainer's rulings on D1-D10 (ledger "2026-10-03 — C4's decisions ruled; the C4 plan approved") |
 | docs/superpowers/specs/2026-10-03-c4-finishing-counterfactual-rederive.md | created 2026-10-03 on phase-c1; C4 Task 1 pre-registration, drafted by an agent from the rulings with no C3 cell in existence; approved by the maintainer in session 2026-10-03, before C3's daylight freeze |
 | tests/test_retired_cell_flag.py | created 2026-10-02 on phase-c1; guard that no live file passes the retired --cell flag (C1 design §4) |
-| tests/test_c1_records.py | created 2026-10-02 on phase-c1; guard that the C1 records carry the design's parameters and pin the current trees |
+| tests/test_c1_records.py | created 2026-10-02 on phase-c1; guard that the C1 records carry the design's parameters and pin the current trees; modified 2026-10-03 on phase-c1 (C3 Task 9): the per-record check is skipped once the record's .result.json exists |
 | records/2026-10-02-c1-agentclinic-repair-depth-3.json | created 2026-10-02 on phase-c1 by `satyrn-evals record new`; C1 Baseline census record under confinement (C1 design §5) |
 | records/2026-10-02-c1-selfhost-run-record-gate.json | created 2026-10-02 on phase-c1 by `satyrn-evals record new`; C1 Baseline census record under confinement (C1 design §5) |
 | records/2026-10-02-c1-selfhost-docs-linter.json | created 2026-10-02 on phase-c1 by `satyrn-evals record new`; C1 Baseline census record under confinement (C1 design §5) |

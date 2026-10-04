@@ -1,6 +1,8 @@
 """The six C1 records carry the design's parameters and pin the current task
 trees (docs/superpowers/specs/2026-10-02-c1-requalify-design.md §5). A base
-that moves after they were issued fails here, before any sitting.
+that moves after they were issued fails here, before any sitting. Once a
+record's .result.json exists the record has run and its tree pin is history, so
+the live per-record check is skipped for it (C3 plan Task 9).
 No model, network, or subprocess.
 """
 
@@ -24,6 +26,11 @@ EXPECTED = {
     "token_budget": 48_000, "turn_budget": 72, "command_backstop_s": 4_800, "max_minutes": 240,
     "previous_result": None,
 }
+
+
+def has_run(record_path: Path) -> bool:
+    """True once ``<record>.result.json`` sits beside the record."""
+    return record_path.with_suffix(".result.json").exists()
 
 
 def c1_problems(record: dict, current_tree: str) -> list[str]:
@@ -50,6 +57,11 @@ def test_the_c1_records_are_exactly_the_census_set() -> None:
 
 @pytest.mark.parametrize("path", C1, ids=lambda p: p.stem)
 def test_a_c1_record_carries_the_design_and_pins_the_current_tree(path: Path) -> None:
+    if has_run(path):
+        pytest.skip(
+            f"{path.with_suffix('.result.json').name} exists; "
+            "C3 plan Task 9: the record has run; its tree pin is history"
+        )
     record = json.loads(path.read_text())
     assert c1_problems(record, tree_digest(DEFAULT_TASKS_ROOT / record["task"])) == []
 
@@ -60,3 +72,16 @@ def test_the_check_names_a_changed_budget_and_a_drifted_tree() -> None:
     current = tree_digest(DEFAULT_TASKS_ROOT / record["task"])
     assert c1_problems({**record, "token_budget": 32_000}, current) == ["token_budget is 32000, want 48000"]
     assert c1_problems(record, "0" * 64) == ["task_tree_sha256 is not the current tree"]
+
+
+def test_a_record_with_a_result_beside_it_has_run(tmp_path: Path) -> None:
+    record = tmp_path / "2026-10-02-c1-x.json"
+    record.write_text("{}")
+    record.with_suffix(".result.json").write_text("{}")
+    assert has_run(record)
+
+
+def test_a_record_without_a_result_has_not_run(tmp_path: Path) -> None:
+    record = tmp_path / "2026-10-02-c1-x.json"
+    record.write_text("{}")
+    assert not has_run(record)
