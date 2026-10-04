@@ -1,0 +1,21 @@
+{
+  "record": "records/2026-10-02-c1-selfhost-docs-linter.json",
+  "arm": [
+    "arms/baseline-ornith15-9b.json"
+  ],
+  "problems": [],
+  "confinement": "extension",
+  "extension": "/Users/pauleveritt/projects/pauleveritt/satyrn-evals/packages/confinement/confinement.ts",
+  "tasks_root": "/Users/pauleveritt/projects/pauleveritt/satyrn-evals/src/satyrn_evals/tasks",
+  "task_self_test": {
+    "base_exit": 0,
+    "known_good_exit": 0,
+    "repair_base": false
+  },
+  "model_server": {
+    "Ornith-1.5-9B-MLX-8bit": {
+      "base_url": "http://127.0.0.1:8001",
+      "authenticated": true
+    }
+  }
+}

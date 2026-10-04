@@ -332,7 +332,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _launch_preflight(args: argparse.Namespace) -> int:
-    """The isolated sitting's cell checks, for every arm the record runs; the JSON report goes to stdout, each problem to stderr."""
+    """The confinement preflight, for every arm the record runs; the JSON report goes to stdout, each problem to stderr."""
     record = load_run_record(Path(args.preflight))
     if not args.arm:
         raise UsageError("launch --preflight needs --arm ARM.json, one per arm the record runs")
@@ -710,11 +710,11 @@ session_p.add_argument(
 )
 
 launch_p = sub.add_parser(
-    "launch", help="run a frozen record's cells; or check a record, or preflight the cell user for one"
+    "launch", help="run a frozen record's cells; or check a record, or run the confinement preflight for one"
 )
 launch_p.add_argument("record", nargs="?", default=None, help="frozen run record JSON whose cells to run")
 launch_p.add_argument("--check", default=None, help="run record JSON path to check")
-launch_p.add_argument("--preflight", default=None, help="isolated run record JSON path to preflight the cell for")
+launch_p.add_argument("--preflight", default=None, help="run record JSON path to preflight under confinement")
 launch_p.add_argument("--arm", action="append", default=None, help="arm JSON, once per arm the record runs")
 launch_p.add_argument("--no-hunt", action="store_true", help="skip the root-anchored find (development records only)")
 launch_p.add_argument("--no-settings", action="store_true", help="skip preflight_settings (development records only)")

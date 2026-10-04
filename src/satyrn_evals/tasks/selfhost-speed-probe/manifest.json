@@ -78,11 +78,29 @@
         "old": "    result = measure_timing(cell_dir, wrapper_start=_BASE, wrapper_end=_BASE + 30)\n\n    assert \"residual\" not in result.phases\n",
         "new": "    result = measure_timing(\n        cell_dir,\n        wrapper_start=_BASE,\n        wrapper_end=_BASE + 30,\n        birthtime_reader=_births(**{\"transcript.txt\": _BASE + 5}),\n    )\n\n    assert \"residual\" not in result.phases\n",
         "reason": "Linux records no st_birthtime, so the copied public suite's residual-phase test left the setup/command boundary unobservable and task_self_test refused this base before any cell. The parent made the same test hermetic in f6302ca (2026-09-23), after this BASE was cut, so the base carries that fix as a recorded edit."
+      },
+      {
+        "path": "tests/test_qualify.py",
+        "old": "def test_every_candidate_is_bundled_hidden_and_carries_its_rung(name: str, rung: str) -> None:",
+        "new": "@pytest.mark.skip(reason=\"C1: names a self-hosted task the C1 cut excludes from this base\")\ndef test_every_candidate_is_bundled_hidden_and_carries_its_rung(name: str, rung: str) -> None:",
+        "reason": "Parametrized over the candidate tasks, this test loads each one's manifest from the bundled tasks, among them selfhost-docs-linter, selfhost-guard-prefixes, selfhost-review-script and selfhost-run-record-gate, which the C1 cut (docs/superpowers/specs/2026-10-02-c1-requalify-design.md §2.3) excludes from this base."
+      },
+      {
+        "path": "tests/test_writable_paths_declaration.py",
+        "old": "def test_the_golden_table_covers_every_shipped_task() -> None:",
+        "new": "@pytest.mark.skip(reason=\"C1: names a self-hosted task the C1 cut excludes from this base\")\ndef test_the_golden_table_covers_every_shipped_task() -> None:",
+        "reason": "This test compares the golden table's task names with the shipped tasks, and the table names selfhost-docs-linter, selfhost-guard-prefixes, selfhost-review-script and selfhost-run-record-gate, which the C1 cut (docs/superpowers/specs/2026-10-02-c1-requalify-design.md §2.3) excludes from this base."
+      },
+      {
+        "path": "tests/test_writable_paths_declaration.py",
+        "old": "def test_each_shipped_task_renders_its_pinned_patterns(name: str) -> None:",
+        "new": "@pytest.mark.skip(reason=\"C1: names a self-hosted task the C1 cut excludes from this base\")\ndef test_each_shipped_task_renders_its_pinned_patterns(name: str) -> None:",
+        "reason": "Parametrized over the golden table, this test loads each task's manifest, among them selfhost-docs-linter, selfhost-guard-prefixes, selfhost-review-script and selfhost-run-record-gate, which the C1 cut (docs/superpowers/specs/2026-10-02-c1-requalify-design.md §2.3) excludes from this base."
       }
     ]
   },
   "digests": {
-    "task_tree": "8bf4a51beb47c54ceb90b94bf7e78c99881bba04dc351a1e4139b19f045e3b4d",
+    "task_tree": "2d732049f8b13928cc21246050520e2ecb9943e41cdfa4816ba0c91213115af2",
     "prompt": "462718666e5191b9109d964c8cd91d1919e9b3bf15cb85744014c569db439422"
   },
   "validity": {

@@ -5,8 +5,9 @@ A task is ``(BASE, GOOD, files, HIDDEN, plan-anchor)``, written down once as a
 spec file under ``tools/task_specs/`` (spec, "The self-hosted generator"):
 
 - ``base/`` is ``git archive BASE`` minus plans, specs, ``.claude``,
-  ``.github``, ``PROVENANCE.md`` and the HIDDEN files, plus a ``.gitignore``
-  line for each runtime residue pattern BASE does not already ignore;
+  ``.github``, ``PROVENANCE.md``, every self-hosted task's cut tree and the
+  HIDDEN files, plus a ``.gitignore`` line for each runtime residue pattern
+  BASE does not already ignore;
 - ``overlay/`` holds HIDDEN at GOOD, flattened to each file's basename (the
   layout the headroom probe's tasks graded with, 635c12b);
 - ``fixtures/known-good.patch`` is GOOD's diff restricted to ``files``;
@@ -71,6 +72,11 @@ RUNG = "R1-plan"
 REPO_URL = "https://github.com/pauleveritt/satyrn-evals.git"
 EXCLUDED_PREFIXES = ("docs/superpowers/plans/", "docs/superpowers/specs/", ".claude/", ".github/")
 EXCLUDED_FILES = frozenset({"PROVENANCE.md"})
+#: Every self-hosted task's cut tree, not only the task's own: a self-hosted
+#: base is this repository, so archiving another self-hosted task into it nests
+#: the repository inside itself (C1, 2026-10-02-c1-requalify-design.md, R3).
+#: External tasks stay; the public suites use them as fixtures.
+SELFHOST_TASKS_PREFIX = "src/satyrn_evals/tasks/selfhost-"
 IGNORED_PATHS = SELF_HOSTED_CONVENTION_FILES
 RESIDUE_IGNORES = (".pytest_cache/", "__pycache__/", ".ruff_cache/", ".venv/")
 ORACLE = ("python", "-m", "pytest", "-p", "satyrn_evals.oracle_hook")
@@ -275,9 +281,11 @@ def excluded(path: str, hidden: Iterable[str], name: str) -> bool:
     R2-8) -- a re-cut whose base already contains that commit would otherwise
     carry the task's own answer straight into a cell. A validity record's
     ``solution.diff`` is a complete solution to *some* census task, so that
-    exclusion is global rather than scoped to ``name``.
+    exclusion is global rather than scoped to ``name``. Every self-hosted task's
+    cut tree stays out of every base, because a self-hosted base is this
+    repository; the external tasks stay as the public suites' fixtures.
     """
-    if path in EXCLUDED_FILES or path in set(hidden) or path.startswith(EXCLUDED_PREFIXES):
+    if path in EXCLUDED_FILES or path in set(hidden) or path.startswith((*EXCLUDED_PREFIXES, SELFHOST_TASKS_PREFIX)):
         return True
     if path.startswith(f"src/satyrn_evals/tasks/{name}/") or path == f"tools/task_specs/{name}.json":
         return True

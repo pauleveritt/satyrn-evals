@@ -8,6 +8,7 @@ import pytest
 from satyrn_evals.pathology import (
     EVENT_TYPES,
     GUARD_KINDS,
+    RETIRED_GUARD_KINDS,
     SESSION_VERSION,
     TOOL_NAMES,
     CellPathology,
@@ -1140,11 +1141,35 @@ def test_a_multi_session_concatenation_is_named_not_malformed() -> None:
 def test_every_engine_guard_entry_is_measured() -> None:
     for kind in (
         "loop_broken", "scope_refused", "symbol_preserved", "command_bounded", "command_timed_out",
-        "self_test_redirected", "self_test_detected", "self_test_enforced",
+        "self_test_redirected", "self_test_detected", "self_test_enforced", "self_test_red_stop",
     ):
         block = count_transcript(_LOOP_BROKEN_DOC.replace('"loop_broken"', f'"{kind}"'), had_patch=True)
         assert (block.measured, block.reason) == (True, None), kind
         assert block.loop_broken == (1 if kind == "loop_broken" else 0), kind
+
+
+def test_guard_kinds_has_red_stop_and_not_the_retired_redirect() -> None:
+    assert "self_test_red_stop" in GUARD_KINDS
+    assert "self_test_redirected" not in GUARD_KINDS
+    assert {"self_test_redirected"} == RETIRED_GUARD_KINDS
+
+
+def test_a_cell_with_a_red_stop_is_not_unknown_event() -> None:
+    doc = _LOOP_BROKEN_DOC.replace('"loop_broken"', '"self_test_red_stop"')
+    block = count_transcript(doc, had_patch=True)
+    assert (block.measured, block.reason) == (True, None)
+
+
+def test_a_transcript_with_the_retired_redirect_still_classifies() -> None:
+    doc = _LOOP_BROKEN_DOC.replace('"loop_broken"', '"self_test_redirected"')
+    block = count_transcript(doc, had_patch=True)
+    assert (block.measured, block.reason) == (True, None)
+
+
+def test_an_unknown_guard_kind_is_still_unknown_event() -> None:
+    doc = _LOOP_BROKEN_DOC.replace('"loop_broken"', '"self_test_invented"')
+    block = count_transcript(doc, had_patch=True)
+    assert (block.measured, block.reason) == (False, "unknown_event")
 
 
 def test_a_cell_with_a_detected_self_test_is_not_unknown_event() -> None:

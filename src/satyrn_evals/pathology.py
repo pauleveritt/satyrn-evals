@@ -62,13 +62,14 @@ RUNNER_NAMES = frozenset({"pytest"})
 #: `cell_evidence` counts them. `self_test_enforced` added in Phase 3b (the
 #: Engine's own run when the model stops untested); `self_test_detected` added
 #: 2026-09-18 (the Engine detects pytest's summary line in a bash result and
-#: runs its own self-test once). `self_test_redirected` is the retired Phase 3b
-#: redirect, kept so already-committed route-proof transcripts still classify.
+#: runs its own self-test once); `self_test_red_stop` added at the 2026-10-04
+#: engine re-pin (the red-stop receipt key replaced the retired
+#: `self_test_redirected`). The list equals the engine's at the pinned commit.
 #: Without any of them every cell where it fires would read `unknown_event`.
 GUARD_KINDS = frozenset(
     {
         "loop_broken", "scope_refused", "symbol_preserved", "command_bounded", "command_timed_out",
-        "self_test_redirected", "self_test_detected", "self_test_enforced",
+        "self_test_detected", "self_test_enforced", "self_test_red_stop",
         # Release two: the finish-on-green steer (design §2) and the runaway
         # resume (design §3). Without them every cell where either fires
         # reads `unknown_event` and the record is void.
@@ -76,9 +77,14 @@ GUARD_KINDS = frozenset(
     }
 )
 
+#: Guard entries the engine no longer emits, kept so already-committed
+#: transcripts (the Phase 3b route proofs carry `self_test_redirected`) still
+#: classify. Not in ``GUARD_KINDS``, which is pinned equal to the engine's list.
+RETIRED_GUARD_KINDS = frozenset({"self_test_redirected"})
+
 #: Guard entries the eval's own extension emits. Kept out of ``GUARD_KINDS``,
 #: which mirrors the engine's own list and is pinned against it by the
-#: integration tier; the transcript vocabulary accepts the union, so a
+#: integration tier; the transcript vocabulary accepts the union (with ``RETIRED_GUARD_KINDS``), so a
 #: confinement refusal is a count, never an ``unknown_event``.
 EVAL_GUARD_KINDS = frozenset({"confinement_refused"})
 _ENVELOPE_OPENING = re.compile(r'\{\s*"name"\s*:')
@@ -257,7 +263,7 @@ def _vocabulary_ok(events: list[dict]) -> PathologyReason | None:
             entry = event.get("entry")
             if not isinstance(entry, dict) or not isinstance(entry.get("customType"), str):
                 return "malformed"
-            if entry["customType"] not in GUARD_KINDS | EVAL_GUARD_KINDS:
+            if entry["customType"] not in GUARD_KINDS | EVAL_GUARD_KINDS | RETIRED_GUARD_KINDS:
                 return "unknown_event"
     return None
 

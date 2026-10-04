@@ -73,10 +73,10 @@ Nothing is built on any of them in the meantime.
 | # | Step | Mode | Done when |
 |---|---|---|---|
 | C0 | Mark each result above unconfirmed in `evidence/2026-09-15-release-one-decision-ledger.md`, naming this harness change | attended | every listed decision carries the mark and the commit that re-opened it  done 2026-10-02: ledger entry "C0", marks name `35c298d`; census night 3 added to the list |
-| C1 | Re-qualify on the new harness: same task, model and budgets, extension loaded on both arms, no host setup | attended | a qualification record under `confinement` that passes preflight on this machine |
-| C2 | Re-read the census process classes from retained transcripts; re-sign the class columns where `hunting` becomes live | attended | signed columns that state which cells reclassified and why |
-| C3 | Re-run the census outcome cells under confinement | batch, frozen in daylight | a classified table on this harness, with refused and flagged cells counted |
-| C4 | Re-derive the finishing counterfactual, then resume R0's order | attended | the counterfactual's verdict on the new census, before any Engine build |
+| C1 | Re-qualify on the new harness: same task, model and budgets, extension loaded on both arms, no host setup | attended | a qualification record under `confinement` that passes preflight on this machine  done 2026-10-03: ledger entry "C1", re-cut 7fc679f (task bases un-nested), records records/2026-10-02-c1-* |
+| C2 | Re-read the census process classes from retained transcripts; re-sign the class columns where `hunting` becomes live | attended | signed columns that state which cells reclassified and why  done 2026-10-03: ledger entry "C2", evidence/2026-10-03-c2-hunting-reread/ |
+| C3 | Re-run the census outcome cells under confinement | batch, frozen in daylight | a classified table on this harness, with refused and flagged cells counted  done 2026-10-03: ledger entry "C3", evidence/2026-10-03-c3-census/ |
+| C4 | Re-derive the finishing counterfactual, then resume R0's order | attended | the counterfactual's verdict on the new census, before any Engine build  done 2026-10-03: ledger entry "C4", verify; next: R0 sitting (census design §8) |
 
 ## Rules that bind every phase
 
@@ -114,3 +114,33 @@ for `/implement`; the orchestrator skill; a depth-4 AgentClinic task; any
 course-derived claim; an integration test that drives the real
 `adapters/pi_session.py` through a full four-phase session protocol (the
 tag's only such test was built on the dropped `session-mechanics` task).
+
+**Cleanup, 2026-10-02** — findings and evidence in
+`evidence/2026-10-02-cleanup-audit/README.md`; engine-side items
+in satyrn-engine `BACKLOG.md`. Each item names what closes or reopens it.
+
+- **Propagate the C0 unconfirmed mark** to `docs/numbers.md`, the site, the
+  census and red-stop evidence READMEs, and the records the ledger names.
+  Prose only; do before the site next deploys.
+- **Rewrite `STATE.md`; one reading order** across `AGENTS.md`, `README.md`
+  and `STATE.md`; retired local state removed. Do with the mark above.
+- **This file's shape:** a Status column for the release-two table, R0's
+  cell reduced to a pointer, 2d closed, the list below given reopen
+  conditions or moved to `TODO.md`, one backlog home chosen. Do with `STATE.md`.
+- **Session route:** `packet.py`, `turn_ledger.py`, `hygiene.py`,
+  `session_repeat_limit.py`, the `session_*` family, 25 test files and the
+  263 KB transcript fixture have no product caller. Reopens if a plan names a
+  multi-phase workload; otherwise delete at the next instrument-free window.
+- **Frozen census scripts call `preflight_settings.py --cell`, a flag that no
+  longer exists** — headed as historical and the launcher's dead branch removed
+  at C1; the engine's red-stop receipt fix remains (EB, before the first Engine
+  record of the re-derivation).
+- **Gates that nothing runs:** coverage and pyrefly configured in both
+  repos, Node installed in CI with no Node gate, the confinement extension
+  outside `just gates`. Decide once for both repos: gate it or remove it.
+- **Fossil files:** `scripts/seq_design.py`, `scripts/suite_durations.json`,
+  `tools/agentclinic_gate.sh`, `arms/baseline.json`, the duplicate
+  `engine-mellum-class-swe-pi-redstop.json`, 92 duplicate Mellum request
+  files; catalogue marks for lessons, pathologies 21-23 and the two "clean
+  harness" banners; the three spec headers; the misfiled task plan. One
+  provenance row and one commit each.

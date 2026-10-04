@@ -1,4 +1,8 @@
 #!/bin/sh
+# HISTORICAL: frozen evidence for the isolated census nights (two-uid harness,
+# retired 2026-09-27, 35c298d). Not runnable under confinement: it calls
+# `preflight_settings.py --cell`, a flag that no longer exists. C3 runs from its
+# own driver (docs/superpowers/specs/2026-10-02-c1-requalify-design.md §4).
 # census_night_3.sh -- run the 2026-09-18 census night 3, from the evals checkout.
 # One record, six cells: the authored third medium-build task selfhost-preflight-quiet
 # (docs/superpowers/specs/2026-09-17-release-two-authored-task-design.md, approved

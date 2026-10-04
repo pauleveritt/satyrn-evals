@@ -42,16 +42,11 @@ half is unverified-by-file. That is what lets the same model run from
 oMLX on one machine and an OpenAI-compatible server on another without
 editing this script.
 
-File reads, with one exception: ``--cell`` reads the cell user's
-``models.json`` -- the config Pi actually loads under isolation -- through
-``sudo -n -H -u satyrn-cell cat``, because the maintainer cannot open that
-home. The provenance block then names the cell's file as its Pi source.
-
 Usage::
 
     scripts/preflight_settings.py arms/baseline-ornith15-9b.json \\
         [--omlx-settings ~/.omlx/model_settings.json] \\
-        [--pi-models ~/.pi/agent/models.json | --cell] \\
+        [--pi-models ~/.pi/agent/models.json] \\
         [--record PATH]
 """
 

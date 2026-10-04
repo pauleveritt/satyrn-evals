@@ -1,0 +1,12 @@
+{
+  "name": "engine-worktree-root",
+  "root": "engine/worktree",
+  "roots": ["corpus"],
+  "calls": [
+    {"toolName": "read", "input": {"path": "{temp}/engine/worktree/app.py"}},
+    {"toolName": "write", "input": {"path": "{temp}/evals/worktree/app.py", "content": "x = 1\n"}},
+    {"toolName": "edit", "input": {"path": "app.py", "edits": [{"oldText": "a", "newText": "b"}]}},
+    {"toolName": "read", "input": {"path": "../../corpus/x"}}
+  ],
+  "expected": {"blocked": 2, "entries": 2, "firstBlock": 2}
+}

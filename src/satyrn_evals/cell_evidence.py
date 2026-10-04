@@ -103,7 +103,7 @@ from pathlib import PurePosixPath
 from satyrn_evals.budget import UsageCounter
 from satyrn_evals.contamination import scan_transcript
 from satyrn_evals.overlay import OverlaySpec
-from satyrn_evals.pathology import GUARD_KINDS, decoded_scan_text
+from satyrn_evals.pathology import GUARD_KINDS, RETIRED_GUARD_KINDS, decoded_scan_text
 from satyrn_evals.timeline import read_timeline
 
 #: The spec's per-command threshold: "commands over 120 s".
@@ -419,6 +419,48 @@ def _program(words: Sequence[str]) -> tuple[str, list[str]]:
     return posixpath.basename(words[index]), list(words[index + 1 :])
 
 
+#: Per wrapper: the options that take a separate value word. Only
+#: ``_search_program`` reads them; ``_program`` and ``_unwrap`` are unchanged.
+_WRAPPER_VALUE_FLAGS = {
+    "timeout": frozenset({"-k", "-s", "--kill-after", "--signal"}),
+    "env": frozenset({"-u", "-C", "-S", "--unset", "--chdir", "--split-string"}),
+    "nice": frozenset({"-n", "--adjustment"}),
+    "stdbuf": frozenset({"-i", "-o", "-e", "--input", "--output", "--error"}),
+    "sudo": frozenset({"-u", "-g", "-h", "-p", "-C", "-D", "-R", "-T",
+                       "--user", "--group", "--host", "--prompt", "--chdir", "--role", "--type"}),
+}
+
+
+def _search_program(words: Sequence[str]) -> tuple[str, list[str]]:
+    """``_program`` for ``root_search``: first skip wrapper prefixes at the
+    segment start, repeatedly -- ``timeout`` (options, then its duration),
+    ``env`` (options and ``NAME=value``), ``sudo`` (with its options), ``nice``,
+    ``stdbuf``, ``time -p``, ``nohup``, ``command``, ``exec``, and ``NAME=value``.
+    A wrapper word that is not first is an argument, and a wrapper with nothing
+    after it leaves no program."""
+    index, count = 0, len(words)
+    while index < count:
+        word = words[index]
+        name = posixpath.basename(word)
+        if re.match(r"^\w+=", word) or name in ("nohup", "command", "exec"):
+            index += 1
+        elif name in ("time", "timeout", "env", "nice", "stdbuf", "sudo"):
+            index += 1
+            takes_value = _WRAPPER_VALUE_FLAGS.get(name, frozenset())
+            while index < count and words[index].startswith("-") and words[index] != "-":
+                flag = words[index]
+                index += 2 if flag in takes_value else 1
+                if flag == "--":
+                    break
+            if name == "timeout":
+                index += 1  # the duration
+        else:
+            break
+    if index >= count:
+        return "", []
+    return posixpath.basename(words[index]), list(words[index + 1 :])
+
+
 def _unwrap(words: Sequence[str]) -> list[str]:
     rest = list(words)
     while rest and (rest[0] == "env" or re.match(r"^[A-Za-z_]\w*=", rest[0])):
@@ -484,7 +526,7 @@ def _length_stop(event: dict) -> bool:
 
 def root_search(command: str, cwd: str | None) -> bool:
     for segment in _segments(command):
-        program, rest = _program(segment)
+        program, rest = _search_program(segment)
         if program in _DISK_SEARCH_PROGRAMS:
             return True
         flags = _RECURSIVE_FLAGS.get(program, "")
@@ -639,7 +681,7 @@ def collect_evidence(
         if e.get("type") == "message_start"
         and isinstance(e.get("message"), dict)
         and e["message"].get("role") == "custom"
-        and e["message"].get("customType") in GUARD_KINDS
+        and e["message"].get("customType") in GUARD_KINDS | RETIRED_GUARD_KINDS
     )
     timeouts = sum(
         1

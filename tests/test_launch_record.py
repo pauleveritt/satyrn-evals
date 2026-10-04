@@ -43,7 +43,7 @@ def _facts(**over: object) -> LaunchFacts:
 
     base = dict(
         frozen=lambda path: True, committed=lambda path: True, head=lambda: "f" * 40,
-        confinement_preflight=lambda **kw: CellPreflight([], {"pi_version": "0.85.1"}), settings=lambda path, cell: (0, SETTINGS),
+        confinement_preflight=lambda **kw: CellPreflight([], {"pi_version": "0.85.1"}), settings=lambda path: (0, SETTINGS),
         spawn_cell=spawn, model_server=lambda base_url, server_model, api_key=None: [], pi_models=lambda: {},
         task_self_test=lambda task_dir, manifest: TaskSelfTest([], {}),
         engine_self_test=lambda *a, **k: TaskSelfTest([], {}),
@@ -157,7 +157,7 @@ def test_an_arm_on_another_backend_than_the_record_is_refused(tmp_path: Path) ->
     "facts",
     [
         _facts(confinement_preflight=lambda **kw: CellPreflight(["the cell can find /x/known-good.patch"], {})),
-        _facts(settings=lambda path, cell: (1, "preflight_settings FAILED: temperature")),
+        _facts(settings=lambda path: (1, "preflight_settings FAILED: temperature")),
         _facts(model_server=lambda base_url, server_model, api_key=None: [f"the model server at {base_url} is unreachable: refused"]),
     ],
     ids=["cell-preflight", "settings", "model-server"],
@@ -167,6 +167,21 @@ def test_a_preflight_or_settings_problem_exits_1_and_runs_nothing(
 ) -> None:
     assert _launch(tmp_path, _record(tmp_path), facts) == 1
     assert "launch FAILED:" in capsys.readouterr().err
+    assert not (tmp_path / "runs").exists()
+
+
+def test_a_settings_refusal_whose_text_starts_with_json_is_named_not_crashed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`preflight_settings.py` prints its provenance JSON before it refuses, and
+    `settings_provenance` joins stdout and stderr on a non-zero exit. The 2026-10-02
+    EB0 smoke hit this: the joined text starts with `{`, `json.loads` raised, and the
+    traceback replaced the `launch FAILED:` line that named the refusal."""
+    refused = SETTINGS + "\npreflight_settings FAILED: pi: max_tokens arm=16000 but models.json maxTokens=32000\n"
+    assert _launch(tmp_path, _record(tmp_path), _facts(settings=lambda path: (1, refused))) == 1
+    err = capsys.readouterr().err
+    assert "launch FAILED: preflight_settings for baseline exited 1" in err
+    assert "maxTokens=32000" in err
     assert not (tmp_path / "runs").exists()
 
 
@@ -425,7 +440,7 @@ def test_a_summary_error_still_writes_a_result_with_best_effort_counts_and_exits
 
 def test_a_settings_change_between_cells_stops_the_night_as_drift(tmp_path: Path) -> None:
     answers = iter([(0, SETTINGS), (0, SETTINGS), (0, '{"arm_sha256": "b"}')])
-    facts = _facts(settings=lambda path, cell: next(answers), spawn_cell=lambda spec, log: Finishing(spec))
+    facts = _facts(settings=lambda path: next(answers), spawn_cell=lambda spec, log: Finishing(spec))
     record = _record(tmp_path)
     assert _launch(tmp_path, record, facts) == 3
     result = json.loads(record.with_suffix(".result.json").read_text())

@@ -1077,6 +1077,32 @@ def test_evidence_carries_the_confinement_finding(tmp_path: Path) -> None:
     )["format_number-1"]
     assert block["confinement_reaches"] == 1
     assert block["confinement_admitted"] is False
+    assert block["confinement_reaches_in_worktree"] == 0
+
+
+def test_evidence_reports_in_worktree_reaches_without_flagging_the_cell(
+    tmp_path: Path,
+) -> None:
+    """C3 D5: a cell that touched only its own hidden-named file is admitted;
+    the count is reported beside, never in, the admission fields."""
+    output, task_dir, manifest = _visible_setup(tmp_path)
+    reading = _pathology_cell(
+        output,
+        "format_number-1",
+        transcript="\n".join(
+            [
+                '{"type": "session", "version": 3, "cwd": "/w"}',
+                '{"type": "tool_execution_start", "toolCallId": "r1", '
+                '"toolName": "read", "args": {"path": "known-good.patch"}}',
+            ]
+        ),
+    )
+    block = compute_evidence(
+        output, [reading], task_dir=task_dir, manifest=manifest
+    )["format_number-1"]
+    assert block["confinement_reaches"] == 0
+    assert block["confinement_admitted"] is True
+    assert block["confinement_reaches_in_worktree"] == 1
 
 
 def test_evidence_leaves_the_confinement_finding_absent_without_a_transcript(

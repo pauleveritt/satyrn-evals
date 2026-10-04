@@ -135,9 +135,25 @@ def test_a_tasks_own_cut_tree_stays_out_of_its_own_base() -> None:
 
 
 def test_another_tasks_cut_tree_stays_in_the_base() -> None:
-    """The sibling: cutting `t` must not blind a cell to an unrelated task's
-    already-committed tree."""
+    """The sibling: cutting `t` must not blind a cell to an unrelated external
+    task's already-committed tree. Self-hosted tasks are excluded (C1, ruling R3)."""
     assert not excluded("src/satyrn_evals/tasks/other/manifest.json", [], "t")
+
+
+def test_every_self_hosted_tasks_cut_tree_stays_out_of_every_base() -> None:
+    """C1 (2026-10-02-c1-requalify-design.md, ruling R3): a self-hosted task's
+    base is this repository, so archiving another self-hosted task into it
+    nests the repository inside itself, four levels deep on preflight-quiet."""
+    assert excluded("src/satyrn_evals/tasks/selfhost-other/manifest.json", [], "t")
+    assert excluded("src/satyrn_evals/tasks/selfhost-other/base/src/satyrn_evals/cli.py", [], "t")
+
+
+def test_an_external_tasks_cut_tree_and_a_self_hosted_spec_stay_in_the_base() -> None:
+    """The success sibling: the public suites use the external tasks as fixtures."""
+    assert not excluded("src/satyrn_evals/tasks/agentclinic-repair-depth-3/manifest.json", [], "t")
+    assert not excluded("src/satyrn_evals/tasks/format_number/base/x.py", [], "t")
+    assert not excluded("src/satyrn_evals/tasks/KNOWN_DEFECTS.md", [], "t")
+    assert not excluded("tools/task_specs/selfhost-other.json", [], "t")
 
 
 def test_a_tasks_own_cut_spec_stays_out_of_its_own_base() -> None:

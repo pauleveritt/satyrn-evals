@@ -29,7 +29,7 @@ from satyrn_evals.attempt_record import (
     write_attempt_record,
 )
 from satyrn_evals.cell_evidence import HARNESS_CUT_CODES, collect_evidence
-from satyrn_evals.confinement import finding, protected
+from satyrn_evals.confinement import finding, in_worktree_reaches, protected
 from satyrn_evals.contamination import scan_transcript
 from satyrn_evals.errors import OverlayError, SatyrnError, UsageError
 from satyrn_evals.grade import grade
@@ -320,6 +320,11 @@ def compute_evidence(
             block["confinement_refusals"] = cell_finding.refusals
             block["confinement_reaches"] = cell_finding.reaches
             block["confinement_admitted"] = cell_finding.admitted
+            # Reported only (C3 D5): the cell's own hidden-basename files,
+            # which admission ignores.
+            block["confinement_reaches_in_worktree"] = in_worktree_reaches(
+                text, protected_=terms
+            )
         blocks[name] = block
     return blocks
 

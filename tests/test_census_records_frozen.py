@@ -46,12 +46,15 @@ DECISION_RULE = (
     "from a pass count"
 )
 
+#: Every recorded revision of a census task's tree since its census record was
+#: frozen, oldest first: ``chain[0]`` is the digest the frozen census records
+#: pin, each later entry is a recorded revision, and the last is the tree as
+#: committed now. A frozen record is never re-issued to follow its task; the
+#: revision is recorded here, with its reason, instead.
+#:
 #: 2026-09-25: the five self-hosted bases gained the two host-independence
 #: fixes their public suites needed on Linux (`src/satyrn_evals/tasks/`
-#: KNOWN_DEFECTS.md). The census records above pin the revision *before* that,
-#: so a record's hash is allowed to be the previous digest only while the tree
-#: is the recorded revised one: an unrecorded drift still fails, and a second
-#: revision fails too. ``task -> (previous digest, recorded revised digest)``.
+#: KNOWN_DEFECTS.md).
 #:
 #: 2026-09-27: `a194500` changed the bases but left every committed
 #: `manifest.digests.task_tree` stale, so `cut_task check` could not pass. The
@@ -59,10 +62,24 @@ DECISION_RULE = (
 #: bases byte for byte; the manifest is inside `tree_digest(task_dir)`, so the
 #: recorded revised digest moved even though no model-facing byte changed. The
 #: census records still pin the pre-2026-09-25 digest, unchanged.
-REVISED_TASK_TREES: dict[str, tuple[str, str]] = {
+#:
+#: C1 (2026-10-02-c1-requalify-design.md): every self-hosted base was re-cut
+#: without the other self-hosted task trees nested in it (the cleanup audit's
+#: P0, evidence/2026-10-02-cleanup-audit/README.md §1); the prompt is
+#: byte-identical, and the census records still pin the pre-2026-09-25 digest.
+#: The re-cut moved three of the five trees below: selfhost-cell-loop,
+#: selfhost-speed-probe and selfhost-preflight-quiet each gain a third entry
+#: (they also carry recorded `base_edits` skipping the public tests that read a
+#: removed self-hosted task). selfhost-docs-linter and selfhost-run-record-gate
+#: nest no self-hosted task and re-cut byte-identical, so their chains stay at
+#: two entries. Before C1 each chain had two entries, not three, because the
+#: 2026-09-27 regeneration replaced the 2026-09-25 entry in place; read the
+#: dated paragraphs above as history, not as one paragraph per entry.
+TASK_TREE_REVISIONS: dict[str, tuple[str, ...]] = {
     "selfhost-cell-loop": (
         "406487a854b78b38b615d23de3c20f18eed39b04610ce3e905ff997e542f3173",
         "65ea33d4b34f2b27e6271e6af9bc78a8da5af7348ede832171f40453f2e0b74b",
+        "e7ae152a6da6fc6b804f217dffb318df0dc1056e10b021c4a5de2317bdbb6643",
     ),
     "selfhost-docs-linter": (
         "a8c1aaf0e2d5136be35ed6e5d2bf49cb88e06e15c7217ed0b481edfbd090b1c6",
@@ -75,12 +92,33 @@ REVISED_TASK_TREES: dict[str, tuple[str, str]] = {
     "selfhost-speed-probe": (
         "dbb752affe8df090fa8594e8f046383c3ac57e6657fbb7c6181f31331270df28",
         "be6946cd336d318a1e5d3d2e04a6be6ab0fdbfa4be9f145841fdc52145cc26cd",
+        "a892abda9c2a4c452fe3cb0a85637ed04c38ecdd472cbe7f5a9fb2f17eed28a3",
     ),
     "selfhost-preflight-quiet": (
         "1edcf796591ec22e9c19187744d43706f840e4fdc05dbe790f925c06cac86aa0",
         "0567373a69595a8c642b8332df407f83feedb06c4aefc706c2269bba122a5e25",
+        "991c51ab1b3ebab8a52992829350e8f353d19e9fa7f430eb26531f51ea5c0a71",
     ),
 }
+
+
+def revision_problem(task: str, pinned: str, current: str, chain: tuple[str, ...] | None) -> str | None:
+    """Why a frozen census record no longer matches its task's tree, or None.
+
+    With no recorded revisions the record must pin the tree as it is. With a
+    chain, the tree must be the chain's last entry and the record must pin its
+    first, so an unrecorded drift fails and so does a record that was quietly
+    re-issued.
+    """
+    if chain is None:
+        if pinned == current:
+            return None
+        return f"{task}: the record pins {pinned}, the tree is {current}; record the revision in TASK_TREE_REVISIONS, never re-issue a frozen record"
+    if current != chain[-1]:
+        return f"{task} is {current}, not its last recorded revision {chain[-1]}; record the revision in TASK_TREE_REVISIONS"
+    if pinned != chain[0]:
+        return f"{task}: the record pins {pinned}, not {chain[0]}, the digest its revisions are recorded against"
+    return None
 
 
 def _authority_has_id_triple(authority: str, task: str, ids: tuple[str, str, str]) -> bool:
@@ -92,23 +130,9 @@ def _authority_has_id_triple(authority: str, task: str, ids: tuple[str, str, str
 )
 def test_a_frozen_census_record_pins_the_current_task_tree(record_path: Path) -> None:
     record = json.loads(record_path.read_text())
-    task_dir = DEFAULT_TASKS_ROOT / record["task"]
-    current = tree_digest(task_dir)
-    if (revision := REVISED_TASK_TREES.get(record["task"])) is not None:
-        previous, revised = revision
-        assert current == revised, (
-            f"{record['task']} is {current}, not its recorded 2026-09-25 revision "
-            f"{revised}; re-issue the census records with `record new` before a night"
-        )
-        assert record["task_tree_sha256"] == previous, (
-            f"{record_path.name} pins {record['task_tree_sha256']}, not the "
-            f"pre-revision {previous} this revision is recorded against"
-        )
-        return
-    assert record["task_tree_sha256"] == current, (
-        f"{record_path.name} pins a tree that has drifted; re-issue the record "
-        "with `record new` before the night"
-    )
+    task = record["task"]
+    current = tree_digest(DEFAULT_TASKS_ROOT / task)
+    assert revision_problem(task, record["task_tree_sha256"], current, TASK_TREE_REVISIONS.get(task)) is None
 
 
 def test_the_five_night_one_records_are_all_present() -> None:
@@ -116,14 +140,14 @@ def test_the_five_night_one_records_are_all_present() -> None:
 
 
 def test_the_revision_map_is_real_and_traceable() -> None:
-    """Each recorded revision names a different digest and the previous one is
-    exactly what a frozen census record pins -- so the relaxation above cannot
-    hide a drift it was not recorded against."""
+    """Each chain records at least one revision, never repeats a digest, and
+    starts at exactly what a frozen census record pins -- so the relaxation
+    cannot hide a drift it was not recorded against."""
     census = {json.loads(p.read_text())["task"]: json.loads(p.read_text())["task_tree_sha256"] for p in NIGHT1 + NIGHT2 + NIGHT3}
-    for task, (previous, revised) in REVISED_TASK_TREES.items():
-        assert previous != revised, task
-        assert census[task] == previous, task
-        assert (DEFAULT_TASKS_ROOT / task).is_dir(), task
+    for task, chain in TASK_TREE_REVISIONS.items():
+        assert len(chain) >= 2, task
+        assert len(set(chain)) == len(chain), task
+        assert census[task] == chain[0], task
 
 
 AUTHORED = {"selfhost-preflight-quiet"}
@@ -273,6 +297,15 @@ def test_a_cut_census_task_carries_no_authored_disclosure() -> None:
         assert "authored" not in (body.get("generator") or {})
 
 
+@pytest.mark.parametrize("task", sorted(t for t in CENSUS_TASKS if t.startswith("selfhost-")))
+def test_every_census_selfhost_task_keeps_its_validity_block(task: str) -> None:
+    """A re-cut does not write the R0 §1.2 `validity` block (`cut_task.py`
+    POST_CUT_MANIFEST_KEYS); C1 carries it over by hand, and this catches a
+    re-cut that dropped it."""
+    validity = json.loads((DEFAULT_TASKS_ROOT / task / "manifest.json").read_text()).get("validity")
+    assert validity is not None and validity["passed"] is True, task
+
+
 # The route-proof records. Two nights: the void 2026-09-18 night (records dated
 # 2026-09-17) and the second proof (records dated 2026-09-19, engine 2cccef1).
 # The void night is excluded from every denominator and reported beside the
@@ -378,3 +411,32 @@ def test_every_route_proof_result_belongs_to_one_of_the_named_records() -> None:
         for result in RECORDS.glob(f"{date}-route-proof-engine-*.result.json"):
             record = result.with_name(result.name.removesuffix(".result.json") + ".json")
             assert f"records/{record.name}" in _ALL_ROUTE_PROOF_RECORDS
+
+
+A, B, C = "a" * 64, "b" * 64, "c" * 64
+
+
+def test_an_unrevised_task_that_matches_its_record_has_no_problem() -> None:
+    assert revision_problem("t", A, A, None) is None
+
+
+def test_an_unrevised_task_that_drifted_is_named() -> None:
+    assert revision_problem("t", A, B, None) == (
+        f"t: the record pins {A}, the tree is {B}; record the revision in TASK_TREE_REVISIONS, never re-issue a frozen record"
+    )
+
+
+def test_a_tree_at_its_last_recorded_revision_has_no_problem() -> None:
+    assert revision_problem("t", A, C, (A, B, C)) is None
+
+
+def test_a_tree_that_moved_past_its_last_recorded_revision_is_named() -> None:
+    assert revision_problem("t", A, B, (A, B, C)) == (
+        f"t is {B}, not its last recorded revision {C}; record the revision in TASK_TREE_REVISIONS"
+    )
+
+
+def test_a_record_that_does_not_pin_the_chains_first_digest_is_named() -> None:
+    assert revision_problem("t", B, C, (A, B, C)) == (
+        f"t: the record pins {B}, not {A}, the digest its revisions are recorded against"
+    )

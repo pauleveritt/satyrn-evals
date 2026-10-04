@@ -1,0 +1,52 @@
+{
+ "task": "agentclinic-repair-depth-3",
+ "confinement": {
+  "extension": "/Users/pauleveritt/projects/pauleveritt/satyrn-evals/packages/confinement/confinement.ts",
+  "limit": "confinement reports observed access only: the shared extension refused the calls listed here, and the audit found no reach to grader material in the transcript. It is not proof the model could not have reached it (design C4).",
+  "measured": 6,
+  "admitted": 6,
+  "flagged": 0,
+  "unmeasured": 0,
+  "admitted_pass": 5,
+  "flagged_pass": 0,
+  "unmeasured_pass": 0
+ },
+ "cells": {
+  "agentclinic-repair-depth-3-20261003-190154-107978": {
+   "confinement_refusals": 0,
+   "confinement_reaches": 0,
+   "confinement_reaches_in_worktree": 0,
+   "confinement_admitted": true
+  },
+  "agentclinic-repair-depth-3-20261003-190154-152067": {
+   "confinement_refusals": 0,
+   "confinement_reaches": 0,
+   "confinement_reaches_in_worktree": 0,
+   "confinement_admitted": true
+  },
+  "agentclinic-repair-depth-3-20261003-190154-197431": {
+   "confinement_refusals": 0,
+   "confinement_reaches": 0,
+   "confinement_reaches_in_worktree": 0,
+   "confinement_admitted": true
+  },
+  "agentclinic-repair-depth-3-20261003-190307-550946": {
+   "confinement_refusals": 0,
+   "confinement_reaches": 0,
+   "confinement_reaches_in_worktree": 0,
+   "confinement_admitted": true
+  },
+  "agentclinic-repair-depth-3-20261003-190402-810657": {
+   "confinement_refusals": 0,
+   "confinement_reaches": 0,
+   "confinement_reaches_in_worktree": 0,
+   "confinement_admitted": true
+  },
+  "agentclinic-repair-depth-3-20261003-190648-499793": {
+   "confinement_refusals": 0,
+   "confinement_reaches": 0,
+   "confinement_reaches_in_worktree": 0,
+   "confinement_admitted": true
+  }
+ }
+}

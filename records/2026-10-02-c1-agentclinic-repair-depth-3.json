@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "task": "agentclinic-repair-depth-3",
+  "task_tree_sha256": "ea6ce7da30d2c3b8f99cba6cdd857af7ea38255102bca963b75e7caa1997612d",
+  "arm": "baseline",
+  "model": "omlx/Ornith-1.5-9B-MLX-8bit",
+  "condition": "cold",
+  "n": 6,
+  "mode": "batch",
+  "max_minutes": 240,
+  "stop_rule": "established infrastructure failure only",
+  "decision_rule": "none for outcomes: the classified table at C3 decides (docs/superpowers/specs/2026-10-02-c1-requalify-design.md section 5), not a pass count",
+  "previous_result": null,
+  "token_budget": 48000,
+  "turn_budget": 72,
+  "confinement": "extension",
+  "purpose": "admission",
+  "k": 3,
+  "rung": "R2",
+  "authority": "maintainer-approved C1 design docs/superpowers/specs/2026-10-02-c1-requalify-design.md, approved 2026-10-02: Baseline re-qualification of the census under confinement, on the self-hosted bases re-cut at 7fc679f; runs on an Apple M5 Max (128 GiB); the census it re-derives (records/2026-09-1[678]-census*) ran on an earlier machine its evidence does not name, and is never pooled with these",
+  "command_backstop_s": 4800,
+  "backend": "omlx"
+}
