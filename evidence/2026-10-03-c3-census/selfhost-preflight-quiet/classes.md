@@ -1,6 +1,6 @@
 <!-- evals 0c3ad1f84f3fbafce696474f0743f8d834909d47; classify.py --night /Users/pauleveritt/satyrn-runs/2026-10-02-c1-selfhost-preflight-quiet --record records/2026-10-02-c1-selfhost-preflight-quiet.json --out evidence/2026-10-03-c3-census --grade-root /Users/pauleveritt/satyrn-c3-grades -->
 
-The eight class columns are empty on purpose: a reviewer fills them, by turn, from the reconstruction (design section 7). `primary` and `cited turns` are the reviewer's too. The mechanical evidence each class would be argued from is printed beneath.
+**Signed by the maintainer 2026-10-03** (in session: "Go with recommendations, signed"). The eight class columns, `primary` and `cited turns` were filled by turn from the reconstruction (design section 7) by an agent (Opus), reviewed by the controller, C3 Task 8 Step 1; `hunting` is mechanical under C2's signed rule. The mechanical evidence each class is argued from is printed beneath; a reviewer departure from it is named in Notes.
 
 | task | attempt | raised | information | ambiguity | capability | budget | finishing | runaway | hunting | allowlist | primary | cited turns |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
