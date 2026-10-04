@@ -2837,3 +2837,4 @@
 | evidence/2026-10-03-c3-census/README.md | created 2026-10-03 on phase-c1; C3 Task 8 Step 2 census page, drafted by an Opus agent from cells.json, confinement.json, classes.md and the six C1 result files; unsigned until the maintainer signs it (Task 8 Step 3) |
 | evidence/2026-10-03-c4-counterfactual/decision.txt | written 2026-10-03 on phase-c1 by decide.py at evals c6f51ba, dirty=False; C4 Task 3, the one decision run, made by the maintainer |
 | evidence/2026-10-03-c4-counterfactual/table.md | written 2026-10-03 on phase-c1 by decide.py at evals c6f51ba, dirty=False; C4 Task 3, the per-task tallies under both readings and the two beside counts |
+| evidence/2026-10-03-c4-counterfactual/README.md | created 2026-10-03 on phase-c1; C4 Task 4 Step 1 result page, drafted by an Opus agent from decision.txt, table.md and the six C3 cells.json; unsigned until the maintainer signs it (Task 4 Step 2) |
