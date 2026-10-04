@@ -121,7 +121,11 @@ Both arms, n = 6 / 12 / 18 / 24 per arm: run-record-gate 3.6 / 7.3 / 10.9 / 14.5
 
 Two caps apply. A batch sitting is 720 min (ROADMAP), and `run_record.CAPS["batch"]` caps a record at n ≤ 12 (ledger "C3's remaining decisions ruled", D2). So n = 18 or n = 24 means two records per arm, and n = 24 for one task takes more than one sitting.
 
-**Drafter's recommendation:** n = 12 per arm, with run-record-gate deciding: power 0.77 to 0.93, about 7.3 GPU hours. preflight-quiet runs at the same n as a declared per-task secondary, with its power of 0.42 to 0.61 printed and never pooled. The stipulated effects come from six cells, so the honest power is lower than shown whenever Baseline is above 0.
+**Drafter's recommendation, revised 2026-10-04 at the maintainer's direction ("Proceed with the recommendation. You have the GPU"), a staged order:**
+1. **Hold the sitting with no new runs.** Item 0, §8.1 and §8.2 need no GPU.
+2. **If the claim is worth a release, one cheap development read first:** six Engine cells on run-record-gate at the re-pinned engine (confinement root fix in), purpose `development`, never a deciding record, about 2 GPU hours. C3's Baseline 0 of 6 is the informal comparison. It also gives EB its first confinement-grade cost numbers on a medium task.
+3. **That read gates the powered run.** Engine 0 or 1 of 6 inside the line: the claim is dead at this model and budget, and the 7.3 hours are saved. Engine 3 or more of 6: n = 12 per arm with run-record-gate deciding (power 0.77 to 0.93, about 7.3 GPU hours), preflight-quiet at the same n as a declared per-task secondary (power 0.42 to 0.61, printed, never pooled). Engine 2 of 6: the maintainer rules.
+The power table assumes the Engine realises the full replayed effect; the Engine is not Baseline plus a stop rule (EB0: the Engine spends more output tokens than Baseline on small tasks, which counts against the 32k line), so the powers shown are upper bounds. The stipulated effects come from six cells.
 
 ## R0 §5's four questions, as the evidence stands
 
