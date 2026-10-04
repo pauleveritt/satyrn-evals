@@ -1,0 +1,52 @@
+{
+ "task": "selfhost-speed-probe",
+ "confinement": {
+  "extension": "/Users/pauleveritt/projects/pauleveritt/satyrn-evals/packages/confinement/confinement.ts",
+  "limit": "confinement reports observed access only: the shared extension refused the calls listed here, and the audit found no reach to grader material in the transcript. It is not proof the model could not have reached it (design C4).",
+  "measured": 6,
+  "admitted": 6,
+  "flagged": 0,
+  "unmeasured": 0,
+  "admitted_pass": 0,
+  "flagged_pass": 0,
+  "unmeasured_pass": 0
+ },
+ "cells": {
+  "selfhost-speed-probe-20261003-221742-540863": {
+   "confinement_refusals": 0,
+   "confinement_reaches": 0,
+   "confinement_reaches_in_worktree": 20,
+   "confinement_admitted": true
+  },
+  "selfhost-speed-probe-20261003-221742-600883": {
+   "confinement_refusals": 0,
+   "confinement_reaches": 0,
+   "confinement_reaches_in_worktree": 0,
+   "confinement_admitted": true
+  },
+  "selfhost-speed-probe-20261003-221742-663676": {
+   "confinement_refusals": 0,
+   "confinement_reaches": 0,
+   "confinement_reaches_in_worktree": 3,
+   "confinement_admitted": true
+  },
+  "selfhost-speed-probe-20261003-231710-342376": {
+   "confinement_refusals": 0,
+   "confinement_reaches": 0,
+   "confinement_reaches_in_worktree": 19,
+   "confinement_admitted": true
+  },
+  "selfhost-speed-probe-20261003-231719-465243": {
+   "confinement_refusals": 0,
+   "confinement_reaches": 0,
+   "confinement_reaches_in_worktree": 13,
+   "confinement_admitted": true
+  },
+  "selfhost-speed-probe-20261003-232122-443058": {
+   "confinement_refusals": 0,
+   "confinement_reaches": 0,
+   "confinement_reaches_in_worktree": 0,
+   "confinement_admitted": true
+  }
+ }
+}

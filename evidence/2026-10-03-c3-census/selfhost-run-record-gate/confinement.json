@@ -1,0 +1,52 @@
+{
+ "task": "selfhost-run-record-gate",
+ "confinement": {
+  "extension": "/Users/pauleveritt/projects/pauleveritt/satyrn-evals/packages/confinement/confinement.ts",
+  "limit": "confinement reports observed access only: the shared extension refused the calls listed here, and the audit found no reach to grader material in the transcript. It is not proof the model could not have reached it (design C4).",
+  "measured": 6,
+  "admitted": 6,
+  "flagged": 0,
+  "unmeasured": 0,
+  "admitted_pass": 4,
+  "flagged_pass": 0,
+  "unmeasured_pass": 0
+ },
+ "cells": {
+  "selfhost-run-record-gate-20261003-131427-922721": {
+   "confinement_refusals": 0,
+   "confinement_reaches": 0,
+   "confinement_reaches_in_worktree": 19,
+   "confinement_admitted": true
+  },
+  "selfhost-run-record-gate-20261003-131427-977901": {
+   "confinement_refusals": 0,
+   "confinement_reaches": 0,
+   "confinement_reaches_in_worktree": 21,
+   "confinement_admitted": true
+  },
+  "selfhost-run-record-gate-20261003-131428-035436": {
+   "confinement_refusals": 0,
+   "confinement_reaches": 0,
+   "confinement_reaches_in_worktree": 11,
+   "confinement_admitted": true
+  },
+  "selfhost-run-record-gate-20261003-135648-688591": {
+   "confinement_refusals": 0,
+   "confinement_reaches": 0,
+   "confinement_reaches_in_worktree": 12,
+   "confinement_admitted": true
+  },
+  "selfhost-run-record-gate-20261003-140707-427312": {
+   "confinement_refusals": 0,
+   "confinement_reaches": 0,
+   "confinement_reaches_in_worktree": 7,
+   "confinement_admitted": true
+  },
+  "selfhost-run-record-gate-20261003-141140-547893": {
+   "confinement_refusals": 0,
+   "confinement_reaches": 0,
+   "confinement_reaches_in_worktree": 14,
+   "confinement_admitted": true
+  }
+ }
+}

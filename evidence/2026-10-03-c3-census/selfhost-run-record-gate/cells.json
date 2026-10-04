@@ -1,0 +1,357 @@
+{
+ "evals_commit": "0c3ad1f84f3fbafce696474f0743f8d834909d47",
+ "evals_dirty": false,
+ "night": "2026-10-02-c1-selfhost-run-record-gate",
+ "command": "classify.py --night /Users/pauleveritt/satyrn-runs/2026-10-02-c1-selfhost-run-record-gate --record records/2026-10-02-c1-selfhost-run-record-gate.json --out evidence/2026-10-03-c3-census --grade-root /Users/pauleveritt/satyrn-c3-grades",
+ "tz_offset": "-0400",
+ "task": "selfhost-run-record-gate",
+ "cells": [
+  {
+   "task": "selfhost-run-record-gate",
+   "arm": "baseline",
+   "attempt": "922721",
+   "code": "OK",
+   "verdict": "pass",
+   "actual_32k": false,
+   "actual_48k": true,
+   "tripped_verdict": null,
+   "turns": 69,
+   "tokens": 34085,
+   "length_stops": 0,
+   "exploration_turns": 7,
+   "biggest_turn": 7,
+   "biggest_tokens": 8068,
+   "biggest_share": 0.237,
+   "tool_span_seconds": 2491.3436084580026,
+   "whole_attempt_seconds": 2540.0064764022827,
+   "self_stop_turn": 69,
+   "self_stop_tokens": 34085,
+   "pass_turn": 13,
+   "pass_tokens": 11866,
+   "own_green_turn": 42,
+   "post_pass_turns": 56,
+   "post_pass_tokens": 22219,
+   "flags": {
+    "information": null,
+    "ambiguity": null,
+    "capability": false,
+    "budget": false,
+    "finishing": true,
+    "runaway": false,
+    "hunting": false,
+    "allowlist": false
+   },
+   "run1": {
+    "counterfactual": "not-pass",
+    "change": "none"
+   },
+   "run2": {
+    "counterfactual": "pass",
+    "change": "rescue"
+   },
+   "unmeasured": [
+    "unverified-rescue: bash at turns 7, 14, 15, 16, 17, 18, 19, 20, 23, 24, 25, 26, 27, 28"
+   ],
+   "raised": null,
+   "decode_tok_s": 14.887547512719612,
+   "decode_median_tok_s": 13.30685203574975,
+   "decode_completions": 181,
+   "decode_overlap": 3,
+   "decode_reason": null
+  },
+  {
+   "task": "selfhost-run-record-gate",
+   "arm": "baseline",
+   "attempt": "977901",
+   "code": "OK",
+   "verdict": "pass",
+   "actual_32k": false,
+   "actual_48k": true,
+   "tripped_verdict": null,
+   "turns": 71,
+   "tokens": 39330,
+   "length_stops": 0,
+   "exploration_turns": 6,
+   "biggest_turn": 5,
+   "biggest_tokens": 10163,
+   "biggest_share": 0.258,
+   "tool_span_seconds": 3316.688931999961,
+   "whole_attempt_seconds": 3431.541440486908,
+   "self_stop_turn": 71,
+   "self_stop_tokens": 39330,
+   "pass_turn": 50,
+   "pass_tokens": 30464,
+   "own_green_turn": 40,
+   "post_pass_turns": 21,
+   "post_pass_tokens": 8866,
+   "flags": {
+    "information": null,
+    "ambiguity": null,
+    "capability": false,
+    "budget": true,
+    "finishing": false,
+    "runaway": false,
+    "hunting": false,
+    "allowlist": false
+   },
+   "run1": {
+    "counterfactual": "not-pass",
+    "change": "none"
+   },
+   "run2": {
+    "counterfactual": "not-pass",
+    "change": "none"
+   },
+   "unmeasured": [
+    "skipped bash writer at turn 40"
+   ],
+   "raised": null,
+   "decode_tok_s": 14.45745028434691,
+   "decode_median_tok_s": 12.752830651663338,
+   "decode_completions": 233,
+   "decode_overlap": 5,
+   "decode_reason": null
+  },
+  {
+   "task": "selfhost-run-record-gate",
+   "arm": "baseline",
+   "attempt": "035436",
+   "code": "BUDGET_EXCEEDED",
+   "verdict": null,
+   "actual_32k": false,
+   "actual_48k": false,
+   "tripped_verdict": "pass",
+   "turns": 73,
+   "tokens": 36861,
+   "length_stops": 0,
+   "exploration_turns": 14,
+   "biggest_turn": 12,
+   "biggest_tokens": 7488,
+   "biggest_share": 0.203,
+   "tool_span_seconds": 3149.0651687919744,
+   "whole_attempt_seconds": 3158.99000787735,
+   "self_stop_turn": null,
+   "self_stop_tokens": null,
+   "pass_turn": 26,
+   "pass_tokens": 14644,
+   "own_green_turn": 50,
+   "post_pass_turns": 47,
+   "post_pass_tokens": 22217,
+   "flags": {
+    "information": null,
+    "ambiguity": null,
+    "capability": false,
+    "budget": false,
+    "finishing": true,
+    "runaway": false,
+    "hunting": true,
+    "allowlist": false
+   },
+   "run1": {
+    "counterfactual": "not-pass",
+    "change": "none"
+   },
+   "run2": {
+    "counterfactual": "not-pass",
+    "change": "none"
+   },
+   "unmeasured": [],
+   "raised": null,
+   "decode_tok_s": 14.812154043965055,
+   "decode_median_tok_s": 13.066666666666666,
+   "decode_completions": 213,
+   "decode_overlap": 4,
+   "decode_reason": null
+  },
+  {
+   "task": "selfhost-run-record-gate",
+   "arm": "baseline",
+   "attempt": "688591",
+   "code": "OK",
+   "verdict": "pass",
+   "actual_32k": false,
+   "actual_48k": true,
+   "tripped_verdict": null,
+   "turns": 60,
+   "tokens": 32469,
+   "length_stops": 0,
+   "exploration_turns": 6,
+   "biggest_turn": 6,
+   "biggest_tokens": 8957,
+   "biggest_share": 0.276,
+   "tool_span_seconds": 2468.7409127909923,
+   "whole_attempt_seconds": 2563.6297931671143,
+   "self_stop_turn": 60,
+   "self_stop_tokens": 32469,
+   "pass_turn": 27,
+   "pass_tokens": 22400,
+   "own_green_turn": 34,
+   "post_pass_turns": 33,
+   "post_pass_tokens": 10069,
+   "flags": {
+    "information": null,
+    "ambiguity": null,
+    "capability": false,
+    "budget": false,
+    "finishing": true,
+    "runaway": false,
+    "hunting": false,
+    "allowlist": true
+   },
+   "run1": {
+    "counterfactual": "not-pass",
+    "change": "none"
+   },
+   "run2": {
+    "counterfactual": "pass",
+    "change": "rescue"
+   },
+   "unmeasured": [
+    "fidelity: harness pass, replay unavailable",
+    "unverified-rescue: bash at turns 3, 5, 6, 23"
+   ],
+   "raised": null,
+   "decode_tok_s": 12.92679651556552,
+   "decode_median_tok_s": 11.352464249233911,
+   "decode_completions": 160,
+   "decode_overlap": 5,
+   "decode_reason": null
+  },
+  {
+   "task": "selfhost-run-record-gate",
+   "arm": "baseline",
+   "attempt": "427312",
+   "code": "OK",
+   "verdict": "pass",
+   "actual_32k": false,
+   "actual_48k": true,
+   "tripped_verdict": null,
+   "turns": 61,
+   "tokens": 33422,
+   "length_stops": 0,
+   "exploration_turns": 12,
+   "biggest_turn": 11,
+   "biggest_tokens": 4801,
+   "biggest_share": 0.144,
+   "tool_span_seconds": 2621.7963868749794,
+   "whole_attempt_seconds": 2722.421131372452,
+   "self_stop_turn": 61,
+   "self_stop_tokens": 33422,
+   "pass_turn": 22,
+   "pass_tokens": 13829,
+   "own_green_turn": 36,
+   "post_pass_turns": 39,
+   "post_pass_tokens": 19593,
+   "flags": {
+    "information": null,
+    "ambiguity": null,
+    "capability": false,
+    "budget": false,
+    "finishing": true,
+    "runaway": false,
+    "hunting": false,
+    "allowlist": false
+   },
+   "run1": {
+    "counterfactual": "not-pass",
+    "change": "none"
+   },
+   "run2": {
+    "counterfactual": "pass",
+    "change": "rescue"
+   },
+   "unmeasured": [
+    "unverified-rescue: bash at turns 21, 30, 31, 32, 33, 34, 35"
+   ],
+   "raised": null,
+   "decode_tok_s": 13.147773381988015,
+   "decode_median_tok_s": 11.744047797860933,
+   "decode_completions": 166,
+   "decode_overlap": 4,
+   "decode_reason": null
+  },
+  {
+   "task": "selfhost-run-record-gate",
+   "arm": "baseline",
+   "attempt": "547893",
+   "code": "BUDGET_EXCEEDED",
+   "verdict": null,
+   "actual_32k": false,
+   "actual_48k": false,
+   "tripped_verdict": "pass",
+   "turns": 73,
+   "tokens": 45095,
+   "length_stops": 0,
+   "exploration_turns": 12,
+   "biggest_turn": 12,
+   "biggest_tokens": 8475,
+   "biggest_share": 0.188,
+   "tool_span_seconds": 3067.5291656660265,
+   "whole_attempt_seconds": 3081.9256596565247,
+   "self_stop_turn": null,
+   "self_stop_tokens": null,
+   "pass_turn": 28,
+   "pass_tokens": 16749,
+   "own_green_turn": 36,
+   "post_pass_turns": 45,
+   "post_pass_tokens": 28346,
+   "flags": {
+    "information": null,
+    "ambiguity": null,
+    "capability": false,
+    "budget": false,
+    "finishing": true,
+    "runaway": false,
+    "hunting": false,
+    "allowlist": false
+   },
+   "run1": {
+    "counterfactual": "not-pass",
+    "change": "none"
+   },
+   "run2": {
+    "counterfactual": "pass",
+    "change": "rescue"
+   },
+   "unmeasured": [
+    "unverified-rescue: bash at turns 10, 29"
+   ],
+   "raised": null,
+   "decode_tok_s": 14.144931304183652,
+   "decode_median_tok_s": 12.389466646857823,
+   "decode_completions": 170,
+   "decode_overlap": 3,
+   "decode_reason": null
+  }
+ ],
+ "tallies": [
+  {
+   "task": "selfhost-run-record-gate",
+   "reading": "run1",
+   "cells": 6,
+   "actual_32k": 0,
+   "actual_48k": 4,
+   "rescues": 0,
+   "harms": 0,
+   "net": 0,
+   "unmeasured": [
+    "922721",
+    "977901",
+    "688591",
+    "427312",
+    "547893"
+   ]
+  },
+  {
+   "task": "selfhost-run-record-gate",
+   "reading": "run2",
+   "cells": 6,
+   "actual_32k": 0,
+   "actual_48k": 4,
+   "rescues": 4,
+   "harms": 0,
+   "net": 4,
+   "unmeasured": []
+  }
+ ]
+}
