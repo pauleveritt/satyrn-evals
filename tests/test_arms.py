@@ -355,7 +355,7 @@ def test_the_engine_arm_file_loads_with_the_engines_derived_contract_tool_surfac
     arm = load_arm(ENGINE)
     assert arm.arm == "engine"
     assert arm.tools == ENGINE_TOOLS == ("read", "bash", "edit", "write", "self_test")
-    assert arm.pins.engine_commit == "6d304794d9e4818503c3b51151353a24f8deeaae"
+    assert arm.pins.engine_commit == "5b681b0dfaa32f90cc24b6746fe6707ec9c401b9"
     assert sorted(arm.pins.digests) == sorted(ENGINE_SOURCES)
 
 
