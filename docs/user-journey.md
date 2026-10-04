@@ -331,15 +331,16 @@ your arm, and it is why those numbers are worth getting right.
 flowchart TB
   R[run record] --> L[launcher]
   L --> W[attempt worktree at the task's base commit<br/>under the confinement extension]
-  W --> P[fresh Pi, bare tools<br/>your ollama model]
+  W --> P[fresh Pi, no product extensions<br/>plus the eval's confinement extension<br/>your ollama model]
   P --> E[transcript + patch preserved]
   E --> G[offline grade against the hidden suite]
   G --> V[verdict: pass, fail, or infra]
 ```
 
 For the one cell your record names: the harness materialises an attempt
-worktree at the task's base commit under the eval's confinement extension, runs a fresh Pi against your model with
-Pi's own skills, templates, context files and ambient extensions disabled,
+worktree at the task's base commit, runs a fresh Pi against your model with
+Pi's own skills, templates, context files and ambient extensions disabled
+and only the eval's confinement extension loaded,
 preserves the full transcript **and** the patch to directories outside every
 Git worktree, and then grades the saved evidence **offline** — no model is
 involved in grading. The model never touches the grader material, and nothing a
@@ -400,7 +401,7 @@ a contract from the task and then delivers one bounded change.
 
 ```mermaid
 flowchart TB
-  T[one task text] --> B[Baseline: bare Pi]
+  T[one task text] --> B[Baseline: Pi, no product extensions<br/>plus the confinement extension]
   T --> E[Engine: /implement]
   B --> BV[verdict + receipt]
   E --> EV[verdict + receipt]
