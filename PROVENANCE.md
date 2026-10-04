@@ -2835,3 +2835,5 @@
 | evidence/2026-10-03-c3-census/selfhost-speed-probe/confinement.json | written 2026-10-03 on phase-c1 from the night's baseline/summary.json by a one-line python -c (recorded in the census README); C3 Task 7 confinement tally |
 | docs/results/2026-10-03-c3-census.md | placed 2026-10-03 on phase-c1 by the maintainer (C3 plan D9 ruled B; Task 8 Step 3); the C3 results page, drafted outside the repository by an Opus agent from the signed census page and reviewed by the controller |
 | evidence/2026-10-03-c3-census/README.md | created 2026-10-03 on phase-c1; C3 Task 8 Step 2 census page, drafted by an Opus agent from cells.json, confinement.json, classes.md and the six C1 result files; unsigned until the maintainer signs it (Task 8 Step 3) |
+| evidence/2026-10-03-c4-counterfactual/decision.txt | written 2026-10-03 on phase-c1 by decide.py at evals c6f51ba, dirty=False; C4 Task 3, the one decision run, made by the maintainer |
+| evidence/2026-10-03-c4-counterfactual/table.md | written 2026-10-03 on phase-c1 by decide.py at evals c6f51ba, dirty=False; C4 Task 3, the per-task tallies under both readings and the two beside counts |

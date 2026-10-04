@@ -1,0 +1,12 @@
+# evals c6f51ba2ddb879bc2200515d238658ae28f463a3 dirty=False argv=['--census', 'evidence/2026-10-03-c3-census', '--c1-date', '2026-10-02']
+run2 (deciding): verify
+  budget-shaped ['selfhost-run-record-gate', 'selfhost-preflight-quiet', 'selfhost-cell-loop']; qualifying ['selfhost-run-record-gate', 'selfhost-preflight-quiet']; floor harm 0; insufficient floor ['selfhost-docs-linter']
+run1 (beside): not-the-lever
+  budget-shaped ['selfhost-run-record-gate', 'selfhost-preflight-quiet', 'selfhost-cell-loop']; qualifying []; floor harm 0; insufficient floor ['selfhost-docs-linter']
+beside counts (pre-registration section 2; never decide):
+  selfhost-run-record-gate: flagged after trigger 0 []; non-protected refusals only 0 []
+  selfhost-docs-linter: flagged after trigger 0 []; non-protected refusals only 0 []
+  selfhost-preflight-quiet: flagged after trigger 0 []; non-protected refusals only 0 []
+  agentclinic-repair-depth-3: flagged after trigger 0 []; non-protected refusals only 0 []
+  selfhost-cell-loop: flagged after trigger 0 []; non-protected refusals only 0 []
+  selfhost-speed-probe: flagged after trigger 0 []; non-protected refusals only 0 []
