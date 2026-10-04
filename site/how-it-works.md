@@ -98,7 +98,7 @@ The logical pieces of the eval system, in the glossary's words:
 
 ```mermaid
 flowchart TB
-  L[launcher] --> C[cell: isolated workspace]
+  L[launcher] --> C[cell: attempt worktree<br/>under the confinement extension]
   C --> A[arm: attempt command]
   A --> T[transcript + patch]
   T --> G[grade: oracle]

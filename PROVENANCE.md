@@ -2738,11 +2738,11 @@
 | arms/engine-mellum-class-swe-pi-redstop.json | created for the red-stop engine rerun 2026-09-23 (engine 803df2d); modified 2026-10-04 on phase-c1 (Engine re-pin Task 5): engine_commit and mutator.ts digest moved to the re-pin commit |
 | arms/baseline-unsloth-ornith15-9b.json | created 2026-09-25 for the local unsloth/GGUF Baseline smoke on the Linux port |
 | arms/baseline-unsloth-ornith15-9b-sandbox.json | created 2026-09-25 for the unprivileged bwrap sandbox profile (maintainer's pi 0.87.1) |
-| site/how-it-works.md | created in release-one |
+| site/how-it-works.md | created in release-one; modified 2026-10-04: "isolated workspace" replaced by the attempt worktree under the confinement extension (ledger C0) |
 | site/measurement.md | created in release-one |
 | docs/superpowers/specs/2026-09-23-public-site-design.md | created in release-one |
 | docs/superpowers/plans/2026-09-23-public-site.md | created in release-one |
-| site/evals-about.md | created in release-one |
+| site/evals-about.md | created in release-one; modified 2026-10-04: "isolated workspace" replaced by the attempt worktree under the confinement extension (ledger C0) |
 | site/evals-architecture.md | created in release-one; modified 2026-10-04: cell and attempt command rewritten for confinement, matching the glossary (ledger C0, unisolated-harness design §3) |
 | site/use-evals.md | created in release-one |
 | site/authoring.md | created in release-one |
@@ -2768,7 +2768,7 @@
 | site/user-guide.md | created 2026-09-27 on docs/user-guide; Zensical page wrapping docs/user-guide.md |
 | scripts/prereqs.py | created 2026-09-27 on docs/user-guide; checks git/python/uv/pi and one local backend, with fix messages |
 | tests/test_prereqs.py | created 2026-09-27 on docs/user-guide; default-tier tests for the script's pure logic |
-| docs/user-journey.md | created 2026-09-28 on docs/user-journey; the guided journey (ollama-only) that fuses the collector's framing with the harness steps |
+| docs/user-journey.md | created 2026-09-28 on docs/user-journey; the guided journey (ollama-only) that fuses the collector's framing with the harness steps; modified 2026-10-04: "isolated workspace" replaced by the attempt worktree under the confinement extension (ledger C0) |
 | site/user-journey.md | created 2026-09-28 on docs/user-journey; Zensical page wrapping docs/user-journey.md |
 | site/imgs/pi-ollama-user-evals.svg | copied 2026-09-28 from satyrn-evals-collector @ f7b553260a810d5447d56f1d13ba92da88be83bd (docs/imgs/pi-ollama-user-evals.svg), the community briefing's own picture of the same cast |
 | docs/why-satyrn-evals.md | created 2026-10-03: charter-led rationale for the harness, with Harbor as a compared example |

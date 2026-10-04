@@ -15,14 +15,15 @@ rather than an existing agent benchmark, is in
 
 ## How
 
-Evals captures a task, runs an attempt command in an isolated workspace,
-preserves the patch and transcript, and grades the retained evidence offline.
+Evals captures a task, runs an attempt command in an attempt worktree under
+the eval's confinement extension, preserves the patch and transcript, and
+grades the retained evidence offline.
 The engine seam is an executable command, so the suite runs against a fake
 command and never imports engine internals.
 
 ## What
 
-Tasks, isolated cells, a launcher, grading from retained evidence, and the
+Tasks, confined cells, a launcher, grading from retained evidence, and the
 census that classifies where an arm actually fails. The vocabulary is the
 [glossary](glossary.md); the physical run is the
 [architecture](evals-architecture.md).

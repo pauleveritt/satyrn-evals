@@ -135,6 +135,8 @@ def test_how_it_works_has_three_sections_and_diagrams() -> None:
     assert "## How the Engine works" in text
     assert "## How Evals works" in text
     assert text.count("```mermaid") >= 6
+    assert "cell: attempt worktree" in text
+    assert "isolated workspace" not in text
 
 
 def test_first_results_and_measurement_titles() -> None:
@@ -144,8 +146,10 @@ def test_first_results_and_measurement_titles() -> None:
 
 def test_evals_about_names_why_how_what() -> None:
     text = (SITE / "evals-about.md").read_text()
-    for fragment in ("## Why", "## How", "## What", "glossary.md"):
+    for fragment in ("## Why", "## How", "## What", "glossary.md", "confinement extension"):
         assert fragment in text, fragment
+    for retired in ("isolated workspace", "isolated cells"):
+        assert retired not in text, retired
 
 
 def test_evals_architecture_names_the_physical_run() -> None:

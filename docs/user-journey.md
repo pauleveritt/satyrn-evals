@@ -300,7 +300,7 @@ Two checks catch that cheaply.
 # Is the server up, and does it really serve the model you named?
 uv run python scripts/prereqs.py --check-servers
 
-# Is the isolated run condition sound, and is the Engine checkout the one
+# Is the run condition sound, and is the Engine checkout the one
 # the arm was measured with?
 uv run satyrn-evals launch --preflight ./my-record.json --arm arms/baseline-ollama-ornith15-9b.json
 ```
@@ -308,7 +308,7 @@ uv run satyrn-evals launch --preflight ./my-record.json --arm arms/baseline-olla
 The prerequisite check wants `SATYRN_MODEL` exported. The preflight prints a
 report; look for an empty `problems` list. A non-empty list names the cause —
 usually an unreachable server, or a model id the server does not know. It also
-checks the isolated run condition by hunting for anything grader-shaped that a
+checks the run condition by hunting for anything grader-shaped that a
 cell could reach, so give it a minute; `--no-hunt` skips that on a development
 record when you would rather move fast.
 
@@ -330,15 +330,15 @@ your arm, and it is why those numbers are worth getting right.
 ```mermaid
 flowchart TB
   R[run record] --> L[launcher]
-  L --> W[isolated workspace<br/>at the task's base commit]
+  L --> W[attempt worktree at the task's base commit<br/>under the confinement extension]
   W --> P[fresh Pi, bare tools<br/>your ollama model]
   P --> E[transcript + patch preserved]
   E --> G[offline grade against the hidden suite]
   G --> V[verdict: pass, fail, or infra]
 ```
 
-For the one cell your record names: the harness materialises an isolated
-workspace at the task's base commit, runs a fresh Pi against your model with
+For the one cell your record names: the harness materialises an attempt
+worktree at the task's base commit under the eval's confinement extension, runs a fresh Pi against your model with
 Pi's own skills, templates, context files and ambient extensions disabled,
 preserves the full transcript **and** the patch to directories outside every
 Git worktree, and then grades the saved evidence **offline** — no model is
@@ -434,7 +434,7 @@ uv run satyrn-evals launch ./my-engine-record.json --arm arms/engine-ollama-orni
 ```
 
 Only the agent changes. Everything else — task, model, sampling, budgets,
-isolation — is pinned identical, which is exactly why the two results are
+confinement — is pinned identical, which is exactly why the two results are
 comparable at all. `SATYRN_ENGINE_REPO` must point at the checkout `fetch`
 made, and the Engine arm's pinned `engine_commit` and file digests mean the
 preflight will notice if that checkout is not the one the arm was measured
