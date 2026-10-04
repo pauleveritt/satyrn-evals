@@ -150,8 +150,19 @@ def test_evals_about_names_why_how_what() -> None:
 
 def test_evals_architecture_names_the_physical_run() -> None:
     text = (SITE / "evals-architecture.md").read_text()
-    for fragment in ("launcher", "run record", "isolated workspace", "subprocess", "offline"):
+    for fragment in (
+        "launcher",
+        "run record",
+        "attempt worktree",
+        "confinement extension",
+        "Pi with no product extensions",
+        "subprocess",
+        "offline",
+    ):
         assert fragment in text, fragment
+    # Two-uid isolation was retired by the confinement harness (ledger C0).
+    for retired in ("isolated workspace", "second user"):
+        assert retired not in text, retired
 
 
 def test_using_evals_and_authoring_stub() -> None:
