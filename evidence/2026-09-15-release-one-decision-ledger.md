@@ -462,3 +462,15 @@ Write your review to `/private/tmp/claude-501/-Users-pauleveritt-projects-paulev
 - `tests/test_c1_records.py` (Task 9 Step 2), **ruled by the maintainer 2026-10-03 ("go with the skip")**: kept; the per-record check is skipped once that record's `.result.json` exists, and stays live for a C1 record that has not run.
 - Limits carried to C4 and after: the root-search and outside-worktree bash gap (harness build item after C4); the replay's skipped bash writers (three `fidelity:` rows, withheld by C4's rule); speed-probe's `ambiguity`.
 - Next: C4's single decision run on evidence/2026-10-03-c3-census (the maintainer's). Clears nothing until then.
+
+## 2026-10-03 — C4: the finishing counterfactual re-derived on the C3 census (verify, decision 4bc9831)
+- Pre-registration `docs/superpowers/specs/2026-10-03-c4-finishing-counterfactual-rederive.md` at `9163fdb`; decide.py `60a29bc`; evidence/2026-10-03-c4-counterfactual/. The one decision run was made by the maintainer at evals `c6f51ba`, dirty=False. Deciding reading run 2 (std replay, fidelity-withheld): **verify**; run 1 beside: not-the-lever.
+- How it fell: budget-shaped run-record-gate (net 3, 1 unmeasured), preflight-quiet (net 2, 0) and cell-loop (net 0); two qualify; floor harm 0. `go` failed on one condition: floor task docs-linter is insufficient, 2 unmeasured, both `fidelity:` rows from the replay's skipped bash writers (`556770`, `007105`). Beside counts all 0. Nets never pooled; speed-probe outside.
+- Signed by the maintainer 2026-10-03 ("Signed, go with the close-out"): evidence/2026-10-03-c4-counterfactual/README.md; results page `docs/results/2026-10-03-c4-counterfactual.md` placed by the maintainer (`d9c8548`).
+- SUPERSEDED for building: the census's counterfactual columns (nights 1-3, C0) and evidence/2026-09-15-finishing-counterfactual runs 1 and 2 (not marked at C0; release-one cells under isolation).
+- Census nights 1-3 and class columns: SUPERSEDED at entry C3 (no change here).
+- KEPT UNCONFIRMED (35c298d): docs/numbers.md (Engine 16/24 vs Baseline 2/24), route proofs 2026-09-17 and 2026-09-19, the red-stop replay. They need Engine cells under confinement after the inner-Pi SATYRN_CONFINEMENT_ROOT fix; C1-C4 re-derive none of them.
+- Permanent: the sandbox Baseline set.
+- Opens: the R0 sitting asks whether a one-task claim is worth a release; on 2026-09-15, power 0.26 at n = 12 was judged too small; if yes, size n first. Does not open an Engine spec. (This verify came with two tasks qualifying and an insufficient floor task; the row is as pre-registered.) derive-new-top-level-module stays parked (this instrument cannot name it).
+- D10 (ruled A): R0 §4's two-uid line annotated with a dated pointer to the confinement design.
+- Next (the maintainer's, C4 Task 6): schedule the R0 sitting with C3's signed table, this verdict and census design §8 items 1-4; hold Engine spec work until it fixes §8.3.

@@ -70,6 +70,9 @@ the harness the comparison will use.
 
 - Two-uid isolation for every deciding record; no container, sandbox or
   wrapper process, ever.
+  **Amended 2026-10-03 (C4 D10, ruled A):** deciding records now run under the
+  confinement harness, not two-uid isolation; see
+  `2026-09-27-unisolated-harness-design.md`. The sentence above is kept as written.
 - The launcher is the only path to a model; records frozen and committed;
   infrastructure stops, model outcomes never do.
 - Identical prompts, tools, model and sampling across arms; the Engine's own
