@@ -80,26 +80,7 @@ Nothing is built on any of them in the meantime.
 
 ## Next — Phase EB, engine budget
 
-Design: `docs/superpowers/specs/2026-10-02-engine-budget-design.md`;
-evidence: `evidence/2026-10-02-engine-budget/README.md` (UNCONFIRMED:
-isolation harness, engine `78ab87d`).
-
-Release two's floor-parity secondary failed: on tasks both arms pass, the
-Engine delivers the same and costs more. The decider is output tokens per
-delivered pass; peak context and wall clock are declared secondaries.
-**Parity is not a remedy:** restoring what bare Pi already has (the `edit`
-tool's descriptions, guidelines, argument tolerance and anchor matching) is
-R2 work and lands with the fixes confinement itself requires, before the
-first post-C4 Engine read; everything that adds behaviour waits for C4 and an
-offline estimate.
-
-| # | Step | Mode | Done when |
-|---|---|---|---|
-| EB0 | Development record, both arms, floor tasks, confinement, engine at the pin | batch, frozen in daylight | `records/2026-10-02-eb0-*` complete, cells retained whole — done 2026-10-03: 36 cells, no infrastructure failure; the gap reproduces on guard-prefixes (20 of 20 pairs) and review-script (25 of 25), not on depth-3 (22 of 36); evidence README §8b |
-| EB1 | Re-derive the cost attribution on EB0 cells; choose the floor set by robust pairwise difference; state the parity rule's power | offline, no model | an evidence README with denominators and the floor set — done 2026-10-03: floor set guard-prefixes and review-script; the parity rule is weak at n = 6; `evidence/2026-10-03-eb1-read/README.md`, spec §7 |
-| — | Confinement fixes the Engine arm needs anyway: the inner Pi's `SATYRN_CONFINEMENT_ROOT`; `self_test_red_stop` in receipts. R2 parity for `edit` in the same re-pin | overnight build | tests both directions; one admitted Engine smoke cell — plan approved 2026-10-03: `docs/superpowers/plans/2026-10-03-engine-confinement-and-edit-parity.md`; parity is Pi's descriptions, guidelines and three repairs; hoisting moves to EB2 |
-| EB2 | Remedies in R0's order, each with an offline estimate that names its class: the contract's test lines, edit-result echo, self-test dedup and note hygiene, a light path for small requests | after C4 | an approved spec per remedy |
-| EB3 | Floor read under the pre-registered rule; primary task re-measured | batch | result files; ledger updated |
+Design, order table (EB0-EB3) and amendments: `docs/superpowers/specs/2026-10-02-engine-budget-design.md` §3, §7; evidence `evidence/2026-10-02-engine-budget/` and `evidence/2026-10-03-eb1-read/`. Decider: output tokens per delivered pass; peak context and wall clock are declared secondaries. **Parity is not a remedy.** Done: EB0 and EB1 (2026-10-03); the confinement and edit-parity re-pin (2026-10-04, ledger "Engine re-pin"). Next: EB2, remedies each with an offline estimate; then EB3, the pre-registered floor read at the new pin.
 
 ## Rules that bind every phase
 
