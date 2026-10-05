@@ -1,0 +1,126 @@
+{
+  "record": "records/2026-10-02-eb0-smoke-agentclinic-repair-depth-3.json",
+  "record_sha256": "0d7f15534aa626e1d33b340677d6006073d9f13d90498b4ce81bd5caa5b9aaac",
+  "arm_sha256": {
+    "engine": "f74387d31c0885b661b7222f4a92260825499328119280db52ffc5159da3d757"
+  },
+  "status": "complete",
+  "reason": null,
+  "night": "/Users/pauleveritt/satyrn-runs/2026-10-02-eb0-smoke-agentclinic-repair-depth-3",
+  "task": "agentclinic-repair-depth-3",
+  "rung": "R2",
+  "k": 1,
+  "n": 1,
+  "purpose": "development",
+  "arms": {
+    "engine": {
+      "finished": 1,
+      "n": 1,
+      "code_counts": {
+        "OK": 1
+      },
+      "passes": 1,
+      "summary": "/Users/pauleveritt/satyrn-runs/2026-10-02-eb0-smoke-agentclinic-repair-depth-3/engine/summary.json",
+      "infrastructure": [],
+      "contamination": {
+        "graded": 1,
+        "flagged": 0,
+        "clean": 1,
+        "unmeasured": 0
+      }
+    }
+  },
+  "cells": [
+    {
+      "slot": 0,
+      "arm": "engine",
+      "attempt_dir": "agentclinic-repair-depth-3-20261003-000633-572292",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    }
+  ],
+  "replaced": [],
+  "sittings": [
+    {
+      "record": "records/2026-10-02-eb0-smoke-agentclinic-repair-depth-3.json",
+      "started": "2026-10-03T00:06:33+00:00",
+      "k": 1,
+      "evals_head": "cd0c9fe6743839178c85aac3e70cdc72c08d019e",
+      "preflight": {
+        "confinement": "extension",
+        "extension": "/Users/pauleveritt/projects/pauleveritt/satyrn-evals/.claude/worktrees/engine-budget/packages/confinement/confinement.ts",
+        "tasks_root": "/Users/pauleveritt/projects/pauleveritt/satyrn-evals/.claude/worktrees/engine-budget/src/satyrn_evals/tasks"
+      },
+      "engine_engine_self_test": {
+        "base_exit": 1,
+        "known_good_exit": 0,
+        "repair_base": true
+      },
+      "task_self_test": {
+        "base_exit": 1,
+        "known_good_exit": 0,
+        "repair_base": true
+      },
+      "model_server": {
+        "Ornith-1.5-9B-MLX-8bit": {
+          "base_url": "http://127.0.0.1:8001",
+          "authenticated": true
+        }
+      },
+      "settings": {
+        "engine": {
+          "arm_sha256": "9a4a0c1b38058563d6ba025f1c9a313250a1a9c0bc0cb30b8124683132950c81",
+          "backend": "omlx",
+          "omlx_entry": {
+            "enable_thinking": true,
+            "force_sampling": false,
+            "is_default": true,
+            "is_pinned": false,
+            "max_context_window": 262144,
+            "max_tokens": 16000,
+            "min_p": 0.0,
+            "preserve_thinking": true,
+            "reasoning_parser": "qwen_3",
+            "temperature": 0.6,
+            "thinking_budget_enabled": false,
+            "top_k": 20,
+            "top_p": 0.95,
+            "trust_remote_code": false,
+            "turboquant_kv_enabled": false
+          },
+          "omlx_entry_sha256": "d84e6f974c7086a626b61f65d156f56c153e60fd1de5c51d921da929db2235bc",
+          "pi_entry": {
+            "contextWindow": 262144,
+            "cost": {
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "input": 0,
+              "output": 0
+            },
+            "id": "Ornith-1.5-9B-MLX-8bit",
+            "input": [
+              "text"
+            ],
+            "maxTokens": 16000,
+            "name": "Ornith 1.5 9B (MLX 8-bit local, served)",
+            "reasoning": true,
+            "samplingParams": {
+              "min_p": 0.0,
+              "presence_penalty": 0.0,
+              "repetition_penalty": 1.0,
+              "temperature": 0.6,
+              "top_k": 20,
+              "top_p": 0.95
+            }
+          },
+          "pi_entry_sha256": "ab238d1883f4a4bf150d0f4e55dedd8adf8292ff647eefe593a063d3b51eba23",
+          "pi_models": "/Users/pauleveritt/.pi/agent/models.json"
+        }
+      },
+      "ended": "2026-10-03T00:09:10+00:00",
+      "status": "complete",
+      "reason": null
+    }
+  ]
+}

@@ -78,6 +78,10 @@ Nothing is built on any of them in the meantime.
 | C3 | Re-run the census outcome cells under confinement | batch, frozen in daylight | a classified table on this harness, with refused and flagged cells counted  done 2026-10-03: ledger entry "C3", evidence/2026-10-03-c3-census/ |
 | C4 | Re-derive the finishing counterfactual, then resume R0's order | attended | the counterfactual's verdict on the new census, before any Engine build  done 2026-10-03: ledger entry "C4", verify; next: R0 sitting (census design §8) |
 
+## Next — Phase EB, engine budget
+
+Design, order table (EB0-EB3) and amendments: `docs/superpowers/specs/2026-10-02-engine-budget-design.md` §3, §7; evidence `evidence/2026-10-02-engine-budget/` and `evidence/2026-10-03-eb1-read/`. Decider: output tokens per delivered pass; peak context and wall clock are declared secondaries. **Parity is not a remedy.** Done: EB0 and EB1 (2026-10-03); the confinement and edit-parity re-pin (2026-10-04, ledger "Engine re-pin"). Next: EB2, remedies each with an offline estimate; then EB3, the pre-registered floor read at the new pin.
+
 ## Rules that bind every phase
 
 - Attended sittings are ≤ 60 min and n ≤ 8; a batch sitting is 720 minutes
