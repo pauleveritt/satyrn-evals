@@ -32,8 +32,8 @@ def result(code: str, verdict: str | None, *, arm: str = "baseline", slot: int =
 
 def write_night(root: Path, slots: list[dict], *, refusals: int = 0, reaches: int = 0,
                 skip_attempt: set[int] = frozenset(), drop_key: dict[int, str] | None = None,
-                confinement: dict[int, tuple[int, int]] | None = None) -> Path:
-    night = root / "night"
+                confinement: dict[int, tuple[int, int]] | None = None, name: str = "night") -> Path:
+    night = root / name
     (night / "slots").mkdir(parents=True)
     for body in slots:
         i = body["slot"]
@@ -376,23 +376,27 @@ def test_decide_alpha_is_honoured():
 HEAD = "a" * 40
 
 
-def record(path: Path, n: int, arm: str = "baseline+engine") -> Path:
-    path.write_text(json.dumps({"arm": arm, "n": n}))
+ARM_SHA256 = {"baseline": "1" * 64, "engine": "2" * 64}
+
+
+def record(path: Path, n: int, arm: str = "baseline+engine", extra: dict | None = None) -> Path:
+    path.write_text(json.dumps({"arm": arm, "n": n, "token_budget": 48000, **(extra or {})}))
     return path
 
 
 def sitting_night(root: Path, *, missing: set[int] = frozenset(), status: str = "complete",
                   sha: str | None = None, heads: tuple[str, ...] = (HEAD,), n: int = 3,
-                  record_arm: str = "baseline+engine") -> tuple[Path, Path]:
+                  record_arm: str = "baseline+engine", name: str = "night", extra: dict | None = None,
+                  arm_sha256: dict | None = None) -> tuple[Path, Path]:
     """Three cells per arm: Baseline fails every one, the Engine passes every one."""
     slots = []
     for i in range(2 * n):
         arm = "baseline" if i % 2 == 0 else "engine"
         slots.append(result("OK", "pass" if arm == "engine" else "fail", arm=arm, slot=i))
-    night = write_night(root, [s for s in slots if s["slot"] not in missing])
-    rec = record(root / "rec.json", n, record_arm)
+    night = write_night(root, [s for s in slots if s["slot"] not in missing], name=name)
+    rec = record(root / f"{name}-rec.json", n, record_arm, extra)
     ledger = {"status": status, "record_sha256": sha or hashlib.sha256(rec.read_bytes()).hexdigest(),
-              "sittings": [{"evals_head": h} for h in heads]}
+              "arm_sha256": arm_sha256 or ARM_SHA256, "sittings": [{"evals_head": h} for h in heads]}
     (night / "launch.json").write_text(json.dumps(ledger))
     return night, rec
 
@@ -421,7 +425,8 @@ def test_main_prints_the_night_s_evals_heads(tmp_path: Path, capsys: pytest.Capt
     night, rec = sitting_night(tmp_path, heads=(HEAD, other, HEAD))
     decide.main([str(night), str(rec)])
     out = capsys.readouterr().out
-    assert json.loads(out.split("\n\n", 1)[0])["evals_head"] == [HEAD, other]
+    (pair,) = json.loads(out.split("\n\n", 1)[0])["pairs"]
+    assert pair == {"night": str(night), "record": str(rec), "evals_head": [HEAD, other]}
     assert f"evals_head: {HEAD}, {other}" in out
 
 
@@ -467,3 +472,104 @@ def test_main_is_refused_when_the_launchers_infrastructure_codes_drift(tmp_path:
     monkeypatch.setattr(decide.launch, "INFRASTRUCTURE_CODES", drifted)
     with pytest.raises(decide.Refused, match="infrastructure codes"):
         decide.main([str(night), str(rec)])
+
+
+# three-record mode (cap amendment: three n = 12 records decided once)
+
+def pairs(tmp_path: Path, names=("a", "b", "c"), **each) -> list[str]:
+    argv = []
+    for name in names:
+        night, rec = sitting_night(tmp_path, name=f"night-{name}", **{k: v[name] for k, v in each.items() if name in v})
+        argv += [str(night), str(rec)]
+    return argv
+
+
+def test_main_decides_once_over_three_complete_pairs(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    argv = pairs(tmp_path, heads={"a": (HEAD,), "b": ("b" * 40,), "c": (HEAD,)})
+    assert decide.main(argv) == 0
+    out = capsys.readouterr().out
+    parsed = json.loads(out.split("\n\n", 1)[0])
+    assert parsed["primary"]["counts"]["engine"] == {"delivered": 9, "n": 9}
+    assert parsed["primary"]["counts"]["baseline"] == {"delivered": 0, "n": 9}
+    assert parsed["verdict"] == "holds"
+    assert [p["night"].rsplit("/", 1)[1] for p in parsed["pairs"]] == ["night-a", "night-b", "night-c"]
+    assert [p["evals_head"] for p in parsed["pairs"]] == [[HEAD], ["b" * 40], [HEAD]]
+    assert out.count("evals_head:") >= 3
+
+
+def test_main_still_decides_on_a_single_pair(tmp_path: Path):
+    assert decide.main(pairs(tmp_path, names=("a",))) == 0
+
+
+def test_main_is_refused_on_an_odd_argument_count(tmp_path: Path):
+    argv = pairs(tmp_path)
+    with pytest.raises(decide.Refused, match="usage"):
+        decide.main(argv[:-1])
+    with pytest.raises(decide.Refused, match="usage"):
+        decide.main(argv[:1])
+
+
+def test_main_is_refused_when_records_differ_in_a_field_other_than_the_three_allowed(tmp_path: Path):
+    argv = pairs(tmp_path, extra={"b": {"token_budget": 24000}})
+    with pytest.raises(decide.Refused, match="token_budget"):
+        decide.main(argv)
+
+
+def test_main_accepts_records_differing_only_in_authority_decision_rule_and_previous_result(tmp_path: Path):
+    argv = pairs(tmp_path, extra={"a": {"authority": "x", "decision_rule": "r1"},
+                                  "b": {"authority": "y", "decision_rule": "r2", "previous_result": "p"}})
+    assert decide.main(argv) == 0
+
+
+def test_main_is_refused_when_nights_differ_in_arm_sha256(tmp_path: Path):
+    argv = pairs(tmp_path, arm_sha256={"c": {"baseline": "1" * 64, "engine": "3" * 64}})
+    with pytest.raises(decide.Refused, match="arm_sha256"):
+        decide.main(argv)
+
+
+def test_main_is_refused_without_an_arm_sha256(tmp_path: Path):
+    night, rec = sitting_night(tmp_path)
+    ledger = json.loads((night / "launch.json").read_text())
+    del ledger["arm_sha256"]
+    (night / "launch.json").write_text(json.dumps(ledger))
+    with pytest.raises(decide.Refused, match="arm_sha256"):
+        decide.main([str(night), str(rec)])
+
+
+def test_main_is_refused_on_a_duplicated_night(tmp_path: Path):
+    argv = pairs(tmp_path, names=("a", "b"))
+    with pytest.raises(decide.Refused, match="twice"):
+        decide.main([*argv, argv[0], argv[3]])
+
+
+def test_main_is_refused_on_a_duplicated_record_file(tmp_path: Path):
+    argv = pairs(tmp_path, names=("a", "b"))
+    with pytest.raises(decide.Refused, match="twice"):
+        decide.main([argv[0], argv[1], argv[2], argv[1]])
+
+
+def test_main_is_refused_on_an_incomplete_second_night_and_names_it(tmp_path: Path):
+    argv = pairs(tmp_path, missing={"b": {4}})
+    with pytest.raises(decide.Refused, match=r"night-b.*incomplete night: baseline 2 of 3"):
+        decide.main(argv)
+
+
+def test_main_is_refused_on_a_second_night_that_is_not_complete_and_names_it(tmp_path: Path):
+    argv = pairs(tmp_path, status={"b": "capped"})
+    with pytest.raises(decide.Refused, match=r"night-b.*capped"):
+        decide.main(argv)
+
+
+def test_listed_cells_carry_their_night():
+    cs = [decide.Cell(0, "baseline", "t-0", D, 0, 1, night="night-a"),
+          decide.Cell(1, "baseline", "t-1", U, 0, 0, night="night-b"),
+          decide.Cell(2, "engine", "t-2", U, 0, 0, night="night-c"),
+          decide.Cell(3, "engine", "t-3", D, 0, 0, night="night-c")]
+    got = decide.counts(cs, admitted_only=False, unavailable="baseline-favouring")
+    assert [e["night"] for e in got["excluded"]] == ["night-a"]
+    assert [(r["arm"], r["night"]) for r in got["reclassified"]] == [("baseline", "night-b"), ("engine", "night-c")]
+
+
+def test_load_names_the_night_on_each_cell(tmp_path: Path):
+    night = write_night(tmp_path, [result("OK", "pass", slot=0)], name="night-z")
+    assert [c.night for c in decide.load(night)] == ["night-z"]

@@ -21,7 +21,7 @@ FROZEN = {
     "src/satyrn_evals/census_classify.py": "637d0ef7fbf12e84a03d5b6f97551e46a9193de4976cd352fdb5554556244fea",
     "evidence/2026-10-03-eb1-read/eb1.py": "6f2dd72b5d0a9ef2a113d197a97b1ae0ffbdc4dd36ec81c4acb8dd11167cbe9a",
     "evidence/2026-10-05-eb-cell-read/read_cells.py": "6fdb28541b6d2067b842971ea221bf431510a47a8eda9db189a7712f4685633b",
-    "evidence/2026-10-05-rrg-delivery/decide.py": "cccb35105b7913afde028e72279f566576a8f5dd27dab4bb00da8ba7538d0d9f",
+    "evidence/2026-10-05-rrg-delivery/decide.py": "44573d17ab2ac87f643a20cecfecebdac6d878fe3646aa5f6182626b582c9aad",
 }
 
 

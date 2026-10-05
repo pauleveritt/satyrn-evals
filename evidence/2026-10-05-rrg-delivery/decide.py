@@ -5,9 +5,9 @@ exactly, with §9 D2 (Baseline-favouring ``unavailable``) and D3 (reaches exclud
 admitted-only count also required). Built and frozen on synthetic cells before
 any cell of the record exists (D5); it never reads ~/satyrn-runs on its own.
 
-Usage, from the repo root:
+Usage, from the repo root (one or more night/record pairs, decided once over their combined cells):
 
-    uv run python evidence/2026-10-05-rrg-delivery/decide.py NIGHT RECORD.json
+    uv run python evidence/2026-10-05-rrg-delivery/decide.py NIGHT RECORD.json [NIGHT RECORD.json ...]
 
 Prints the decision as JSON, a blank line, then a short markdown table.
 """
@@ -35,7 +35,9 @@ EXPECTED_INFRASTRUCTURE_CODES = frozenset({
 HOLDS = "holds"
 ONE_COUNT = "not holding: rejects on one count only"
 NEGATIVE = "stated negative"
-USAGE = "usage: decide.py NIGHT RECORD.json"
+#: Record fields that may differ between the batch records of one decision (cap amendment, three n = 12 records).
+RECORD_FIELDS_MAY_DIFFER = frozenset({"authority", "decision_rule", "previous_result"})
+USAGE = "usage: decide.py NIGHT RECORD.json [NIGHT RECORD.json ...]"
 
 
 @dataclass(frozen=True)
@@ -46,6 +48,7 @@ class Cell:
     cls: str
     refusals: int
     reaches: int
+    night: str = ""
 
 
 class Refused(SystemExit):
@@ -90,7 +93,7 @@ def load(night: Path) -> list[Cell]:
     for index, result in sorted(read_slots(night).items()):
         cls = classify(result)
         refusals, reaches = _confinement(night, result, cls)
-        found.append(Cell(index, result["arm"], result["attempt_dir"], cls, refusals, reaches))
+        found.append(Cell(index, result["arm"], result["attempt_dir"], cls, refusals, reaches, night.name))
     return found
 
 
@@ -114,12 +117,12 @@ def counts(cells: list[Cell], *, admitted_only: bool, unavailable: str) -> dict:
                 cell.cls == UNAVAILABLE and cell.arm == "baseline")  # D2: Baseline-favouring
             if cell.cls == UNAVAILABLE:
                 counted = "delivered" if delivered else "not delivered"
-                reclassified.append({"attempt_dir": cell.attempt_dir, "arm": cell.arm,
+                reclassified.append({"attempt_dir": cell.attempt_dir, "arm": cell.arm, "night": cell.night,
                                      "why": f"unavailable verdict counted as {counted} (D2, Baseline-favouring)"})
             tally[cell.arm]["n"] += 1
             tally[cell.arm]["delivered"] += delivered
             continue
-        excluded.append({"attempt_dir": cell.attempt_dir, "arm": cell.arm, "why": why})
+        excluded.append({"attempt_dir": cell.attempt_dir, "arm": cell.arm, "night": cell.night, "why": why})
     return {**tally, "excluded": excluded, "reclassified": reclassified}
 
 
@@ -167,12 +170,13 @@ def _table(result: dict) -> str:
             str(len(tally["excluded"])),
             str(len(tally["reclassified"])),
         ]) + " |")
-    heads = ", ".join(result["evals_head"]) or "none recorded"
-    return "\n".join([*rows, "", f"alpha {result['alpha']}; verdict: {result['verdict']}; evals_head: {heads}"])
+    pairs = [f"night {pair['night']}; record {pair['record']}; evals_head: {', '.join(pair['evals_head']) or 'none recorded'}"
+             for pair in result["pairs"]]
+    return "\n".join([*rows, "", *pairs, "", f"alpha {result['alpha']}; verdict: {result['verdict']}"])
 
 
-def _require_night_of_record(night: Path, record_path: Path) -> list[str]:
-    """The night is complete and belongs to this record file; return its evals heads."""
+def _require_night_of_record(night: Path, record_path: Path) -> dict:
+    """The night is complete and belongs to this record file; return its ledger."""
     if sorted(c.value for c in launch.INFRASTRUCTURE_CODES) != sorted(EXPECTED_INFRASTRUCTURE_CODES):
         raise Refused("launch.py's infrastructure codes differ from the frozen set: "
                       f"{sorted(c.value for c in launch.INFRASTRUCTURE_CODES)} against {sorted(EXPECTED_INFRASTRUCTURE_CODES)}")
@@ -186,6 +190,12 @@ def _require_night_of_record(night: Path, record_path: Path) -> list[str]:
     if ledger.get("record_sha256") != wanted:
         raise Refused(f"the night belongs to another record: its record_sha256 is {ledger.get('record_sha256')!r}, "
                       f"not {wanted!r}")
+    if not isinstance(ledger.get("arm_sha256"), dict):
+        raise Refused("launch.json has no arm_sha256 pinning the arms")
+    return ledger
+
+
+def _heads(ledger: dict) -> list[str]:
     heads = [sitting["evals_head"] for sitting in ledger.get("sittings", []) if sitting.get("evals_head")]
     return list(dict.fromkeys(heads))
 
@@ -201,14 +211,46 @@ def _require_complete(night: Path, record: dict) -> None:
         raise Refused(f"incomplete night: {said}")
 
 
+def _across_pairs(pairs: list[tuple[Path, Path]], records: list[dict], ledgers: list[dict]) -> None:
+    """Pairs belong to one decision: distinct, the same record apart from the allowed fields, the same arms."""
+    for index, label in ((0, "night"), (1, "record")):
+        resolved = [pair[index].resolve() for pair in pairs]
+        for each in resolved:
+            if resolved.count(each) > 1:
+                raise Refused(f"the same {label} is named twice: {each}")
+    first = {k: v for k, v in records[0].items() if k not in RECORD_FIELDS_MAY_DIFFER}
+    for (_, path), record in zip(pairs[1:], records[1:], strict=True):
+        other = {k: v for k, v in record.items() if k not in RECORD_FIELDS_MAY_DIFFER}
+        differing = sorted(k for k in first.keys() | other.keys() if first.get(k) != other.get(k))
+        if differing:
+            raise Refused(f"{path} differs from {pairs[0][1]} in: {', '.join(differing)}")
+    for (night, _), ledger in zip(pairs[1:], ledgers[1:], strict=True):
+        if ledger["arm_sha256"] != ledgers[0]["arm_sha256"]:
+            raise Refused(f"arm_sha256 differs between {pairs[0][0]} and {night}")
+
+
 def main(argv: list[str]) -> int:
-    if len(argv) != 2:
+    if not argv or len(argv) % 2:
         raise Refused(USAGE)
-    night, record_path = Path(argv[0]), Path(argv[1])
-    heads = _require_night_of_record(night, record_path)
-    record = json.loads(record_path.read_text(encoding="utf-8"))
-    _require_complete(night, record)
-    result = {"evals_head": heads, **decide(load(night))}
+    pairs = [(Path(argv[i]), Path(argv[i + 1])) for i in range(0, len(argv), 2)]
+    records, ledgers = [], []
+    for night, record_path in pairs:
+        try:
+            ledgers.append(_require_night_of_record(night, record_path))
+            records.append(json.loads(record_path.read_text(encoding="utf-8")))
+            _require_complete(night, records[-1])
+        except Refused as refusal:
+            raise Refused(f"{night}: {refusal}") from None
+    _across_pairs(pairs, records, ledgers)
+    cells = []
+    for night, _ in pairs:
+        try:
+            cells += load(night)
+        except Refused as refusal:
+            raise Refused(f"{night}: {refusal}") from None
+    listing = [{"night": str(night), "record": str(record_path), "evals_head": _heads(ledger)}
+               for (night, record_path), ledger in zip(pairs, ledgers, strict=True)]
+    result = {"pairs": listing, **decide(cells)}
     print(json.dumps(result, indent=2) + "\n\n" + _table(result))
     return 0
 
