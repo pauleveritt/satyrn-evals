@@ -50,6 +50,24 @@ def test_load_combines_nights_of_one_arm_file(tmp_path):
     assert [c["name"] for c in data["t", "engine"]] == ["a0", "a1", "b0"]
 
 
+def _verdict_after_load(tmp_path, cell: dict):
+    night(tmp_path, "S1", "engine", ["a0"])
+    data = eb2.load(tmp_path, nights={("t", "engine"): ("S1",)}, expected=1, read=lambda p: dict(cell))
+    return data["t", "engine"][0]["verdict"]
+
+
+def test_load_labels_a_missing_verdict_with_its_code(tmp_path):
+    assert _verdict_after_load(tmp_path, {"verdict": None, "code": "NO_PATCH"}) == "NO_PATCH"
+
+
+def test_load_keeps_a_present_verdict(tmp_path):
+    assert _verdict_after_load(tmp_path, {"verdict": "pass", "code": "OK"}) == "pass"
+
+
+def test_load_labels_none_when_code_missing_too(tmp_path):
+    assert _verdict_after_load(tmp_path, {"verdict": None}) == "none"
+
+
 def test_load_refuses_a_short_night(tmp_path):
     night(tmp_path, "S1", "engine", ["a0", "a1"])
     with pytest.raises(eb2.ShortNight, match="t engine: 2 finished cells, expected 3"):

@@ -70,7 +70,13 @@ def load(runs: Path, nights=NIGHTS, expected: int = EXPECTED, read=None) -> dict
         paths = [p for n in names for p in finished_cells(runs / n, arm)]
         if len(paths) != expected:
             raise ShortNight(f"{task} {arm}: {len(paths)} finished cells, expected {expected}")
-        data[task, arm] = [read(p) for p in paths]
+        cells = []
+        for p in paths:
+            cell = read(p)
+            if cell.get("verdict") is None:  # EB1's sections format the verdict; label it with its attempt code
+                cell["verdict"] = cell.get("code") or "none"
+            cells.append(cell)
+        data[task, arm] = cells
     return data
 
 
@@ -185,3 +191,42 @@ def verdict_line(task: str, cut: float, bounds: dict) -> str:
         return head + "no remedy clears alone; the estimable remedies combined can clear (upper bound)"
     return (head + "no listed remedy can clear the threshold, alone or combined; "
             "the light path's figure is the whole gap by definition, not an estimate")
+
+
+TASKS = ("guard-prefixes", "review-script")
+
+
+def main(argv: list[str]) -> int:
+    runs = Path(argv[1]).expanduser() if len(argv) > 1 else Path("~/satyrn-runs").expanduser()
+    scratch = "--no-scratch" not in argv
+    data = load(runs)
+    eb1.TASKS = {task: None for task in TASKS}  # EB1's sections iterate TASKS' keys only
+    print("# EB2 offline estimates, engine 23a0ef6, 12 cells per arm per task")
+    eb1.section2(data, list(TASKS))
+    eb1.section3(data)
+    eb1.section4(data, list(TASKS))
+    eb1.section5(data)
+    print(f"\n## Power of section 4's rule at the delivered counts (seed {SEED}, 4000 reps)")
+    for task in TASKS:
+        e, b = (eb1.passes(data[task, arm]) for arm in ("engine", "baseline"))
+        base = [float(eb1.out_total(c)) for c in b]
+        for counts in ((len(e), len(b)), (2 * len(e), 2 * len(b))):
+            for margin in MARGINS:
+                p = power(base, *counts, (1.0, 1.25, 1.5, 2.0), reps=4000, margin=margin, seed=SEED)
+                print(f"  {task} E n={counts[0]} B n={counts[1]} margin {margin}: "
+                      + ", ".join(f"{w} {k}: {v:.3f}" for (w, k), v in p.items()))
+    print("\n## Required cut and remedy upper bounds (output tokens per delivered pass)")
+    for task in TASKS:
+        e, b = (eb1.passes(data[task, arm]) for arm in ("engine", "baseline"))
+        et, bt = [eb1.out_total(c) for c in e], [eb1.out_total(c) for c in b]
+        print(f"  {task}: rank-sum p (Engine <= Baseline) {mw_p(et, bt):.4f}")
+        rows = bounds(data, task, scratch)
+        for name, value in rows.items():
+            print(f"    {name}: {'n.a.' if value is None else f'{value:,.0f}'}")
+        for margin in MARGINS:
+            print("    " + verdict_line(task, required_cut(et, bt, margin), rows) + f" [margin {margin}]")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

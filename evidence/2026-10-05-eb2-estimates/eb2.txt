@@ -1,0 +1,210 @@
+# EB2 offline estimates, engine 23a0ef6, 12 cells per arm per task
+
+## 2. Attribution (output tokens per delivered pass; median and mean per arm)
+
+### guard-prefixes (B n=8, E n=9)
+| category | B median | E median | d median | B mean | E mean | d mean | E cells>0 | B cells>0 |
+|---|---|---|---|---|---|---|---|---|
+| pre-edit | 40 | 6,391 | +6,351 | 1,735 | 6,387 | +4,652 | 9/9 | 8/8 |
+| test file | 0 | 3,352 | +3,352 | 225 | 6,356 | +6,131 | 7/9 | 1/8 |
+| retry:schema | 0 | 0 | +0 | 620 | 854 | +234 | 3/9 | 3/8 |
+| retry:ANCHOR_MISSING | 0 | 0 | +0 | 0 | 59 | +59 | 2/9 | 0/8 |
+| retry:NO_CHANGE_REQUESTED | 0 | 0 | +0 | 0 | 65 | +65 | 2/9 | 0/8 |
+| retry:NO_CHANGE (pi) | 0 | 0 | +0 | 198 | 0 | -198 | 0/9 | 1/8 |
+| retry:Could not find (pi) | 0 | 0 | +0 | 10 | 0 | -10 | 0/9 | 1/8 |
+| retry:confinement | 0 | 0 | +0 | 124 | 0 | -124 | 0/9 | 2/8 |
+| retry:scope (engine) | 0 | 0 | +0 | 0 | 161 | +161 | 2/9 | 0/8 |
+| post-steer | 0 | 0 | +0 | 0 | 40 | +40 | 2/9 | 0/8 |
+| src edit | 2,354 | 3,969 | +1,614 | 2,779 | 3,643 | +864 | 9/9 | 8/8 |
+| test run | 0 | 132 | +132 | 0 | 520 | +520 | 6/9 | 0/8 |
+| probe | 876 | 4,192 | +3,316 | 2,955 | 9,013 | +6,058 | 8/9 | 8/8 |
+| final | 418 | 653 | +236 | 408 | 676 | +268 | 9/9 | 8/8 |
+| **total** | 5,510 | 28,463 | +22,954 | 9,054 | 27,785 | +18,731 | | |
+residual of medians (total d - sum of category d): +7,953
+  B: turns before first landed edit 1 (1-11); calls before it 1 (1-11), touching tests 0 (0-0); passes creating a test file 1/8; retry turns 0 (0-7); post-steer turns -
+  E: turns before first landed edit 6 (1-26); calls before it 7 (1-27), touching tests 4 (0-8); passes creating a test file 7/9; retry turns 1 (0-6); post-steer turns 0 (0-1)
+
+### review-script (B n=11, E n=6)
+| category | B median | E median | d median | B mean | E mean | d mean | E cells>0 | B cells>0 |
+|---|---|---|---|---|---|---|---|---|
+| pre-edit | 3,697 | 5,576 | +1,880 | 3,195 | 6,114 | +2,920 | 6/6 | 11/11 |
+| test file | 3,345 | 1,636 | -1,710 | 4,025 | 2,381 | -1,644 | 6/6 | 11/11 |
+| retry:schema | 0 | 0 | +0 | 155 | 0 | -155 | 0/6 | 3/11 |
+| retry:NO_CHANGE_REQUESTED | 0 | 0 | +0 | 0 | 30 | +30 | 1/6 | 0/11 |
+| retry:NO_CHANGE (pi) | 0 | 0 | +0 | 10 | 0 | -10 | 0/6 | 1/11 |
+| retry:Could not find (pi) | 0 | 0 | +0 | 69 | 0 | -69 | 0/6 | 5/11 |
+| retry:other | 0 | 0 | +0 | 0 | 138 | +138 | 1/6 | 0/11 |
+| post-steer | 0 | 0 | +0 | 0 | 77 | +77 | 1/6 | 0/11 |
+| src edit | 2,200 | 1,461 | -739 | 2,519 | 1,758 | -761 | 6/6 | 11/11 |
+| test run | 211 | 0 | -211 | 326 | 0 | -326 | 0/6 | 11/11 |
+| probe | 949 | 0 | -949 | 1,409 | 1,012 | -397 | 2/6 | 11/11 |
+| final | 488 | 866 | +378 | 531 | 898 | +367 | 6/6 | 11/11 |
+| **total** | 10,970 | 10,828 | -142 | 12,239 | 12,436 | +197 | | |
+residual of medians (total d - sum of category d): +1,208
+  B: turns before first landed edit 9 (4-11); calls before it 9 (4-11), touching tests 4 (1-7); passes creating a test file 11/11; retry turns 1 (0-4); post-steer turns -
+  E: turns before first landed edit 8 (6-12); calls before it 13 (6-16), touching tests 4 (3-7); passes creating a test file 6/6; retry turns 0 (0-3); post-steer turns 0 (0-2)
+
+### Rejected edit/write calls, all cells (not only passes)
+  guard-prefixes baseline: 22 in 5/12 cells {'NO_CHANGE (pi)': 4, 'Could not find (pi)': 6, 'schema': 9, 'confinement': 3} schema shapes {'edits as string': 8, 'per-item path, one file': 1}
+  guard-prefixes engine: 26 in 9/12 cells {'schema': 10, 'ANCHOR_MISSING': 7, 'scope (engine)': 5, 'NO_CHANGE_REQUESTED': 2, 'ANCHOR_ALREADY_APPLIED': 2} schema shapes {'edits as string': 6, 'per-item path, one file': 4}
+  review-script baseline: 13 in 7/12 cells {'Could not find (pi)': 8, 'schema': 4, 'NO_CHANGE (pi)': 1} schema shapes {'other': 4}
+  review-script engine: 8 in 6/12 cells {'NO_CHANGE_REQUESTED': 2, 'ANCHOR_MISSING': 3, 'REVISION_STALE': 1, 'other': 2}
+
+## 3. self_test path (Engine arm, all cells)
+
+### guard-prefixes: 27 events in 12/12 cells (tool 9, note 18)
+  two suite summaries: 27/27; summary counts {2: 27}
+  tool: call wall clock s 63.8 (63.1-69.4) (missing 0); Engine pytest in-times summed s 62.6 (62.1-67.2); bytes 4,522 (2,417-4,858); dot-line bytes 4,000 (2,000-4,000); VIRTUAL_ENV warning 9/9; dot lines present 9/9
+  note: call wall clock s 61.7 (32.9-64.1) (missing 0); Engine pytest in-times summed s 60.7 (31.4-62.3); bytes 3,334 (2,520-4,711); dot-line bytes 2,000 (2,000-4,000); VIRTUAL_ENV warning 18/18; dot lines present 18/18
+  model's preceding run known: 23/27; targeted 20, full 3; red 12, green 11
+  Engine red: 15/27; of which model's run was red 12; after a targeted model run 13, of those with any failure outside the files the model ran: 1
+  events per cell (all 6): 2 (1-4); Engine seconds per cell (sum of call durations): 127 (63-193)
+    232744-658538 pass  tool dur   69.4s bytes  4858 prev -      1521 passed, 270 deselected in 32.87s | 1521 passed, 270 deselected in 34.37s
+    232744-713583 pass  note dur   34.2s bytes  2562 prev Tred   270 deselected, 1 error in 1.04s | 1521 passed, 270 deselected in 31.29s
+    232744-713583 pass  tool dur   64.5s bytes  3811 prev Tgrn   2 failed, 1549 passed, 270 deselected in 32.24s | 1521 passed, 270 deselected in 30.98s
+    232744-713583 pass  tool dur   63.2s bytes  4522 prev Tgrn   1550 passed, 270 deselected in 30.96s | 1521 passed, 270 deselected in 31.14s
+    232744-766989 pass  tool dur   64.8s bytes  4858 prev Fgrn   1521 passed, 270 deselected in 31.49s | 1521 passed, 270 deselected in 31.78s
+    233751-776040 fail  note dur   34.9s bytes  2568 prev Tred   270 deselected, 1 error in 1.15s | 1521 passed, 270 deselected in 31.94s
+    233751-776040 fail  tool dur   63.8s bytes  2447 prev Fgrn   1 failed, 1559 passed, 270 deselected in 30.97s | 1521 passed, 270 deselected in 31.65s
+    233751-776040 fail  tool dur   64.9s bytes  4522 prev Fgrn   1560 passed, 270 deselected in 31.90s | 1521 passed, 270 deselected in 31.79s
+    234629-787857 pass  tool dur   63.4s bytes  2417 prev -      1 failed, 1551 passed, 270 deselected in 31.49s | 1521 passed, 270 deselected in 30.79s
+    234629-787857 pass  tool dur   63.6s bytes  4522 prev -      1552 passed, 270 deselected in 30.68s | 1521 passed, 270 deselected in 31.75s
+    235359-770244 pass  note dur   62.3s bytes  3457 prev Tred   2 failed, 1550 passed, 270 deselected in 30.48s | 1521 passed, 270 deselected in 30.33s
+    235359-770244 pass  note dur   61.9s bytes  4711 prev Tgrn   1548 passed, 270 deselected in 30.36s | 1521 passed, 270 deselected in 30.36s
+    024539-558164 unavailable tool dur   63.1s bytes  4522 prev -      1521 passed, 270 deselected in 31.16s | 1521 passed, 270 deselected in 30.99s
+    024539-612547 pass  note dur   34.0s bytes  3212 prev Tred   270 deselected, 1 error in 0.98s | 1521 passed, 270 deselected in 31.20s
+    024539-612547 pass  note dur   33.6s bytes  3212 prev Tred   270 deselected, 1 error in 0.87s | 1521 passed, 270 deselected in 31.45s
+    024539-612547 pass  note dur   63.2s bytes  3504 prev Tred   7 failed, 1547 passed, 270 deselected in 30.90s | 1521 passed, 270 deselected in 30.88s
+    024539-612547 pass  note dur   62.5s bytes  4711 prev Tgrn   1554 passed, 270 deselected in 30.64s | 1521 passed, 270 deselected in 30.81s
+    024539-666254 pass  note dur   33.4s bytes  2520 prev Tred   270 deselected, 1 error in 0.97s | 1521 passed, 270 deselected in 30.82s
+    024539-666254 pass  note dur   63.4s bytes  4007 prev Tred   2 failed, 1536 passed, 270 deselected, 3 errors in 31.14s | 1521 passed, 270 deselected in 30.82s
+    024539-666254 pass  note dur   32.9s bytes  2577 prev Tred   270 deselected, 1 error in 0.92s | 1521 passed, 270 deselected in 30.52s
+    024539-666254 pass  note dur   63.0s bytes  4711 prev Tgrn   1543 passed, 270 deselected in 30.78s | 1521 passed, 270 deselected in 30.92s
+    025119-042992 pass  note dur   63.5s bytes  4711 prev Tgrn   1569 passed, 270 deselected in 30.83s | 1521 passed, 270 deselected in 30.83s
+    030424-231057 fail  note dur   33.3s bytes  2681 prev Tred   270 deselected, 1 error in 0.93s | 1521 passed, 270 deselected in 30.85s
+    030424-231057 fail  note dur   33.1s bytes  2588 prev Tred   270 deselected, 1 error in 0.88s | 1521 passed, 270 deselected in 30.84s
+    030424-231057 fail  note dur   61.6s bytes  4711 prev Tgrn   1554 passed, 270 deselected in 30.29s | 1521 passed, 270 deselected in 30.35s
+    031649-075104 pass  note dur   64.1s bytes  3177 prev Tred   1 failed, 1553 passed, 270 deselected in 31.07s | 1521 passed, 270 deselected in 31.23s
+    031649-075104 pass  note dur   63.6s bytes  4711 prev Tgrn   1554 passed, 270 deselected in 30.91s | 1521 passed, 270 deselected in 31.22s
+
+### review-script: 38 events in 12/12 cells (tool 1, note 37)
+  two suite summaries: 38/38; summary counts {2: 38}
+  tool: call wall clock s 63.8 (63.8-63.8) (missing 0); Engine pytest in-times summed s 62.9 (62.9-62.9); bytes 4,522 (4,522-4,522); dot-line bytes 4,000 (4,000-4,000); VIRTUAL_ENV warning 1/1; dot lines present 1/1
+  note: call wall clock s 63.3 (33.5-66.2) (missing 0); Engine pytest in-times summed s 61.4 (31.9-63.6); bytes 3,371 (2,521-5,133); dot-line bytes 2,000 (2,000-4,000); VIRTUAL_ENV warning 37/37; dot lines present 37/37
+  model's preceding run known: 38/38; targeted 38, full 0; red 23, green 15
+  Engine red: 23/38; of which model's run was red 23; after a targeted model run 23, of those with any failure outside the files the model ran: 0
+  events per cell (all 6): 3 (1-6); Engine seconds per cell (sum of call durations): 188 (66-381)
+    003128-828092 pass  note dur   65.9s bytes  4174 prev Tred   2 failed, 1514 passed, 270 deselected in 31.82s | 1509 passed, 270 deselected in 31.81s
+    003128-828092 pass  note dur   64.2s bytes  3371 prev Tred   1 failed, 1515 passed, 270 deselected in 31.35s | 1509 passed, 270 deselected in 30.47s
+    003128-828092 pass  note dur   64.1s bytes  3245 prev Tred   1 failed, 1515 passed, 270 deselected in 30.95s | 1509 passed, 270 deselected in 31.13s
+    003128-828092 pass  note dur   63.8s bytes  4711 prev Tgrn   1516 passed, 270 deselected in 30.58s | 1509 passed, 270 deselected in 31.15s
+    003128-881600 unavailable note dur   63.9s bytes  3434 prev Tred   1 failed, 1514 passed, 270 deselected in 30.98s | 1509 passed, 270 deselected in 31.48s
+    003128-881600 unavailable note dur   62.9s bytes  4711 prev Tgrn   1515 passed, 270 deselected in 30.60s | 1509 passed, 270 deselected in 30.83s
+    003128-881600 unavailable note dur   62.5s bytes  4711 prev Tgrn   1515 passed, 270 deselected in 30.48s | 1509 passed, 270 deselected in 30.98s
+    003128-937274 pass  note dur   66.2s bytes  4711 prev Tgrn   1515 passed, 270 deselected in 31.25s | 1509 passed, 270 deselected in 31.42s
+    003922-224067 fail  note dur   33.5s bytes  2521 prev Tred   270 deselected, 1 error in 0.91s | 1509 passed, 270 deselected in 30.97s
+    003922-224067 fail  note dur   63.5s bytes  4711 prev Tgrn   1515 passed, 270 deselected in 30.22s | 1509 passed, 270 deselected in 30.96s
+    003922-224067 fail  tool dur   63.8s bytes  4522 prev Tgrn   1515 passed, 270 deselected in 31.74s | 1509 passed, 270 deselected in 31.12s
+    004222-519596 fail  note dur   63.6s bytes  2912 prev Tred   2 failed, 1513 passed, 270 deselected in 31.15s | 1509 passed, 270 deselected in 30.33s
+    004222-519596 fail  note dur   65.5s bytes  2703 prev Tred   2 failed, 1513 passed, 270 deselected in 31.55s | 1509 passed, 270 deselected in 31.07s
+    004222-519596 fail  note dur   61.8s bytes  2669 prev Tred   1 failed, 1514 passed, 270 deselected in 30.36s | 1509 passed, 270 deselected in 29.86s
+    004222-519596 fail  note dur   61.7s bytes  2622 prev Tred   1 failed, 1514 passed, 270 deselected in 30.13s | 1509 passed, 270 deselected in 29.85s
+    004222-519596 fail  note dur   61.2s bytes  4711 prev Tgrn   1515 passed, 270 deselected in 29.99s | 1509 passed, 270 deselected in 29.86s
+    005058-171727 NO_PATCH note dur   61.9s bytes  5133 prev Tred   2 failed, 1513 passed, 270 deselected in 30.30s | 1509 passed, 270 deselected in 29.88s
+    005058-171727 NO_PATCH note dur   62.7s bytes  3836 prev Tred   1 failed, 1514 passed, 270 deselected in 30.27s | 1509 passed, 270 deselected in 29.89s
+    005058-171727 NO_PATCH note dur   62.2s bytes  4711 prev Tgrn   1515 passed, 270 deselected in 30.24s | 1509 passed, 270 deselected in 29.88s
+    043137-197455 pass  note dur   64.6s bytes  2780 prev Tred   1 failed, 1514 passed, 270 deselected in 30.76s | 1509 passed, 270 deselected in 31.48s
+    043137-197455 pass  note dur   63.1s bytes  4711 prev Tgrn   1515 passed, 270 deselected in 30.77s | 1509 passed, 270 deselected in 31.18s
+    043137-197455 pass  note dur   62.8s bytes  4711 prev Tgrn   1515 passed, 270 deselected in 30.06s | 1509 passed, 270 deselected in 31.02s
+    043137-249732 fail  note dur   64.1s bytes  2685 prev Tred   1 failed, 1514 passed, 270 deselected in 30.64s | 1509 passed, 270 deselected in 31.33s
+    043137-249732 fail  note dur   63.4s bytes  2644 prev Tred   1 failed, 1514 passed, 270 deselected in 31.15s | 1509 passed, 270 deselected in 30.94s
+    043137-249732 fail  note dur   63.3s bytes  3342 prev Tred   1 failed, 1514 passed, 270 deselected in 30.94s | 1509 passed, 270 deselected in 30.42s
+    043137-249732 fail  note dur   63.0s bytes  3342 prev Tred   1 failed, 1514 passed, 270 deselected in 30.25s | 1509 passed, 270 deselected in 30.92s
+    043137-249732 fail  note dur   63.3s bytes  2860 prev Tred   1 failed, 1514 passed, 270 deselected in 30.98s | 1509 passed, 270 deselected in 30.41s
+    043137-249732 fail  note dur   64.1s bytes  4711 prev Tgrn   1515 passed, 270 deselected in 30.91s | 1509 passed, 270 deselected in 31.18s
+    043137-307269 pass  note dur   63.0s bytes  3336 prev Tred   2 failed, 1513 passed, 270 deselected in 30.47s | 1509 passed, 270 deselected in 30.56s
+    043137-307269 pass  note dur   62.6s bytes  3143 prev Tred   1 failed, 1514 passed, 270 deselected in 30.18s | 1509 passed, 270 deselected in 30.53s
+    043137-307269 pass  note dur   63.1s bytes  4711 prev Tgrn   1515 passed, 270 deselected in 30.38s | 1509 passed, 270 deselected in 30.27s
+    044039-023759 pass  note dur   63.9s bytes  2625 prev Tred   1 failed, 1514 passed, 270 deselected in 30.87s | 1509 passed, 270 deselected in 31.01s
+    044039-023759 pass  note dur   62.2s bytes  4711 prev Tgrn   1515 passed, 270 deselected in 29.88s | 1509 passed, 270 deselected in 30.11s
+    044604-449461 pass  note dur   63.5s bytes  2737 prev Tred   1 failed, 1514 passed, 270 deselected in 30.83s | 1509 passed, 270 deselected in 30.69s
+    044604-449461 pass  note dur   63.3s bytes  4711 prev Tgrn   1515 passed, 270 deselected in 29.99s | 1509 passed, 270 deselected in 31.27s
+    044806-423375 unavailable note dur   63.7s bytes  2640 prev Tred   1 failed, 1514 passed, 270 deselected in 31.05s | 1509 passed, 270 deselected in 30.97s
+    044806-423375 unavailable note dur   61.9s bytes  2737 prev Tred   1 failed, 1514 passed, 270 deselected in 30.31s | 1509 passed, 270 deselected in 29.89s
+    044806-423375 unavailable note dur   61.6s bytes  4711 prev Tgrn   1515 passed, 270 deselected in 30.30s | 1509 passed, 270 deselected in 30.34s
+
+## 4. Context and wall clock (delivered passes)
+
+### guard-prefixes
+  baseline n=8: peak 8,719 (5,666-27,155); peak is last turn 8/8; turns with negative injection 0; model s 194 (106-870); tool s 0 (0-2); model s per 1k output 50.5 (27.3-52.6)
+  engine n=9: peak 42,673 (16,758-57,812); peak is last turn 9/9; turns with negative injection 0; model s 1,307 (429-1,993); tool s 130 (64-201); model s per 1k output 45.6 (38.5-52.6)
+| component (tokens at peak) | B median | E median | d median |
+|---|---|---|---|
+| first | 1,918 | 2,273 | +355 |
+| own output | 5,092 | 27,810 | +22,718 |
+| edit-result echo | 30 | 1,006 | +976 |
+| engine notes | 0 | 915 | +915 |
+| engine steer | 0 | 44 | +44 |
+| rejections | 0 | 58 | +58 |
+| other tool results | 1,718 | 8,030 | +6,313 |
+
+### review-script
+  baseline n=11: peak 23,231 (16,512-61,419); peak is last turn 11/11; turns with negative injection 0; model s 518 (346-1,138); tool s 64 (32-98); model s per 1k output 48.6 (41.7-50.6)
+  engine n=6: peak 22,744 (14,571-32,061); peak is last turn 6/6; turns with negative injection 0; model s 341 (231-790); tool s 159 (67-261); model s per 1k output 37.7 (30.7-40.7)
+| component (tokens at peak) | B median | E median | d median |
+|---|---|---|---|
+| first | 2,046 | 2,405 | +359 |
+| own output | 10,417 | 9,856 | -562 |
+| edit-result echo | 116 | 240 | +124 |
+| engine notes | 0 | 1,169 | +1,169 |
+| engine steer | 0 | 44 | +44 |
+| rejections | 41 | 0 | -41 |
+| other tool results | 11,707 | 8,887 | -2,820 |
+
+## 5. Remedy estimates (output tokens per delivered pass, Engine passes; median (range), mean)
+
+### guard-prefixes (E n=9, B n=8)
+  R2 normalizer (schema, unambiguous shapes): 0 (0-4,685); mean 854
+  R2 all schema + ANCHOR_MISSING retries: 0 (0-4,685); mean 912
+  contract test lines (E pre-edit + test file): 8,827 (3,830-29,118); mean 12,743
+    same, minus Baseline median: +7,888
+  light path: whole E-B gap: +22,954
+  self-test (all Engine passes; output tokens: none measurable, see README): seconds saved per pass by dedup after a red model run 34 (0-131); by dropping the second suite run 62 (31-124); note bytes removed by dot filter + VIRTUAL_ENV strip 6,422 (4,211-10,844)
+  echo trimming: context tokens at peak 1,006 (521-2,778)
+
+### review-script (E n=6, B n=11)
+  R2 normalizer (schema, unambiguous shapes): 0 (0-0); mean 0
+  R2 all schema + ANCHOR_MISSING retries: 0 (0-0); mean 0
+  contract test lines (E pre-edit + test file): 6,890 (5,080-13,503); mean 8,496
+    same, minus Baseline median: +493
+  light path: whole E-B gap: -142
+  self-test (all Engine passes; output tokens: none measurable, see README): seconds saved per pass by dedup after a red model run 64 (0-194); by dropping the second suite run 77 (31-125); note bytes removed by dot filter + VIRTUAL_ENV strip 7,528 (4,211-10,844)
+  echo trimming: context tokens at peak 240 (0-947)
+
+## Power of section 4's rule at the delivered counts (seed 20261005, 4000 reps)
+  guard-prefixes E n=9 B n=8 margin 1.25: resample 1.0: 0.655, resample 1.25: 0.528, resample 1.5: 0.393, resample 2.0: 0.343, resample q95: 3.993, log-normal 1.0: 0.671, log-normal 1.25: 0.499, log-normal 1.5: 0.391, log-normal 2.0: 0.188, log-normal q95: 2.347
+  guard-prefixes E n=9 B n=8 margin 1.35: resample 1.0: 0.702, resample 1.25: 0.563, resample 1.5: 0.420, resample 2.0: 0.354, resample q95: 3.993, log-normal 1.0: 0.720, log-normal 1.25: 0.560, log-normal 1.5: 0.446, log-normal 2.0: 0.227, log-normal q95: 2.347
+  guard-prefixes E n=18 B n=16 margin 1.25: resample 1.0: 0.700, resample 1.25: 0.464, resample 1.5: 0.274, resample 2.0: 0.201, resample q95: 3.080, log-normal 1.0: 0.722, log-normal 1.25: 0.496, log-normal 1.5: 0.312, log-normal 2.0: 0.106, log-normal q95: 1.829
+  guard-prefixes E n=18 B n=16 margin 1.35: resample 1.0: 0.725, resample 1.25: 0.488, resample 1.5: 0.315, resample 2.0: 0.202, resample q95: 3.080, log-normal 1.0: 0.793, log-normal 1.25: 0.582, log-normal 1.5: 0.387, log-normal 2.0: 0.145, log-normal q95: 1.829
+  review-script E n=6 B n=11 margin 1.25: resample 1.0: 0.888, resample 1.25: 0.402, resample 1.5: 0.038, resample 2.0: 0.000, resample q95: 1.311, log-normal 1.0: 0.854, log-normal 1.25: 0.462, log-normal 1.5: 0.141, log-normal 2.0: 0.007, log-normal q95: 1.372
+  review-script E n=6 B n=11 margin 1.35: resample 1.0: 0.932, resample 1.25: 0.442, resample 1.5: 0.060, resample 2.0: 0.000, resample q95: 1.311, log-normal 1.0: 0.906, log-normal 1.25: 0.566, log-normal 1.5: 0.195, log-normal 2.0: 0.011, log-normal q95: 1.372
+  review-script E n=12 B n=22 margin 1.25: resample 1.0: 0.939, resample 1.25: 0.175, resample 1.5: 0.002, resample 2.0: 0.000, resample q95: 1.226, log-normal 1.0: 0.916, log-normal 1.25: 0.393, log-normal 1.5: 0.051, log-normal 2.0: 0.000, log-normal q95: 1.266
+  review-script E n=12 B n=22 margin 1.35: resample 1.0: 0.954, resample 1.25: 0.178, resample 1.5: 0.002, resample 2.0: 0.000, resample q95: 1.226, log-normal 1.0: 0.945, log-normal 1.25: 0.451, log-normal 1.5: 0.065, log-normal 2.0: 0.000, log-normal q95: 1.266
+
+## Required cut and remedy upper bounds (output tokens per delivered pass)
+  guard-prefixes: rank-sum p (Engine <= Baseline) 0.0012
+    light path (whole E-B median gap; not an estimate): 22,954
+    contract test lines (pre-edit + test file, excess over Baseline median): 16,120
+    edit-shape hoisting (all schema + ANCHOR_MISSING retries): 2,679
+    scratch path (probe, excess over Baseline median; new in EB2 under D3, not an EB1 §5 formula): 10,350
+    all estimable remedies combined: 21,463
+    guard-prefixes: required cut 21,576; no listed remedy can clear the threshold, alone or combined; the light path's figure is the whole gap by definition, not an estimate [margin 1.25]
+    guard-prefixes: required cut 21,025; no remedy clears alone; the estimable remedies combined can clear (upper bound) [margin 1.35]
+  review-script: rank-sum p (Engine <= Baseline) 0.5582
+    light path (whole E-B median gap; not an estimate): n.a.
+    contract test lines (pre-edit + test file, excess over Baseline median): 1,934
+    edit-shape hoisting (all schema + ANCHOR_MISSING retries): 0
+    scratch path (probe, excess over Baseline median; new in EB2 under D3, not an EB1 §5 formula): 582
+    all estimable remedies combined: 1,934
+    review-script: within margin (no-harm); a remedy must not raise its median above the margin [margin 1.25]
+    review-script: within margin (no-harm); a remedy must not raise its median above the margin [margin 1.35]
