@@ -1,6 +1,6 @@
 # EB2 offline remedy estimates at engine 23a0ef6, both floor tasks, 12 cells per arm (2026-10-05)
 
-Development estimates, never deciding, not EB3. Drafted by an agent (Sonnet, 2026-10-05) from `eb2.txt`. No number below is computed by hand: each is copied from `eb2.txt`, from `evidence/2026-10-05-eb-cell-read/read.txt`, or from EB1's README where it says so. Sources are the committed files `eb2.txt`, `eb2.py`, `evidence/2026-10-05-eb-cell-read/{README.md,read.txt}`, `evidence/2026-10-03-eb1-read/README.md`, the plan (`docs/superpowers/plans/2026-10-05-eb2-offline-estimates.md`, whose decisions D2-D4 are named below) and the decision-ledger entry "2026-10-05 — EB2 executed" (`evidence/2026-09-15-release-one-decision-ledger.md`), which records the rulings made during execution. Nothing is pooled across tasks, across arms, or with EB0's `1869397` cells. Every figure is output tokens per delivered pass unless it says otherwise. Two kinds of figure appear in §4. An *upper bound* uses a zero floor: a remedy removes at most every token of its category. A *central estimate* uses the Baseline median of the category as the floor and is not an upper bound. Only a build and EB3 can measure an effect.
+Development estimates, never deciding, not EB3. Drafted by an agent (Sonnet, 2026-10-05) from `eb2.txt`. No number below is computed by hand: each is copied from `eb2.txt`, from `evidence/2026-10-05-eb-cell-read/read.txt`, or from EB1's README where it says so. Sources are the committed files `eb2.txt`, `eb2.py`, `evidence/2026-10-05-eb-cell-read/{README.md,read.txt}`, `evidence/2026-10-03-eb1-read/README.md`, the plan (`docs/superpowers/plans/2026-10-05-eb2-offline-estimates.md`, whose decisions D2-D4 are named below) and the decision-ledger entry "2026-10-05 — EB2 executed" (`evidence/2026-09-15-release-one-decision-ledger.md`), which records the rulings made during execution. Nothing is pooled across tasks, across arms, or with EB0's `1869397` cells. Every figure is output tokens per delivered pass unless it says otherwise. **Outcome, ruled by the maintainer 2026-10-05: offline estimation cannot discriminate here (§6).** §4's zero-reference rows were written as upper bounds; they are category totals, not bounds on any remedy's effect, and its Baseline-median rows are central estimates on an unstable median. No remedy specification follows from this README.
 
 ## 1. What was read
 
@@ -126,7 +126,7 @@ P(rule declares parity), by the true Engine-to-Baseline ratio (`eb2.txt`, power 
 
 **The bounds are not EB1 §5's formula.** EB1 §5 scored a remedy by a median of category tokens (for example, the Engine median of pre-edit plus test file, minus the Baseline median). A median of category tokens does not bound the decider, which is the median of per-pass totals, because medians do not subtract (ledger entry "2026-10-05 — EB2 executed", bullet 1; spec section 7, "EB1 §5's remedy figures are not upper bounds"). Each row here is instead a per-cell counterfactual: remove the remedy's tokens from every Engine pass (never below zero), and the figure is the median of the Engine totals minus the median of the totals after removal. Hoisting removes all of an Engine pass's schema and `ANCHOR_MISSING` retry tokens under both references. The categories are disjoint per turn, so the combined row applies the per-cell removals together, and it is not a sum of the rows. The EB1-style figures are still printed by `eb1.section5` in `eb2.txt` and are listed below for comparison.
 
-**Two references, both shown.** The stop rule is defined on upper bounds, so it reads the **upper bounds** (reference zero): test lines remove all of a pass's pre-edit and test-file tokens, and the scratch path removes all of its probe tokens. The **central estimates** (reference Baseline median of the category: remove only the excess over the Baseline median, clamped at 0) are shown beside them but are not upper bounds. The guard-prefixes Baseline is bimodal (the totals above, and per category in section 2), so its median is a central value that a remedy can beat, and a counterfactual that clamps each Engine pass to it does not bound what a remedy can remove. The first draft of this README used the median reference as its bound; the ledger entry (bullet 4) records that as an instrument defect and its correction.
+**Two references, both shown.** *Superseded reading:* when this section was written the zero-reference rows were taken as upper bounds for the plan's stop rule; the maintainer has since ruled them category totals, not bounds (§6), and the tables below are renamed accordingly. The **category totals** (reference zero): test lines remove all of a pass's pre-edit and test-file tokens, and the scratch path removes all of its probe tokens. The **central estimates** (reference Baseline median of the category: remove only the excess over the Baseline median, clamped at 0) are shown beside them but are not upper bounds. The guard-prefixes Baseline is bimodal (the totals above, and per category in section 2), so its median is a central value that a remedy can beat, and a counterfactual that clamps each Engine pass to it does not bound what a remedy can remove. The first draft of this README used the median reference as its bound; the ledger entry (bullet 4) records that as an instrument defect and its correction.
 
 **Required cut.** The output tokens per delivered pass that the Engine median must lose to meet the median clause, at the screening margin 1.25 (plan D4) and at 1.35:
 - guard-prefixes: **21,576** at 1.25 and **21,025** at 1.35. The rank-sum p (Engine ≤ Baseline) is 0.0012.
@@ -134,17 +134,17 @@ P(rule declares parity), by the true Engine-to-Baseline ratio (`eb2.txt`, power 
 
 **Replay-scorable** copies EB1 §5's column: "no" means the remedy changes calls from an earlier turn than the measured point, so a replay of the recordings cannot score it (R0 section 1.4); "partly" means the recorded call can be checked and the saving is an upper bound. The scratch row is new in EB2 under D3 and has no EB1 §5 entry; see the note under the tables.
 
-**guard-prefixes, upper bounds** (reference zero; Engine n = 9, Baseline n = 8; read by the stop rule):
+**guard-prefixes, category totals** (reference zero; Engine n = 9, Baseline n = 8; not bounds, §6):
 
-| remedy | class targeted | replay-scorable | upper bound | clears at 1.25 (cut 21,576) | clears at 1.35 (cut 21,025) |
+| remedy | class targeted | replay-scorable | category total | printed verdict at 1.25 (cut 21,576) | printed verdict at 1.35 (cut 21,025) |
 |---|---|---|---|---|---|
 | light path for small requests | everything the Engine adds on a modify-only task | no | 22,954 (the whole Engine-Baseline median gap; not an estimate) | not counted | not counted |
 | contract test lines (pre-edit + test file) | pre-edit survey of `tests/` and writing the test file | no | 17,059 | no | no |
 | edit-shape hoisting (all schema + `ANCHOR_MISSING` retries) | schema-rejection and anchor-miss retries | no (EB1 3b; the unambiguous-shape normalizer alone is "partly") | 2,679 | no | no |
 | scratch path (probe; new in EB2 under D3) | probe turns, inline regex experiments | no (not rated in EB1 §5; see note) | 11,226 | no | no |
-| all estimable remedies combined (the three rows above, per cell) | the three above together | no | 23,278 | **yes (upper bound)** | **yes (upper bound)** |
+| all estimable remedies combined (the three rows above, per cell) | the three above together | no | 23,278 | "combined can clear (upper bound)"; vacuous (§6) | same; vacuous (§6) |
 
-The "clears" columns are read from the printed verdict lines at margin 1.25 and 1.35, which both say "no remedy clears alone; the estimable remedies combined can clear (upper bound)". The rank clause on the combined upper-bound counterfactual: `eb2.txt` prints a rank-sum p of **0.7596** for the combined counterfactual totals against Baseline, which does not reject "Engine ≤ Baseline" at 0.05.
+The "printed verdict" columns quote the verdict lines at margin 1.25 and 1.35, which both say "no remedy clears alone; the estimable remedies combined can clear (upper bound)". The rank clause on the combined zero-reference counterfactual: `eb2.txt` prints a rank-sum p of **0.7596** for the combined counterfactual totals against Baseline, which does not reject "Engine ≤ Baseline" at 0.05.
 
 **guard-prefixes, central estimates** (reference Baseline median of the category; not upper bounds; same cells):
 
@@ -179,7 +179,7 @@ The "clears" columns are read from the printed verdict lines at margin 1.25 and 
 
 **review-script** (Engine n = 6, Baseline n = 11), a no-harm task (D2):
 
-| remedy | class targeted | replay-scorable | upper bound (zero) | central estimate (Baseline median) | clears 1.25 / 1.35 |
+| remedy | class targeted | replay-scorable | category total (zero) | central estimate (Baseline median) | clears 1.25 / 1.35 |
 |---|---|---|---|---|---|
 | light path | does not qualify (review-script creates files) | n.a. | n.a. | n.a. | n.a. |
 | contract test lines | pre-edit survey and test file | no | 8,270 | 1,934 | no cut needed |
@@ -189,20 +189,23 @@ The "clears" columns are read from the printed verdict lines at margin 1.25 and 
 
 The review-script EB1-style figures are 0 for both R2 rows, 6,890 (5,080-13,503) for the test-lines category and +493 minus the Baseline median, and -142 for the whole gap. The rank-sum p of the combined upper-bound counterfactual against Baseline is 1.0000.
 
-## 5. Review-script, no-harm
+## 5. Review-script (the no-harm reading, withdrawn 2026-10-05)
+
+**Withdrawn.** The no-harm reading below rests on the median-over-delivered-passes reading of the decider. The maintainer ruled on 2026-10-05 that the decider is the arm's total output tokens divided by its delivered passes, with the delivery count and its own test beside it (ledger, "2026-10-05 — EB after EB2: seven rulings"). On that reading review-script is not at parity: Engine 24,847 against Baseline 13,180 (`evidence/2026-10-05-eb-cell-read/README.md`, the secondary figure), with delivery 6 of 12 against 11 of 12, one-sided Fisher exact p = 0.034 (hypergeometric over 24 cells and 17 passes, P(Engine ≤ 6 passes)). The text that follows is kept as written.
+
 
 The rank-sum p (Engine ≤ Baseline) is **0.5582**, which does not reject, so the rank clause is met. The Engine median (10,828) is below Baseline's (10,970), and `eb2.py` prints **within margin (no-harm)** at both 1.25 and 1.35. The only figures printed for headroom are the central-estimate lines' required cuts, which are negative (-2,885 at 1.25 and -3,982 at 1.35), meaning no cut is needed. The delivered denominator is 6 of 12 Engine cells against 11 of 12, and that rate is reported and is not the decider.
 
 The bounds are reductions, and a reduction cannot push the median above the margin. **The real no-harm risk is a remedy that adds tokens on review-script's path**, for example a longer finish step or a new survey, and an offline reduction bound cannot measure it. Any remedy that touches review-script's path needs an Engine-arm measurement on review-script (EB3) before it is called harmless. The light path does not apply to this task.
 
-## 6. Outcome
+## 6. Outcome (ruled by the maintainer 2026-10-05)
 
-Read at the screening margin 1.25 (plan D4), from the upper-bound verdict line in `eb2.txt`. The required cut is 21,576 on guard-prefixes.
+**Offline estimation cannot discriminate here, and no remedy specification follows from EB2.** On guard-prefixes every candidate remedy changes the Engine's calls from the first turn: §4 rates all three "replay-scorable: no" (R0 §1.4). The figures that EB2 can compute therefore cannot satisfy or fail the gate "built only if its estimate clears".
 
-**Remedies whose upper bound clears: the three estimable remedies combined (contract test lines, edit-shape hoisting, scratch path). No single remedy clears.** The combined upper bound is 23,278 against the cut of 21,576, and the rank clause on the combined counterfactual is met (printed p 0.7596). The same verdict is printed at 1.35 (combined 23,278 against 21,025).
+- **The zero-reference row is an accounting identity, not a bound.** It credits the Engine with spending nothing on pre-edit work, test files and probing. The Baseline itself spends on both pre-edit work and probing (medians 40 and 876 per pass, §2), so a Baseline-like Engine could not reach that row. "Combined can clear" is the statement that an Engine spending nothing on three categories the bare agent also spends on would be at parity, which cannot fail and so cannot inform.
+- **The central estimate's miss (21,463 against 21,576) is within the noise of the cut itself.** The cut is the Engine median minus the margin times a Baseline median that sits between two modes (§3). The true-parity 95th-percentile median ratio is 2.347 to 3.993 at these counts, so one Baseline cell changing mode moves the cut by thousands of tokens.
+- **The scratch path is withdrawn (D3).** Runaway inline probing occurs on both arms (the three Baseline `BUDGET_EXCEEDED` cells, §1), so a remedy aimed at it targets a behaviour the arms share and cannot be scored as moving the difference.
+- **What EB2 keeps.** §§1–5 stand as accounting. The finished-slot loader, the exact rank-sum test, the frozen inputs and the per-cell counterfactual mechanics are sound and reusable.
+- **What replaces offline estimation.** If a remedy is built, it is measured Engine against Engine on guard-prefixes: remedied cells against these 12 pinned Engine cells, one-sided rank-sum. The light path is a product decision, not an estimate.
 
-**Beside it, the central estimate.** The combined central estimate is 21,463 against the required cut of 21,576 at 1.25, and 21,463 against 21,025 at 1.35. It is not an upper bound. `eb2.txt` does not print the combined bound without the scratch path (the scratch row is new in EB2 under D3), so this README states no figure for it.
-
-The light path is not estimable offline: its figure is the whole gap by definition, so it is reported and never counted. Excluding it reverses the plan's Task 3 expectation (ledger entry "2026-10-05 — EB2 executed", bullet 2). review-script is within margin and needs no cut (section 5).
-
-Each is an upper bound; only a build and EB3 can measure the effect. Next: the maintainer picks which to specify.
+The earlier outcome lines of this README (`242c6f4`, "stop at 1.25"; `b06954e`, "the three estimable remedies combined clear, as an upper bound") are both superseded. The rulings are recorded in the ledger entry "2026-10-05 — EB after EB2: seven rulings".
