@@ -1,0 +1,38 @@
+
+== 2026-10-05-dev-baseline-selfhost-run-record-gate / selfhost-run-record-gate / baseline
+   night status: launch.json status=complete, ended=2026-10-05T15:13:21+00:00, evals_head=db4b12281, record=records/2026-10-05-dev-baseline-selfhost-run-record-gate.json
+   expected cells per arm from: record records/2026-10-05-dev-baseline-selfhost-run-record-gate.json
+   slot specs (line_tok, line_turns, token_budget, turn_budget): [(32000, 48, 48000, 72)]
+   arm_sha256[baseline]=e98db02835b8
+  denominators: expected cells 6; finished slots 6; cells read 6
+  verdicts {'None': 6}; codes {'BUDGET_EXCEEDED': 6}
+  delivered passes (verdict==pass): 0 of 6 read (of 6 expected)
+  OUTPUT TOKENS PER DELIVERED PASS (median (min-max), n=0): n/a (no values)
+     admitted delivered passes only (secondary): n=0 -> n/a (no values); un-admitted passes counted above: []
+  schema-rejected edit/write calls: total 3 in 1 of 6 cells; per cell [0, 0, 3, 0, 0, 0]
+  all rejected edit/write calls: total 13 in 6 of 6 cells; shapes {'anchor (pi)': 8, 'confinement': 1, 'schema': 3, 'pi no-change': 1}
+  confinement_refused entries: 1 (cells with >=1: ['134623-822790']); engine scope_refused entries: 0 (cells: [])
+  admission (attempt.json confinement refusals==0 and reaches==0): admitted 5, flagged 1, unknown 0
+  line 32k/48: NEEDS grade-line: 6  (cells needing `satyrn-evals grade-line` are NOT counted as pass or fail here)
+  per cell:
+   slot attempt-dir                                      code                 verdict      out_tok turns calls  schema/all-rej conf scope reach adm  line-crossed
+    0   selfhost-run-record-gate-20261005-134623-715213 BUDGET_EXCEEDED      None         35,442    72    72     0/1            0     0     0  yes  tur@49
+    1   selfhost-run-record-gate-20261005-134623-769808 BUDGET_EXCEEDED      None         38,574    72    72     0/2            0     0     0  yes  tur@49
+    2   selfhost-run-record-gate-20261005-134623-822790 BUDGET_EXCEEDED      None         43,639    72    72     3/4            1     0     0  NO   tur@49
+    3   selfhost-run-record-gate-20261005-142152-500874 BUDGET_EXCEEDED      None         34,042    72    72     0/2            0     0     0  yes  tur@49
+    4   selfhost-run-record-gate-20261005-142526-263969 BUDGET_EXCEEDED      None         48,882    60    60     0/1            0     0     0  yes  tok@44
+    5   selfhost-run-record-gate-20261005-143357-241323 BUDGET_EXCEEDED      None         38,992    72    72     0/3            0     0     0  yes  tur@49
+     line: 134623-715213 -> NEEDS grade-line [turns @turn 49, 24,667 tok; line.diff present]
+     line: 134623-769808 -> NEEDS grade-line [turns @turn 49, 28,983 tok; line.diff present]
+     line: 134623-822790 -> NEEDS grade-line [turns @turn 49, 30,577 tok; line.diff present]
+     line: 142152-500874 -> NEEDS grade-line [turns @turn 49, 27,722 tok; line.diff present]
+     line: 142526-263969 -> NEEDS grade-line [tokens @turn 44, 32,295 tok; line.diff present]
+     line: 143357-241323 -> NEEDS grade-line [turns @turn 49, 24,706 tok; line.diff present]
+  infrastructure / wall-clock / anomaly flags: 
+     selfhost-run-record-gate-20261005-134623-715213: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261005-134623-769808: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261005-134623-822790: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261005-142152-500874: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261005-142526-263969: calls 60 != tool results 59 (cut mid-call)
+     selfhost-run-record-gate-20261005-142526-263969: BUDGET_EXCEEDED (model outcome, no verdict): attempt command spent 48882 output tokens, over the budget of 48000
+     selfhost-run-record-gate-20261005-143357-241323: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns

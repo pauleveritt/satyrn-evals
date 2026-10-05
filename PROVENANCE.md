@@ -2892,3 +2892,7 @@
 | evidence/2026-10-05-eb2-estimates/README.md | written 2026-10-05 for EB2 from eb2.txt; offline estimates, development, never deciding |
 | records/2026-10-05-dev-baseline-selfhost-run-record-gate.json | issued 2026-10-05 on main by `satyrn-evals record new`; ledger 2026-10-05 seven rulings item 4: six Baseline cells on run-record-gate with the line declared, development, never deciding; authority in the record |
 | records/2026-10-05-dev-baseline-selfhost-run-record-gate.result.json | written 2026-10-05 by `satyrn-evals launch` (Baseline arm, Apple M5 Max); ruling-4 development read, committed as the launcher wrote it |
+| evidence/2026-10-05-dev-baseline-run-record-gate/README.md | written 2026-10-05 by an agent (Opus) from the ruling-4 Baseline read (result d35db18); development, never deciding |
+| evidence/2026-10-05-dev-baseline-run-record-gate/grade-line.json | written 2026-10-05 by `satyrn-evals grade-line` over ~/satyrn-runs/2026-10-05-dev-baseline-selfhost-run-record-gate at evals HEAD d35db18; offline |
+| evidence/2026-10-05-dev-baseline-run-record-gate/read.txt | written 2026-10-05 by evidence/2026-10-05-eb-cell-read/read_cells.py over the same night; offline |
+| docs/superpowers/specs/2026-10-05-run-record-gate-delivery-comparison.md | drafted 2026-10-05 by an agent (Opus) at the maintainer's request; pre-registration for the run-record-gate comparison on delivery; draft for approval |
