@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import math
+import random
 import statistics
 import sys
 from pathlib import Path
@@ -102,3 +104,62 @@ def mw_p(eng: list[float], base: list[float]) -> float:
 def parity(eng, base, margin: float) -> bool:
     """Spec section 4: the median clause and the rank-sum clause."""
     return statistics.median(eng) <= margin * statistics.median(base) and mw_p(eng, base) >= 0.05
+
+
+SEED = 20261005
+MARGINS = (1.25, 1.35)
+LIGHT_PATH_TASKS = frozenset({"guard-prefixes"})  # review-script creates files (EB1 section 5)
+
+
+def power(base_passes, n_eng, n_base, mults, reps, margin, seed) -> dict:
+    """P(parity declared) when the Engine is mult x Baseline; plus the true-parity 95% median ratio."""
+    rng = random.Random(seed)
+    logs = [math.log(x) for x in base_passes]
+    mu, sd = statistics.mean(logs), statistics.stdev(logs)
+    worlds = {"resample": lambda: rng.choice(base_passes), "log-normal": lambda: math.exp(rng.gauss(mu, sd))}
+    out: dict = {}
+    for world, draw in worlds.items():
+        for mult in mults:
+            hits = sum(parity([draw() * mult for _ in range(n_eng)], [draw() for _ in range(n_base)], margin)
+                       for _ in range(reps))
+            out[world, mult] = hits / reps
+        ratios = sorted(statistics.median([draw() for _ in range(n_eng)]) /
+                        statistics.median([draw() for _ in range(n_base)]) for _ in range(reps))
+        out[world, "q95"] = ratios[int(0.95 * (reps - 1))]
+    return out
+
+
+def required_cut(eng_total, base_total, margin) -> float:
+    """Output tokens per delivered pass the Engine median must lose to meet the median clause."""
+    return statistics.median(eng_total) - margin * statistics.median(base_total)
+
+
+def bounds(data, task: str, scratch: bool) -> dict[str, float | None]:
+    """Upper bounds per remedy, in output tokens per delivered pass (EB1 section 5 formulas)."""
+    e, b = (eb1.passes(data[task, arm]) for arm in ("engine", "baseline"))
+    ce, cb = [eb1.cat_tokens(c) for c in e], [eb1.cat_tokens(c) for c in b]
+
+    def pick(cats, keys):
+        return [sum(x[k] for k in keys) for x in cats]
+
+    gap = eb1.m([eb1.out_total(c) for c in e]) - eb1.m([eb1.out_total(c) for c in b])
+    rows: dict[str, float | None] = {
+        "light path (whole E-B median gap)": gap if task in LIGHT_PATH_TASKS else None,
+        "contract test lines (E-B median, pre-edit + test file)":
+            eb1.m(pick(ce, ["pre-edit", "test file"])) - eb1.m(pick(cb, ["pre-edit", "test file"])),
+        "edit-shape hoisting (E median, schema + ANCHOR_MISSING retries)":
+            eb1.m(pick(ce, ["retry:schema", "retry:ANCHOR_MISSING"])),
+    }
+    if scratch:
+        rows["scratch path (E-B median, probe)"] = eb1.m(pick(ce, ["probe"])) - eb1.m(pick(cb, ["probe"]))
+    return rows
+
+
+def verdict_line(task: str, cut: float, bounds: dict) -> str:
+    if cut <= 0:
+        return f"{task}: within margin (no-harm); a remedy must not raise its median above the margin"
+    clear = [name for name, value in bounds.items() if value is not None and value >= cut]
+    head = f"{task}: required cut {cut:,.0f}; "
+    if clear:
+        return head + "can clear alone: " + ", ".join(clear)
+    return head + "no listed remedy can clear the threshold alone"

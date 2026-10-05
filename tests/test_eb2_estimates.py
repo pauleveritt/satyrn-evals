@@ -85,3 +85,40 @@ def test_parity_needs_both_clauses():
     assert eb2.parity(base, base, 1.25) is True                                   # both clauses hold
     assert eb2.parity([x + 20 for x in base], base, 1.25) is False                # median 122.5 <= 128.1, rank-sum p 0.005 rejects
     assert eb2.parity([200.0, 30.0, 40.0, 300.0, 250.0, 260.0], base, 1.25) is False  # median clause fails
+
+
+def test_power_is_deterministic_and_monotone():
+    base = [2308.0, 2663.0, 2898.0, 5206.0, 5813.0, 16178.0, 17764.0, 19599.0]
+    a = eb2.power(base, 9, 8, (1.0, 2.0), reps=200, margin=1.25, seed=1)
+    b = eb2.power(base, 9, 8, (1.0, 2.0), reps=200, margin=1.25, seed=1)
+    assert a == b
+    assert a["log-normal", 1.0] > a["log-normal", 2.0]
+
+
+def test_required_cut_positive_and_negative():
+    assert eb2.required_cut([28463.0], [5510.0], 1.25) == pytest.approx(28463 - 1.25 * 5510)
+    assert eb2.required_cut([10828.0], [10970.0], 1.25) < 0
+
+
+def test_verdict_line_within_margin_is_no_harm():
+    assert eb2.verdict_line("review-script", -2884.0, {"x": 100.0}) == \
+        "review-script: within margin (no-harm); a remedy must not raise its median above the margin"
+
+
+def test_verdict_line_names_bounds_that_clear():
+    line = eb2.verdict_line("guard-prefixes", 21576.0, {"light path": 22000.0, "test lines": 9000.0, "light n.a.": None})
+    assert line.startswith("guard-prefixes: required cut 21,576")
+    assert "can clear alone: light path" in line
+
+
+def test_verdict_line_stop_when_nothing_clears():
+    line = eb2.verdict_line("guard-prefixes", 21576.0, {"test lines": 9000.0})
+    assert line.endswith("no listed remedy can clear the threshold alone")
+
+
+def test_bounds_marks_light_path_na_off_its_tasks():
+    def cell(total):
+        return {"verdict": "pass", "turns": [{"cat": "probe", "out": total}]}
+
+    data = {("review-script", "engine"): [cell(10)], ("review-script", "baseline"): [cell(5)]}
+    assert eb2.bounds(data, "review-script", scratch=False)["light path (whole E-B median gap)"] is None
