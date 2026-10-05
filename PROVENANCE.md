@@ -2886,3 +2886,5 @@
 | evidence/2026-10-03-eb1-read/README.md | created 2026-10-03 on worktree-engine-budget; EB1, the offline read of the EB0 cells: floor set, attribution, self-test path, remedy ranking, power of the parity rule |
 | evidence/2026-10-03-eb1-read/eb1.py | created 2026-10-03 on worktree-engine-budget; recompute script for EB1, stdlib only, no model |
 | docs/superpowers/plans/2026-10-03-engine-confinement-and-edit-parity.md | created 2026-10-03 on worktree-engine-budget; drafted by Opus, approved by the maintainer's D1-D7 rulings 2026-10-03; the engine re-pin plan: confinement root, red-stop receipts, edit parity |
+| evidence/2026-10-05-eb2-estimates/eb2.py | written 2026-10-05 for EB2 (plan docs/superpowers/plans/2026-10-05-eb2-offline-estimates.md); offline estimates on the 23a0ef6 EB cells, reusing eb1.py and read_cells.py unchanged |
+| tests/test_eb2_estimates.py | written 2026-10-05 for EB2; default-tier tests of eb2.py's loader, rank-sum test, power and threshold rules |
