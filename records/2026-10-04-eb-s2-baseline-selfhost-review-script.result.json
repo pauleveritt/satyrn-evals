@@ -1,0 +1,209 @@
+{
+  "record": "records/2026-10-04-eb-s2-baseline-selfhost-review-script.json",
+  "record_sha256": "b6cc90b006ba62ffbd2461a0675d7329fc52a0ee10b9e4a4f912dc432ed34591",
+  "arm_sha256": {
+    "baseline": "e98db02835b809c9eb240bc691d8a6fe7b1600bf8ac73b3855a351948bb661c9"
+  },
+  "status": "complete",
+  "reason": null,
+  "night": "/Users/pauleveritt/satyrn-runs/2026-10-04-eb-s2-baseline-selfhost-review-script",
+  "task": "selfhost-review-script",
+  "rung": "R1-plan",
+  "k": 3,
+  "n": 12,
+  "purpose": "development",
+  "arms": {
+    "baseline": {
+      "finished": 12,
+      "n": 12,
+      "code_counts": {
+        "OK": 12
+      },
+      "passes": 11,
+      "summary": "/Users/pauleveritt/satyrn-runs/2026-10-04-eb-s2-baseline-selfhost-review-script/baseline/summary.json",
+      "infrastructure": [],
+      "contamination": {
+        "graded": 12,
+        "flagged": 0,
+        "clean": 12,
+        "unmeasured": 0
+      }
+    }
+  },
+  "cells": [
+    {
+      "slot": 0,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-review-script-20261005-034104-894723",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 1,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-review-script-20261005-034104-948155",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 2,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-review-script-20261005-034105-000658",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 3,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-review-script-20261005-034749-722063",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 4,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-review-script-20261005-035200-398897",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 5,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-review-script-20261005-035217-593551",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 6,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-review-script-20261005-035759-849113",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 7,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-review-script-20261005-040317-977564",
+      "code": "OK",
+      "verdict": "unavailable",
+      "infrastructure": false
+    },
+    {
+      "slot": 8,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-review-script-20261005-040412-399859",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 9,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-review-script-20261005-040657-544443",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 10,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-review-script-20261005-041152-564624",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 11,
+      "arm": "baseline",
+      "attempt_dir": "selfhost-review-script-20261005-041246-985778",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    }
+  ],
+  "replaced": [],
+  "sittings": [
+    {
+      "record": "records/2026-10-04-eb-s2-baseline-selfhost-review-script.json",
+      "started": "2026-10-05T03:41:04+00:00",
+      "k": 3,
+      "evals_head": "84ed348001e0d057b31184463189d87ac9d71f40",
+      "preflight": {
+        "confinement": "extension",
+        "extension": "/Users/pauleveritt/projects/pauleveritt/satyrn-evals/packages/confinement/confinement.ts",
+        "tasks_root": "/Users/pauleveritt/projects/pauleveritt/satyrn-evals/src/satyrn_evals/tasks"
+      },
+      "task_self_test": {
+        "base_exit": 0,
+        "known_good_exit": 0,
+        "repair_base": false
+      },
+      "model_server": {
+        "Ornith-1.5-9B-MLX-8bit": {
+          "base_url": "http://127.0.0.1:8001",
+          "authenticated": true
+        }
+      },
+      "settings": {
+        "baseline": {
+          "arm_sha256": "e5936f49e2c5d1d9dad732c3adec8d0bde438835f520a15bb3ab4bb12ed9df79",
+          "backend": "omlx",
+          "omlx_entry": {
+            "enable_thinking": true,
+            "force_sampling": false,
+            "is_default": true,
+            "is_pinned": false,
+            "max_context_window": 262144,
+            "max_tokens": 16000,
+            "min_p": 0.0,
+            "preserve_thinking": true,
+            "reasoning_parser": "qwen_3",
+            "temperature": 0.6,
+            "thinking_budget_enabled": false,
+            "top_k": 20,
+            "top_p": 0.95,
+            "trust_remote_code": false,
+            "turboquant_kv_enabled": false
+          },
+          "omlx_entry_sha256": "d84e6f974c7086a626b61f65d156f56c153e60fd1de5c51d921da929db2235bc",
+          "pi_entry": {
+            "contextWindow": 262144,
+            "cost": {
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "input": 0,
+              "output": 0
+            },
+            "id": "Ornith-1.5-9B-MLX-8bit",
+            "input": [
+              "text"
+            ],
+            "maxTokens": 16000,
+            "name": "Ornith 1.5 9B (MLX 8-bit local, served)",
+            "reasoning": true,
+            "samplingParams": {
+              "min_p": 0.0,
+              "presence_penalty": 0.0,
+              "repetition_penalty": 1.0,
+              "temperature": 0.6,
+              "top_k": 20,
+              "top_p": 0.95
+            }
+          },
+          "pi_entry_sha256": "ab238d1883f4a4bf150d0f4e55dedd8adf8292ff647eefe593a063d3b51eba23",
+          "pi_models": "/Users/pauleveritt/.pi/agent/models.json"
+        }
+      },
+      "ended": "2026-10-05T04:27:56+00:00",
+      "status": "complete",
+      "reason": null
+    }
+  ]
+}
