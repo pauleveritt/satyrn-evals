@@ -2860,3 +2860,4 @@
 | records/2026-10-04-eb-s2-baseline-selfhost-guard-prefixes.result.json | written 2026-10-04 by `satyrn-evals launch` (engine 23a0ef6 arm pin, Apple M5 Max); EB cell read stage 2 result, committed as the launcher wrote it |
 | records/2026-10-04-eb-s2-engine-selfhost-guard-prefixes.result.json | written 2026-10-04 by `satyrn-evals launch` (engine 23a0ef6 arm pin, Apple M5 Max); EB cell read stage 2 result, committed as the launcher wrote it |
 | records/2026-10-04-eb-s2-baseline-selfhost-review-script.result.json | written 2026-10-04 by `satyrn-evals launch` (engine 23a0ef6 arm pin, Apple M5 Max); EB cell read stage 2 result, committed as the launcher wrote it |
+| records/2026-10-04-eb-s2-engine-selfhost-review-script.result.json | written 2026-10-04 by `satyrn-evals launch` (engine 23a0ef6 arm pin, Apple M5 Max); EB cell read stage 2 result, committed as the launcher wrote it |
