@@ -1,6 +1,6 @@
 # Pre-registration: the run-record-gate comparison, on delivery
 
-**Status: draft for the maintainer's approval, 2026-10-05.** Drafted by an agent (Opus) at the maintainer's request ("Yes to all three, draft the pre-registration"). The rulings it rests on are in the ledger:
+**Status: approved by the maintainer 2026-10-05 ("Go with D1-D5 recommendations"), §9 answered as recommended: n = 36 per arm, Baseline-favouring `unavailable`, reaches excluded with the admitted-only count also required, sizing at an Engine rate of 0.67, the reader built and frozen before launch.** Drafted by an agent (Opus) at the maintainer's request ("Yes to all three, draft the pre-registration"). The rulings it rests on are in the ledger:
 - "2026-10-05 — EB after EB2: seven rulings", items 2, 4 and 5
 - "2026-10-05 — Baseline line read on run-record-gate…", rulings (a)–(c)
 - "R0 sitting: rulings on the agenda", §8.3 (a): the Engine as pinned, no finish-on-green build
