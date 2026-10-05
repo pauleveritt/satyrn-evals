@@ -115,3 +115,9 @@ Ruling 5 of 2026-10-05 set the stipulated Engine rate at 0.75, below the Engine'
 - **D3, admission.** Recommended: **as in §4.** Exclude cells with reaches, keep cells with refusals only, and require rejection on the admitted-only count too. If wrong: the double requirement costs some power when Baseline's `/tmp` refusals are frequent; it cannot inflate the claim.
 - **D4, stipulated Engine rate for sizing.** Recommended: **0.67** (the observed 4 of 6), not ruling 5's 0.75, because on this endpoint 0.75 is optimistic. If wrong: n larger than needed by about a third.
 - **D5, the reader.** Recommended: **built and frozen before launch** (§8 item 5), on synthetic cells, so the one run cannot shape it. If wrong: one small instrument piece before the run; it is the piece this decision needs.
+
+## 10. Amendment, 2026-10-05: three records under the batch cap
+
+Ruled by the maintainer 2026-10-05 (option A; ledger, "Pre-registration amended: three n = 12 records"). The launcher caps a batch record at n ≤ 12 per arm and 720 minutes (`CAPS`, `src/satyrn_evals/run_record.py:40`), so §3's single n = 36 record cannot be issued. The run is three records, `records/2026-10-05-campaign-selfhost-run-record-gate-{a,b,c}.json`. They are identical except for `authority` and `decision_rule`, and each runs n = 12 per arm with every §3 setting unchanged. They launch back to back, each only after the previous one completes with green gates.
+
+The deciding read is made **once**, after all three nights complete: the frozen reader, given the three (night, record) pairs, checks each pair as before. It refuses unless the records agree on every other field and the nights ran the same arm files. It then applies §4–§5 to the 36 + 36 cells. An infrastructure stop in any piece stops the chain. That piece is resumed only by the maintainer's word, and nothing is read until all three are complete. §§1, 2, 4–7 and §9's answers are unchanged.
