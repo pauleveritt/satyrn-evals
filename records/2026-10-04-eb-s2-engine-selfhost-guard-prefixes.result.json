@@ -1,0 +1,166 @@
+{
+  "record": "records/2026-10-04-eb-s2-engine-selfhost-guard-prefixes.json",
+  "record_sha256": "c3e12fd1dc589c38cd67c288536523c1c64e32885ce1a7113c0483ea513e8d83",
+  "arm_sha256": {
+    "engine": "a79fa45814d72e58206dc5323c462aae5998b9032afa9fce3bc1074f45611487"
+  },
+  "status": "complete",
+  "reason": null,
+  "night": "/Users/pauleveritt/satyrn-runs/2026-10-04-eb-s2-engine-selfhost-guard-prefixes",
+  "task": "selfhost-guard-prefixes",
+  "rung": "R1-plan",
+  "k": 3,
+  "n": 6,
+  "purpose": "development",
+  "arms": {
+    "engine": {
+      "finished": 6,
+      "n": 6,
+      "code_counts": {
+        "OK": 6
+      },
+      "passes": 4,
+      "summary": "/Users/pauleveritt/satyrn-runs/2026-10-04-eb-s2-engine-selfhost-guard-prefixes/engine/summary.json",
+      "infrastructure": [],
+      "contamination": {
+        "graded": 6,
+        "flagged": 2,
+        "clean": 4,
+        "unmeasured": 0
+      }
+    }
+  },
+  "cells": [
+    {
+      "slot": 0,
+      "arm": "engine",
+      "attempt_dir": "selfhost-guard-prefixes-20261005-024539-558164",
+      "code": "OK",
+      "verdict": "unavailable",
+      "infrastructure": false
+    },
+    {
+      "slot": 1,
+      "arm": "engine",
+      "attempt_dir": "selfhost-guard-prefixes-20261005-024539-612547",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 2,
+      "arm": "engine",
+      "attempt_dir": "selfhost-guard-prefixes-20261005-024539-666254",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 3,
+      "arm": "engine",
+      "attempt_dir": "selfhost-guard-prefixes-20261005-025119-042992",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    },
+    {
+      "slot": 4,
+      "arm": "engine",
+      "attempt_dir": "selfhost-guard-prefixes-20261005-030424-231057",
+      "code": "OK",
+      "verdict": "fail",
+      "infrastructure": false
+    },
+    {
+      "slot": 5,
+      "arm": "engine",
+      "attempt_dir": "selfhost-guard-prefixes-20261005-031649-075104",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    }
+  ],
+  "replaced": [],
+  "sittings": [
+    {
+      "record": "records/2026-10-04-eb-s2-engine-selfhost-guard-prefixes.json",
+      "started": "2026-10-05T02:45:39+00:00",
+      "k": 3,
+      "evals_head": "8b12cc20e9489666b605425c8ec074987f0d0e20",
+      "preflight": {
+        "confinement": "extension",
+        "extension": "/Users/pauleveritt/projects/pauleveritt/satyrn-evals/packages/confinement/confinement.ts",
+        "tasks_root": "/Users/pauleveritt/projects/pauleveritt/satyrn-evals/src/satyrn_evals/tasks"
+      },
+      "engine_engine_self_test": {
+        "base_exit": 0,
+        "known_good_exit": 0,
+        "repair_base": false
+      },
+      "task_self_test": {
+        "base_exit": 0,
+        "known_good_exit": 0,
+        "repair_base": false
+      },
+      "model_server": {
+        "Ornith-1.5-9B-MLX-8bit": {
+          "base_url": "http://127.0.0.1:8001",
+          "authenticated": true
+        }
+      },
+      "settings": {
+        "engine": {
+          "arm_sha256": "8ba592111fe8b98c203569cbdf7a226dbfaf275203ab2e4bc3c6819251bbd716",
+          "backend": "omlx",
+          "omlx_entry": {
+            "enable_thinking": true,
+            "force_sampling": false,
+            "is_default": true,
+            "is_pinned": false,
+            "max_context_window": 262144,
+            "max_tokens": 16000,
+            "min_p": 0.0,
+            "preserve_thinking": true,
+            "reasoning_parser": "qwen_3",
+            "temperature": 0.6,
+            "thinking_budget_enabled": false,
+            "top_k": 20,
+            "top_p": 0.95,
+            "trust_remote_code": false,
+            "turboquant_kv_enabled": false
+          },
+          "omlx_entry_sha256": "d84e6f974c7086a626b61f65d156f56c153e60fd1de5c51d921da929db2235bc",
+          "pi_entry": {
+            "contextWindow": 262144,
+            "cost": {
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "input": 0,
+              "output": 0
+            },
+            "id": "Ornith-1.5-9B-MLX-8bit",
+            "input": [
+              "text"
+            ],
+            "maxTokens": 16000,
+            "name": "Ornith 1.5 9B (MLX 8-bit local, served)",
+            "reasoning": true,
+            "samplingParams": {
+              "min_p": 0.0,
+              "presence_penalty": 0.0,
+              "repetition_penalty": 1.0,
+              "temperature": 0.6,
+              "top_k": 20,
+              "top_p": 0.95
+            }
+          },
+          "pi_entry_sha256": "ab238d1883f4a4bf150d0f4e55dedd8adf8292ff647eefe593a063d3b51eba23",
+          "pi_models": "/Users/pauleveritt/.pi/agent/models.json"
+        }
+      },
+      "ended": "2026-10-05T03:39:23+00:00",
+      "status": "complete",
+      "reason": null
+    }
+  ]
+}
