@@ -2896,3 +2896,5 @@
 | evidence/2026-10-05-dev-baseline-run-record-gate/grade-line.json | written 2026-10-05 by `satyrn-evals grade-line` over ~/satyrn-runs/2026-10-05-dev-baseline-selfhost-run-record-gate at evals HEAD d35db18; offline |
 | evidence/2026-10-05-dev-baseline-run-record-gate/read.txt | written 2026-10-05 by evidence/2026-10-05-eb-cell-read/read_cells.py over the same night; offline |
 | docs/superpowers/specs/2026-10-05-run-record-gate-delivery-comparison.md | drafted 2026-10-05 by an agent (Opus) at the maintainer's request; pre-registration for the run-record-gate comparison on delivery; draft for approval |
+| evidence/2026-10-05-rrg-delivery/decide.py | written 2026-10-05 for the run-record-gate delivery comparison; the pre-registered reader (§8 item 5), built and frozen on synthetic cells before launch |
+| tests/test_rrg_delivery_decide.py | written 2026-10-05 for the run-record-gate delivery comparison; default-tier tests of decide.py on synthetic cells and night directories, before launch |
