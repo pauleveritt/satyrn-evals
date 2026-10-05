@@ -4,8 +4,8 @@ C3 and C4 outputs are reproduced by running these files unmodified; an edit
 changes signed rows. Digests computed with ``git show 0c3ad1f:<path> | shasum -a 256``.
 The file also pins the EB2 inputs, ``eb1.py`` and ``read_cells.py``, at their
 committed blobs (``git show 8079874:<path> | shasum -a 256``).
-The delivery reader ``decide.py`` is pinned at its blob at 7b1e53f (superseded: see the fix-wave commit)
-(``git show 7b1e53f:<path> | shasum -a 256``), frozen before launch (D5).
+The delivery reader ``decide.py`` is pinned at its blob at c75a5ab, re-frozen after the
+review's fixes (``git show c75a5ab:<path> | shasum -a 256``), before launch (D5).
 """
 
 import hashlib
