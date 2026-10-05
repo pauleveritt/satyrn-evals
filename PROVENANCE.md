@@ -2871,3 +2871,4 @@
 | evidence/2026-10-05-eb-cell-read/grade-line/2026-10-04-eb-s2-baseline-selfhost-review-script.json | written 2026-10-05 by `satyrn-evals grade-line` at evals HEAD a2ef909 over the night of the same name; offline |
 | evidence/2026-10-05-eb-cell-read/grade-line/2026-10-04-eb-s2-engine-selfhost-guard-prefixes.json | written 2026-10-05 by `satyrn-evals grade-line` at evals HEAD a2ef909 over the night of the same name; offline |
 | evidence/2026-10-05-eb-cell-read/grade-line/2026-10-04-eb-s2-engine-selfhost-review-script.json | written 2026-10-05 by `satyrn-evals grade-line` at evals HEAD a2ef909 over the night of the same name; offline |
+| docs/superpowers/plans/2026-10-05-eb2-offline-estimates.md | written 2026-10-05 by an agent (Opus) at the maintainer's request ("draft the EB2 plan"), after the floor-set ruling; draft for approval |
