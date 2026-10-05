@@ -1,0 +1,98 @@
+{
+  "night": "/Users/pauleveritt/satyrn-runs/2026-10-04-eb-s1-engine-selfhost-guard-prefixes",
+  "rows": [
+    {
+      "attempt": "selfhost-guard-prefixes-20261004-232744-658538",
+      "task": "selfhost-guard-prefixes",
+      "arm": "engine",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": null,
+      "line_verdict": "pass",
+      "line_source": "final",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-guard-prefixes-20261004-232744-713583",
+      "task": "selfhost-guard-prefixes",
+      "arm": "engine",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": null,
+      "line_verdict": "pass",
+      "line_source": "final",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-guard-prefixes-20261004-232744-766989",
+      "task": "selfhost-guard-prefixes",
+      "arm": "engine",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": null,
+      "line_verdict": "pass",
+      "line_source": "final",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-guard-prefixes-20261004-233751-776040",
+      "task": "selfhost-guard-prefixes",
+      "arm": "engine",
+      "code": "OK",
+      "verdict": "fail",
+      "tripped_verdict": null,
+      "line_crossed": {
+        "by": "tokens",
+        "output_tokens": 36183,
+        "turn": 39,
+        "at": "2026-10-05T00:09:26.875843+00:00"
+      },
+      "line_verdict": "fail",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-guard-prefixes-20261004-234629-787857",
+      "task": "selfhost-guard-prefixes",
+      "arm": "engine",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": {
+        "by": "tokens",
+        "output_tokens": 32088,
+        "turn": 42,
+        "at": "2026-10-05T00:14:31.792700+00:00"
+      },
+      "line_verdict": "unavailable",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-guard-prefixes-20261004-235359-770244",
+      "task": "selfhost-guard-prefixes",
+      "arm": "engine",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": {
+        "by": "turns",
+        "output_tokens": 31300,
+        "turn": 49,
+        "at": "2026-10-05T00:21:36.324254+00:00"
+      },
+      "line_verdict": "fail",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    }
+  ]
+}

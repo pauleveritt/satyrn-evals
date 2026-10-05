@@ -1,0 +1,83 @@
+{
+  "night": "/Users/pauleveritt/satyrn-runs/2026-10-04-eb-s2-engine-selfhost-review-script",
+  "rows": [
+    {
+      "attempt": "selfhost-review-script-20261005-043137-197455",
+      "task": "selfhost-review-script",
+      "arm": "engine",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": null,
+      "line_verdict": "pass",
+      "line_source": "final",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-review-script-20261005-043137-249732",
+      "task": "selfhost-review-script",
+      "arm": "engine",
+      "code": "OK",
+      "verdict": "fail",
+      "tripped_verdict": null,
+      "line_crossed": null,
+      "line_verdict": "fail",
+      "line_source": "final",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-review-script-20261005-043137-307269",
+      "task": "selfhost-review-script",
+      "arm": "engine",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": null,
+      "line_verdict": "pass",
+      "line_source": "final",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-review-script-20261005-044039-023759",
+      "task": "selfhost-review-script",
+      "arm": "engine",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": null,
+      "line_verdict": "pass",
+      "line_source": "final",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-review-script-20261005-044604-449461",
+      "task": "selfhost-review-script",
+      "arm": "engine",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": null,
+      "line_verdict": "pass",
+      "line_source": "final",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-review-script-20261005-044806-423375",
+      "task": "selfhost-review-script",
+      "arm": "engine",
+      "code": "OK",
+      "verdict": "unavailable",
+      "tripped_verdict": null,
+      "line_crossed": null,
+      "line_verdict": "not-pass",
+      "line_source": "final",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    }
+  ]
+}

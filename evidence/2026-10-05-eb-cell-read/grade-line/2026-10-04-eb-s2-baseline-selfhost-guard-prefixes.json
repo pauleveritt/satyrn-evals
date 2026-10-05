@@ -1,0 +1,176 @@
+{
+  "night": "/Users/pauleveritt/satyrn-runs/2026-10-04-eb-s2-baseline-selfhost-guard-prefixes",
+  "rows": [
+    {
+      "attempt": "selfhost-guard-prefixes-20261005-014535-192053",
+      "task": "selfhost-guard-prefixes",
+      "arm": "baseline",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": null,
+      "line_verdict": "pass",
+      "line_source": "final",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-guard-prefixes-20261005-014535-246417",
+      "task": "selfhost-guard-prefixes",
+      "arm": "baseline",
+      "code": "OK",
+      "verdict": "fail",
+      "tripped_verdict": null,
+      "line_crossed": null,
+      "line_verdict": "fail",
+      "line_source": "final",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-guard-prefixes-20261005-014535-299258",
+      "task": "selfhost-guard-prefixes",
+      "arm": "baseline",
+      "code": "BUDGET_EXCEEDED",
+      "verdict": null,
+      "tripped_verdict": "unavailable",
+      "line_crossed": {
+        "by": "turns",
+        "output_tokens": 29869,
+        "turn": 49,
+        "at": "2026-10-05T02:07:05.913841+00:00"
+      },
+      "line_verdict": "unavailable",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-guard-prefixes-20261005-014734-157991",
+      "task": "selfhost-guard-prefixes",
+      "arm": "baseline",
+      "code": "BUDGET_EXCEEDED",
+      "verdict": null,
+      "tripped_verdict": "unavailable",
+      "line_crossed": {
+        "by": "turns",
+        "output_tokens": 19110,
+        "turn": 49,
+        "at": "2026-10-05T02:01:42.746622+00:00"
+      },
+      "line_verdict": "unavailable",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-guard-prefixes-20261005-014818-528373",
+      "task": "selfhost-guard-prefixes",
+      "arm": "baseline",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": null,
+      "line_verdict": "pass",
+      "line_source": "final",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-guard-prefixes-20261005-020318-370867",
+      "task": "selfhost-guard-prefixes",
+      "arm": "baseline",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": null,
+      "line_verdict": "pass",
+      "line_source": "final",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-guard-prefixes-20261005-021120-639381",
+      "task": "selfhost-guard-prefixes",
+      "arm": "baseline",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": null,
+      "line_verdict": "pass",
+      "line_source": "final",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-guard-prefixes-20261005-021545-444011",
+      "task": "selfhost-guard-prefixes",
+      "arm": "baseline",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": null,
+      "line_verdict": "pass",
+      "line_source": "final",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-guard-prefixes-20261005-021824-537295",
+      "task": "selfhost-guard-prefixes",
+      "arm": "baseline",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": null,
+      "line_verdict": "pass",
+      "line_source": "final",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-guard-prefixes-20261005-021827-635768",
+      "task": "selfhost-guard-prefixes",
+      "arm": "baseline",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": null,
+      "line_verdict": "pass",
+      "line_source": "final",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-guard-prefixes-20261005-022019-482724",
+      "task": "selfhost-guard-prefixes",
+      "arm": "baseline",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": null,
+      "line_verdict": "pass",
+      "line_source": "final",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-guard-prefixes-20261005-022028-624363",
+      "task": "selfhost-guard-prefixes",
+      "arm": "baseline",
+      "code": "BUDGET_EXCEEDED",
+      "verdict": null,
+      "tripped_verdict": "unavailable",
+      "line_crossed": {
+        "by": "turns",
+        "output_tokens": 20170,
+        "turn": 49,
+        "at": "2026-10-05T02:32:27.847761+00:00"
+      },
+      "line_verdict": "unavailable",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    }
+  ]
+}

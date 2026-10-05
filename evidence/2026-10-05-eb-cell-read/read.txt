@@ -1,0 +1,319 @@
+
+== 2026-10-04-eb-s1-engine-selfhost-guard-prefixes / selfhost-guard-prefixes / engine
+   night status: launch.json status=complete, ended=2026-10-05T00:28:17+00:00, evals_head=cd8fedc5b, record=records/2026-10-04-eb-s1-engine-selfhost-guard-prefixes.json
+   expected cells per arm from: record records/2026-10-04-eb-s1-engine-selfhost-guard-prefixes.json
+   slot specs (line_tok, line_turns, token_budget, turn_budget): [(32000, 48, 48000, 72)]
+   arm_sha256[engine]=a79fa45814d7
+  denominators: expected cells 6; finished slots 6; cells read 6
+  verdicts {'pass': 5, 'fail': 1}; codes {'OK': 6}
+  delivered passes (verdict==pass): 5 of 6 read (of 6 expected)
+  OUTPUT TOKENS PER DELIVERED PASS (median (min-max), n=5): 28,463 (11,681-38,812)
+     per pass: [11681, 21429, 28463, 37819, 38812]; mean 27,641 (secondary, not the EB decider)
+     admitted delivered passes only (secondary): n=5 -> 28,463 (11,681-38,812); un-admitted passes counted above: []
+  schema-rejected edit/write calls: total 8 in 3 of 6 cells; per cell [0, 2, 0, 0, 1, 5]
+  all rejected edit/write calls: total 13 in 4 of 6 cells; shapes {'schema': 8, 'ANCHOR_MISSING': 1, 'scope': 3, 'NO_CHANGE_REQUESTED': 1}
+  confinement_refused entries: 0 (cells with >=1: []); engine scope_refused entries: 3 (cells: ['233751-776040', '234629-787857'])
+  admission (attempt.json confinement refusals==0 and reaches==0): admitted 6, flagged 0, unknown 0
+  line 32k/48: NEEDS grade-line: 3, pass: 3  (cells needing `satyrn-evals grade-line` are NOT counted as pass or fail here)
+  per cell:
+   slot attempt-dir                                      code                 verdict      out_tok turns calls  schema/all-rej conf scope reach adm  line-crossed
+    0   selfhost-guard-prefixes-20261004-232744-658538 OK                   pass         11,681     9     8     0/0            0     0     0  yes  -
+    1   selfhost-guard-prefixes-20261004-232744-713583 OK                   pass         28,463    36    35     2/3            0     0     0  yes  -
+    2   selfhost-guard-prefixes-20261004-232744-766989 OK                   pass         21,429    27    26     0/0            0     0     0  yes  -
+    3   selfhost-guard-prefixes-20261004-233751-776040 OK                   fail         44,148    52    51     0/1            0     1     0  yes  tok@39
+    4   selfhost-guard-prefixes-20261004-234629-787857 OK                   pass         38,812    50    49     1/3            0     2     0  yes  tok@42
+    5   selfhost-guard-prefixes-20261004-235359-770244 OK                   pass         37,819    60    59     5/6            0     0     0  yes  tur@49
+     line: 232744-658538 -> pass (never crossed)
+     line: 232744-713583 -> pass (never crossed)
+     line: 232744-766989 -> pass (never crossed)
+     line: 233751-776040 -> NEEDS grade-line [tokens @turn 39, 36,183 tok; line.diff present]
+     line: 234629-787857 -> NEEDS grade-line [tokens @turn 42, 32,088 tok; line.diff present]
+     line: 235359-770244 -> NEEDS grade-line [turns @turn 49, 31,300 tok; line.diff present]
+  infrastructure / wall-clock / anomaly flags: none
+
+== 2026-10-04-eb-s2-engine-selfhost-guard-prefixes / selfhost-guard-prefixes / engine
+   night status: launch.json status=complete, ended=2026-10-05T03:39:23+00:00, evals_head=8b12cc20e, record=records/2026-10-04-eb-s2-engine-selfhost-guard-prefixes.json
+   expected cells per arm from: record records/2026-10-04-eb-s2-engine-selfhost-guard-prefixes.json
+   slot specs (line_tok, line_turns, token_budget, turn_budget): [(32000, 48, 48000, 72)]
+   arm_sha256[engine]=a79fa45814d7
+  denominators: expected cells 6; finished slots 6; cells read 6
+  verdicts {'unavailable': 1, 'pass': 4, 'fail': 1}; codes {'OK': 6}
+  delivered passes (verdict==pass): 4 of 6 read (of 6 expected)
+  OUTPUT TOKENS PER DELIVERED PASS (median (min-max), n=4): 27,792.5 (14,366-41,909)
+     per pass: [14366, 19841, 35744, 41909]; mean 27,965 (secondary, not the EB decider)
+     admitted delivered passes only (secondary): n=4 -> 27,792.5 (14,366-41,909); un-admitted passes counted above: []
+  schema-rejected edit/write calls: total 2 in 1 of 6 cells; per cell [0, 0, 0, 0, 2, 0]
+  all rejected edit/write calls: total 13 in 5 of 6 cells; shapes {'scope': 2, 'ANCHOR_MISSING': 6, 'ANCHOR_ALREADY_APPLIED': 2, 'NO_CHANGE_REQUESTED': 1, 'schema': 2}
+  confinement_refused entries: 0 (cells with >=1: []); engine scope_refused entries: 2 (cells: ['024539-558164', '031649-075104'])
+  admission (attempt.json confinement refusals==0 and reaches==0): admitted 6, flagged 0, unknown 0
+  line 32k/48: NEEDS grade-line: 3, not-pass: 1, pass: 2  (cells needing `satyrn-evals grade-line` are NOT counted as pass or fail here)
+  per cell:
+   slot attempt-dir                                      code                 verdict      out_tok turns calls  schema/all-rej conf scope reach adm  line-crossed
+    0   selfhost-guard-prefixes-20261005-024539-558164 OK                   unavailable    6,990    11    11     0/1            0     1     0  yes  -
+    1   selfhost-guard-prefixes-20261005-024539-612547 OK                   pass         35,744    59    60     0/4            0     0     0  yes  tur@49
+    2   selfhost-guard-prefixes-20261005-024539-666254 OK                   pass         41,909    57    56     0/0            0     0     0  yes  tok@48
+    3   selfhost-guard-prefixes-20261005-025119-042992 OK                   pass         14,366    15    14     0/1            0     0     0  yes  -
+    4   selfhost-guard-prefixes-20261005-030424-231057 OK                   fail         45,274    61    60     2/6            0     0     0  yes  tok@47
+    5   selfhost-guard-prefixes-20261005-031649-075104 OK                   pass         19,841    33    33     0/1            0     1     0  yes  -
+     line: 024539-558164 -> not-pass (never crossed)
+     line: 024539-612547 -> NEEDS grade-line [turns @turn 49, 28,167 tok; line.diff present]
+     line: 024539-666254 -> NEEDS grade-line [tokens @turn 48, 32,822 tok; line.diff present]
+     line: 025119-042992 -> pass (never crossed)
+     line: 030424-231057 -> NEEDS grade-line [tokens @turn 47, 36,370 tok; line.diff present]
+     line: 031649-075104 -> pass (never crossed)
+  infrastructure / wall-clock / anomaly flags: 
+     selfhost-guard-prefixes-20261005-024539-558164: verdict unavailable: executed tests mismatch expected (missing ['test_hook_guard.py::test_allowed_bash_commands[cat docs/results/2026-09-14-p
+
+== 2026-10-04-eb-s2-baseline-selfhost-guard-prefixes / selfhost-guard-prefixes / baseline
+   night status: launch.json status=complete, ended=2026-10-05T02:41:50+00:00, evals_head=7ca02eaee, record=records/2026-10-04-eb-s2-baseline-selfhost-guard-prefixes.json
+   expected cells per arm from: record records/2026-10-04-eb-s2-baseline-selfhost-guard-prefixes.json
+   slot specs (line_tok, line_turns, token_budget, turn_budget): [(32000, 48, 48000, 72)]
+   arm_sha256[baseline]=e98db02835b8
+  denominators: expected cells 12; finished slots 12; cells read 12
+  verdicts {'pass': 8, 'fail': 1, 'None': 3}; codes {'OK': 9, 'BUDGET_EXCEEDED': 3}
+  delivered passes (verdict==pass): 8 of 12 read (of 12 expected)
+  OUTPUT TOKENS PER DELIVERED PASS (median (min-max), n=8): 5,509.5 (2,308-19,599)
+     per pass: [2308, 2663, 2898, 5206, 5813, 16178, 17764, 19599]; mean 9,054 (secondary, not the EB decider)
+     admitted delivered passes only (secondary): n=6 -> 4,052 (2,308-17,764); un-admitted passes counted above: ['014818-528373', '022019-482724']
+  schema-rejected edit/write calls: total 9 in 4 of 12 cells; per cell [0, 0, 0, 0, 3, 3, 0, 0, 0, 0, 1, 2]
+  all rejected edit/write calls: total 22 in 5 of 12 cells; shapes {'pi no-change': 4, 'anchor (pi)': 6, 'schema': 9, 'confinement': 3}
+  confinement_refused entries: 3 (cells with >=1: ['014818-528373', '022019-482724', '022028-624363']); engine scope_refused entries: 0 (cells: [])
+  admission (attempt.json confinement refusals==0 and reaches==0): admitted 9, flagged 3, unknown 0
+  line 32k/48: NEEDS grade-line: 3, fail: 1, pass: 8  (cells needing `satyrn-evals grade-line` are NOT counted as pass or fail here)
+  per cell:
+   slot attempt-dir                                      code                 verdict      out_tok turns calls  schema/all-rej conf scope reach adm  line-crossed
+    0   selfhost-guard-prefixes-20261005-014535-192053 OK                   pass          5,813     7     6     0/0            0     0     0  yes  -
+    1   selfhost-guard-prefixes-20261005-014535-246417 OK                   fail          4,425     5     4     0/0            0     0     0  yes  -
+    2   selfhost-guard-prefixes-20261005-014535-299258 BUDGET_EXCEEDED      None         44,727    72    72     0/5            0     0     0  yes  tur@49
+    3   selfhost-guard-prefixes-20261005-014734-157991 BUDGET_EXCEEDED      None         29,818    72    72     0/0            0     0     0  yes  tur@49
+    4   selfhost-guard-prefixes-20261005-014818-528373 OK                   pass         19,599    34    33     3/7            1     0     0  NO   -
+    5   selfhost-guard-prefixes-20261005-020318-370867 OK                   pass         17,764    17    16     3/3            0     0     0  yes  -
+    6   selfhost-guard-prefixes-20261005-021120-639381 OK                   pass          5,206     5     4     0/0            0     0     0  yes  -
+    7   selfhost-guard-prefixes-20261005-021545-444011 OK                   pass          2,898     5     4     0/0            0     0     0  yes  -
+    8   selfhost-guard-prefixes-20261005-021824-537295 OK                   pass          2,663     5     4     0/0            0     0     0  yes  -
+    9   selfhost-guard-prefixes-20261005-021827-635768 OK                   pass          2,308     5     4     0/0            0     0     0  yes  -
+   10   selfhost-guard-prefixes-20261005-022019-482724 OK                   pass         16,178    38    37     1/3            1     0     0  NO   -
+   11   selfhost-guard-prefixes-20261005-022028-624363 BUDGET_EXCEEDED      None         39,701    72    72     2/4            1     0     0  NO   tur@49
+     line: 014535-192053 -> pass (never crossed)
+     line: 014535-246417 -> fail (never crossed)
+     line: 014535-299258 -> NEEDS grade-line [turns @turn 49, 29,869 tok; line.diff present]
+     line: 014734-157991 -> NEEDS grade-line [turns @turn 49, 19,110 tok; line.diff present]
+     line: 014818-528373 -> pass (never crossed)
+     line: 020318-370867 -> pass (never crossed)
+     line: 021120-639381 -> pass (never crossed)
+     line: 021545-444011 -> pass (never crossed)
+     line: 021824-537295 -> pass (never crossed)
+     line: 021827-635768 -> pass (never crossed)
+     line: 022019-482724 -> pass (never crossed)
+     line: 022028-624363 -> NEEDS grade-line [turns @turn 49, 20,170 tok; line.diff present]
+  infrastructure / wall-clock / anomaly flags: 
+     selfhost-guard-prefixes-20261005-014535-299258: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-guard-prefixes-20261005-014734-157991: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-guard-prefixes-20261005-022028-624363: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+
+== 2026-10-04-eb-s1-engine-selfhost-review-script / selfhost-review-script / engine
+   night status: launch.json status=complete, ended=2026-10-05T00:58:02+00:00, evals_head=cd8fedc5b, record=records/2026-10-04-eb-s1-engine-selfhost-review-script.json
+   expected cells per arm from: record records/2026-10-04-eb-s1-engine-selfhost-review-script.json
+   slot specs (line_tok, line_turns, token_budget, turn_budget): [(32000, 48, 48000, 72)]
+   arm_sha256[engine]=a79fa45814d7
+  denominators: expected cells 6; finished slots 6; cells read 6
+  verdicts {'pass': 2, 'unavailable': 1, 'fail': 2, 'None': 1}; codes {'OK': 5, 'NO_PATCH': 1}
+  delivered passes (verdict==pass): 2 of 6 read (of 6 expected)
+  OUTPUT TOKENS PER DELIVERED PASS (median (min-max), n=2): 15,044 (9,144-20,944)
+     per pass: [9144, 20944]; mean 15,044 (secondary, not the EB decider)
+     admitted delivered passes only (secondary): n=2 -> 15,044 (9,144-20,944); un-admitted passes counted above: []
+  schema-rejected edit/write calls: total 0 in 0 of 6 cells; per cell [0, 0, 0, 0, 0, 0]
+  all rejected edit/write calls: total 2 in 2 of 6 cells; shapes {'NO_CHANGE_REQUESTED': 1, 'ANCHOR_MISSING': 1}
+  confinement_refused entries: 0 (cells with >=1: []); engine scope_refused entries: 0 (cells: [])
+  admission (attempt.json confinement refusals==0 and reaches==0): admitted 6, flagged 0, unknown 0
+  line 32k/48: fail: 2, not-pass: 1, pass: 2, per line_grade rules for code NO_PATCH: 1  (cells needing `satyrn-evals grade-line` are NOT counted as pass or fail here)
+  per cell:
+   slot attempt-dir                                      code                 verdict      out_tok turns calls  schema/all-rej conf scope reach adm  line-crossed
+    0   selfhost-review-script-20261005-003128-828092  OK                   pass         20,944    30    37     0/0            0     0     0  yes  -
+    1   selfhost-review-script-20261005-003128-881600  OK                   unavailable   10,020    19    27     0/0            0     0     0  yes  -
+    2   selfhost-review-script-20261005-003128-937274  OK                   pass          9,144    12    11     0/0            0     0     0  yes  -
+    3   selfhost-review-script-20261005-003922-224067  OK                   fail         12,243    21    26     0/1            0     0     0  yes  -
+    4   selfhost-review-script-20261005-004222-519596  OK                   fail         14,256    33    32     0/1            0     0     0  yes  -
+    5   selfhost-review-script-20261005-005058-171727  NO_PATCH             None          6,229    14    17     0/0            0     0     0  yes  -
+     line: 003128-828092 -> pass (never crossed)
+     line: 003128-881600 -> not-pass (never crossed)
+     line: 003128-937274 -> pass (never crossed)
+     line: 003922-224067 -> fail (never crossed)
+     line: 004222-519596 -> fail (never crossed)
+     line: 005058-171727 -> per line_grade rules for code NO_PATCH
+  infrastructure / wall-clock / anomaly flags: 
+     selfhost-review-script-20261005-003128-881600: verdict unavailable: patch touches non-source path: docs/reviews/already-there.md
+
+== 2026-10-04-eb-s2-engine-selfhost-review-script / selfhost-review-script / engine
+   night status: launch.json status=complete, ended=2026-10-05T05:00:25+00:00, evals_head=e11efa059, record=records/2026-10-04-eb-s2-engine-selfhost-review-script.json
+   expected cells per arm from: record records/2026-10-04-eb-s2-engine-selfhost-review-script.json
+   slot specs (line_tok, line_turns, token_budget, turn_budget): [(32000, 48, 48000, 72)]
+   arm_sha256[engine]=a79fa45814d7
+  denominators: expected cells 6; finished slots 6; cells read 6
+  verdicts {'pass': 4, 'fail': 1, 'unavailable': 1}; codes {'OK': 6}
+  delivered passes (verdict==pass): 4 of 6 read (of 6 expected)
+  OUTPUT TOKENS PER DELIVERED PASS (median (min-max), n=4): 10,415.5 (7,352-16,346)
+     per pass: [7352, 8320, 12511, 16346]; mean 11,132 (secondary, not the EB decider)
+     admitted delivered passes only (secondary): n=4 -> 10,415.5 (7,352-16,346); un-admitted passes counted above: []
+  schema-rejected edit/write calls: total 0 in 0 of 6 cells; per cell [0, 0, 0, 0, 0, 0]
+  all rejected edit/write calls: total 6 in 4 of 6 cells; shapes {'ANCHOR_MISSING': 2, 'REVISION_STALE': 1, 'INVALID_REQUEST': 2, 'NO_CHANGE_REQUESTED': 1}
+  confinement_refused entries: 0 (cells with >=1: []); engine scope_refused entries: 0 (cells: [])
+  admission (attempt.json confinement refusals==0 and reaches==0): admitted 6, flagged 0, unknown 0
+  line 32k/48: fail: 1, not-pass: 1, pass: 4  (cells needing `satyrn-evals grade-line` are NOT counted as pass or fail here)
+  per cell:
+   slot attempt-dir                                      code                 verdict      out_tok turns calls  schema/all-rej conf scope reach adm  line-crossed
+    0   selfhost-review-script-20261005-043137-197455  OK                   pass          7,352    15    23     0/0            0     0     0  yes  -
+    1   selfhost-review-script-20261005-043137-249732  OK                   fail         15,888    29    28     0/1            0     0     0  yes  -
+    2   selfhost-review-script-20261005-043137-307269  OK                   pass         16,346    19    28     0/1            0     0     0  yes  -
+    3   selfhost-review-script-20261005-044039-023759  OK                   pass          8,320    12    11     0/0            0     0     0  yes  -
+    4   selfhost-review-script-20261005-044604-449461  OK                   pass         12,511    21    20     0/3            0     0     0  yes  -
+    5   selfhost-review-script-20261005-044806-423375  OK                   unavailable   15,827    28    27     0/1            0     0     0  yes  -
+     line: 043137-197455 -> pass (never crossed)
+     line: 043137-249732 -> fail (never crossed)
+     line: 043137-307269 -> pass (never crossed)
+     line: 044039-023759 -> pass (never crossed)
+     line: 044604-449461 -> pass (never crossed)
+     line: 044806-423375 -> not-pass (never crossed)
+  infrastructure / wall-clock / anomaly flags: 
+     selfhost-review-script-20261005-044806-423375: verdict unavailable: patch touches non-source path: docs/reviews/abc123..def456-zai-glm-5.3.md
+
+== 2026-10-04-eb-s2-baseline-selfhost-review-script / selfhost-review-script / baseline
+   night status: launch.json status=complete, ended=2026-10-05T04:27:56+00:00, evals_head=84ed34800, record=records/2026-10-04-eb-s2-baseline-selfhost-review-script.json
+   expected cells per arm from: record records/2026-10-04-eb-s2-baseline-selfhost-review-script.json
+   slot specs (line_tok, line_turns, token_budget, turn_budget): [(32000, 48, 48000, 72)]
+   arm_sha256[baseline]=e98db02835b8
+  denominators: expected cells 12; finished slots 12; cells read 12
+  verdicts {'pass': 11, 'unavailable': 1}; codes {'OK': 12}
+  delivered passes (verdict==pass): 11 of 12 read (of 12 expected)
+  OUTPUT TOKENS PER DELIVERED PASS (median (min-max), n=11): 10,970 (8,194-27,976)
+     per pass: [8194, 8773, 8818, 9767, 9803, 10970, 11600, 12444, 13033, 13252, 27976]; mean 12,239 (secondary, not the EB decider)
+     admitted delivered passes only (secondary): n=11 -> 10,970 (8,194-27,976); un-admitted passes counted above: []
+  schema-rejected edit/write calls: total 4 in 3 of 12 cells; per cell [0, 0, 1, 0, 0, 0, 0, 0, 1, 2, 0, 0]
+  all rejected edit/write calls: total 13 in 7 of 12 cells; shapes {'anchor (pi)': 8, 'schema': 4, 'pi no-change': 1}
+  confinement_refused entries: 0 (cells with >=1: []); engine scope_refused entries: 0 (cells: [])
+  admission (attempt.json confinement refusals==0 and reaches==0): admitted 12, flagged 0, unknown 0
+  line 32k/48: NEEDS grade-line: 1, not-pass: 1, pass: 10  (cells needing `satyrn-evals grade-line` are NOT counted as pass or fail here)
+  per cell:
+   slot attempt-dir                                      code                 verdict      out_tok turns calls  schema/all-rej conf scope reach adm  line-crossed
+    0   selfhost-review-script-20261005-034104-894723  OK                   pass         11,600    45    44     0/4            0     0     0  yes  -
+    1   selfhost-review-script-20261005-034104-948155  OK                   pass         12,444    29    28     0/1            0     0     0  yes  -
+    2   selfhost-review-script-20261005-034105-000658  OK                   pass          8,194    26    25     1/3            0     0     0  yes  -
+    3   selfhost-review-script-20261005-034749-722063  OK                   pass         10,970    27    26     0/0            0     0     0  yes  -
+    4   selfhost-review-script-20261005-035200-398897  OK                   pass         13,033    24    23     0/0            0     0     0  yes  -
+    5   selfhost-review-script-20261005-035217-593551  OK                   pass         13,252    29    28     0/1            0     0     0  yes  -
+    6   selfhost-review-script-20261005-035759-849113  OK                   pass          9,803    20    19     0/0            0     0     0  yes  -
+    7   selfhost-review-script-20261005-040317-977564  OK                   unavailable   10,353    22    21     0/0            0     0     0  yes  -
+    8   selfhost-review-script-20261005-040412-399859  OK                   pass          8,773    22    21     1/1            0     0     0  yes  -
+    9   selfhost-review-script-20261005-040657-544443  OK                   pass         27,976    59    58     2/2            0     0     0  yes  tur@49
+   10   selfhost-review-script-20261005-041152-564624  OK                   pass          9,767    24    23     0/0            0     0     0  yes  -
+   11   selfhost-review-script-20261005-041246-985778  OK                   pass          8,818    18    17     0/1            0     0     0  yes  -
+     line: 034104-894723 -> pass (never crossed)
+     line: 034104-948155 -> pass (never crossed)
+     line: 034105-000658 -> pass (never crossed)
+     line: 034749-722063 -> pass (never crossed)
+     line: 035200-398897 -> pass (never crossed)
+     line: 035217-593551 -> pass (never crossed)
+     line: 035759-849113 -> pass (never crossed)
+     line: 040317-977564 -> not-pass (never crossed)
+     line: 040412-399859 -> pass (never crossed)
+     line: 040657-544443 -> NEEDS grade-line [turns @turn 49, 22,239 tok; line.diff present]
+     line: 041152-564624 -> pass (never crossed)
+     line: 041246-985778 -> pass (never crossed)
+  infrastructure / wall-clock / anomaly flags: 
+     selfhost-review-script-20261005-040317-977564: verdict unavailable: patch touches non-source path: docs/reviews/a..b-zai-glm-5.3.md
+
+
+######## COMBINED (explicit --combine; same task + arm + arm digest + contract digest only) ########
+
+(not combined: selfhost-guard-prefixes/baseline [e98db02835b8] appears in only one night: 2026-10-04-eb-s2-baseline-selfhost-guard-prefixes)
+
+== COMBINED selfhost-guard-prefixes / engine
+   nights: ['2026-10-04-eb-s1-engine-selfhost-guard-prefixes', '2026-10-04-eb-s2-engine-selfhost-guard-prefixes']
+   arm_sha256[engine]=a79fa45814d7
+   nights not marked complete: none
+  denominators: expected cells 12; finished slots 12; cells read 12
+  verdicts {'pass': 9, 'fail': 2, 'unavailable': 1}; codes {'OK': 12}
+  delivered passes (verdict==pass): 9 of 12 read (of 12 expected)
+  OUTPUT TOKENS PER DELIVERED PASS (median (min-max), n=9): 28,463 (11,681-41,909)
+     per pass: [11681, 14366, 19841, 21429, 28463, 35744, 37819, 38812, 41909]; mean 27,785 (secondary, not the EB decider)
+     admitted delivered passes only (secondary): n=9 -> 28,463 (11,681-41,909); un-admitted passes counted above: []
+  schema-rejected edit/write calls: total 10 in 4 of 12 cells; per cell [0, 2, 0, 0, 1, 5, 0, 0, 0, 0, 2, 0]
+  all rejected edit/write calls: total 26 in 9 of 12 cells; shapes {'schema': 10, 'ANCHOR_MISSING': 7, 'scope': 5, 'NO_CHANGE_REQUESTED': 2, 'ANCHOR_ALREADY_APPLIED': 2}
+  confinement_refused entries: 0 (cells with >=1: []); engine scope_refused entries: 5 (cells: ['233751-776040', '234629-787857', '024539-558164', '031649-075104'])
+  admission (attempt.json confinement refusals==0 and reaches==0): admitted 12, flagged 0, unknown 0
+  line 32k/48: NEEDS grade-line: 6, not-pass: 1, pass: 5  (cells needing `satyrn-evals grade-line` are NOT counted as pass or fail here)
+  per cell:
+   slot attempt-dir                                      code                 verdict      out_tok turns calls  schema/all-rej conf scope reach adm  line-crossed
+    0   selfhost-guard-prefixes-20261004-232744-658538 OK                   pass         11,681     9     8     0/0            0     0     0  yes  -
+    1   selfhost-guard-prefixes-20261004-232744-713583 OK                   pass         28,463    36    35     2/3            0     0     0  yes  -
+    2   selfhost-guard-prefixes-20261004-232744-766989 OK                   pass         21,429    27    26     0/0            0     0     0  yes  -
+    3   selfhost-guard-prefixes-20261004-233751-776040 OK                   fail         44,148    52    51     0/1            0     1     0  yes  tok@39
+    4   selfhost-guard-prefixes-20261004-234629-787857 OK                   pass         38,812    50    49     1/3            0     2     0  yes  tok@42
+    5   selfhost-guard-prefixes-20261004-235359-770244 OK                   pass         37,819    60    59     5/6            0     0     0  yes  tur@49
+    0   selfhost-guard-prefixes-20261005-024539-558164 OK                   unavailable    6,990    11    11     0/1            0     1     0  yes  -
+    1   selfhost-guard-prefixes-20261005-024539-612547 OK                   pass         35,744    59    60     0/4            0     0     0  yes  tur@49
+    2   selfhost-guard-prefixes-20261005-024539-666254 OK                   pass         41,909    57    56     0/0            0     0     0  yes  tok@48
+    3   selfhost-guard-prefixes-20261005-025119-042992 OK                   pass         14,366    15    14     0/1            0     0     0  yes  -
+    4   selfhost-guard-prefixes-20261005-030424-231057 OK                   fail         45,274    61    60     2/6            0     0     0  yes  tok@47
+    5   selfhost-guard-prefixes-20261005-031649-075104 OK                   pass         19,841    33    33     0/1            0     1     0  yes  -
+     line: 232744-658538 -> pass (never crossed)
+     line: 232744-713583 -> pass (never crossed)
+     line: 232744-766989 -> pass (never crossed)
+     line: 233751-776040 -> NEEDS grade-line [tokens @turn 39, 36,183 tok; line.diff present]
+     line: 234629-787857 -> NEEDS grade-line [tokens @turn 42, 32,088 tok; line.diff present]
+     line: 235359-770244 -> NEEDS grade-line [turns @turn 49, 31,300 tok; line.diff present]
+     line: 024539-558164 -> not-pass (never crossed)
+     line: 024539-612547 -> NEEDS grade-line [turns @turn 49, 28,167 tok; line.diff present]
+     line: 024539-666254 -> NEEDS grade-line [tokens @turn 48, 32,822 tok; line.diff present]
+     line: 025119-042992 -> pass (never crossed)
+     line: 030424-231057 -> NEEDS grade-line [tokens @turn 47, 36,370 tok; line.diff present]
+     line: 031649-075104 -> pass (never crossed)
+  infrastructure / wall-clock / anomaly flags: 
+     selfhost-guard-prefixes-20261005-024539-558164: verdict unavailable: executed tests mismatch expected (missing ['test_hook_guard.py::test_allowed_bash_commands[cat docs/results/2026-09-14-p
+
+(not combined: selfhost-review-script/baseline [e98db02835b8] appears in only one night: 2026-10-04-eb-s2-baseline-selfhost-review-script)
+
+== COMBINED selfhost-review-script / engine
+   nights: ['2026-10-04-eb-s1-engine-selfhost-review-script', '2026-10-04-eb-s2-engine-selfhost-review-script']
+   arm_sha256[engine]=a79fa45814d7
+   nights not marked complete: none
+  denominators: expected cells 12; finished slots 12; cells read 12
+  verdicts {'pass': 6, 'unavailable': 2, 'fail': 3, 'None': 1}; codes {'OK': 11, 'NO_PATCH': 1}
+  delivered passes (verdict==pass): 6 of 12 read (of 12 expected)
+  OUTPUT TOKENS PER DELIVERED PASS (median (min-max), n=6): 10,827.5 (7,352-20,944)
+     per pass: [7352, 8320, 9144, 12511, 16346, 20944]; mean 12,436 (secondary, not the EB decider)
+     admitted delivered passes only (secondary): n=6 -> 10,827.5 (7,352-20,944); un-admitted passes counted above: []
+  schema-rejected edit/write calls: total 0 in 0 of 12 cells; per cell [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  all rejected edit/write calls: total 8 in 6 of 12 cells; shapes {'NO_CHANGE_REQUESTED': 2, 'ANCHOR_MISSING': 3, 'REVISION_STALE': 1, 'INVALID_REQUEST': 2}
+  confinement_refused entries: 0 (cells with >=1: []); engine scope_refused entries: 0 (cells: [])
+  admission (attempt.json confinement refusals==0 and reaches==0): admitted 12, flagged 0, unknown 0
+  line 32k/48: fail: 3, not-pass: 2, pass: 6, per line_grade rules for code NO_PATCH: 1  (cells needing `satyrn-evals grade-line` are NOT counted as pass or fail here)
+  per cell:
+   slot attempt-dir                                      code                 verdict      out_tok turns calls  schema/all-rej conf scope reach adm  line-crossed
+    0   selfhost-review-script-20261005-003128-828092  OK                   pass         20,944    30    37     0/0            0     0     0  yes  -
+    1   selfhost-review-script-20261005-003128-881600  OK                   unavailable   10,020    19    27     0/0            0     0     0  yes  -
+    2   selfhost-review-script-20261005-003128-937274  OK                   pass          9,144    12    11     0/0            0     0     0  yes  -
+    3   selfhost-review-script-20261005-003922-224067  OK                   fail         12,243    21    26     0/1            0     0     0  yes  -
+    4   selfhost-review-script-20261005-004222-519596  OK                   fail         14,256    33    32     0/1            0     0     0  yes  -
+    5   selfhost-review-script-20261005-005058-171727  NO_PATCH             None          6,229    14    17     0/0            0     0     0  yes  -
+    0   selfhost-review-script-20261005-043137-197455  OK                   pass          7,352    15    23     0/0            0     0     0  yes  -
+    1   selfhost-review-script-20261005-043137-249732  OK                   fail         15,888    29    28     0/1            0     0     0  yes  -
+    2   selfhost-review-script-20261005-043137-307269  OK                   pass         16,346    19    28     0/1            0     0     0  yes  -
+    3   selfhost-review-script-20261005-044039-023759  OK                   pass          8,320    12    11     0/0            0     0     0  yes  -
+    4   selfhost-review-script-20261005-044604-449461  OK                   pass         12,511    21    20     0/3            0     0     0  yes  -
+    5   selfhost-review-script-20261005-044806-423375  OK                   unavailable   15,827    28    27     0/1            0     0     0  yes  -
+     line: 003128-828092 -> pass (never crossed)
+     line: 003128-881600 -> not-pass (never crossed)
+     line: 003128-937274 -> pass (never crossed)
+     line: 003922-224067 -> fail (never crossed)
+     line: 004222-519596 -> fail (never crossed)
+     line: 005058-171727 -> per line_grade rules for code NO_PATCH
+     line: 043137-197455 -> pass (never crossed)
+     line: 043137-249732 -> fail (never crossed)
+     line: 043137-307269 -> pass (never crossed)
+     line: 044039-023759 -> pass (never crossed)
+     line: 044604-449461 -> pass (never crossed)
+     line: 044806-423375 -> not-pass (never crossed)
+  infrastructure / wall-clock / anomaly flags: 
+     selfhost-review-script-20261005-003128-881600: verdict unavailable: patch touches non-source path: docs/reviews/already-there.md
+     selfhost-review-script-20261005-044806-423375: verdict unavailable: patch touches non-source path: docs/reviews/abc123..def456-zai-glm-5.3.md
