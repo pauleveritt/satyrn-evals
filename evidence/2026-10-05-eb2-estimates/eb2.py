@@ -142,43 +142,72 @@ def required_cut(eng_total, base_total, margin) -> float:
 
 LIGHT_PATH_KEY = "light path (whole E-B median gap; not an estimate)"
 COMBINED_KEY = "all estimable remedies combined"
-TESTS_KEY = "contract test lines (pre-edit + test file, excess over Baseline median)"
+TESTS_KEY = "contract test lines (pre-edit + test file)"
 HOIST_KEY = "edit-shape hoisting (all schema + ANCHOR_MISSING retries)"
 # The scratch row is new in EB2 under D3; it is not an EB1 section 5 formula.
-SCRATCH_KEY = "scratch path (probe, excess over Baseline median; new in EB2 under D3, not an EB1 §5 formula)"
+SCRATCH_KEY = "scratch path (probe; new in EB2 under D3, not an EB1 §5 formula)"
+REFERENCES = ("zero", "baseline-median")
 
 
-def bounds(data, task: str, scratch: bool) -> dict[str, float | None]:
-    """Upper bounds on the reduction of the median per-pass total, per-cell counterfactual.
+def _removals(data, task: str, scratch: bool, reference: str) -> dict[str, list[float]]:
+    """Per-cell token removals of each remedy row, in Engine pass order (combined row last).
 
-    Each remedy row removes an amount from every Engine pass (never below zero), and the
-    bound is median(totals) - median(totals - removed). Categories are disjoint per turn,
-    so the combined row applies the rows' per-cell removals together. The EB1 section 5
-    figures stay printed by eb1.section5 for comparison.
+    reference "zero" is an upper bound: a remedy removes at most every token of its category.
+    reference "baseline-median" is a central estimate, not an upper bound: a remedy removes
+    the excess over the Baseline median of the category, clamped at 0. Hoisting removes all
+    schema and ANCHOR_MISSING retries under both.
     """
+    if reference not in REFERENCES:
+        raise ValueError(f"reference must be one of {REFERENCES}, got {reference!r}")
     e, b = (eb1.passes(data[task, arm]) for arm in ("engine", "baseline"))
     ce, cb = [eb1.cat_tokens(c) for c in e], [eb1.cat_tokens(c) for c in b]
-    totals = [eb1.out_total(c) for c in e]
-    test_median = eb1.m([x["pre-edit"] + x["test file"] for x in cb])
-    probe_median = eb1.m([x["probe"] for x in cb])
-    removals = {
-        TESTS_KEY: [max(0, x["pre-edit"] + x["test file"] - test_median) for x in ce],
-        HOIST_KEY: [x["retry:schema"] + x["retry:ANCHOR_MISSING"] for x in ce],
-    }
+    if reference == "zero":
+        tests = [x["pre-edit"] + x["test file"] for x in ce]
+        probes = [x["probe"] for x in ce]
+    else:
+        test_median = eb1.m([x["pre-edit"] + x["test file"] for x in cb])
+        probe_median = eb1.m([x["probe"] for x in cb])
+        tests = [max(0, x["pre-edit"] + x["test file"] - test_median) for x in ce]
+        probes = [max(0, x["probe"] - probe_median) for x in ce]
+    removals = {TESTS_KEY: tests, HOIST_KEY: [x["retry:schema"] + x["retry:ANCHOR_MISSING"] for x in ce]}
     if scratch:
-        removals[SCRATCH_KEY] = [max(0, x["probe"] - probe_median) for x in ce]
+        removals[SCRATCH_KEY] = probes
     removals[COMBINED_KEY] = [sum(parts) for parts in zip(*removals.values(), strict=True)]
-    base_median = eb1.m(totals)
+    return removals
+
+
+def counterfactual_totals(data, task: str, scratch: bool, reference: str = "zero") -> list[float]:
+    """The Engine passes' totals after the combined per-cell removal, in pass order."""
+    removals = _removals(data, task, scratch, reference)[COMBINED_KEY]
+    totals = [eb1.out_total(c) for c in eb1.passes(data[task, "engine"])]
+    return [t - r for t, r in zip(totals, removals, strict=True)]
+
+
+def bounds(data, task: str, scratch: bool, reference: str = "zero") -> dict[str, float | None]:
+    """Reductions of the median per-pass total, per-cell counterfactual, under REFERENCE.
+
+    reference "zero" gives upper bounds (the stop rule reads only these); "baseline-median"
+    gives central estimates, which are not upper bounds because the Baseline category
+    distributions are bimodal. Each remedy row removes an amount from every Engine pass
+    (never below zero), and the figure is median(totals) - median(totals - removed).
+    Categories are disjoint per turn, so the combined row applies the rows' per-cell
+    removals together. The EB1 section 5 figures stay printed by eb1.section5 for comparison.
+    """
+    removals = _removals(data, task, scratch, reference)
+    e, b = (eb1.passes(data[task, arm]) for arm in ("engine", "baseline"))
+    totals = [eb1.out_total(c) for c in e]
+    engine_median = eb1.m(totals)
     rows: dict[str, float | None] = {
-        name: base_median - eb1.m([t - r for t, r in zip(totals, cut, strict=True)])
-        for name, cut in removals.items()
+        name: engine_median - eb1.m([t - r for t, r in zip(totals, cut, strict=True)])
+        for name, cut in removals.items() if name != COMBINED_KEY
     }
-    gap = base_median - eb1.m([eb1.out_total(c) for c in b])
+    rows[COMBINED_KEY] = engine_median - eb1.m(counterfactual_totals(data, task, scratch, reference))
+    gap = engine_median - eb1.m([eb1.out_total(c) for c in b])
     return {LIGHT_PATH_KEY: gap if task in LIGHT_PATH_TASKS else None, **rows}
 
 
 def verdict_line(task: str, cut: float, bounds: dict) -> str:
-    """The light path is reported but never counted: its figure is the whole gap by definition."""
+    """Read only upper-bound rows (reference "zero"). The light path is reported, never counted."""
     if cut <= 0:
         return f"{task}: within margin (no-harm); a remedy must not raise its median above the margin"
     head = f"{task}: required cut {cut:,.0f}; "
@@ -189,8 +218,8 @@ def verdict_line(task: str, cut: float, bounds: dict) -> str:
     combined = bounds.get(COMBINED_KEY)
     if combined is not None and combined >= cut:
         return head + "no remedy clears alone; the estimable remedies combined can clear (upper bound)"
-    return (head + "no listed remedy can clear the threshold, alone or combined; "
-            "the light path's figure is the whole gap by definition, not an estimate")
+    return (head + "no estimable remedy can clear the threshold, alone or combined; "
+            "the light path is not estimable offline (its figure is the whole gap by definition)")
 
 
 TASKS = ("guard-prefixes", "review-script")
@@ -215,16 +244,29 @@ def main(argv: list[str]) -> int:
                 p = power(base, *counts, (1.0, 1.25, 1.5, 2.0), reps=4000, margin=margin, seed=SEED)
                 print(f"  {task} E n={counts[0]} B n={counts[1]} margin {margin}: "
                       + ", ".join(f"{w} {k}: {v:.3f}" for (w, k), v in p.items()))
-    print("\n## Required cut and remedy upper bounds (output tokens per delivered pass)")
+    print("\n## Required cut and remedy bounds (output tokens per delivered pass)")
     for task in TASKS:
         e, b = (eb1.passes(data[task, arm]) for arm in ("engine", "baseline"))
         et, bt = [eb1.out_total(c) for c in e], [eb1.out_total(c) for c in b]
-        print(f"  {task}: rank-sum p (Engine <= Baseline) {mw_p(et, bt):.4f}")
-        rows = bounds(data, task, scratch)
-        for name, value in rows.items():
-            print(f"    {name}: {'n.a.' if value is None else f'{value:,.0f}'}")
+        print(f"  {task}:")
+        print(f"    Baseline delivered-pass totals: {sorted(bt)}")
+        print(f"    Engine delivered-pass totals: {sorted(et)}")
+        print(f"    rank-sum p (Engine <= Baseline) {mw_p(et, bt):.4f}")
+        upper = bounds(data, task, scratch, "zero")
+        print("    Upper bounds (reference: zero — a remedy removes at most every token of its category)")
+        for name, value in upper.items():
+            print(f"      {name}: {'n.a.' if value is None else f'{value:,.0f}'}")
         for margin in MARGINS:
-            print("    " + verdict_line(task, required_cut(et, bt, margin), rows) + f" [margin {margin}]")
+            print("      " + verdict_line(task, required_cut(et, bt, margin), upper) + f" [margin {margin}]")
+        p = mw_p(counterfactual_totals(data, task, scratch, "zero"), bt)
+        print(f"      rank-sum p of the combined upper-bound counterfactual against Baseline: {p:.4f}")
+        central = bounds(data, task, scratch, "baseline-median")
+        print("    Central estimates (reference: Baseline median of the category — not an upper bound)")
+        for name, value in central.items():
+            print(f"      {name}: {'n.a.' if value is None else f'{value:,.0f}'}")
+        for margin in MARGINS:
+            print(f"      central combined {central[COMBINED_KEY]:,.0f} against required cut "
+                  f"{required_cut(et, bt, margin):,.0f} [margin {margin}]")
     return 0
 
 

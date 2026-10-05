@@ -191,20 +191,46 @@ residual of medians (total d - sum of category d): +1,208
   review-script E n=12 B n=22 margin 1.25: resample 1.0: 0.939, resample 1.25: 0.175, resample 1.5: 0.002, resample 2.0: 0.000, resample q95: 1.226, log-normal 1.0: 0.916, log-normal 1.25: 0.393, log-normal 1.5: 0.051, log-normal 2.0: 0.000, log-normal q95: 1.266
   review-script E n=12 B n=22 margin 1.35: resample 1.0: 0.954, resample 1.25: 0.178, resample 1.5: 0.002, resample 2.0: 0.000, resample q95: 1.226, log-normal 1.0: 0.945, log-normal 1.25: 0.451, log-normal 1.5: 0.065, log-normal 2.0: 0.000, log-normal q95: 1.266
 
-## Required cut and remedy upper bounds (output tokens per delivered pass)
-  guard-prefixes: rank-sum p (Engine <= Baseline) 0.0012
-    light path (whole E-B median gap; not an estimate): 22,954
-    contract test lines (pre-edit + test file, excess over Baseline median): 16,120
-    edit-shape hoisting (all schema + ANCHOR_MISSING retries): 2,679
-    scratch path (probe, excess over Baseline median; new in EB2 under D3, not an EB1 §5 formula): 10,350
-    all estimable remedies combined: 21,463
-    guard-prefixes: required cut 21,576; no listed remedy can clear the threshold, alone or combined; the light path's figure is the whole gap by definition, not an estimate [margin 1.25]
-    guard-prefixes: required cut 21,025; no remedy clears alone; the estimable remedies combined can clear (upper bound) [margin 1.35]
-  review-script: rank-sum p (Engine <= Baseline) 0.5582
-    light path (whole E-B median gap; not an estimate): n.a.
-    contract test lines (pre-edit + test file, excess over Baseline median): 1,934
-    edit-shape hoisting (all schema + ANCHOR_MISSING retries): 0
-    scratch path (probe, excess over Baseline median; new in EB2 under D3, not an EB1 §5 formula): 582
-    all estimable remedies combined: 1,934
-    review-script: within margin (no-harm); a remedy must not raise its median above the margin [margin 1.25]
-    review-script: within margin (no-harm); a remedy must not raise its median above the margin [margin 1.35]
+## Required cut and remedy bounds (output tokens per delivered pass)
+  guard-prefixes:
+    Baseline delivered-pass totals: [2308, 2663, 2898, 5206, 5813, 16178, 17764, 19599]
+    Engine delivered-pass totals: [11681, 14366, 19841, 21429, 28463, 35744, 37819, 38812, 41909]
+    rank-sum p (Engine <= Baseline) 0.0012
+    Upper bounds (reference: zero — a remedy removes at most every token of its category)
+      light path (whole E-B median gap; not an estimate): 22,954
+      contract test lines (pre-edit + test file): 17,059
+      edit-shape hoisting (all schema + ANCHOR_MISSING retries): 2,679
+      scratch path (probe; new in EB2 under D3, not an EB1 §5 formula): 11,226
+      all estimable remedies combined: 23,278
+      guard-prefixes: required cut 21,576; no remedy clears alone; the estimable remedies combined can clear (upper bound) [margin 1.25]
+      guard-prefixes: required cut 21,025; no remedy clears alone; the estimable remedies combined can clear (upper bound) [margin 1.35]
+      rank-sum p of the combined upper-bound counterfactual against Baseline: 0.7596
+    Central estimates (reference: Baseline median of the category — not an upper bound)
+      light path (whole E-B median gap; not an estimate): 22,954
+      contract test lines (pre-edit + test file): 16,120
+      edit-shape hoisting (all schema + ANCHOR_MISSING retries): 2,679
+      scratch path (probe; new in EB2 under D3, not an EB1 §5 formula): 10,350
+      all estimable remedies combined: 21,463
+      central combined 21,463 against required cut 21,576 [margin 1.25]
+      central combined 21,463 against required cut 21,025 [margin 1.35]
+  review-script:
+    Baseline delivered-pass totals: [8194, 8773, 8818, 9767, 9803, 10970, 11600, 12444, 13033, 13252, 27976]
+    Engine delivered-pass totals: [7352, 8320, 9144, 12511, 16346, 20944]
+    rank-sum p (Engine <= Baseline) 0.5582
+    Upper bounds (reference: zero — a remedy removes at most every token of its category)
+      light path (whole E-B median gap; not an estimate): n.a.
+      contract test lines (pre-edit + test file): 8,270
+      edit-shape hoisting (all schema + ANCHOR_MISSING retries): 0
+      scratch path (probe; new in EB2 under D3, not an EB1 §5 formula): 1,056
+      all estimable remedies combined: 8,270
+      review-script: within margin (no-harm); a remedy must not raise its median above the margin [margin 1.25]
+      review-script: within margin (no-harm); a remedy must not raise its median above the margin [margin 1.35]
+      rank-sum p of the combined upper-bound counterfactual against Baseline: 1.0000
+    Central estimates (reference: Baseline median of the category — not an upper bound)
+      light path (whole E-B median gap; not an estimate): n.a.
+      contract test lines (pre-edit + test file): 1,934
+      edit-shape hoisting (all schema + ANCHOR_MISSING retries): 0
+      scratch path (probe; new in EB2 under D3, not an EB1 §5 formula): 582
+      all estimable remedies combined: 1,934
+      central combined 1,934 against required cut -2,885 [margin 1.25]
+      central combined 1,934 against required cut -3,982 [margin 1.35]

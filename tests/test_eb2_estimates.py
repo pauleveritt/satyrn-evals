@@ -135,8 +135,9 @@ def test_verdict_line_names_bounds_that_clear():
 def test_verdict_line_stop_when_nothing_clears():
     line = eb2.verdict_line("guard-prefixes", 21576.0,
                             {eb2.LIGHT_PATH_KEY: 30000.0, "test lines": 9000.0, eb2.COMBINED_KEY: 12000.0})
-    assert line.endswith("no listed remedy can clear the threshold, alone or combined; "
-                         "the light path's figure is the whole gap by definition, not an estimate")
+    assert line == ("guard-prefixes: required cut 21,576; no estimable remedy can clear the threshold, "
+                    "alone or combined; the light path is not estimable offline "
+                    "(its figure is the whole gap by definition)")
 
 
 def test_verdict_line_combined_clears():
@@ -183,29 +184,81 @@ def _counterfactual_data():
     return {("guard-prefixes", "engine"): engine, ("guard-prefixes", "baseline"): baseline}
 
 
-def test_bounds_are_counterfactual_medians():
-    got = eb2.bounds(_counterfactual_data(), "guard-prefixes", scratch=True)
-    tests_key = "contract test lines (pre-edit + test file, excess over Baseline median)"
-    hoist_key = "edit-shape hoisting (all schema + ANCHOR_MISSING retries)"
-    probe_key = "scratch path (probe, excess over Baseline median; new in EB2 under D3, not an EB1 §5 formula)"
-    # test-lines removals 0, 20, 0 (cell 1 at 10 is below the median 20: clamped): 20,90,100 -> 100 - 90
-    assert got[tests_key] == 10
+def test_bounds_zero_reference_removes_the_whole_category_per_cell():
+    got = eb2.bounds(_counterfactual_data(), "guard-prefixes", scratch=True, reference="zero")
+    # test-lines removals 10, 40, 20: 10,70,80 -> 100 - 70
+    assert got[eb2.TESTS_KEY] == 30
     # hoisting removals 5, 20, 0: 15,90,100 -> 100 - 90
-    assert got[hoist_key] == 10
+    assert got[eb2.HOIST_KEY] == 10
+    # probe removals 0, 40, 10: 20,70,90 -> 100 - 70
+    assert got[eb2.SCRATCH_KEY] == 30
+    # combined removals 15, 100, 30: 5,10,70 -> 100 - 10
+    assert got[eb2.COMBINED_KEY] == 90
+    assert got[eb2.LIGHT_PATH_KEY] == 45  # 100 - 55, reported, not an estimate
+    without = eb2.bounds(_counterfactual_data(), "guard-prefixes", scratch=False, reference="zero")
+    assert eb2.SCRATCH_KEY not in without
+    # combined without scratch: removals 15, 60, 20: 5,50,80 -> 100 - 50
+    assert without[eb2.COMBINED_KEY] == 50
+
+
+def test_bounds_zero_is_the_default_reference():
+    data = _counterfactual_data()
+    assert eb2.bounds(data, "guard-prefixes", scratch=True) == \
+        eb2.bounds(data, "guard-prefixes", scratch=True, reference="zero")
+
+
+def test_bounds_baseline_median_reference_is_a_central_estimate():
+    got = eb2.bounds(_counterfactual_data(), "guard-prefixes", scratch=True, reference="baseline-median")
+    # test-lines removals 0, 20, 0 (cell 0 at 10 is below the median 20: clamped): 20,90,100 -> 100 - 90
+    assert got[eb2.TESTS_KEY] == 10
+    # hoisting removals 5, 20, 0: 15,90,100 -> 100 - 90
+    assert got[eb2.HOIST_KEY] == 10
     # probe removals 0, 25, 0: 20,85,100 -> 100 - 85
-    assert got[probe_key] == 15
+    assert got[eb2.SCRATCH_KEY] == 15
     # combined removals 5, 65, 0: 15,45,100 -> 100 - 45 = 55, not the sum of rows (35)
     assert got[eb2.COMBINED_KEY] == 55
-    assert got[eb2.LIGHT_PATH_KEY] == 45  # 100 - 55, reported, not an estimate
-    without = eb2.bounds(_counterfactual_data(), "guard-prefixes", scratch=False)
-    assert probe_key not in without
+    assert got[eb2.LIGHT_PATH_KEY] == 45
+    without = eb2.bounds(_counterfactual_data(), "guard-prefixes", scratch=False, reference="baseline-median")
+    assert eb2.SCRATCH_KEY not in without
     # combined without scratch: removals 5, 40, 0: 15,70,100 -> 100 - 70
     assert without[eb2.COMBINED_KEY] == 30
 
 
-def test_bounds_never_negative_when_engine_is_below_baseline():
+def test_light_path_row_is_identical_under_both_references():
+    data = _counterfactual_data()
+    zero = eb2.bounds(data, "guard-prefixes", scratch=True, reference="zero")
+    median = eb2.bounds(data, "guard-prefixes", scratch=True, reference="baseline-median")
+    assert zero[eb2.LIGHT_PATH_KEY] == median[eb2.LIGHT_PATH_KEY] == 45
+
+
+def test_bounds_rejects_unknown_reference():
+    with pytest.raises(ValueError, match="reference"):
+        eb2.bounds(_counterfactual_data(), "guard-prefixes", scratch=True, reference="mean")
+
+
+def test_row_keys_do_not_name_a_reference():
+    for key in (eb2.TESTS_KEY, eb2.HOIST_KEY, eb2.SCRATCH_KEY, eb2.COMBINED_KEY, eb2.LIGHT_PATH_KEY):
+        assert "excess over Baseline median" not in key
+
+
+@pytest.mark.parametrize("reference,expected", [("zero", [5, 10, 70]), ("baseline-median", [15, 45, 100])])
+def test_counterfactual_totals_match_the_combined_row(reference, expected):
+    data = _counterfactual_data()
+    totals = eb2.counterfactual_totals(data, "guard-prefixes", scratch=True, reference=reference)
+    assert totals == expected
+    original = [eb2.eb1.out_total(c) for c in eb2.eb1.passes(data["guard-prefixes", "engine"])]
+    assert eb2.eb1.m(original) - eb2.eb1.m(totals) == \
+        eb2.bounds(data, "guard-prefixes", scratch=True, reference=reference)[eb2.COMBINED_KEY]
+
+
+def test_counterfactual_totals_rejects_unknown_reference():
+    with pytest.raises(ValueError, match="reference"):
+        eb2.counterfactual_totals(_counterfactual_data(), "guard-prefixes", scratch=True, reference="mean")
+
+
+def test_bounds_baseline_median_never_negative_when_engine_is_below_baseline():
     data = {("guard-prefixes", "engine"): [_cell(("pre-edit", 1), ("probe", 1), ("final", 3))] * 3,
             ("guard-prefixes", "baseline"): [_cell(("pre-edit", 50), ("probe", 50), ("final", 3))] * 3}
-    got = eb2.bounds(data, "guard-prefixes", scratch=True)
-    assert got["contract test lines (pre-edit + test file, excess over Baseline median)"] == 0
+    got = eb2.bounds(data, "guard-prefixes", scratch=True, reference="baseline-median")
+    assert got[eb2.TESTS_KEY] == 0
     assert got[eb2.COMBINED_KEY] == 0
