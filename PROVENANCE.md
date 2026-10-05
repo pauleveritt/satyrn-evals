@@ -2889,3 +2889,4 @@
 | evidence/2026-10-05-eb2-estimates/eb2.py | written 2026-10-05 for EB2 (plan docs/superpowers/plans/2026-10-05-eb2-offline-estimates.md); offline estimates on the 23a0ef6 EB cells, reusing eb1.py and read_cells.py unchanged |
 | evidence/2026-10-05-eb2-estimates/eb2.txt | written 2026-10-05 by evidence/2026-10-05-eb2-estimates/eb2.py over the six EB nights in ~/satyrn-runs (engine 23a0ef6), offline |
 | tests/test_eb2_estimates.py | written 2026-10-05 for EB2; default-tier tests of eb2.py's loader, rank-sum test, power and threshold rules |
+| evidence/2026-10-05-eb2-estimates/README.md | written 2026-10-05 for EB2 from eb2.txt; offline estimates, development, never deciding |
