@@ -2890,3 +2890,4 @@
 | evidence/2026-10-05-eb2-estimates/eb2.txt | written 2026-10-05 by evidence/2026-10-05-eb2-estimates/eb2.py over the six EB nights in ~/satyrn-runs (engine 23a0ef6), offline |
 | tests/test_eb2_estimates.py | written 2026-10-05 for EB2; default-tier tests of eb2.py's loader, rank-sum test, power and threshold rules |
 | evidence/2026-10-05-eb2-estimates/README.md | written 2026-10-05 for EB2 from eb2.txt; offline estimates, development, never deciding |
+| records/2026-10-05-dev-baseline-selfhost-run-record-gate.json | issued 2026-10-05 on main by `satyrn-evals record new`; ledger 2026-10-05 seven rulings item 4: six Baseline cells on run-record-gate with the line declared, development, never deciding; authority in the record |
