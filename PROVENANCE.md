@@ -2898,3 +2898,6 @@
 | docs/superpowers/specs/2026-10-05-run-record-gate-delivery-comparison.md | drafted 2026-10-05 by an agent (Opus) at the maintainer's request; pre-registration for the run-record-gate comparison on delivery; draft for approval |
 | evidence/2026-10-05-rrg-delivery/decide.py | written 2026-10-05 for the run-record-gate delivery comparison; the pre-registered reader (§8 item 5), built and frozen on synthetic cells before launch |
 | tests/test_rrg_delivery_decide.py | written 2026-10-05 for the run-record-gate delivery comparison; default-tier tests of decide.py on synthetic cells and night directories, before launch |
+| records/2026-10-05-campaign-selfhost-run-record-gate-a.json | issued 2026-10-05 on main by `satyrn-evals record new`; campaign piece a of 3 of the pre-registered run-record-gate delivery comparison (spec §10, 9a5e668); authority in the record |
+| records/2026-10-05-campaign-selfhost-run-record-gate-b.json | issued 2026-10-05 on main by `satyrn-evals record new`; campaign piece b of 3 of the pre-registered run-record-gate delivery comparison (spec §10, 9a5e668); authority in the record |
+| records/2026-10-05-campaign-selfhost-run-record-gate-c.json | issued 2026-10-05 on main by `satyrn-evals record new`; campaign piece c of 3 of the pre-registered run-record-gate delivery comparison (spec §10, 9a5e668); authority in the record |
