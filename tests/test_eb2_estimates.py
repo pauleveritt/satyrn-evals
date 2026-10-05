@@ -106,14 +106,30 @@ def test_verdict_line_within_margin_is_no_harm():
 
 
 def test_verdict_line_names_bounds_that_clear():
-    line = eb2.verdict_line("guard-prefixes", 21576.0, {"light path": 22000.0, "test lines": 9000.0, "light n.a.": None})
+    line = eb2.verdict_line("guard-prefixes", 21576.0,
+                            {eb2.LIGHT_PATH_KEY: 30000.0, "test lines": 22000.0, "hoisting": 100.0,
+                             eb2.COMBINED_KEY: 22100.0})
     assert line.startswith("guard-prefixes: required cut 21,576")
-    assert "can clear alone: light path" in line
+    assert "can clear alone: test lines" in line
+    assert eb2.LIGHT_PATH_KEY not in line
 
 
 def test_verdict_line_stop_when_nothing_clears():
-    line = eb2.verdict_line("guard-prefixes", 21576.0, {"test lines": 9000.0})
-    assert line.endswith("no listed remedy can clear the threshold alone")
+    line = eb2.verdict_line("guard-prefixes", 21576.0,
+                            {eb2.LIGHT_PATH_KEY: 30000.0, "test lines": 9000.0, eb2.COMBINED_KEY: 12000.0})
+    assert line.endswith("no listed remedy can clear the threshold, alone or combined; "
+                         "the light path's figure is the whole gap by definition, not an estimate")
+
+
+def test_verdict_line_combined_clears():
+    line = eb2.verdict_line("guard-prefixes", 21576.0,
+                            {eb2.LIGHT_PATH_KEY: 30000.0, "a": 12000.0, "b": 11000.0, eb2.COMBINED_KEY: 23000.0})
+    assert line.endswith("no remedy clears alone; the estimable remedies combined can clear (upper bound)")
+
+
+def test_verdict_line_zero_cut_is_no_harm():
+    assert eb2.verdict_line("review-script", 0.0, {"x": 100.0}) == \
+        "review-script: within margin (no-harm); a remedy must not raise its median above the margin"
 
 
 def test_bounds_marks_light_path_na_off_its_tasks():
@@ -121,4 +137,57 @@ def test_bounds_marks_light_path_na_off_its_tasks():
         return {"verdict": "pass", "turns": [{"cat": "probe", "out": total}]}
 
     data = {("review-script", "engine"): [cell(10)], ("review-script", "baseline"): [cell(5)]}
-    assert eb2.bounds(data, "review-script", scratch=False)["light path (whole E-B median gap)"] is None
+    assert eb2.bounds(data, "review-script", scratch=False)[eb2.LIGHT_PATH_KEY] is None
+
+
+def _cell(*turns):
+    return {"verdict": "pass", "turns": [{"cat": cat, "out": out} for cat, out in turns]}
+
+
+def test_bounds_gives_light_path_number_on_guard_prefixes():
+    data = {("guard-prefixes", "engine"): [_cell(("probe", 10))], ("guard-prefixes", "baseline"): [_cell(("probe", 4))]}
+    assert eb2.bounds(data, "guard-prefixes", scratch=False)[eb2.LIGHT_PATH_KEY] == 6
+
+
+def _counterfactual_data():
+    # Engine totals 20, 110, 100 (median 100); Baseline totals 25, 55, 60 (median 55).
+    # Baseline pre-edit + test file: 10, 20, 30 (median 20); Baseline probe: 5, 15, 25 (median 15).
+    engine = [
+        _cell(("pre-edit", 10), ("retry:schema", 5), ("final", 5)),
+        _cell(("pre-edit", 30), ("test file", 10), ("retry:ANCHOR_MISSING", 20), ("probe", 40), ("final", 10)),
+        _cell(("pre-edit", 20), ("probe", 10), ("final", 70)),
+    ]
+    baseline = [
+        _cell(("pre-edit", 10), ("probe", 5), ("final", 10)),
+        _cell(("pre-edit", 20), ("probe", 15), ("final", 20)),
+        _cell(("pre-edit", 30), ("probe", 25), ("final", 5)),
+    ]
+    return {("guard-prefixes", "engine"): engine, ("guard-prefixes", "baseline"): baseline}
+
+
+def test_bounds_are_counterfactual_medians():
+    got = eb2.bounds(_counterfactual_data(), "guard-prefixes", scratch=True)
+    tests_key = "contract test lines (pre-edit + test file, excess over Baseline median)"
+    hoist_key = "edit-shape hoisting (all schema + ANCHOR_MISSING retries)"
+    probe_key = "scratch path (probe, excess over Baseline median; new in EB2 under D3, not an EB1 §5 formula)"
+    # test-lines removals 0, 20, 0 (cell 1 at 10 is below the median 20: clamped): 20,90,100 -> 100 - 90
+    assert got[tests_key] == 10
+    # hoisting removals 5, 20, 0: 15,90,100 -> 100 - 90
+    assert got[hoist_key] == 10
+    # probe removals 0, 25, 0: 20,85,100 -> 100 - 85
+    assert got[probe_key] == 15
+    # combined removals 5, 65, 0: 15,45,100 -> 100 - 45 = 55, not the sum of rows (35)
+    assert got[eb2.COMBINED_KEY] == 55
+    assert got[eb2.LIGHT_PATH_KEY] == 45  # 100 - 55, reported, not an estimate
+    without = eb2.bounds(_counterfactual_data(), "guard-prefixes", scratch=False)
+    assert probe_key not in without
+    # combined without scratch: removals 5, 40, 0: 15,70,100 -> 100 - 70
+    assert without[eb2.COMBINED_KEY] == 30
+
+
+def test_bounds_never_negative_when_engine_is_below_baseline():
+    data = {("guard-prefixes", "engine"): [_cell(("pre-edit", 1), ("probe", 1), ("final", 3))] * 3,
+            ("guard-prefixes", "baseline"): [_cell(("pre-edit", 50), ("probe", 50), ("final", 3))] * 3}
+    got = eb2.bounds(data, "guard-prefixes", scratch=True)
+    assert got["contract test lines (pre-edit + test file, excess over Baseline median)"] == 0
+    assert got[eb2.COMBINED_KEY] == 0

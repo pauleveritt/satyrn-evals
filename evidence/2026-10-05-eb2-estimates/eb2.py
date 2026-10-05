@@ -134,32 +134,54 @@ def required_cut(eng_total, base_total, margin) -> float:
     return statistics.median(eng_total) - margin * statistics.median(base_total)
 
 
+LIGHT_PATH_KEY = "light path (whole E-B median gap; not an estimate)"
+COMBINED_KEY = "all estimable remedies combined"
+TESTS_KEY = "contract test lines (pre-edit + test file, excess over Baseline median)"
+HOIST_KEY = "edit-shape hoisting (all schema + ANCHOR_MISSING retries)"
+# The scratch row is new in EB2 under D3; it is not an EB1 section 5 formula.
+SCRATCH_KEY = "scratch path (probe, excess over Baseline median; new in EB2 under D3, not an EB1 §5 formula)"
+
+
 def bounds(data, task: str, scratch: bool) -> dict[str, float | None]:
-    """Upper bounds per remedy, in output tokens per delivered pass (EB1 section 5 formulas)."""
+    """Upper bounds on the reduction of the median per-pass total, per-cell counterfactual.
+
+    Each remedy row removes an amount from every Engine pass (never below zero), and the
+    bound is median(totals) - median(totals - removed). Categories are disjoint per turn,
+    so the combined row applies the rows' per-cell removals together. The EB1 section 5
+    figures stay printed by eb1.section5 for comparison.
+    """
     e, b = (eb1.passes(data[task, arm]) for arm in ("engine", "baseline"))
     ce, cb = [eb1.cat_tokens(c) for c in e], [eb1.cat_tokens(c) for c in b]
-
-    def pick(cats, keys):
-        return [sum(x[k] for k in keys) for x in cats]
-
-    gap = eb1.m([eb1.out_total(c) for c in e]) - eb1.m([eb1.out_total(c) for c in b])
-    rows: dict[str, float | None] = {
-        "light path (whole E-B median gap)": gap if task in LIGHT_PATH_TASKS else None,
-        "contract test lines (E-B median, pre-edit + test file)":
-            eb1.m(pick(ce, ["pre-edit", "test file"])) - eb1.m(pick(cb, ["pre-edit", "test file"])),
-        "edit-shape hoisting (E median, schema + ANCHOR_MISSING retries)":
-            eb1.m(pick(ce, ["retry:schema", "retry:ANCHOR_MISSING"])),
+    totals = [eb1.out_total(c) for c in e]
+    test_median = eb1.m([x["pre-edit"] + x["test file"] for x in cb])
+    probe_median = eb1.m([x["probe"] for x in cb])
+    removals = {
+        TESTS_KEY: [max(0, x["pre-edit"] + x["test file"] - test_median) for x in ce],
+        HOIST_KEY: [x["retry:schema"] + x["retry:ANCHOR_MISSING"] for x in ce],
     }
     if scratch:
-        rows["scratch path (E-B median, probe)"] = eb1.m(pick(ce, ["probe"])) - eb1.m(pick(cb, ["probe"]))
-    return rows
+        removals[SCRATCH_KEY] = [max(0, x["probe"] - probe_median) for x in ce]
+    removals[COMBINED_KEY] = [sum(parts) for parts in zip(*removals.values(), strict=True)]
+    base_median = eb1.m(totals)
+    rows: dict[str, float | None] = {
+        name: base_median - eb1.m([t - r for t, r in zip(totals, cut, strict=True)])
+        for name, cut in removals.items()
+    }
+    gap = base_median - eb1.m([eb1.out_total(c) for c in b])
+    return {LIGHT_PATH_KEY: gap if task in LIGHT_PATH_TASKS else None, **rows}
 
 
 def verdict_line(task: str, cut: float, bounds: dict) -> str:
+    """The light path is reported but never counted: its figure is the whole gap by definition."""
     if cut <= 0:
         return f"{task}: within margin (no-harm); a remedy must not raise its median above the margin"
-    clear = [name for name, value in bounds.items() if value is not None and value >= cut]
     head = f"{task}: required cut {cut:,.0f}; "
-    if clear:
-        return head + "can clear alone: " + ", ".join(clear)
-    return head + "no listed remedy can clear the threshold alone"
+    alone = [name for name, value in bounds.items()
+             if name not in (LIGHT_PATH_KEY, COMBINED_KEY) and value is not None and value >= cut]
+    if alone:
+        return head + "can clear alone: " + ", ".join(alone)
+    combined = bounds.get(COMBINED_KEY)
+    if combined is not None and combined >= cut:
+        return head + "no remedy clears alone; the estimable remedies combined can clear (upper bound)"
+    return (head + "no listed remedy can clear the threshold, alone or combined; "
+            "the light path's figure is the whole gap by definition, not an estimate")
