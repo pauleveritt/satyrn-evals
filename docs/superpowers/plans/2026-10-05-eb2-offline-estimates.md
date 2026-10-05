@@ -1,5 +1,7 @@
 # EB2 — offline remedy estimates on the 23a0ef6 cells — Implementation Plan
 
+> **Executed 2026-10-05 with controller rulings that supersede parts of Tasks 3–5; see the decision ledger entry '2026-10-05 — EB2 executed'.**
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** For each candidate Engine-budget remedy, state an offline estimate on the retained 23a0ef6 cells of what it can save, and whether that can clear the floor-parity threshold, before any remedy is specified or built.

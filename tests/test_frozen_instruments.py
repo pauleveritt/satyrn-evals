@@ -3,7 +3,7 @@
 C3 and C4 outputs are reproduced by running these files unmodified; an edit
 changes signed rows. Digests computed with ``git show 0c3ad1f:<path> | shasum -a 256``.
 The file also pins the EB2 inputs, ``eb1.py`` and ``read_cells.py``, at their
-committed blobs (``git show HEAD:<path> | shasum -a 256`` on the EB2 branch).
+committed blobs (``git show 8079874:<path> | shasum -a 256``).
 """
 
 import hashlib
