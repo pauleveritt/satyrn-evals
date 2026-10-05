@@ -2891,3 +2891,4 @@
 | tests/test_eb2_estimates.py | written 2026-10-05 for EB2; default-tier tests of eb2.py's loader, rank-sum test, power and threshold rules |
 | evidence/2026-10-05-eb2-estimates/README.md | written 2026-10-05 for EB2 from eb2.txt; offline estimates, development, never deciding |
 | records/2026-10-05-dev-baseline-selfhost-run-record-gate.json | issued 2026-10-05 on main by `satyrn-evals record new`; ledger 2026-10-05 seven rulings item 4: six Baseline cells on run-record-gate with the line declared, development, never deciding; authority in the record |
+| records/2026-10-05-dev-baseline-selfhost-run-record-gate.result.json | written 2026-10-05 by `satyrn-evals launch` (Baseline arm, Apple M5 Max); ruling-4 development read, committed as the launcher wrote it |
