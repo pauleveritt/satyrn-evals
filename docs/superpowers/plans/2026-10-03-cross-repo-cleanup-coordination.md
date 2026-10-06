@@ -212,6 +212,22 @@ In `tests/fixtures/derive_size/selfhost-preflight-quiet.json`, set `"produces_co
 
 Leave `"verdict": "admitted"` and `"non_test_path_count": 1` as they are.
 
+The re-vendored task no longer sits at the cap. That breaks one existing test (the 2026-10-03 draft missed it; found by the implementer on 2026-10-06), and it makes one line of the module docstring stale. The boundary itself stays pinned synthetically by `test_ten_produced_symbols_are_admitted` and `test_eleven_produced_symbols_are_refused`. Make two more edits in `tests/test_derive_size.py`:
+
+- Replace the whole `test_selfhost_preflight_quiet_sits_exactly_at_the_produces_cap` function with:
+
+```python
+def test_selfhost_preflight_quiet_sits_one_under_the_produces_cap():
+    # The real task, re-vendored 2026-10-06 at 9 produced symbols. It sat at
+    # the cap (10) until the live task dropped `Certificate.as_dict()`. The
+    # boundary itself is pinned synthetically by the two tests below.
+    request = request_for("selfhost-preflight-quiet")
+    assert len(produces_names(request)) == MEDIUM_PRODUCES_CAP - 1
+    assert size_refusal(request) is None
+```
+
+- In the module docstring, replace `(it sits\nexactly at the 10-symbol cap today) turns` with `(it sat\nexactly at the 10-symbol cap then) would turn`. The line break stays where it is.
+
 - [ ] **Step 5: Run the module, then the gates.**
 
 ```bash
