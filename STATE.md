@@ -142,20 +142,19 @@ and whether a second task (preflight-quiet, unconfirmed as a ceiling task since
 2026-10-05) is wanted before any release claim. The results page is drafted
 for the maintainer to place (`evidence/2026-10-05-rrg-delivery/result-draft.md`).
 
-**EB is closed on the floor secondary** with the stated negative above (ledger
-"EB after EB2: seven rulings"). The decider's reading is fixed: an arm's total
-output tokens ÷ its delivered passes, with delivery beside it. The scratch-path
-remedy is withdrawn. The light path is not built (decision L, 2026-10-06: no;
-`TODO.md`, Freezer).
+**EB is postponed** until large blocks of GPU time (ledger "EB postponed").
+The floor negative at `23a0ef6` stands; the decider is an arm's total output
+tokens ÷ its delivered passes, with delivery beside it. Decision L is no. The
+cost candidates are unmeasured, not refuted; they are in `TODO.md`, Freezer.
 
 **EB re-plan, 2026-10-06** (ledger "Review of the comparison and EB re-plan:
 eight rulings"; review `evidence/2026-10-06-eb-replan/`; sequence
 `docs/superpowers/plans/2026-10-06-eb-replan.md`). The claim is a finishing
 claim: Baseline held a passing tree at the budget cut in 22 of 26 budget cells.
-Next: the Engine tolerates a model's `git commit` instead of discarding the
+Done: the Engine tolerates a model's `git commit` instead of discarding the
 candidate (parity; offline bound +2/36 run-record-gate, +1/12 review-script),
 built and re-pinned 2026-10-06 (`9aecfb5`; bound in
-`evidence/2026-10-06-eb-replan/head-tolerance.md`). The light path is the one
+`evidence/2026-10-06-eb-replan/head-tolerance.md`; smoke cell `71ede5c`). The light path is the one
 remedy with an effect of the floor gap's size; the maintainer ruled it out for
 now (decision L, 2026-10-06). No completion gate, no deciding read on preflight-quiet.
 

@@ -78,9 +78,9 @@ Nothing is built on any of them in the meantime.
 | C3 | Re-run the census outcome cells under confinement | batch, frozen in daylight | a classified table on this harness, with refused and flagged cells counted  done 2026-10-03: ledger entry "C3", evidence/2026-10-03-c3-census/ |
 | C4 | Re-derive the finishing counterfactual, then resume R0's order | attended | the counterfactual's verdict on the new census, before any Engine build  done 2026-10-03: ledger entry "C4", verify; next: R0 sitting (census design §8) |
 
-## Next — Phase EB, engine budget
+## Postponed — Phase EB, engine budget
 
-Design `docs/superpowers/specs/2026-10-02-engine-budget-design.md`; evidence `evidence/2026-10-02-engine-budget/`, `evidence/2026-10-03-eb1-read/`, `evidence/2026-10-05-eb-cell-read/`, `evidence/2026-10-05-eb2-estimates/`, `evidence/2026-10-06-eb-replan/`. Decider: total output tokens ÷ delivered passes. Done: EB0, EB1, the re-pin, the cell read, EB2 (offline cannot discriminate); EB3 does not run, EB closed on a floor negative; the run-record-gate delivery comparison holds (2026-10-06). **Re-planned 2026-10-06** (`docs/superpowers/plans/2026-10-06-eb-replan.md`): the Engine tolerates a model commit, re-pinned at `9aecfb5`. The light path is not built (decision L, 2026-10-06: no; `TODO.md`, Freezer). EB has no next step.
+Design `docs/superpowers/specs/2026-10-02-engine-budget-design.md`; evidence `evidence/2026-10-02-engine-budget/`, `evidence/2026-10-03-eb1-read/`, `evidence/2026-10-05-eb-cell-read/`, `evidence/2026-10-05-eb2-estimates/`, `evidence/2026-10-06-eb-replan/`. Decider: total output tokens ÷ delivered passes. Done: EB0, EB1, the re-pin, the cell read, EB2 (offline cannot discriminate); EB3 does not run, EB closed on a floor negative; the run-record-gate delivery comparison holds (2026-10-06). **Re-planned 2026-10-06** (`docs/superpowers/plans/2026-10-06-eb-replan.md`): the Engine tolerates a model commit, re-pinned at `9aecfb5`. **Postponed 2026-10-06 until large blocks of GPU time** (ledger "EB postponed"): decision L is no, and the unmeasured cost candidates are in `TODO.md`, Freezer.
 
 ## Rules that bind every phase
 
