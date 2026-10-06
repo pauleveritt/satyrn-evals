@@ -293,7 +293,7 @@ git merge-base --is-ancestor d4abd65 "$M" && echo "STOP: d4abd65 is in main" || 
 git diff --stat 23a0ef6 "$M"
 ```
 
-Expected: two `in main:` lines, `d4abd65 out`, and a diff that names only `src/satyrn_engine/delivery.py`, `BACKLOG.md`, `PROVENANCE.md` and files under `tests/` (the two branches' files). Any `MISSING:`, a `STOP:`, or another file in the diff stops the task. A missing branch forces a second re-pin, and an extra file is a change no ledger entry covers.
+Expected: two `in main:` lines, `d4abd65 out`, and a diff that names only `src/satyrn_engine/delivery.py`, `docs/usage.md`, `BACKLOG.md`, `PROVENANCE.md` and files under `tests/` (the two branches' files). `docs/usage.md` is one of the three docs `just sync-engine` copies, so Step 3 changes `_engine/usage.md` too. On 2026-10-06, `git merge-tree --write-tree eb-head-tolerance cleanup-derive-size-fixture` merged cleanly, although both branches touch `BACKLOG.md`. Any `MISSING:`, a `STOP:`, or another file in the diff stops the task. A missing branch forces a second re-pin, and an extra file is a change no ledger entry covers.
 
 - [ ] **Step 2: Run EB re-plan Task 3 Steps 1–3** with `<M>`: fast-forward `../satyrn-engine` to `<M>`, set `pins.engine_commit` in the three arm files `grep -l 23a0ef6 arms/` lists, confirm the seven digests are unchanged, and write the ledger entry "Engine re-pin for head tolerance". Have that entry also say that the merge carries `cleanup-derive-size-fixture` (tests, fixture and backlog only).
 
