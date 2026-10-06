@@ -1,0 +1,126 @@
+{
+  "record": "records/2026-10-06-smoke-engine-9aecfb5-review-script.json",
+  "record_sha256": "93c5dbb16f2b03dec9fcb1bec0bba2ac959b02579f1bb46b275800ae8ed86366",
+  "arm_sha256": {
+    "engine": "51d33dcdb6c816fc224a25721715397fa4633de0f89a3451019f9a03bee87f9e"
+  },
+  "status": "complete",
+  "reason": null,
+  "night": "/Users/pauleveritt/satyrn-runs/2026-10-06-smoke-engine-9aecfb5-review-script",
+  "task": "selfhost-review-script",
+  "rung": "R1-plan",
+  "k": 1,
+  "n": 1,
+  "purpose": "development",
+  "arms": {
+    "engine": {
+      "finished": 1,
+      "n": 1,
+      "code_counts": {
+        "OK": 1
+      },
+      "passes": 1,
+      "summary": "/Users/pauleveritt/satyrn-runs/2026-10-06-smoke-engine-9aecfb5-review-script/engine/summary.json",
+      "infrastructure": [],
+      "contamination": {
+        "graded": 1,
+        "flagged": 0,
+        "clean": 1,
+        "unmeasured": 0
+      }
+    }
+  },
+  "cells": [
+    {
+      "slot": 0,
+      "arm": "engine",
+      "attempt_dir": "selfhost-review-script-20261006-182139-448541",
+      "code": "OK",
+      "verdict": "pass",
+      "infrastructure": false
+    }
+  ],
+  "replaced": [],
+  "sittings": [
+    {
+      "record": "records/2026-10-06-smoke-engine-9aecfb5-review-script.json",
+      "started": "2026-10-06T18:21:39+00:00",
+      "k": 1,
+      "evals_head": "51571064e54a349c27fd7630d2379a68be91c386",
+      "preflight": {
+        "confinement": "extension",
+        "extension": "/Users/pauleveritt/projects/pauleveritt/satyrn-evals/.claude/worktrees/eb-replan/packages/confinement/confinement.ts",
+        "tasks_root": "/Users/pauleveritt/projects/pauleveritt/satyrn-evals/.claude/worktrees/eb-replan/src/satyrn_evals/tasks"
+      },
+      "engine_engine_self_test": {
+        "base_exit": 0,
+        "known_good_exit": 0,
+        "repair_base": false
+      },
+      "task_self_test": {
+        "base_exit": 0,
+        "known_good_exit": 0,
+        "repair_base": false
+      },
+      "model_server": {
+        "Ornith-1.5-9B-MLX-8bit": {
+          "base_url": "http://127.0.0.1:8001",
+          "authenticated": true
+        }
+      },
+      "settings": {
+        "engine": {
+          "arm_sha256": "e09564a2a7b655b65a372b0d624892f34f3ae9927f41e001f4e0edf01b52a307",
+          "backend": "omlx",
+          "omlx_entry": {
+            "enable_thinking": true,
+            "force_sampling": false,
+            "is_default": true,
+            "is_pinned": false,
+            "max_context_window": 262144,
+            "max_tokens": 16000,
+            "min_p": 0.0,
+            "preserve_thinking": true,
+            "reasoning_parser": "qwen_3",
+            "temperature": 0.6,
+            "thinking_budget_enabled": false,
+            "top_k": 20,
+            "top_p": 0.95,
+            "trust_remote_code": false,
+            "turboquant_kv_enabled": false
+          },
+          "omlx_entry_sha256": "d84e6f974c7086a626b61f65d156f56c153e60fd1de5c51d921da929db2235bc",
+          "pi_entry": {
+            "contextWindow": 262144,
+            "cost": {
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "input": 0,
+              "output": 0
+            },
+            "id": "Ornith-1.5-9B-MLX-8bit",
+            "input": [
+              "text"
+            ],
+            "maxTokens": 16000,
+            "name": "Ornith 1.5 9B (MLX 8-bit local, served)",
+            "reasoning": true,
+            "samplingParams": {
+              "min_p": 0.0,
+              "presence_penalty": 0.0,
+              "repetition_penalty": 1.0,
+              "temperature": 0.6,
+              "top_k": 20,
+              "top_p": 0.95
+            }
+          },
+          "pi_entry_sha256": "ab238d1883f4a4bf150d0f4e55dedd8adf8292ff647eefe593a063d3b51eba23",
+          "pi_models": "/Users/pauleveritt/.pi/agent/models.json"
+        }
+      },
+      "ended": "2026-10-06T18:25:11+00:00",
+      "status": "complete",
+      "reason": null
+    }
+  ]
+}
