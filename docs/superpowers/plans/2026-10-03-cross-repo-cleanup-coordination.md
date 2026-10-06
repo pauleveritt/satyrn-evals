@@ -18,7 +18,7 @@
 - **Do not touch:** engine `main` or the checkout `../satyrn-engine` (any commit there moves HEAD off the pin and blocks Engine launches); the worktrees `../satyrn-engine-eb3` and `.claude/worktrees/eb-replan`; `~/satyrn-runs`; the untracked `evidence/*/…-draft.md` files; any decided evidence or ledger entry.
 - **Engine work** happens in the worktree `../satyrn-engine-cleanup`, never in `../satyrn-engine`.
 - **One re-pin.** This plan's engine branch reaches engine `main` in the same maintainer merge as `eb-head-tolerance`, before the EB re-plan's Task 3 writes the pin. If it misses that merge it waits for the next runtime re-pin; it never forces a pin of its own.
-- **`origin/derive-new-top-level-module` stays out.** It holds `d4abd65` ("derive: admit a new top-level module") and `92c9282`, is unmerged, and changes `derive.py`, which changes the Engine's contract. It needs the maintainer's decision and must not ride this re-pin.
+- **`origin/derive-new-top-level-module` stays out.** It holds `d4abd65` ("derive: admit a new top-level module") and `92c9282`, is unmerged, and changes `derive.py`, which changes the Engine's contract. The maintainer decided on 2026-10-06 that it lands with the light path, not this re-pin (see "Not in this plan").
 - **No backend change.** The ollama switch is its own plan (see the end of this file). Do not edit `~/.pi/agent/models.json` or the oMLX settings.
 - Default tests use no model, network or subprocess. A refusal test has a sibling success test.
 - Never pipe a gate. Write `just gates > "$TMPDIR/gates.log" 2>&1 && git add … && git commit …`, so the commit depends on the gate itself, and print the exit separately on failure.
@@ -332,7 +332,11 @@ git show --stat HEAD
 
 ## Not in this plan
 
-- **`origin/derive-new-top-level-module` (`d4abd65`, `92c9282`).** It is unmerged and changes `derive.py`, so it changes the Engine's contract. It needs the maintainer's decision, its own admission question, and its own re-pin. It must not ride Task 5.
+- **`origin/derive-new-top-level-module` (`d4abd65`, `92c9282`): it lands with the light path.** The maintainer decided this on 2026-10-06. It is unmerged and changes `derive.py`, so it changes the Engine's contract, and it must not ride Task 5.
+  - **If decision L is yes:** merge it into engine `main` just before the light-path build. That build changes `derive.py` too, and its planned test that the medium tasks' derived contracts stay byte-identical covers this change as well. The light-path re-pin's ledger entry names it.
+  - **If decision L is no:** it rides the next runtime re-pin, and that re-pin's ledger entry names it.
+  - **Evidence (scratch, not a ledger fact):** on 2026-10-06 the derived contracts for all 32 requests across the 12 evals tasks were identical at `23a0ef6` with and without `d4abd65`. `format_number` fails the same way in both: no `pyproject.toml`.
+  - **Merging:** `derive.py` merges cleanly onto `origin/main`, but `BACKLOG.md` conflicts with `92c9282`; resolve by keeping both entries.
 - **The ollama switch** gets its own plan, written after EB's decision L (EB re-plan "Step 2"). Facts that plan starts from:
   - Backends never pool.
   - EB Step 2 compares new cells with retained oMLX cells.
