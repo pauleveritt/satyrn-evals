@@ -1,0 +1,427 @@
+{
+  "night": "/Users/pauleveritt/satyrn-runs/2026-10-05-campaign-selfhost-run-record-gate-b",
+  "rows": [
+    {
+      "attempt": "selfhost-run-record-gate-20261006-010609-049503",
+      "task": "selfhost-run-record-gate",
+      "arm": "baseline",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": {
+        "by": "turns",
+        "output_tokens": 31540,
+        "turn": 49,
+        "at": "2026-10-06T01:36:19.600870+00:00"
+      },
+      "line_verdict": "pass",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-run-record-gate-20261006-010609-140259",
+      "task": "selfhost-run-record-gate",
+      "arm": "engine",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": {
+        "by": "tokens",
+        "output_tokens": 32130,
+        "turn": 25,
+        "at": "2026-10-06T01:35:26.208620+00:00"
+      },
+      "line_verdict": "pass",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-run-record-gate-20261006-010609-238714",
+      "task": "selfhost-run-record-gate",
+      "arm": "baseline",
+      "code": "BUDGET_EXCEEDED",
+      "verdict": null,
+      "tripped_verdict": "pass",
+      "line_crossed": {
+        "by": "tokens",
+        "output_tokens": 33277,
+        "turn": 45,
+        "at": "2026-10-06T01:35:38.460083+00:00"
+      },
+      "line_verdict": "fail",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-run-record-gate-20261006-014144-563386",
+      "task": "selfhost-run-record-gate",
+      "arm": "engine",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": null,
+      "line_verdict": "pass",
+      "line_source": "final",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-run-record-gate-20261006-015046-934696",
+      "task": "selfhost-run-record-gate",
+      "arm": "baseline",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": {
+        "by": "turns",
+        "output_tokens": 27213,
+        "turn": 49,
+        "at": "2026-10-06T02:14:09.242329+00:00"
+      },
+      "line_verdict": "pass",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-run-record-gate-20261006-015113-247011",
+      "task": "selfhost-run-record-gate",
+      "arm": "engine",
+      "code": "NO_PATCH",
+      "verdict": null,
+      "tripped_verdict": null,
+      "line_crossed": {
+        "by": "tokens",
+        "output_tokens": 32474,
+        "turn": 41,
+        "at": "2026-10-06T02:24:56.871920+00:00"
+      },
+      "line_verdict": "pass",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-run-record-gate-20261006-021337-184863",
+      "task": "selfhost-run-record-gate",
+      "arm": "baseline",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": {
+        "by": "turns",
+        "output_tokens": 27895,
+        "turn": 49,
+        "at": "2026-10-06T02:40:53.004376+00:00"
+      },
+      "line_verdict": "pass",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-run-record-gate-20261006-022542-219472",
+      "task": "selfhost-run-record-gate",
+      "arm": "engine",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": {
+        "by": "tokens",
+        "output_tokens": 32876,
+        "turn": 40,
+        "at": "2026-10-06T02:58:53.151385+00:00"
+      },
+      "line_verdict": "fail",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-run-record-gate-20261006-023457-051586",
+      "task": "selfhost-run-record-gate",
+      "arm": "baseline",
+      "code": "BUDGET_EXCEEDED",
+      "verdict": null,
+      "tripped_verdict": "pass",
+      "line_crossed": {
+        "by": "turns",
+        "output_tokens": 26520,
+        "turn": 49,
+        "at": "2026-10-06T03:00:57.023871+00:00"
+      },
+      "line_verdict": "pass",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-run-record-gate-20261006-025352-709608",
+      "task": "selfhost-run-record-gate",
+      "arm": "engine",
+      "code": "BUDGET_EXCEEDED",
+      "verdict": null,
+      "tripped_verdict": null,
+      "line_crossed": {
+        "by": "turns",
+        "output_tokens": 27592,
+        "turn": 49,
+        "at": "2026-10-06T03:21:05.980195+00:00"
+      },
+      "line_verdict": "pass",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-run-record-gate-20261006-031235-667868",
+      "task": "selfhost-run-record-gate",
+      "arm": "baseline",
+      "code": "BUDGET_EXCEEDED",
+      "verdict": null,
+      "tripped_verdict": "pass",
+      "line_crossed": {
+        "by": "turns",
+        "output_tokens": 24123,
+        "turn": 49,
+        "at": "2026-10-06T03:34:39.796043+00:00"
+      },
+      "line_verdict": "pass",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-run-record-gate-20261006-031453-674821",
+      "task": "selfhost-run-record-gate",
+      "arm": "engine",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": {
+        "by": "tokens",
+        "output_tokens": 32019,
+        "turn": 31,
+        "at": "2026-10-06T03:47:50.709294+00:00"
+      },
+      "line_verdict": "fail",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-run-record-gate-20261006-033603-186779",
+      "task": "selfhost-run-record-gate",
+      "arm": "baseline",
+      "code": "BUDGET_EXCEEDED",
+      "verdict": null,
+      "tripped_verdict": "pass",
+      "line_crossed": {
+        "by": "turns",
+        "output_tokens": 29476,
+        "turn": 49,
+        "at": "2026-10-06T04:04:31.191348+00:00"
+      },
+      "line_verdict": "pass",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-run-record-gate-20261006-034345-402300",
+      "task": "selfhost-run-record-gate",
+      "arm": "engine",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": {
+        "by": "tokens",
+        "output_tokens": 32020,
+        "turn": 44,
+        "at": "2026-10-06T04:18:28.529040+00:00"
+      },
+      "line_verdict": "fail",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-run-record-gate-20261006-040503-895266",
+      "task": "selfhost-run-record-gate",
+      "arm": "baseline",
+      "code": "BUDGET_EXCEEDED",
+      "verdict": null,
+      "tripped_verdict": "pass",
+      "line_crossed": {
+        "by": "turns",
+        "output_tokens": 23514,
+        "turn": 49,
+        "at": "2026-10-06T04:30:12.991587+00:00"
+      },
+      "line_verdict": "pass",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-run-record-gate-20261006-041714-694438",
+      "task": "selfhost-run-record-gate",
+      "arm": "engine",
+      "code": "BUDGET_EXCEEDED",
+      "verdict": null,
+      "tripped_verdict": null,
+      "line_crossed": {
+        "by": "tokens",
+        "output_tokens": 35008,
+        "turn": 45,
+        "at": "2026-10-06T04:53:41.375037+00:00"
+      },
+      "line_verdict": "pass",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-run-record-gate-20261006-043828-177585",
+      "task": "selfhost-run-record-gate",
+      "arm": "baseline",
+      "code": "BUDGET_EXCEEDED",
+      "verdict": null,
+      "tripped_verdict": "pass",
+      "line_crossed": {
+        "by": "turns",
+        "output_tokens": 31012,
+        "turn": 49,
+        "at": "2026-10-06T05:07:59.959297+00:00"
+      },
+      "line_verdict": "pass",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-run-record-gate-20261006-044006-905223",
+      "task": "selfhost-run-record-gate",
+      "arm": "engine",
+      "code": "OK",
+      "verdict": "pass",
+      "tripped_verdict": null,
+      "line_crossed": null,
+      "line_verdict": "pass",
+      "line_source": "final",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-run-record-gate-20261006-050926-500151",
+      "task": "selfhost-run-record-gate",
+      "arm": "baseline",
+      "code": "BUDGET_EXCEEDED",
+      "verdict": null,
+      "tripped_verdict": "fail",
+      "line_crossed": {
+        "by": "turns",
+        "output_tokens": 28329,
+        "turn": 49,
+        "at": "2026-10-06T05:36:57.690325+00:00"
+      },
+      "line_verdict": "fail",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-run-record-gate-20261006-050943-731802",
+      "task": "selfhost-run-record-gate",
+      "arm": "engine",
+      "code": "BUDGET_EXCEEDED",
+      "verdict": null,
+      "tripped_verdict": null,
+      "line_crossed": {
+        "by": "turns",
+        "output_tokens": 31938,
+        "turn": 49,
+        "at": "2026-10-06T05:41:19.020416+00:00"
+      },
+      "line_verdict": "pass",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-run-record-gate-20261006-052523-970895",
+      "task": "selfhost-run-record-gate",
+      "arm": "baseline",
+      "code": "BUDGET_EXCEEDED",
+      "verdict": null,
+      "tripped_verdict": "pass",
+      "line_crossed": {
+        "by": "turns",
+        "output_tokens": 25451,
+        "turn": 49,
+        "at": "2026-10-06T05:49:38.130801+00:00"
+      },
+      "line_verdict": "pass",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-run-record-gate-20261006-054648-457847",
+      "task": "selfhost-run-record-gate",
+      "arm": "engine",
+      "code": "OK",
+      "verdict": "unavailable",
+      "tripped_verdict": null,
+      "line_crossed": {
+        "by": "tokens",
+        "output_tokens": 32992,
+        "turn": 35,
+        "at": "2026-10-06T06:21:44.779049+00:00"
+      },
+      "line_verdict": "unavailable",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-run-record-gate-20261006-055606-066842",
+      "task": "selfhost-run-record-gate",
+      "arm": "baseline",
+      "code": "BUDGET_EXCEEDED",
+      "verdict": null,
+      "tripped_verdict": "pass",
+      "line_crossed": {
+        "by": "turns",
+        "output_tokens": 25012,
+        "turn": 49,
+        "at": "2026-10-06T06:19:43.421692+00:00"
+      },
+      "line_verdict": "pass",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    },
+    {
+      "attempt": "selfhost-run-record-gate-20261006-060204-502157",
+      "task": "selfhost-run-record-gate",
+      "arm": "engine",
+      "code": "BUDGET_EXCEEDED",
+      "verdict": null,
+      "tripped_verdict": null,
+      "line_crossed": {
+        "by": "tokens",
+        "output_tokens": 32126,
+        "turn": 34,
+        "at": "2026-10-06T06:33:20.117068+00:00"
+      },
+      "line_verdict": "pass",
+      "line_source": "harvested",
+      "line_harvest_error": null,
+      "line_unavailable_reason": null
+    }
+  ]
+}

@@ -2904,3 +2904,9 @@
 | records/2026-10-05-campaign-selfhost-run-record-gate-a.result.json | written 2026-10-05/06 by `satyrn-evals launch` (campaign piece a of 3, engine 23a0ef6, Apple M5 Max); committed as the launcher wrote it; decided only with pieces a-c together |
 | records/2026-10-05-campaign-selfhost-run-record-gate-b.result.json | written 2026-10-05/06 by `satyrn-evals launch` (campaign piece b of 3, engine 23a0ef6, Apple M5 Max); committed as the launcher wrote it; decided only with pieces a-c together |
 | records/2026-10-05-campaign-selfhost-run-record-gate-c.result.json | written 2026-10-05/06 by `satyrn-evals launch` (campaign piece c of 3, engine 23a0ef6, Apple M5 Max); committed as the launcher wrote it; decided only with pieces a-c together |
+| evidence/2026-10-05-rrg-delivery/README.md | written 2026-10-06 by an agent (Opus) from decision.txt and the secondaries; the comparison's evidence page |
+| evidence/2026-10-05-rrg-delivery/decision.txt | written 2026-10-06 by evidence/2026-10-05-rrg-delivery/decide.py (frozen 44573d17, 7b2d60a) over the three campaign nights at evals HEAD c908919; the one deciding read |
+| evidence/2026-10-05-rrg-delivery/grade-line-a.json | written 2026-10-06 by `satyrn-evals grade-line` over campaign night a at evals HEAD c908919; secondary, never deciding |
+| evidence/2026-10-05-rrg-delivery/grade-line-b.json | written 2026-10-06 by `satyrn-evals grade-line` over campaign night b at evals HEAD c908919; secondary, never deciding |
+| evidence/2026-10-05-rrg-delivery/grade-line-c.json | written 2026-10-06 by `satyrn-evals grade-line` over campaign night c at evals HEAD c908919; secondary, never deciding |
+| evidence/2026-10-05-rrg-delivery/read.txt | written 2026-10-06 by evidence/2026-10-05-eb-cell-read/read_cells.py over the three campaign nights with --combine; secondary |

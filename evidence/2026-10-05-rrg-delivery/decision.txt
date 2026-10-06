@@ -1,0 +1,133 @@
+{
+  "pairs": [
+    {
+      "night": "/Users/pauleveritt/satyrn-runs/2026-10-05-campaign-selfhost-run-record-gate-a",
+      "record": "records/2026-10-05-campaign-selfhost-run-record-gate-a.json",
+      "evals_head": [
+        "25b4dd6925c8b268d28e3756c46d2f5137639556"
+      ]
+    },
+    {
+      "night": "/Users/pauleveritt/satyrn-runs/2026-10-05-campaign-selfhost-run-record-gate-b",
+      "record": "records/2026-10-05-campaign-selfhost-run-record-gate-b.json",
+      "evals_head": [
+        "1ddc1dda6c432cbce8c19e70a5935343d6e8de1b"
+      ]
+    },
+    {
+      "night": "/Users/pauleveritt/satyrn-runs/2026-10-05-campaign-selfhost-run-record-gate-c",
+      "record": "records/2026-10-05-campaign-selfhost-run-record-gate-c.json",
+      "evals_head": [
+        "36fc1c4978dec8cd8e56db23b18853344fcc38f7"
+      ]
+    }
+  ],
+  "alpha": 0.05,
+  "primary": {
+    "counts": {
+      "baseline": {
+        "delivered": 10,
+        "n": 36
+      },
+      "engine": {
+        "delivered": 22,
+        "n": 36
+      },
+      "excluded": [],
+      "reclassified": [
+        {
+          "attempt_dir": "selfhost-run-record-gate-20261005-200221-102589",
+          "arm": "engine",
+          "night": "2026-10-05-campaign-selfhost-run-record-gate-a",
+          "why": "unavailable verdict counted as not delivered (D2, Baseline-favouring)"
+        },
+        {
+          "attempt_dir": "selfhost-run-record-gate-20261006-054648-457847",
+          "arm": "engine",
+          "night": "2026-10-05-campaign-selfhost-run-record-gate-b",
+          "why": "unavailable verdict counted as not delivered (D2, Baseline-favouring)"
+        }
+      ]
+    },
+    "p": 0.004298228355383549,
+    "rejects": true
+  },
+  "admitted": {
+    "counts": {
+      "baseline": {
+        "delivered": 10,
+        "n": 35
+      },
+      "engine": {
+        "delivered": 22,
+        "n": 36
+      },
+      "excluded": [
+        {
+          "attempt_dir": "selfhost-run-record-gate-20261006-055606-066842",
+          "arm": "baseline",
+          "night": "2026-10-05-campaign-selfhost-run-record-gate-b",
+          "why": "confinement refusals: 1 (admitted cells only)"
+        }
+      ],
+      "reclassified": [
+        {
+          "attempt_dir": "selfhost-run-record-gate-20261005-200221-102589",
+          "arm": "engine",
+          "night": "2026-10-05-campaign-selfhost-run-record-gate-a",
+          "why": "unavailable verdict counted as not delivered (D2, Baseline-favouring)"
+        },
+        {
+          "attempt_dir": "selfhost-run-record-gate-20261006-054648-457847",
+          "arm": "engine",
+          "night": "2026-10-05-campaign-selfhost-run-record-gate-b",
+          "why": "unavailable verdict counted as not delivered (D2, Baseline-favouring)"
+        }
+      ]
+    },
+    "p": 0.0056421308656487736,
+    "rejects": true
+  },
+  "beside": {
+    "counts": {
+      "baseline": {
+        "delivered": 10,
+        "n": 36
+      },
+      "engine": {
+        "delivered": 22,
+        "n": 34
+      },
+      "excluded": [
+        {
+          "attempt_dir": "selfhost-run-record-gate-20261005-200221-102589",
+          "arm": "engine",
+          "night": "2026-10-05-campaign-selfhost-run-record-gate-a",
+          "why": "unavailable verdict (excluded from both arms)"
+        },
+        {
+          "attempt_dir": "selfhost-run-record-gate-20261006-054648-457847",
+          "arm": "engine",
+          "night": "2026-10-05-campaign-selfhost-run-record-gate-b",
+          "why": "unavailable verdict (excluded from both arms)"
+        }
+      ],
+      "reclassified": []
+    },
+    "p": 0.001961905529845544,
+    "rejects": true
+  },
+  "verdict": "holds"
+}
+
+| reading | baseline | engine | p | excluded | reclassified |
+|---|---|---|---|---|---|
+| primary | 10/36 | 22/36 | 0.004298 | 0 | 2 |
+| admitted | 10/35 | 22/36 | 0.005642 | 1 | 2 |
+| beside | 10/36 | 22/34 | 0.001962 | 2 | 0 |
+
+night /Users/pauleveritt/satyrn-runs/2026-10-05-campaign-selfhost-run-record-gate-a; record records/2026-10-05-campaign-selfhost-run-record-gate-a.json; evals_head: 25b4dd6925c8b268d28e3756c46d2f5137639556
+night /Users/pauleveritt/satyrn-runs/2026-10-05-campaign-selfhost-run-record-gate-b; record records/2026-10-05-campaign-selfhost-run-record-gate-b.json; evals_head: 1ddc1dda6c432cbce8c19e70a5935343d6e8de1b
+night /Users/pauleveritt/satyrn-runs/2026-10-05-campaign-selfhost-run-record-gate-c; record records/2026-10-05-campaign-selfhost-run-record-gate-c.json; evals_head: 36fc1c4978dec8cd8e56db23b18853344fcc38f7
+
+alpha 0.05; verdict: holds

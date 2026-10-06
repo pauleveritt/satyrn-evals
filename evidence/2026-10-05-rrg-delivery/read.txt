@@ -1,0 +1,529 @@
+
+== 2026-10-05-campaign-selfhost-run-record-gate-a / selfhost-run-record-gate / baseline
+   night status: launch.json status=complete, ended=2026-10-06T01:02:15+00:00, evals_head=25b4dd692, record=records/2026-10-05-campaign-selfhost-run-record-gate-a.json
+   expected cells per arm from: record records/2026-10-05-campaign-selfhost-run-record-gate-a.json
+   slot specs (line_tok, line_turns, token_budget, turn_budget): [(32000, 48, 48000, 72)]
+   arm_sha256[baseline]=e98db02835b8
+  denominators: expected cells 12; finished slots 12; cells read 12
+  verdicts {'None': 10, 'pass': 2}; codes {'BUDGET_EXCEEDED': 10, 'OK': 2}
+  delivered passes (verdict==pass): 2 of 12 read (of 12 expected)
+  OUTPUT TOKENS PER DELIVERED PASS (median (min-max), n=2): 32,205.5 (31,532-32,879)
+     per pass: [31532, 32879]; mean 32,206 (secondary, not the EB decider)
+     admitted delivered passes only (secondary): n=2 -> 32,205.5 (31,532-32,879); un-admitted passes counted above: []
+  schema-rejected edit/write calls: total 6 in 5 of 12 cells; per cell [1, 2, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0]
+  all rejected edit/write calls: total 24 in 9 of 12 cells; shapes {'schema': 6, 'anchor (pi)': 14, 'pi no-change': 3, 'other': 1}
+  confinement_refused entries: 0 (cells with >=1: []); engine scope_refused entries: 0 (cells: [])
+  admission (attempt.json confinement refusals==0 and reaches==0): admitted 12, flagged 0, unknown 0
+  line 32k/48: NEEDS grade-line: 12  (cells needing `satyrn-evals grade-line` are NOT counted as pass or fail here)
+  per cell:
+   slot attempt-dir                                      code                 verdict      out_tok turns calls  schema/all-rej conf scope reach adm  line-crossed
+    0   selfhost-run-record-gate-20261005-192351-905309 BUDGET_EXCEEDED      None         35,518    72    72     1/4            0     0     0  yes  tur@49
+    2   selfhost-run-record-gate-20261005-192352-081169 BUDGET_EXCEEDED      None         39,796    72    72     2/3            0     0     0  yes  tur@49
+    4   selfhost-run-record-gate-20261005-200655-387566 BUDGET_EXCEEDED      None         34,948    72    72     1/3            0     0     0  yes  tur@49
+    6   selfhost-run-record-gate-20261005-203539-800435 OK                   pass         32,879    69    68     0/0            0     0     0  yes  tur@49
+    8   selfhost-run-record-gate-20261005-204625-995992 BUDGET_EXCEEDED      None         34,271    72    72     1/3            0     0     0  yes  tur@49
+   10   selfhost-run-record-gate-20261005-211134-608422 BUDGET_EXCEEDED      None         40,498    72    72     0/2            0     0     0  yes  tur@49
+   12   selfhost-run-record-gate-20261005-215259-285257 OK                   pass         31,532    49    48     0/0            0     0     0  yes  tur@49
+   14   selfhost-run-record-gate-20261005-220941-177300 BUDGET_EXCEEDED      None         41,964    72    72     0/2            0     0     0  yes  tur@49
+   16   selfhost-run-record-gate-20261005-223548-109666 BUDGET_EXCEEDED      None         47,651    72    72     1/2            0     0     0  yes  tok@45
+   18   selfhost-run-record-gate-20261005-232108-601340 BUDGET_EXCEEDED      None         44,849    72    72     0/3            0     0     0  yes  tok@44
+   20   selfhost-run-record-gate-20261005-234344-874687 BUDGET_EXCEEDED      None         48,100    65    65     0/0            0     0     0  yes  tok@43
+   22   selfhost-run-record-gate-20261006-000331-812211 BUDGET_EXCEEDED      None         48,196    71    71     0/2            0     0     0  yes  tok@39
+     line: 192351-905309 -> NEEDS grade-line [turns @turn 49, 25,731 tok; line.diff present]
+     line: 192352-081169 -> NEEDS grade-line [turns @turn 49, 31,428 tok; line.diff present]
+     line: 200655-387566 -> NEEDS grade-line [turns @turn 49, 24,810 tok; line.diff present]
+     line: 203539-800435 -> NEEDS grade-line [turns @turn 49, 25,627 tok; line.diff present]
+     line: 204625-995992 -> NEEDS grade-line [turns @turn 49, 28,519 tok; line.diff present]
+     line: 211134-608422 -> NEEDS grade-line [turns @turn 49, 31,210 tok; line.diff present]
+     line: 215259-285257 -> NEEDS grade-line [turns @turn 49, 30,797 tok; line.diff present]
+     line: 220941-177300 -> NEEDS grade-line [turns @turn 49, 31,554 tok; line.diff present]
+     line: 223548-109666 -> NEEDS grade-line [tokens @turn 45, 32,136 tok; line.diff present]
+     line: 232108-601340 -> NEEDS grade-line [tokens @turn 44, 33,238 tok; line.diff present]
+     line: 234344-874687 -> NEEDS grade-line [tokens @turn 43, 32,580 tok; line.diff present]
+     line: 000331-812211 -> NEEDS grade-line [tokens @turn 39, 32,557 tok; line.diff present]
+  infrastructure / wall-clock / anomaly flags: 
+     selfhost-run-record-gate-20261005-192351-905309: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261005-192352-081169: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261005-200655-387566: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261005-204625-995992: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261005-211134-608422: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261005-220941-177300: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261005-223548-109666: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261005-232108-601340: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261005-234344-874687: calls 65 != tool results 64 (cut mid-call)
+     selfhost-run-record-gate-20261005-234344-874687: BUDGET_EXCEEDED (model outcome, no verdict): attempt command spent 48100 output tokens, over the budget of 48000
+     selfhost-run-record-gate-20261006-000331-812211: BUDGET_EXCEEDED (model outcome, no verdict): attempt command spent 48196 output tokens, over the budget of 48000
+
+== 2026-10-05-campaign-selfhost-run-record-gate-a / selfhost-run-record-gate / engine
+   night status: launch.json status=complete, ended=2026-10-06T01:02:15+00:00, evals_head=25b4dd692, record=records/2026-10-05-campaign-selfhost-run-record-gate-a.json
+   expected cells per arm from: record records/2026-10-05-campaign-selfhost-run-record-gate-a.json
+   slot specs (line_tok, line_turns, token_budget, turn_budget): [(32000, 48, 48000, 72)]
+   arm_sha256[engine]=a79fa45814d7
+  denominators: expected cells 12; finished slots 12; cells read 12
+  verdicts {'None': 3, 'unavailable': 1, 'pass': 7, 'fail': 1}; codes {'NO_PATCH': 1, 'OK': 9, 'BUDGET_EXCEEDED': 2}
+  delivered passes (verdict==pass): 7 of 12 read (of 12 expected)
+  OUTPUT TOKENS PER DELIVERED PASS (median (min-max), n=7): 34,423 (24,426-39,976)
+     per pass: [24426, 29669, 31381, 34423, 37615, 38627, 39976]; mean 33,731 (secondary, not the EB decider)
+     admitted delivered passes only (secondary): n=7 -> 34,423 (24,426-39,976); un-admitted passes counted above: []
+  schema-rejected edit/write calls: total 1 in 1 of 12 cells; per cell [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  all rejected edit/write calls: total 31 in 8 of 12 cells; shapes {'schema': 1, 'ANCHOR_MISSING': 12, 'INVALID_REQUEST': 1, 'NO_CHANGE_REQUESTED': 12, 'REVISION_STALE': 4, 'other': 1}
+  confinement_refused entries: 0 (cells with >=1: []); engine scope_refused entries: 1 (cells: ['003033-531389'])
+  admission (attempt.json confinement refusals==0 and reaches==0): admitted 12, flagged 0, unknown 0
+  line 32k/48: NEEDS grade-line: 7, fail: 1, not-pass: 1, pass: 3  (cells needing `satyrn-evals grade-line` are NOT counted as pass or fail here)
+  per cell:
+   slot attempt-dir                                      code                 verdict      out_tok turns calls  schema/all-rej conf scope reach adm  line-crossed
+    1   selfhost-run-record-gate-20261005-192351-988718 NO_PATCH             None         39,923    56    55     1/3            0     0     0  yes  tok@37
+    3   selfhost-run-record-gate-20261005-200221-102589 OK                   unavailable   26,117    34    38     0/0            0     0     0  yes  -
+    5   selfhost-run-record-gate-20261005-201247-762320 OK                   pass         29,669    36    35     0/2            0     0     0  yes  -
+    7   selfhost-run-record-gate-20261005-204441-108408 OK                   pass         24,426    35    34     0/3            0     0     0  yes  -
+    9   selfhost-run-record-gate-20261005-211038-264137 OK                   pass         37,615    57    56     0/0            0     0     0  yes  tur@49
+   11   selfhost-run-record-gate-20261005-212403-791285 OK                   pass         38,627    62    67     0/11           0     0     0  yes  tur@49
+   13   selfhost-run-record-gate-20261005-215418-721645 OK                   pass         34,423    29    27     0/0            0     0     0  yes  tok@25
+   15   selfhost-run-record-gate-20261005-222537-836120 BUDGET_EXCEEDED      None         47,308    72    72     0/5            0     0     0  yes  tur@49
+   17   selfhost-run-record-gate-20261005-225443-651698 OK                   pass         39,976    49    55     0/0            0     0     0  yes  tok@36
+   19   selfhost-run-record-gate-20261005-232906-907600 OK                   fail         25,367    37    36     0/2            0     0     0  yes  -
+   21   selfhost-run-record-gate-20261005-235847-768330 BUDGET_EXCEEDED      None         49,572    49    55     0/4            0     0     0  yes  tok@36
+   23   selfhost-run-record-gate-20261006-003033-531389 OK                   pass         31,381    41    50     0/1            0     1     0  yes  -
+     line: 192351-988718 -> NEEDS grade-line [tokens @turn 37, 32,200 tok; line.diff present]
+     line: 200221-102589 -> not-pass (never crossed)
+     line: 201247-762320 -> pass (never crossed)
+     line: 204441-108408 -> pass (never crossed)
+     line: 211038-264137 -> NEEDS grade-line [turns @turn 49, 31,171 tok; line.diff present]
+     line: 212403-791285 -> NEEDS grade-line [turns @turn 49, 31,324 tok; line.diff present]
+     line: 215418-721645 -> NEEDS grade-line [tokens @turn 25, 32,067 tok; line.diff present]
+     line: 222537-836120 -> NEEDS grade-line [turns @turn 49, 30,502 tok; line.diff present]
+     line: 225443-651698 -> NEEDS grade-line [tokens @turn 36, 32,093 tok; line.diff present]
+     line: 232906-907600 -> fail (never crossed)
+     line: 235847-768330 -> NEEDS grade-line [tokens @turn 36, 37,740 tok; line.diff present]
+     line: 003033-531389 -> pass (never crossed)
+  infrastructure / wall-clock / anomaly flags: 
+     selfhost-run-record-gate-20261005-200221-102589: verdict unavailable: patch touches non-source path: rec.json
+     selfhost-run-record-gate-20261005-222537-836120: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261005-235847-768330: BUDGET_EXCEEDED (model outcome, no verdict): attempt command spent 49572 output tokens, over the budget of 48000
+
+== 2026-10-05-campaign-selfhost-run-record-gate-b / selfhost-run-record-gate / baseline
+   night status: launch.json status=complete, ended=2026-10-06T06:47:08+00:00, evals_head=1ddc1dda6, record=records/2026-10-05-campaign-selfhost-run-record-gate-b.json
+   expected cells per arm from: record records/2026-10-05-campaign-selfhost-run-record-gate-b.json
+   slot specs (line_tok, line_turns, token_budget, turn_budget): [(32000, 48, 48000, 72)]
+   arm_sha256[baseline]=e98db02835b8
+  denominators: expected cells 12; finished slots 12; cells read 12
+  verdicts {'pass': 3, 'None': 9}; codes {'OK': 3, 'BUDGET_EXCEEDED': 9}
+  delivered passes (verdict==pass): 3 of 12 read (of 12 expected)
+  OUTPUT TOKENS PER DELIVERED PASS (median (min-max), n=3): 37,526 (36,074-38,246)
+     per pass: [36074, 37526, 38246]; mean 37,282 (secondary, not the EB decider)
+     admitted delivered passes only (secondary): n=3 -> 37,526 (36,074-38,246); un-admitted passes counted above: []
+  schema-rejected edit/write calls: total 5 in 5 of 12 cells; per cell [1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0]
+  all rejected edit/write calls: total 32 in 12 of 12 cells; shapes {'schema': 5, 'anchor (pi)': 25, 'other': 2}
+  confinement_refused entries: 1 (cells with >=1: ['055606-066842']); engine scope_refused entries: 0 (cells: [])
+  admission (attempt.json confinement refusals==0 and reaches==0): admitted 11, flagged 1, unknown 0
+  line 32k/48: NEEDS grade-line: 12  (cells needing `satyrn-evals grade-line` are NOT counted as pass or fail here)
+  per cell:
+   slot attempt-dir                                      code                 verdict      out_tok turns calls  schema/all-rej conf scope reach adm  line-crossed
+    0   selfhost-run-record-gate-20261006-010609-049503 OK                   pass         36,074    59    58     1/2            0     0     0  yes  tur@49
+    2   selfhost-run-record-gate-20261006-010609-238714 BUDGET_EXCEEDED      None         48,096    66    66     0/1            0     0     0  yes  tok@45
+    4   selfhost-run-record-gate-20261006-015046-934696 OK                   pass         37,526    71    70     1/2            0     0     0  yes  tur@49
+    6   selfhost-run-record-gate-20261006-021337-184863 OK                   pass         38,246    68    67     0/1            0     0     0  yes  tur@49
+    8   selfhost-run-record-gate-20261006-023457-051586 BUDGET_EXCEEDED      None         37,644    72    72     1/1            0     0     0  yes  tur@49
+   10   selfhost-run-record-gate-20261006-031235-667868 BUDGET_EXCEEDED      None         33,706    72    72     1/3            0     0     0  yes  tur@49
+   12   selfhost-run-record-gate-20261006-033603-186779 BUDGET_EXCEEDED      None         40,383    72    72     0/3            0     0     0  yes  tur@49
+   14   selfhost-run-record-gate-20261006-040503-895266 BUDGET_EXCEEDED      None         31,231    72    72     1/3            0     0     0  yes  tur@49
+   16   selfhost-run-record-gate-20261006-043828-177585 BUDGET_EXCEEDED      None         45,783    72    72     0/1            0     0     0  yes  tur@49
+   18   selfhost-run-record-gate-20261006-050926-500151 BUDGET_EXCEEDED      None         37,760    72    72     0/3            0     0     0  yes  tur@49
+   20   selfhost-run-record-gate-20261006-052523-970895 BUDGET_EXCEEDED      None         32,174    72    80     0/11           0     0     0  yes  tur@49
+   22   selfhost-run-record-gate-20261006-055606-066842 BUDGET_EXCEEDED      None         35,210    72    80     0/1            1     0     0  NO   tur@49
+     line: 010609-049503 -> NEEDS grade-line [turns @turn 49, 31,540 tok; line.diff present]
+     line: 010609-238714 -> NEEDS grade-line [tokens @turn 45, 33,277 tok; line.diff present]
+     line: 015046-934696 -> NEEDS grade-line [turns @turn 49, 27,213 tok; line.diff present]
+     line: 021337-184863 -> NEEDS grade-line [turns @turn 49, 27,895 tok; line.diff present]
+     line: 023457-051586 -> NEEDS grade-line [turns @turn 49, 26,520 tok; line.diff present]
+     line: 031235-667868 -> NEEDS grade-line [turns @turn 49, 24,123 tok; line.diff present]
+     line: 033603-186779 -> NEEDS grade-line [turns @turn 49, 29,476 tok; line.diff present]
+     line: 040503-895266 -> NEEDS grade-line [turns @turn 49, 23,514 tok; line.diff present]
+     line: 043828-177585 -> NEEDS grade-line [turns @turn 49, 31,012 tok; line.diff present]
+     line: 050926-500151 -> NEEDS grade-line [turns @turn 49, 28,329 tok; line.diff present]
+     line: 052523-970895 -> NEEDS grade-line [turns @turn 49, 25,451 tok; line.diff present]
+     line: 055606-066842 -> NEEDS grade-line [turns @turn 49, 25,012 tok; line.diff present]
+  infrastructure / wall-clock / anomaly flags: 
+     selfhost-run-record-gate-20261006-010609-238714: BUDGET_EXCEEDED (model outcome, no verdict): attempt command spent 48096 output tokens, over the budget of 48000
+     selfhost-run-record-gate-20261006-023457-051586: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261006-031235-667868: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261006-033603-186779: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261006-040503-895266: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261006-043828-177585: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261006-050926-500151: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261006-052523-970895: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261006-055606-066842: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+
+== 2026-10-05-campaign-selfhost-run-record-gate-b / selfhost-run-record-gate / engine
+   night status: launch.json status=complete, ended=2026-10-06T06:47:08+00:00, evals_head=1ddc1dda6, record=records/2026-10-05-campaign-selfhost-run-record-gate-b.json
+   expected cells per arm from: record records/2026-10-05-campaign-selfhost-run-record-gate-b.json
+   slot specs (line_tok, line_turns, token_budget, turn_budget): [(32000, 48, 48000, 72)]
+   arm_sha256[engine]=a79fa45814d7
+  denominators: expected cells 12; finished slots 12; cells read 12
+  verdicts {'pass': 6, 'None': 5, 'unavailable': 1}; codes {'OK': 7, 'NO_PATCH': 1, 'BUDGET_EXCEEDED': 4}
+  delivered passes (verdict==pass): 6 of 12 read (of 12 expected)
+  OUTPUT TOKENS PER DELIVERED PASS (median (min-max), n=6): 40,429 (28,004-46,850)
+     per pass: [28004, 29329, 40139, 40719, 45869, 46850]; mean 38,485 (secondary, not the EB decider)
+     admitted delivered passes only (secondary): n=6 -> 40,429 (28,004-46,850); un-admitted passes counted above: []
+  schema-rejected edit/write calls: total 6 in 3 of 12 cells; per cell [0, 0, 0, 0, 0, 0, 4, 1, 0, 1, 0, 0]
+  all rejected edit/write calls: total 39 in 10 of 12 cells; shapes {'ANCHOR_ALREADY_APPLIED': 6, 'ANCHOR_MISSING': 6, 'REVISION_STALE': 12, 'NO_CHANGE_REQUESTED': 4, 'schema': 6, 'other': 3, 'scope': 1, 'INVALID_REQUEST': 1}
+  confinement_refused entries: 0 (cells with >=1: []); engine scope_refused entries: 3 (cells: ['034345-402300', '050943-731802', '060204-502157'])
+  admission (attempt.json confinement refusals==0 and reaches==0): admitted 12, flagged 0, unknown 0
+  line 32k/48: NEEDS grade-line: 10, pass: 2  (cells needing `satyrn-evals grade-line` are NOT counted as pass or fail here)
+  per cell:
+   slot attempt-dir                                      code                 verdict      out_tok turns calls  schema/all-rej conf scope reach adm  line-crossed
+    1   selfhost-run-record-gate-20261006-010609-140259 OK                   pass         40,139    43    42     0/1            0     0     0  yes  tok@25
+    3   selfhost-run-record-gate-20261006-014144-563386 OK                   pass         29,329    35    39     0/0            0     0     0  yes  -
+    5   selfhost-run-record-gate-20261006-015113-247011 NO_PATCH             None         40,223    54    53     0/3            0     0     0  yes  tok@41
+    7   selfhost-run-record-gate-20261006-022542-219472 OK                   pass         40,719    53    52     0/4            0     0     0  yes  tok@40
+    9   selfhost-run-record-gate-20261006-025352-709608 BUDGET_EXCEEDED      None         40,092    72    81     0/6            0     0     0  yes  tur@49
+   11   selfhost-run-record-gate-20261006-031453-674821 OK                   pass         45,869    49    53     0/0            0     0     0  yes  tok@31
+   13   selfhost-run-record-gate-20261006-034345-402300 OK                   pass         46,850    66    65     4/5            0     1     0  yes  tok@44
+   15   selfhost-run-record-gate-20261006-041714-694438 BUDGET_EXCEEDED      None         48,119    55    55     1/4            0     0     0  yes  tok@45
+   17   selfhost-run-record-gate-20261006-044006-905223 OK                   pass         28,004    32    42     0/2            0     0     0  yes  -
+   19   selfhost-run-record-gate-20261006-050943-731802 BUDGET_EXCEEDED      None         48,073    68    68     1/10           0     1     0  yes  tur@49
+   21   selfhost-run-record-gate-20261006-054648-457847 OK                   unavailable   45,031    58    56     0/1            0     0     0  yes  tok@35
+   23   selfhost-run-record-gate-20261006-060204-502157 BUDGET_EXCEEDED      None         48,023    64    64     0/3            0     1     0  yes  tok@34
+     line: 010609-140259 -> NEEDS grade-line [tokens @turn 25, 32,130 tok; line.diff present]
+     line: 014144-563386 -> pass (never crossed)
+     line: 015113-247011 -> NEEDS grade-line [tokens @turn 41, 32,474 tok; line.diff present]
+     line: 022542-219472 -> NEEDS grade-line [tokens @turn 40, 32,876 tok; line.diff present]
+     line: 025352-709608 -> NEEDS grade-line [turns @turn 49, 27,592 tok; line.diff present]
+     line: 031453-674821 -> NEEDS grade-line [tokens @turn 31, 32,019 tok; line.diff present]
+     line: 034345-402300 -> NEEDS grade-line [tokens @turn 44, 32,020 tok; line.diff present]
+     line: 041714-694438 -> NEEDS grade-line [tokens @turn 45, 35,008 tok; line.diff present]
+     line: 044006-905223 -> pass (never crossed)
+     line: 050943-731802 -> NEEDS grade-line [turns @turn 49, 31,938 tok; line.diff present]
+     line: 054648-457847 -> NEEDS grade-line [tokens @turn 35, 32,992 tok; line.diff present]
+     line: 060204-502157 -> NEEDS grade-line [tokens @turn 34, 32,126 tok; line.diff present]
+  infrastructure / wall-clock / anomaly flags: 
+     selfhost-run-record-gate-20261006-025352-709608: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261006-041714-694438: calls 55 != tool results 54 (cut mid-call)
+     selfhost-run-record-gate-20261006-041714-694438: BUDGET_EXCEEDED (model outcome, no verdict): attempt command spent 48119 output tokens, over the budget of 48000
+     selfhost-run-record-gate-20261006-050943-731802: calls 68 != tool results 67 (cut mid-call)
+     selfhost-run-record-gate-20261006-050943-731802: BUDGET_EXCEEDED (model outcome, no verdict): attempt command spent 48073 output tokens, over the budget of 48000
+     selfhost-run-record-gate-20261006-054648-457847: verdict unavailable: patch touches non-source path: rec.json
+     selfhost-run-record-gate-20261006-060204-502157: BUDGET_EXCEEDED (model outcome, no verdict): attempt command spent 48023 output tokens, over the budget of 48000
+
+== 2026-10-05-campaign-selfhost-run-record-gate-c / selfhost-run-record-gate / baseline
+   night status: launch.json status=complete, ended=2026-10-06T11:57:29+00:00, evals_head=36fc1c497, record=records/2026-10-05-campaign-selfhost-run-record-gate-c.json
+   expected cells per arm from: record records/2026-10-05-campaign-selfhost-run-record-gate-c.json
+   slot specs (line_tok, line_turns, token_budget, turn_budget): [(32000, 48, 48000, 72)]
+   arm_sha256[baseline]=e98db02835b8
+  denominators: expected cells 12; finished slots 12; cells read 12
+  verdicts {'None': 7, 'pass': 5}; codes {'BUDGET_EXCEEDED': 7, 'OK': 5}
+  delivered passes (verdict==pass): 5 of 12 read (of 12 expected)
+  OUTPUT TOKENS PER DELIVERED PASS (median (min-max), n=5): 37,702 (32,420-42,852)
+     per pass: [32420, 33435, 37702, 37943, 42852]; mean 36,870 (secondary, not the EB decider)
+     admitted delivered passes only (secondary): n=5 -> 37,702 (32,420-42,852); un-admitted passes counted above: []
+  schema-rejected edit/write calls: total 7 in 5 of 12 cells; per cell [1, 0, 0, 0, 1, 1, 2, 0, 0, 2, 0, 0]
+  all rejected edit/write calls: total 36 in 12 of 12 cells; shapes {'schema': 7, 'anchor (pi)': 22, 'pi no-change': 4, 'other': 3}
+  confinement_refused entries: 0 (cells with >=1: []); engine scope_refused entries: 0 (cells: [])
+  admission (attempt.json confinement refusals==0 and reaches==0): admitted 12, flagged 0, unknown 0
+  line 32k/48: NEEDS grade-line: 12  (cells needing `satyrn-evals grade-line` are NOT counted as pass or fail here)
+  per cell:
+   slot attempt-dir                                      code                 verdict      out_tok turns calls  schema/all-rej conf scope reach adm  line-crossed
+    0   selfhost-run-record-gate-20261006-065102-940702 BUDGET_EXCEEDED      None         42,452    72    72     1/2            0     0     0  yes  tur@49
+    2   selfhost-run-record-gate-20261006-065103-124377 BUDGET_EXCEEDED      None         43,360    72    72     0/5            0     0     0  yes  tok@39
+    4   selfhost-run-record-gate-20261006-073215-677779 OK                   pass         37,943    70    69     0/1            0     0     0  yes  tur@49
+    6   selfhost-run-record-gate-20261006-075124-389197 OK                   pass         33,435    58    57     0/2            0     0     0  yes  tur@49
+    8   selfhost-run-record-gate-20261006-080833-535388 OK                   pass         42,852    59    65     1/3            0     0     0  yes  tok@39
+   10   selfhost-run-record-gate-20261006-083755-385919 OK                   pass         32,420    66    65     1/5            0     0     0  yes  tur@49
+   12   selfhost-run-record-gate-20261006-091104-930236 BUDGET_EXCEEDED      None         51,316    59    59     2/2            0     0     0  yes  tok@43
+   14   selfhost-run-record-gate-20261006-093051-917180 BUDGET_EXCEEDED      None         40,824    72    72     0/5            0     0     0  yes  tur@49
+   16   selfhost-run-record-gate-20261006-095824-873207 BUDGET_EXCEEDED      None         48,389    71    71     0/2            0     0     0  yes  tok@40
+   18   selfhost-run-record-gate-20261006-103503-365549 BUDGET_EXCEEDED      None         45,726    72    72     2/6            0     0     0  yes  tok@46
+   20   selfhost-run-record-gate-20261006-104705-525560 OK                   pass         37,702    57    56     0/1            0     0     0  yes  tok@47
+   22   selfhost-run-record-gate-20261006-112007-027427 BUDGET_EXCEEDED      None         48,027    71    71     0/2            0     0     0  yes  tok@36
+     line: 065102-940702 -> NEEDS grade-line [turns @turn 49, 30,636 tok; line.diff present]
+     line: 065103-124377 -> NEEDS grade-line [tokens @turn 39, 32,362 tok; line.diff present]
+     line: 073215-677779 -> NEEDS grade-line [turns @turn 49, 29,967 tok; line.diff present]
+     line: 075124-389197 -> NEEDS grade-line [turns @turn 49, 28,650 tok; line.diff present]
+     line: 080833-535388 -> NEEDS grade-line [tokens @turn 39, 32,331 tok; line.diff present]
+     line: 083755-385919 -> NEEDS grade-line [turns @turn 49, 26,689 tok; line.diff present]
+     line: 091104-930236 -> NEEDS grade-line [tokens @turn 43, 32,341 tok; line.diff present]
+     line: 093051-917180 -> NEEDS grade-line [turns @turn 49, 23,821 tok; line.diff present]
+     line: 095824-873207 -> NEEDS grade-line [tokens @turn 40, 32,613 tok; line.diff present]
+     line: 103503-365549 -> NEEDS grade-line [tokens @turn 46, 36,058 tok; line.diff present]
+     line: 104705-525560 -> NEEDS grade-line [tokens @turn 47, 32,465 tok; line.diff present]
+     line: 112007-027427 -> NEEDS grade-line [tokens @turn 36, 32,330 tok; line.diff present]
+  infrastructure / wall-clock / anomaly flags: 
+     selfhost-run-record-gate-20261006-065102-940702: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261006-065103-124377: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261006-091104-930236: BUDGET_EXCEEDED (model outcome, no verdict): attempt command spent 51316 output tokens, over the budget of 48000
+     selfhost-run-record-gate-20261006-093051-917180: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261006-095824-873207: BUDGET_EXCEEDED (model outcome, no verdict): attempt command spent 48389 output tokens, over the budget of 48000
+     selfhost-run-record-gate-20261006-103503-365549: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261006-112007-027427: calls 71 != tool results 70 (cut mid-call)
+     selfhost-run-record-gate-20261006-112007-027427: BUDGET_EXCEEDED (model outcome, no verdict): attempt command spent 48027 output tokens, over the budget of 48000
+
+== 2026-10-05-campaign-selfhost-run-record-gate-c / selfhost-run-record-gate / engine
+   night status: launch.json status=complete, ended=2026-10-06T11:57:29+00:00, evals_head=36fc1c497, record=records/2026-10-05-campaign-selfhost-run-record-gate-c.json
+   expected cells per arm from: record records/2026-10-05-campaign-selfhost-run-record-gate-c.json
+   slot specs (line_tok, line_turns, token_budget, turn_budget): [(32000, 48, 48000, 72)]
+   arm_sha256[engine]=a79fa45814d7
+  denominators: expected cells 12; finished slots 12; cells read 12
+  verdicts {'pass': 9, 'None': 3}; codes {'OK': 9, 'BUDGET_EXCEEDED': 2, 'NO_PATCH': 1}
+  delivered passes (verdict==pass): 9 of 12 read (of 12 expected)
+  OUTPUT TOKENS PER DELIVERED PASS (median (min-max), n=9): 28,967 (21,192-39,829)
+     per pass: [21192, 23915, 25774, 26656, 28967, 30989, 35150, 37920, 39829]; mean 30,044 (secondary, not the EB decider)
+     admitted delivered passes only (secondary): n=9 -> 28,967 (21,192-39,829); un-admitted passes counted above: []
+  schema-rejected edit/write calls: total 3 in 1 of 12 cells; per cell [0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0]
+  all rejected edit/write calls: total 29 in 8 of 12 cells; shapes {'NO_CHANGE_REQUESTED': 2, 'ANCHOR_MISSING': 14, 'INVALID_REQUEST': 2, 'scope': 1, 'other': 2, 'REVISION_STALE': 5, 'schema': 3}
+  confinement_refused entries: 0 (cells with >=1: []); engine scope_refused entries: 3 (cells: ['073309-138118', '082337-546937', '085038-543374'])
+  admission (attempt.json confinement refusals==0 and reaches==0): admitted 12, flagged 0, unknown 0
+  line 32k/48: NEEDS grade-line: 6, pass: 6  (cells needing `satyrn-evals grade-line` are NOT counted as pass or fail here)
+  per cell:
+   slot attempt-dir                                      code                 verdict      out_tok turns calls  schema/all-rej conf scope reach adm  line-crossed
+    1   selfhost-run-record-gate-20261006-065103-029712 OK                   pass         21,192    34    37     0/0            0     0     0  yes  -
+    3   selfhost-run-record-gate-20261006-071351-206758 OK                   pass         30,989    44    43     0/2            0     0     0  yes  -
+    5   selfhost-run-record-gate-20261006-073309-138118 OK                   pass         35,150    38    37     0/3            0     1     0  yes  tok@32
+    7   selfhost-run-record-gate-20261006-080741-107901 OK                   pass         26,656    36    38     0/1            0     0     0  yes  -
+    9   selfhost-run-record-gate-20261006-082337-546937 BUDGET_EXCEEDED      None         48,412    55    57     0/7            0     1     0  yes  tok@38
+   11   selfhost-run-record-gate-20261006-085038-543374 OK                   pass         37,920    55    54     0/4            0     1     0  yes  tok@48
+   13   selfhost-run-record-gate-20261006-091244-720634 OK                   pass         39,829    72    71     0/7            0     0     0  yes  tur@49
+   15   selfhost-run-record-gate-20261006-095326-939358 BUDGET_EXCEEDED      None         49,510    43    43     3/4            0     0     0  yes  tok@33
+   17   selfhost-run-record-gate-20261006-100931-333227 OK                   pass         23,915    33    38     0/0            0     0     0  yes  -
+   19   selfhost-run-record-gate-20261006-104033-813847 NO_PATCH             None         35,617    37    41     0/0            0     0     0  yes  tok@33
+   21   selfhost-run-record-gate-20261006-111951-856135 OK                   pass         25,774    34    38     0/0            0     0     0  yes  -
+   23   selfhost-run-record-gate-20261006-112437-194821 OK                   pass         28,967    23    22     0/1            0     0     0  yes  -
+     line: 065103-029712 -> pass (never crossed)
+     line: 071351-206758 -> pass (never crossed)
+     line: 073309-138118 -> NEEDS grade-line [tokens @turn 32, 32,250 tok; line.diff present]
+     line: 080741-107901 -> pass (never crossed)
+     line: 082337-546937 -> NEEDS grade-line [tokens @turn 38, 32,901 tok; line.diff present]
+     line: 085038-543374 -> NEEDS grade-line [tokens @turn 48, 32,980 tok; line.diff present]
+     line: 091244-720634 -> NEEDS grade-line [turns @turn 49, 26,616 tok; line.diff present]
+     line: 095326-939358 -> NEEDS grade-line [tokens @turn 33, 32,263 tok; line.diff present]
+     line: 100931-333227 -> pass (never crossed)
+     line: 104033-813847 -> NEEDS grade-line [tokens @turn 33, 33,135 tok; line.diff present]
+     line: 111951-856135 -> pass (never crossed)
+     line: 112437-194821 -> pass (never crossed)
+  infrastructure / wall-clock / anomaly flags: 
+     selfhost-run-record-gate-20261006-082337-546937: BUDGET_EXCEEDED (model outcome, no verdict): attempt command spent 48412 output tokens, over the budget of 48000
+     selfhost-run-record-gate-20261006-095326-939358: BUDGET_EXCEEDED (model outcome, no verdict): attempt command spent 49510 output tokens, over the budget of 48000
+
+
+######## COMBINED (explicit --combine; same task + arm + arm digest + contract digest only) ########
+
+== COMBINED selfhost-run-record-gate / baseline
+   nights: ['2026-10-05-campaign-selfhost-run-record-gate-a', '2026-10-05-campaign-selfhost-run-record-gate-b', '2026-10-05-campaign-selfhost-run-record-gate-c']
+   arm_sha256[baseline]=e98db02835b8
+   nights not marked complete: none
+  denominators: expected cells 36; finished slots 36; cells read 36
+  verdicts {'None': 26, 'pass': 10}; codes {'BUDGET_EXCEEDED': 26, 'OK': 10}
+  delivered passes (verdict==pass): 10 of 36 read (of 36 expected)
+  OUTPUT TOKENS PER DELIVERED PASS (median (min-max), n=10): 36,800 (31,532-42,852)
+     per pass: [31532, 32420, 32879, 33435, 36074, 37526, 37702, 37943, 38246, 42852]; mean 36,061 (secondary, not the EB decider)
+     admitted delivered passes only (secondary): n=10 -> 36,800 (31,532-42,852); un-admitted passes counted above: []
+  schema-rejected edit/write calls: total 18 in 15 of 36 cells; per cell [1, 2, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 2, 0, 0, 2, 0, 0]
+  all rejected edit/write calls: total 92 in 33 of 36 cells; shapes {'schema': 18, 'anchor (pi)': 61, 'pi no-change': 7, 'other': 6}
+  confinement_refused entries: 1 (cells with >=1: ['055606-066842']); engine scope_refused entries: 0 (cells: [])
+  admission (attempt.json confinement refusals==0 and reaches==0): admitted 35, flagged 1, unknown 0
+  line 32k/48: NEEDS grade-line: 36  (cells needing `satyrn-evals grade-line` are NOT counted as pass or fail here)
+  per cell:
+   slot attempt-dir                                      code                 verdict      out_tok turns calls  schema/all-rej conf scope reach adm  line-crossed
+    0   selfhost-run-record-gate-20261005-192351-905309 BUDGET_EXCEEDED      None         35,518    72    72     1/4            0     0     0  yes  tur@49
+    2   selfhost-run-record-gate-20261005-192352-081169 BUDGET_EXCEEDED      None         39,796    72    72     2/3            0     0     0  yes  tur@49
+    4   selfhost-run-record-gate-20261005-200655-387566 BUDGET_EXCEEDED      None         34,948    72    72     1/3            0     0     0  yes  tur@49
+    6   selfhost-run-record-gate-20261005-203539-800435 OK                   pass         32,879    69    68     0/0            0     0     0  yes  tur@49
+    8   selfhost-run-record-gate-20261005-204625-995992 BUDGET_EXCEEDED      None         34,271    72    72     1/3            0     0     0  yes  tur@49
+   10   selfhost-run-record-gate-20261005-211134-608422 BUDGET_EXCEEDED      None         40,498    72    72     0/2            0     0     0  yes  tur@49
+   12   selfhost-run-record-gate-20261005-215259-285257 OK                   pass         31,532    49    48     0/0            0     0     0  yes  tur@49
+   14   selfhost-run-record-gate-20261005-220941-177300 BUDGET_EXCEEDED      None         41,964    72    72     0/2            0     0     0  yes  tur@49
+   16   selfhost-run-record-gate-20261005-223548-109666 BUDGET_EXCEEDED      None         47,651    72    72     1/2            0     0     0  yes  tok@45
+   18   selfhost-run-record-gate-20261005-232108-601340 BUDGET_EXCEEDED      None         44,849    72    72     0/3            0     0     0  yes  tok@44
+   20   selfhost-run-record-gate-20261005-234344-874687 BUDGET_EXCEEDED      None         48,100    65    65     0/0            0     0     0  yes  tok@43
+   22   selfhost-run-record-gate-20261006-000331-812211 BUDGET_EXCEEDED      None         48,196    71    71     0/2            0     0     0  yes  tok@39
+    0   selfhost-run-record-gate-20261006-010609-049503 OK                   pass         36,074    59    58     1/2            0     0     0  yes  tur@49
+    2   selfhost-run-record-gate-20261006-010609-238714 BUDGET_EXCEEDED      None         48,096    66    66     0/1            0     0     0  yes  tok@45
+    4   selfhost-run-record-gate-20261006-015046-934696 OK                   pass         37,526    71    70     1/2            0     0     0  yes  tur@49
+    6   selfhost-run-record-gate-20261006-021337-184863 OK                   pass         38,246    68    67     0/1            0     0     0  yes  tur@49
+    8   selfhost-run-record-gate-20261006-023457-051586 BUDGET_EXCEEDED      None         37,644    72    72     1/1            0     0     0  yes  tur@49
+   10   selfhost-run-record-gate-20261006-031235-667868 BUDGET_EXCEEDED      None         33,706    72    72     1/3            0     0     0  yes  tur@49
+   12   selfhost-run-record-gate-20261006-033603-186779 BUDGET_EXCEEDED      None         40,383    72    72     0/3            0     0     0  yes  tur@49
+   14   selfhost-run-record-gate-20261006-040503-895266 BUDGET_EXCEEDED      None         31,231    72    72     1/3            0     0     0  yes  tur@49
+   16   selfhost-run-record-gate-20261006-043828-177585 BUDGET_EXCEEDED      None         45,783    72    72     0/1            0     0     0  yes  tur@49
+   18   selfhost-run-record-gate-20261006-050926-500151 BUDGET_EXCEEDED      None         37,760    72    72     0/3            0     0     0  yes  tur@49
+   20   selfhost-run-record-gate-20261006-052523-970895 BUDGET_EXCEEDED      None         32,174    72    80     0/11           0     0     0  yes  tur@49
+   22   selfhost-run-record-gate-20261006-055606-066842 BUDGET_EXCEEDED      None         35,210    72    80     0/1            1     0     0  NO   tur@49
+    0   selfhost-run-record-gate-20261006-065102-940702 BUDGET_EXCEEDED      None         42,452    72    72     1/2            0     0     0  yes  tur@49
+    2   selfhost-run-record-gate-20261006-065103-124377 BUDGET_EXCEEDED      None         43,360    72    72     0/5            0     0     0  yes  tok@39
+    4   selfhost-run-record-gate-20261006-073215-677779 OK                   pass         37,943    70    69     0/1            0     0     0  yes  tur@49
+    6   selfhost-run-record-gate-20261006-075124-389197 OK                   pass         33,435    58    57     0/2            0     0     0  yes  tur@49
+    8   selfhost-run-record-gate-20261006-080833-535388 OK                   pass         42,852    59    65     1/3            0     0     0  yes  tok@39
+   10   selfhost-run-record-gate-20261006-083755-385919 OK                   pass         32,420    66    65     1/5            0     0     0  yes  tur@49
+   12   selfhost-run-record-gate-20261006-091104-930236 BUDGET_EXCEEDED      None         51,316    59    59     2/2            0     0     0  yes  tok@43
+   14   selfhost-run-record-gate-20261006-093051-917180 BUDGET_EXCEEDED      None         40,824    72    72     0/5            0     0     0  yes  tur@49
+   16   selfhost-run-record-gate-20261006-095824-873207 BUDGET_EXCEEDED      None         48,389    71    71     0/2            0     0     0  yes  tok@40
+   18   selfhost-run-record-gate-20261006-103503-365549 BUDGET_EXCEEDED      None         45,726    72    72     2/6            0     0     0  yes  tok@46
+   20   selfhost-run-record-gate-20261006-104705-525560 OK                   pass         37,702    57    56     0/1            0     0     0  yes  tok@47
+   22   selfhost-run-record-gate-20261006-112007-027427 BUDGET_EXCEEDED      None         48,027    71    71     0/2            0     0     0  yes  tok@36
+     line: 192351-905309 -> NEEDS grade-line [turns @turn 49, 25,731 tok; line.diff present]
+     line: 192352-081169 -> NEEDS grade-line [turns @turn 49, 31,428 tok; line.diff present]
+     line: 200655-387566 -> NEEDS grade-line [turns @turn 49, 24,810 tok; line.diff present]
+     line: 203539-800435 -> NEEDS grade-line [turns @turn 49, 25,627 tok; line.diff present]
+     line: 204625-995992 -> NEEDS grade-line [turns @turn 49, 28,519 tok; line.diff present]
+     line: 211134-608422 -> NEEDS grade-line [turns @turn 49, 31,210 tok; line.diff present]
+     line: 215259-285257 -> NEEDS grade-line [turns @turn 49, 30,797 tok; line.diff present]
+     line: 220941-177300 -> NEEDS grade-line [turns @turn 49, 31,554 tok; line.diff present]
+     line: 223548-109666 -> NEEDS grade-line [tokens @turn 45, 32,136 tok; line.diff present]
+     line: 232108-601340 -> NEEDS grade-line [tokens @turn 44, 33,238 tok; line.diff present]
+     line: 234344-874687 -> NEEDS grade-line [tokens @turn 43, 32,580 tok; line.diff present]
+     line: 000331-812211 -> NEEDS grade-line [tokens @turn 39, 32,557 tok; line.diff present]
+     line: 010609-049503 -> NEEDS grade-line [turns @turn 49, 31,540 tok; line.diff present]
+     line: 010609-238714 -> NEEDS grade-line [tokens @turn 45, 33,277 tok; line.diff present]
+     line: 015046-934696 -> NEEDS grade-line [turns @turn 49, 27,213 tok; line.diff present]
+     line: 021337-184863 -> NEEDS grade-line [turns @turn 49, 27,895 tok; line.diff present]
+     line: 023457-051586 -> NEEDS grade-line [turns @turn 49, 26,520 tok; line.diff present]
+     line: 031235-667868 -> NEEDS grade-line [turns @turn 49, 24,123 tok; line.diff present]
+     line: 033603-186779 -> NEEDS grade-line [turns @turn 49, 29,476 tok; line.diff present]
+     line: 040503-895266 -> NEEDS grade-line [turns @turn 49, 23,514 tok; line.diff present]
+     line: 043828-177585 -> NEEDS grade-line [turns @turn 49, 31,012 tok; line.diff present]
+     line: 050926-500151 -> NEEDS grade-line [turns @turn 49, 28,329 tok; line.diff present]
+     line: 052523-970895 -> NEEDS grade-line [turns @turn 49, 25,451 tok; line.diff present]
+     line: 055606-066842 -> NEEDS grade-line [turns @turn 49, 25,012 tok; line.diff present]
+     line: 065102-940702 -> NEEDS grade-line [turns @turn 49, 30,636 tok; line.diff present]
+     line: 065103-124377 -> NEEDS grade-line [tokens @turn 39, 32,362 tok; line.diff present]
+     line: 073215-677779 -> NEEDS grade-line [turns @turn 49, 29,967 tok; line.diff present]
+     line: 075124-389197 -> NEEDS grade-line [turns @turn 49, 28,650 tok; line.diff present]
+     line: 080833-535388 -> NEEDS grade-line [tokens @turn 39, 32,331 tok; line.diff present]
+     line: 083755-385919 -> NEEDS grade-line [turns @turn 49, 26,689 tok; line.diff present]
+     line: 091104-930236 -> NEEDS grade-line [tokens @turn 43, 32,341 tok; line.diff present]
+     line: 093051-917180 -> NEEDS grade-line [turns @turn 49, 23,821 tok; line.diff present]
+     line: 095824-873207 -> NEEDS grade-line [tokens @turn 40, 32,613 tok; line.diff present]
+     line: 103503-365549 -> NEEDS grade-line [tokens @turn 46, 36,058 tok; line.diff present]
+     line: 104705-525560 -> NEEDS grade-line [tokens @turn 47, 32,465 tok; line.diff present]
+     line: 112007-027427 -> NEEDS grade-line [tokens @turn 36, 32,330 tok; line.diff present]
+  infrastructure / wall-clock / anomaly flags: 
+     selfhost-run-record-gate-20261005-192351-905309: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261005-192352-081169: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261005-200655-387566: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261005-204625-995992: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261005-211134-608422: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261005-220941-177300: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261005-223548-109666: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261005-232108-601340: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261005-234344-874687: calls 65 != tool results 64 (cut mid-call)
+     selfhost-run-record-gate-20261005-234344-874687: BUDGET_EXCEEDED (model outcome, no verdict): attempt command spent 48100 output tokens, over the budget of 48000
+     selfhost-run-record-gate-20261006-000331-812211: BUDGET_EXCEEDED (model outcome, no verdict): attempt command spent 48196 output tokens, over the budget of 48000
+     selfhost-run-record-gate-20261006-010609-238714: BUDGET_EXCEEDED (model outcome, no verdict): attempt command spent 48096 output tokens, over the budget of 48000
+     selfhost-run-record-gate-20261006-023457-051586: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261006-031235-667868: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261006-033603-186779: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261006-040503-895266: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261006-043828-177585: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261006-050926-500151: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261006-052523-970895: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261006-055606-066842: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261006-065102-940702: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261006-065103-124377: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261006-091104-930236: BUDGET_EXCEEDED (model outcome, no verdict): attempt command spent 51316 output tokens, over the budget of 48000
+     selfhost-run-record-gate-20261006-093051-917180: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261006-095824-873207: BUDGET_EXCEEDED (model outcome, no verdict): attempt command spent 48389 output tokens, over the budget of 48000
+     selfhost-run-record-gate-20261006-103503-365549: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261006-112007-027427: calls 71 != tool results 70 (cut mid-call)
+     selfhost-run-record-gate-20261006-112007-027427: BUDGET_EXCEEDED (model outcome, no verdict): attempt command spent 48027 output tokens, over the budget of 48000
+
+== COMBINED selfhost-run-record-gate / engine
+   nights: ['2026-10-05-campaign-selfhost-run-record-gate-a', '2026-10-05-campaign-selfhost-run-record-gate-b', '2026-10-05-campaign-selfhost-run-record-gate-c']
+   arm_sha256[engine]=a79fa45814d7
+   nights not marked complete: none
+  denominators: expected cells 36; finished slots 36; cells read 36
+  verdicts {'None': 11, 'unavailable': 2, 'pass': 22, 'fail': 1}; codes {'NO_PATCH': 3, 'OK': 25, 'BUDGET_EXCEEDED': 8}
+  delivered passes (verdict==pass): 22 of 36 read (of 36 expected)
+  OUTPUT TOKENS PER DELIVERED PASS (median (min-max), n=22): 32,902 (21,192-46,850)
+     per pass: [21192, 23915, 24426, 25774, 26656, 28004, 28967, 29329, 29669, 30989, 31381, 34423, 35150, 37615, 37920, 38627, 39829, 39976, 40139, 40719, 45869, 46850]; mean 33,519 (secondary, not the EB decider)
+     admitted delivered passes only (secondary): n=22 -> 32,902 (21,192-46,850); un-admitted passes counted above: []
+  schema-rejected edit/write calls: total 10 in 5 of 36 cells; per cell [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0]
+  all rejected edit/write calls: total 99 in 26 of 36 cells; shapes {'schema': 10, 'ANCHOR_MISSING': 32, 'INVALID_REQUEST': 4, 'NO_CHANGE_REQUESTED': 18, 'REVISION_STALE': 21, 'other': 6, 'ANCHOR_ALREADY_APPLIED': 6, 'scope': 2}
+  confinement_refused entries: 0 (cells with >=1: []); engine scope_refused entries: 7 (cells: ['003033-531389', '034345-402300', '050943-731802', '060204-502157', '073309-138118', '082337-546937', '085038-543374'])
+  admission (attempt.json confinement refusals==0 and reaches==0): admitted 36, flagged 0, unknown 0
+  line 32k/48: NEEDS grade-line: 23, fail: 1, not-pass: 1, pass: 11  (cells needing `satyrn-evals grade-line` are NOT counted as pass or fail here)
+  per cell:
+   slot attempt-dir                                      code                 verdict      out_tok turns calls  schema/all-rej conf scope reach adm  line-crossed
+    1   selfhost-run-record-gate-20261005-192351-988718 NO_PATCH             None         39,923    56    55     1/3            0     0     0  yes  tok@37
+    3   selfhost-run-record-gate-20261005-200221-102589 OK                   unavailable   26,117    34    38     0/0            0     0     0  yes  -
+    5   selfhost-run-record-gate-20261005-201247-762320 OK                   pass         29,669    36    35     0/2            0     0     0  yes  -
+    7   selfhost-run-record-gate-20261005-204441-108408 OK                   pass         24,426    35    34     0/3            0     0     0  yes  -
+    9   selfhost-run-record-gate-20261005-211038-264137 OK                   pass         37,615    57    56     0/0            0     0     0  yes  tur@49
+   11   selfhost-run-record-gate-20261005-212403-791285 OK                   pass         38,627    62    67     0/11           0     0     0  yes  tur@49
+   13   selfhost-run-record-gate-20261005-215418-721645 OK                   pass         34,423    29    27     0/0            0     0     0  yes  tok@25
+   15   selfhost-run-record-gate-20261005-222537-836120 BUDGET_EXCEEDED      None         47,308    72    72     0/5            0     0     0  yes  tur@49
+   17   selfhost-run-record-gate-20261005-225443-651698 OK                   pass         39,976    49    55     0/0            0     0     0  yes  tok@36
+   19   selfhost-run-record-gate-20261005-232906-907600 OK                   fail         25,367    37    36     0/2            0     0     0  yes  -
+   21   selfhost-run-record-gate-20261005-235847-768330 BUDGET_EXCEEDED      None         49,572    49    55     0/4            0     0     0  yes  tok@36
+   23   selfhost-run-record-gate-20261006-003033-531389 OK                   pass         31,381    41    50     0/1            0     1     0  yes  -
+    1   selfhost-run-record-gate-20261006-010609-140259 OK                   pass         40,139    43    42     0/1            0     0     0  yes  tok@25
+    3   selfhost-run-record-gate-20261006-014144-563386 OK                   pass         29,329    35    39     0/0            0     0     0  yes  -
+    5   selfhost-run-record-gate-20261006-015113-247011 NO_PATCH             None         40,223    54    53     0/3            0     0     0  yes  tok@41
+    7   selfhost-run-record-gate-20261006-022542-219472 OK                   pass         40,719    53    52     0/4            0     0     0  yes  tok@40
+    9   selfhost-run-record-gate-20261006-025352-709608 BUDGET_EXCEEDED      None         40,092    72    81     0/6            0     0     0  yes  tur@49
+   11   selfhost-run-record-gate-20261006-031453-674821 OK                   pass         45,869    49    53     0/0            0     0     0  yes  tok@31
+   13   selfhost-run-record-gate-20261006-034345-402300 OK                   pass         46,850    66    65     4/5            0     1     0  yes  tok@44
+   15   selfhost-run-record-gate-20261006-041714-694438 BUDGET_EXCEEDED      None         48,119    55    55     1/4            0     0     0  yes  tok@45
+   17   selfhost-run-record-gate-20261006-044006-905223 OK                   pass         28,004    32    42     0/2            0     0     0  yes  -
+   19   selfhost-run-record-gate-20261006-050943-731802 BUDGET_EXCEEDED      None         48,073    68    68     1/10           0     1     0  yes  tur@49
+   21   selfhost-run-record-gate-20261006-054648-457847 OK                   unavailable   45,031    58    56     0/1            0     0     0  yes  tok@35
+   23   selfhost-run-record-gate-20261006-060204-502157 BUDGET_EXCEEDED      None         48,023    64    64     0/3            0     1     0  yes  tok@34
+    1   selfhost-run-record-gate-20261006-065103-029712 OK                   pass         21,192    34    37     0/0            0     0     0  yes  -
+    3   selfhost-run-record-gate-20261006-071351-206758 OK                   pass         30,989    44    43     0/2            0     0     0  yes  -
+    5   selfhost-run-record-gate-20261006-073309-138118 OK                   pass         35,150    38    37     0/3            0     1     0  yes  tok@32
+    7   selfhost-run-record-gate-20261006-080741-107901 OK                   pass         26,656    36    38     0/1            0     0     0  yes  -
+    9   selfhost-run-record-gate-20261006-082337-546937 BUDGET_EXCEEDED      None         48,412    55    57     0/7            0     1     0  yes  tok@38
+   11   selfhost-run-record-gate-20261006-085038-543374 OK                   pass         37,920    55    54     0/4            0     1     0  yes  tok@48
+   13   selfhost-run-record-gate-20261006-091244-720634 OK                   pass         39,829    72    71     0/7            0     0     0  yes  tur@49
+   15   selfhost-run-record-gate-20261006-095326-939358 BUDGET_EXCEEDED      None         49,510    43    43     3/4            0     0     0  yes  tok@33
+   17   selfhost-run-record-gate-20261006-100931-333227 OK                   pass         23,915    33    38     0/0            0     0     0  yes  -
+   19   selfhost-run-record-gate-20261006-104033-813847 NO_PATCH             None         35,617    37    41     0/0            0     0     0  yes  tok@33
+   21   selfhost-run-record-gate-20261006-111951-856135 OK                   pass         25,774    34    38     0/0            0     0     0  yes  -
+   23   selfhost-run-record-gate-20261006-112437-194821 OK                   pass         28,967    23    22     0/1            0     0     0  yes  -
+     line: 192351-988718 -> NEEDS grade-line [tokens @turn 37, 32,200 tok; line.diff present]
+     line: 200221-102589 -> not-pass (never crossed)
+     line: 201247-762320 -> pass (never crossed)
+     line: 204441-108408 -> pass (never crossed)
+     line: 211038-264137 -> NEEDS grade-line [turns @turn 49, 31,171 tok; line.diff present]
+     line: 212403-791285 -> NEEDS grade-line [turns @turn 49, 31,324 tok; line.diff present]
+     line: 215418-721645 -> NEEDS grade-line [tokens @turn 25, 32,067 tok; line.diff present]
+     line: 222537-836120 -> NEEDS grade-line [turns @turn 49, 30,502 tok; line.diff present]
+     line: 225443-651698 -> NEEDS grade-line [tokens @turn 36, 32,093 tok; line.diff present]
+     line: 232906-907600 -> fail (never crossed)
+     line: 235847-768330 -> NEEDS grade-line [tokens @turn 36, 37,740 tok; line.diff present]
+     line: 003033-531389 -> pass (never crossed)
+     line: 010609-140259 -> NEEDS grade-line [tokens @turn 25, 32,130 tok; line.diff present]
+     line: 014144-563386 -> pass (never crossed)
+     line: 015113-247011 -> NEEDS grade-line [tokens @turn 41, 32,474 tok; line.diff present]
+     line: 022542-219472 -> NEEDS grade-line [tokens @turn 40, 32,876 tok; line.diff present]
+     line: 025352-709608 -> NEEDS grade-line [turns @turn 49, 27,592 tok; line.diff present]
+     line: 031453-674821 -> NEEDS grade-line [tokens @turn 31, 32,019 tok; line.diff present]
+     line: 034345-402300 -> NEEDS grade-line [tokens @turn 44, 32,020 tok; line.diff present]
+     line: 041714-694438 -> NEEDS grade-line [tokens @turn 45, 35,008 tok; line.diff present]
+     line: 044006-905223 -> pass (never crossed)
+     line: 050943-731802 -> NEEDS grade-line [turns @turn 49, 31,938 tok; line.diff present]
+     line: 054648-457847 -> NEEDS grade-line [tokens @turn 35, 32,992 tok; line.diff present]
+     line: 060204-502157 -> NEEDS grade-line [tokens @turn 34, 32,126 tok; line.diff present]
+     line: 065103-029712 -> pass (never crossed)
+     line: 071351-206758 -> pass (never crossed)
+     line: 073309-138118 -> NEEDS grade-line [tokens @turn 32, 32,250 tok; line.diff present]
+     line: 080741-107901 -> pass (never crossed)
+     line: 082337-546937 -> NEEDS grade-line [tokens @turn 38, 32,901 tok; line.diff present]
+     line: 085038-543374 -> NEEDS grade-line [tokens @turn 48, 32,980 tok; line.diff present]
+     line: 091244-720634 -> NEEDS grade-line [turns @turn 49, 26,616 tok; line.diff present]
+     line: 095326-939358 -> NEEDS grade-line [tokens @turn 33, 32,263 tok; line.diff present]
+     line: 100931-333227 -> pass (never crossed)
+     line: 104033-813847 -> NEEDS grade-line [tokens @turn 33, 33,135 tok; line.diff present]
+     line: 111951-856135 -> pass (never crossed)
+     line: 112437-194821 -> pass (never crossed)
+  infrastructure / wall-clock / anomaly flags: 
+     selfhost-run-record-gate-20261005-200221-102589: verdict unavailable: patch touches non-source path: rec.json
+     selfhost-run-record-gate-20261005-222537-836120: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261005-235847-768330: BUDGET_EXCEEDED (model outcome, no verdict): attempt command spent 49572 output tokens, over the budget of 48000
+     selfhost-run-record-gate-20261006-025352-709608: BUDGET_EXCEEDED (model outcome, no verdict): attempt command started turn 73, over the budget of 72 turns
+     selfhost-run-record-gate-20261006-041714-694438: calls 55 != tool results 54 (cut mid-call)
+     selfhost-run-record-gate-20261006-041714-694438: BUDGET_EXCEEDED (model outcome, no verdict): attempt command spent 48119 output tokens, over the budget of 48000
+     selfhost-run-record-gate-20261006-050943-731802: calls 68 != tool results 67 (cut mid-call)
+     selfhost-run-record-gate-20261006-050943-731802: BUDGET_EXCEEDED (model outcome, no verdict): attempt command spent 48073 output tokens, over the budget of 48000
+     selfhost-run-record-gate-20261006-054648-457847: verdict unavailable: patch touches non-source path: rec.json
+     selfhost-run-record-gate-20261006-060204-502157: BUDGET_EXCEEDED (model outcome, no verdict): attempt command spent 48023 output tokens, over the budget of 48000
+     selfhost-run-record-gate-20261006-082337-546937: BUDGET_EXCEEDED (model outcome, no verdict): attempt command spent 48412 output tokens, over the budget of 48000
+     selfhost-run-record-gate-20261006-095326-939358: BUDGET_EXCEEDED (model outcome, no verdict): attempt command spent 49510 output tokens, over the budget of 48000
