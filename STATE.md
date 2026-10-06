@@ -111,8 +111,8 @@ evidence for the isolated condition only (ledger "C0", "Not re-opened").
   (`evidence/2026-10-05-eb-cell-read/README.md`). Section 4's parity rule cannot
   certify parity on guard-prefixes at n ≤ 24, so EB3 does not run and EB closes
   on the floor secondary with this negative (ledger "EB after EB2: seven
-  rulings"; result draft `evidence/2026-10-05-eb2-estimates/floor-result-draft.md`,
-  not yet placed).
+  rulings"; results page `docs/results/2026-10-05-eb-floor.md`, placed
+  2026-10-06).
 - **No EB remedy was estimated to work.** EB2's finding is that offline
   estimation cannot discriminate here: every candidate remedy changes the
   Engine's calls from turn 1 (`evidence/2026-10-05-eb2-estimates/README.md` §6).
@@ -139,8 +139,8 @@ evidence for the isolated condition only (ledger "C0", "Not re-opened").
 **The comparison is decided:** the run-record-gate claim above holds. The
 maintainer decides what it opens: how STATE.md and a release frame the claim,
 and whether a second task (preflight-quiet, unconfirmed as a ceiling task since
-2026-10-05) is wanted before any release claim. The results page is drafted
-for the maintainer to place (`evidence/2026-10-05-rrg-delivery/result-draft.md`).
+2026-10-05) is wanted before any release claim. The results page is
+`docs/results/2026-10-06-rrg-delivery.md` (placed 2026-10-06).
 
 **EB is postponed** until large blocks of GPU time (ledger "EB postponed").
 The floor negative at `23a0ef6` stands; the decider is an arm's total output
