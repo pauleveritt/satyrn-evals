@@ -1,5 +1,11 @@
 # The pathology census — nights 1, 2 and 3 (2026-09-16 through 2026-09-18)
 
+> **SUPERSEDED (C3, 2026-10-03); UNCONFIRMED (35c298d) since C0.** Nights 1–3 ran under
+> two-uid isolation, which has since been retired. The readings stay evidence for that
+> condition only. For building, they are superseded by the confinement census
+> `evidence/2026-10-03-c3-census/` (decision ledger, entries "C0" and "C3").
+
+
 Signed by the maintainer 2026-09-17 for nights 1 and 2; the night-3 additions of 2026-09-18 await the
 maintainer's signature. The mechanical fields are the
 classifier's (`classify.py` at `6a95720`); the eight class columns in each

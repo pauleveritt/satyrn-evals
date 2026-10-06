@@ -1,5 +1,10 @@
 # Finishing counterfactual — result
 
+> **SUPERSEDED (C4, 2026-10-03).** Runs 1 and 2 used release-one cells under two-uid isolation.
+> The counterfactual was re-derived on the confinement census in
+> `evidence/2026-10-03-c4-counterfactual/` (decision ledger, entry "C4").
+
+
 If a retained cell had stopped at the first point the Engine could observe as
 green, how many within-budget passes would that add, and how many would it break
 (spec section 1)? Answered offline from retained cells: no GPU, no new tasks, no

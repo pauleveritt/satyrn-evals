@@ -18,7 +18,9 @@ into a solution -- Satyrn Engine.
 
 The evidence is in [the numbers](numbers.md): a pre-registered comparison of
 `/implement` against bare Pi on medium-build tasks, read once when complete,
-with where it did not help and what it costs.
+with where it did not help and what it costs. That reading ran under a
+harness that has since been retired, and it is marked unconfirmed until
+it is re-derived; the numbers page says what has been re-derived since.
 
 **New here?** [Your first run](user-journey.md) is the guided journey: what an
 engine is, what evals are for, and then a real task run end to end on ollama,

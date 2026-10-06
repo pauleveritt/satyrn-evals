@@ -122,9 +122,9 @@ tag's only such test was built on the dropped `session-mechanics` task).
 `evidence/2026-10-02-cleanup-audit/README.md`; engine-side items
 in satyrn-engine `BACKLOG.md`. Each item names what closes or reopens it.
 
-- **Propagate the C0 unconfirmed mark** to `docs/numbers.md`, the site, the
-  census and red-stop evidence READMEs, and the records the ledger names.
-  Prose only; do before the site next deploys.
+- **C0 mark propagated: done 2026-10-06.** Banners on `docs/numbers.md` (and so the
+  site), `site/index.md`, and the census, red-stop and counterfactual evidence. Records
+  stay unedited: results pin `record_sha256`, so the ledger remains their mark.
 - **Rewrite `STATE.md`; one reading order** across `AGENTS.md`, `README.md`
   and `STATE.md`; retired local state removed. Do with the mark above.
 - **This file's shape:** a Status column for the release-two table, R0's

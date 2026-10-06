@@ -1,5 +1,11 @@
 # Red-stop gate: send a follow-up when the model stops on a failing self-test
 
+> **UNCONFIRMED (35c298d).** The red-stop replay and rerun (record
+> `2026-09-23-spike-mellum-class-review-script-redstop`, engine `803df2d`) ran under two-uid
+> isolation, which has since been retired. C1–C4 re-derive neither, and the mark stands until
+> Engine cells under confinement do (decision ledger, entries "C0" and "C4").
+
+
 > **Outcome.** Implemented in satyrn-engine as `803df2d` on `release-one`
 > (Revision 1 below is what shipped). The offline estimate recomputes with
 > `uv run python evidence/2026-09-23-red-stop-gate/red_stop_scan.py` over

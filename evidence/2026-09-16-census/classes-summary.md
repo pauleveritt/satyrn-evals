@@ -1,5 +1,11 @@
 # The class columns, read across both nights
 
+> **SUPERSEDED (C3, 2026-10-03); UNCONFIRMED (35c298d) since C0.** Nights 1–3 ran under
+> two-uid isolation, which has since been retired. The readings stay evidence for that
+> condition only. For building, they are superseded by the confinement census
+> `evidence/2026-10-03-c3-census/` (decision ledger, entries "C0" and "C3").
+
+
 Reviewer's cross-task reading of the 39 filled `classes.md` tables, 2026-09-17,
 for the maintainer's sign-off. Nothing pools across tasks. The primary is the class
 whose removal would have changed the verdict at the 32,000-token, 48-turn line;

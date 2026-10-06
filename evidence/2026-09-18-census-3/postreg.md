@@ -1,5 +1,11 @@
 # Pre-registered post-hoc read: four parked literals, `selfhost-preflight-quiet`
 
+> **SUPERSEDED (C3, 2026-10-03); UNCONFIRMED (35c298d) since C0.** Nights 1–3 ran under
+> two-uid isolation, which has since been retired. The readings stay evidence for that
+> condition only. For building, they are superseded by the confinement census
+> `evidence/2026-10-03-c3-census/` (decision ledger, entries "C0" and "C3").
+
+
 Written 2026-09-18, **before** night 3 runs, under the maintainer's
 2026-09-18 ruling that parked two whole-path-review findings against the
 frozen `selfhost-preflight-quiet` cut — I2 (the `ps`-line split rule) and

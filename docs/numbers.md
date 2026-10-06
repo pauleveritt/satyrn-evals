@@ -1,5 +1,15 @@
 # The numbers — release two
 
+> **UNCONFIRMED (35c298d).** This comparison ran in September 2026 under two-uid
+> isolation, which has since been retired. Its reading (Engine 16 of 24, Baseline 2 of 24, engine
+> `78ab87d`) stands as evidence for that condition only. Nothing is built on it until it is
+> re-derived on the confinement harness (decision ledger, entries "C0" and "C4"). The
+> Engine is now pinned at `9aecfb5`. On the confinement harness, a pre-registered comparison on
+> the same task, with a delivery endpoint, engine `23a0ef6` and a 48,000-token budget, holds:
+> Engine 22 of 36, Baseline 10 of 36 (`docs/results/2026-10-06-rrg-delivery.md`). It is a
+> separate claim and does not clear this one.
+
+
 <div class="record-metadata" markdown="1">
 
 Drafted by Fable 2026-09-20 from the committed results under `records/` and the
