@@ -1,4 +1,4 @@
-# State of the project — 2026-10-04
+# State of the project — 2026-10-06
 
 The one page to read first. What exists, what is proven, what is disproven,
 what is decided, and what is next. Every claim here cites the file or commit
@@ -15,8 +15,8 @@ not agent engineering. Two repositories, both on branch `main`:
   grading from retained evidence. Head: the commit that adds this line;
   `phase-c1` (Phase C, the R0 agenda, the Engine re-pin and the development
   read) is merged as `341200d` (ledger "Engine pin moved to the merge commit
-  5b681b0"). The engine-budget work is on the unmerged branch
-  `worktree-engine-budget`.
+  5b681b0"). The engine-budget work is merged: `worktree-engine-budget` as
+  `8079874` and EB2 (`eb2-estimates`) as `631ef05`.
 - **`satyrn-engine`** — the product: `/implement`, a derived contract,
   guards, symbol preservation, carried tests, `self_test`, a receipt; its
   terms are in `site/engine-glossary.md`. Pinned at
@@ -45,6 +45,24 @@ evidence for the isolated condition only (ledger "C0", "Not re-opened").
 
 ## What is proven
 
+- **On run-record-gate the pinned Engine delivers more often than bare Pi.**
+  This is the first deciding Engine outcome on the confinement harness, decided
+  2026-10-06. It was pre-registered at
+  `docs/superpowers/specs/2026-10-05-run-record-gate-delivery-comparison.md`
+  (approved `e9b3aa9`, amended §10 `9a5e668`) and decided once by a reader
+  frozen before launch. Three `campaign` records, n = 12 per arm each, engine
+  `23a0ef6`, Apple M5 Max. **Engine 22 of 36 delivered a passing patch within
+  48,000 output tokens and 72 turns; Baseline 10 of 36; one-sided Fisher exact
+  p = 0.0043** (admitted cells only: 22/36 against 10/35, p = 0.0056). The run
+  had 0 replaced and 0 infrastructure cells, and no wall-clock cut.
+  Secondaries: at the 32k/48 line both arms usually hold a passing tree
+  (`grade-line`: Baseline 29 of 33, Engine 28 of 34), so the difference is
+  finishing. Bare Pi ran out of budget in 26 of 36 cells. Total output tokens
+  per delivered pass: Baseline 143,848, Engine 60,400
+  (`evidence/2026-10-05-rrg-delivery/README.md`; ledger "The run-record-gate
+  comparison on delivery: holds"). The claim covers one task, one model and
+  one budget; the delivery endpoint was chosen after the development reads and
+  is disclosed as such (pre-registration §2).
 - **Confinement replaces isolation.** Two-uid and `bwrap` isolation are
   retired at `35c298d`; both arms run as the maintainer under an eval-owned Pi
   extension that refuses file-tool paths outside the worktree and bash naming
@@ -60,10 +78,14 @@ evidence for the isolated condition only (ledger "C0", "Not re-opened").
   re-qualified the tasks first (re-cut `7fc679f`, ledger "C1"); C2 re-signed
   the process classes with `hunting` live (ledger "C2: census process classes
   re-read", `evidence/2026-10-03-c2-hunting-reread/`).
-- **C4 read `verify`.** The finishing counterfactual on the C3 census, deciding
-  reading run 2: run-record-gate and preflight-quiet qualify (net 3 and 2),
-  floor harm 0; `go` failed only on docs-linter's two `fidelity:` rows (ledger
-  "C4: the finishing counterfactual re-derived"; decision `4bc9831`).
+- **C4 read `verify`; UNCONFIRMED since 2026-10-05.** The finishing
+  counterfactual on the C3 census, deciding reading run 2: run-record-gate and
+  preflight-quiet qualify (net 3 and 2), floor harm 0 (decision `4bc9831`). Its
+  at-line and green-turn reads came from the classifier's replay. On fresh
+  cells `grade-line` read Baseline 6 of 6 at the line where C3's replay read
+  0 of 6, so C4, C3's at-line column and the power figures built on them are
+  marked unconfirmed (ledger "Baseline line read on run-record-gate", (b)).
+  C3's harness verdicts, admission and codes are not affected.
 - **The harness measures what it claims.** Budget tripwire, base-commit
   harvest, per-cell evidence, offline reconstruction, and a launcher that
   stops on infrastructure failures and resumes a capped sitting. A declared
@@ -78,14 +100,20 @@ evidence for the isolated condition only (ledger "C0", "Not re-opened").
 
 ## What is disproven, or undetermined
 
-- **No deciding Engine outcome exists on this harness.** The development read
-  on run-record-gate (`records/2026-10-04-dev-engine-selfhost-run-record-gate.json`,
-  result `ee277b3`, engine `6d30479`): `grade-line` gives line pass 5/5 with 1
-  excluded as `unavailable` (`843732`, a real stray file), beside C3's Baseline
-  0 of 6 on the same task, never pooled, never deciding (ledger "Replay
-  instrument piece landed"). The first reading, 3 of 6 by the classifier's
-  replay, and its "finishing in the Engine arm" finding were withdrawn as a
-  replay artifact (ledger "Correction: the Engine development read is 5 of 6").
+- **Floor parity: a stated negative at `23a0ef6`.** On the two floor tasks,
+  the Engine costs more per delivered pass than bare Pi (total output tokens ÷
+  delivered passes). On guard-prefixes it is 38,497 against 23,888, with medians
+  28,463 against 5,510. On review-script it is 24,847 against 13,180, with the
+  Engine delivering 6 of 12 against 11 of 12 (p = 0.034)
+  (`evidence/2026-10-05-eb-cell-read/README.md`). Section 4's parity rule cannot
+  certify parity on guard-prefixes at n ≤ 24, so EB3 does not run and EB closes
+  on the floor secondary with this negative (ledger "EB after EB2: seven
+  rulings"; result draft `evidence/2026-10-05-eb2-estimates/floor-result-draft.md`,
+  not yet placed).
+- **No EB remedy was estimated to work.** EB2's finding is that offline
+  estimation cannot discriminate here: every candidate remedy changes the
+  Engine's calls from turn 1 (`evidence/2026-10-05-eb2-estimates/README.md` §6).
+  A remedy, if built, is measured Engine against Engine.
 - **UNCONFIRMED (35c298d), kept:** `docs/numbers.md` (Engine 16 of 24 against
   Baseline 2 of 24), the 2026-09-17 and 2026-09-19 route proofs, and the
   red-stop replay (`evidence/2026-09-23-red-stop-gate/`). C1–C4 re-derive none
@@ -99,38 +127,29 @@ evidence for the isolated condition only (ledger "C0", "Not re-opened").
   now reaches receipts and `self_test_redirected` is retired, still classified
   (ledger "Engine re-pin 6d30479"). No outcome effect of either has been
   measured on this harness.
-- **Floor cost gap (EB).** EB0 (36 development cells, both arms, engine
-  `1869397`) reproduced the gap on guard-prefixes (20 of 20 pairs) and
-  review-script (25 of 25), not depth-3; EB1's offline read set the floor set
-  to those two and found the parity rule weak at n = 6 (branch
-  `worktree-engine-budget`, `c805ab1`, `7f72d31`;
-  `evidence/2026-10-03-eb1-read/README.md` there). EB0's Engine cells are
-  evidence about `1869397` only (ledger "Engine re-pin 6d30479", (d)).
+- **EB0 and EB1** (engine `1869397`) are evidence about that pin only. EB1
+  §5's remedy figures labelled "upper bounds" are category medians, not bounds
+  on the decider, and are UNCONFIRMED (spec §7; ledger "EB2 executed", 4).
 
-## Current direction, ruled 2026-10-04
+## Current direction, 2026-10-06
 
-**The R0 sitting ruled** on `docs/superpowers/plans/2026-10-04-r0-sitting-agenda.md`
-(ledger "R0 sitting: rulings on the agenda"): `verify` accepted; no row of
-census design §2 supported; ceiling set run-record-gate and preflight-quiet;
-the comparison measures **the Engine as pinned**, no finish-on-green build;
-§8.4 held, no Engine spec and no remediation list.
+**The comparison is decided:** the run-record-gate claim above holds. The
+maintainer decides what it opens: how STATE.md and a release frame the claim,
+and whether a second task (preflight-quiet, unconfirmed as a ceiling task since
+2026-10-05) is wanted before any release claim. The results page is drafted
+for the maintainer to place (`evidence/2026-10-05-rrg-delivery/result-draft.md`).
 
-**Two later rulings** (ledger "Engine pin moved to the merge commit 5b681b0"):
-"pass at the line" for any deciding read is the cell's own tree at the line,
-read by `grade-line` on both arms (ledger "Replay instrument piece landed");
-the classifier's replay is diagnostic only. **The n = 12 comparison does not
-run now:** with Baseline near 3 of 6 at the line by C4's own estimate, power
-is 0.43 at n = 12 and 0.72 at n = 24. No run follows until a pre-registration
-states a power the maintainer accepts; it must also settle whether an
-`unavailable` cell is excluded (`grade-line`) or counted Baseline-favouring
-(the ruling's text). A comparison needs new Baseline cells, since C3's records
-did not declare the line.
+**EB is closed on the floor secondary** with the stated negative above (ledger
+"EB after EB2: seven rulings"). The decider's reading is fixed: an arm's total
+output tokens ÷ its delivered passes, with delivery beside it. The scratch-path
+remedy is withdrawn. The light path is a product decision. A built remedy is
+measured Engine against Engine on guard-prefixes. The Engine backlog line
+(review-script's discarded candidate after `git commit`) is held until the next
+engine change, so engine `main` stays at the pin.
 
-**EB:** EB0 and EB1 are done; the confinement-root, red-stop-receipt and
-edit-parity fixes landed in the re-pin. EB2's remedies each wait for an
-offline estimate on retained cells, and any estimate built on EB0 Engine cells
-names `1869397`; EB3 re-measures because the arm changed (ledger "Engine
-re-pin 6d30479", (e)).
+**Superseded:** the 2026-10-04 at-line endpoint and its power sizing
+(0.43 / 0.72). The comparison's endpoint moved to delivery (ledger "Baseline
+line read on run-record-gate", (a)).
 
 ## Rules that bind the work
 
@@ -155,13 +174,15 @@ re-pin 6d30479", (e)).
 1. This page, then `BRIEF.md` (goal and invariants) and `ROADMAP.md` (status).
 2. The confinement design (`docs/superpowers/specs/2026-09-27-unisolated-harness-design.md`),
    then `docs/results/2026-10-03-c3-census.md` and
-   `docs/results/2026-10-03-c4-counterfactual.md`, then the R0 agenda
-   (`docs/superpowers/plans/2026-10-04-r0-sitting-agenda.md`).
+   `docs/results/2026-10-03-c4-counterfactual.md` (both partly unconfirmed
+   since 2026-10-05), then the comparison's pre-registration and evidence
+   (`docs/superpowers/specs/2026-10-05-run-record-gate-delivery-comparison.md`,
+   `evidence/2026-10-05-rrg-delivery/README.md`).
 3. `docs/superpowers/specs/2026-09-15-release-one-outcome.md` — what happened;
    then the R0 constraints and the census design
    (`docs/superpowers/specs/2026-09-15-release-two-census-design.md`).
 4. The ledger — why each decision was made, dated, 2026-09-13 onward; the
-   2026-10-02 to 2026-10-04 entries hold the current rulings.
+   2026-10-04 to 2026-10-06 entries hold the current rulings.
 5. `docs/numbers.md` is UNCONFIRMED (35c298d): read it as evidence for the
    isolated condition, not as a result.
 6. `docs/lessons.md`, `docs/pathologies.md`, `docs/remediations.md` — the
@@ -171,14 +192,20 @@ re-pin 6d30479", (e)).
 
 ## Where the evidence lives
 
-- **`records/`** — every run record and its committed result (131 files),
-  including the six C1 census records (`2026-10-02-c1-*`) and the Engine
-  development record (`2026-10-04-dev-engine-*`).
+- **`records/`** — every run record and its committed result (159 files),
+  including the C1 census records (`2026-10-02-c1-*`), the development reads
+  (`2026-10-04-dev-engine-*`, `2026-10-05-dev-baseline-*`), the EB cell reads
+  (`2026-10-04-eb-*`) and the comparison (`2026-10-05-campaign-*-{a,b,c}`).
 - **`~/satyrn-runs/`** — the retained cells: transcripts, patches, receipts,
   timelines, summaries. Not in git.
 - **`evidence/2026-10-02-c1-preflight/`**, **`2026-10-03-c2-hunting-reread/`**,
   **`2026-10-03-c3-census/`**, **`2026-10-03-c4-counterfactual/`** — Phase C,
   each with its README.
+- **`evidence/2026-10-02-engine-budget/`**, **`2026-10-03-eb1-read/`**,
+  **`2026-10-05-eb-cell-read/`**, **`2026-10-05-eb2-estimates/`** — Phase EB.
+  **`2026-10-05-dev-baseline-run-record-gate/`** and
+  **`2026-10-05-rrg-delivery/`** — the comparison (`decide.py` is frozen by
+  `tests/test_frozen_instruments.py`).
 - **`evidence/2026-09-15-release-one-outcome/`**,
   **`2026-09-15-finishing-counterfactual/`**, **`2026-09-16-census/`**,
   **`2026-09-17-census-2/`**, **`2026-09-18-census-3/`** — isolated-condition
@@ -189,6 +216,16 @@ re-pin 6d30479", (e)).
 
 ## Known defects and open items
 
+- **Collection errors score `unavailable`, not `fail`** (`docs/lessons.md`).
+  When the solver's own code fails test collection, zero tests run and the
+  grader reports a mismatch. In the comparison this counted against the
+  Engine (D2). Not fixed.
+- **Stray files make a correct patch `unavailable`.** Examples are a model's
+  own test writing `docs/reviews/…`, or a scratch file. The strip-rule
+  sensitivity read answers it offline; it was not run for EB.
+- **The batch cap** (`CAPS` in `src/satyrn_evals/run_record.py`: n ≤ 12 per
+  arm, 720 minutes) means a larger design runs as several records decided
+  together (pre-registration §10).
 - **Root-search and outside-worktree gap.** The extension does not refuse,
   and the audit does not count, a bash search rooted above the worktree or a
   bash command that works outside it without naming a protected path. A
