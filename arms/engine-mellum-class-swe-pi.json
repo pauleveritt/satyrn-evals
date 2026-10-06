@@ -15,7 +15,7 @@
   "server_model": "swe-pi-m23-mix4s100-think-ae10k-init800-20260917-bulat-step-500-mellum-MLX-8bit",
   "pins": {
     "pi": "0.85.1",
-    "engine_commit": "23a0ef649dc4764bf09ca51110434b1b34ac1c27",
+    "engine_commit": "9aecfb513be3211d5f5753bf778807ccecfd76ca",
     "digests": {
       "engine.ts": "0f581ffeed8931fb0f656f6df7d547ad14893eb2c3edd1d8e203b819d4b2f9d1",
       "mutator.ts": "31f411ef733dc09266fd823d07c20caeb8b0fb8b13817704c03e7d439f07e4dc",

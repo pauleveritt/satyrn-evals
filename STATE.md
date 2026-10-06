@@ -20,11 +20,14 @@ not agent engineering. Two repositories, both on branch `main`:
 - **`satyrn-engine`** — the product: `/implement`, a derived contract,
   guards, symbol preservation, carried tests, `self_test`, a receipt; its
   terms are in `site/engine-glossary.md`. Pinned at
-  `23a0ef649dc4764bf09ca51110434b1b34ac1c27` (`arms/engine-ornith15-9b.json`),
-  engine `main` after the merge of `eb-confinement-parity` (`5b681b0`) plus a
-  glossary-only commit; the seven pinned
-  digests equal those at `6d30479`, so cells read at `6d30479` are the same
-  Engine bytes (same ledger entry).
+  `9aecfb513be3211d5f5753bf778807ccecfd76ca` (`arms/engine-ornith15-9b.json`)
+  since 2026-10-06: the merge of `eb-head-tolerance` (a model's detached
+  `git commit` no longer discards the candidate; the receipt records
+  `head_moved`) and the cleanup fixture branch. The seven pinned digests are
+  unchanged from `23a0ef6` and `6d30479`, but `delivery.py` changed, so cells
+  at `9aecfb5` are a new Engine condition and never pool with earlier ones
+  (ledger "Engine re-pin for head tolerance"). The decided comparison is at
+  `23a0ef6`.
 
 ## Where release one ended
 
@@ -151,7 +154,8 @@ eight rulings"; review `evidence/2026-10-06-eb-replan/`; sequence
 claim: Baseline held a passing tree at the budget cut in 22 of 26 budget cells.
 Next: the Engine tolerates a model's `git commit` instead of discarding the
 candidate (parity; offline bound +2/36 run-record-gate, +1/12 review-script),
-built on an engine branch and landed in one re-pin. The light path is the one
+built and re-pinned 2026-10-06 (`9aecfb5`; bound in
+`evidence/2026-10-06-eb-replan/head-tolerance.md`). The light path is the one
 remedy with an effect of the floor gap's size; it waits for the maintainer's
 product decision. No completion gate, no deciding read on preflight-quiet.
 
