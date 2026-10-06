@@ -4,6 +4,14 @@
 
 **Status:** re-planned 2026-10-06 from the maintainer's cleanup brief of that day; the 2026-10-03 draft is superseded (its text is in this file's history). Task 0 and Task 4 are approved by that brief. Task 5 is attended: it runs inside the EB re-plan's Task 3, after the maintainer merges.
 
+**Outcome, 2026-10-06 (added after execution).** Global Constraints and the verification block below describe the state before the merge. Since then:
+- **Task 0:** done.
+- **Task 4:** done as engine `71a15c4` and `b08938c` (with the amendment in Step 4).
+- **Engine merge:** the maintainer merged `eb-head-tolerance` (`b60bf2b`) and `cleanup-derive-size-fixture` (`b08938c`) into engine `main` as the octopus merge `9aecfb5` (13:07). Task 5 Step 1's checks pass on it: both branches are in, `d4abd65` is out, and the diff is the 13 files that Step 1 lists.
+- **Task 5 Steps 2–4:** done on `eb-replan` as `31dfc05`, the re-pin with `_engine/` re-synced, followed by a development smoke cell at the new pin (`5157106` record, `71ede5c` result: OK, pass). `eb-replan` merged into evals `main` as `404a993`.
+- **Task 5 Steps 5–6:** done on `main` by the coordinating session.
+- **Review:** Fable's review of this session (findings 1–4) is folded into Steps 1, 3 and "Not in this plan".
+
 **Goal:** The cleanup items that cross the repository boundary land with the EB head-tolerance fix in exactly one Engine re-pin, and every backlog entry that names them is closed by a commit it can cite.
 
 **Architecture:** Three of the five original steps are on `main` in both repositories and are recorded here with their commits. Step 4 is open: an engine-only, test-first branch `cleanup-derive-size-fixture` in worktree `../satyrn-engine-cleanup`, cut from engine `origin/main`. Step 5 is no longer this plan's own re-pin: it is the EB re-plan's Task 3 (`docs/superpowers/plans/2026-10-06-eb-replan.md`), which pins one engine merge holding both `eb-head-tolerance` and this plan's branch. This plan wraps that task with the ordering checks, the `_engine/` re-sync and the close-out it does not carry.
@@ -293,11 +301,17 @@ git merge-base --is-ancestor d4abd65 "$M" && echo "STOP: d4abd65 is in main" || 
 git diff --stat 23a0ef6 "$M"
 ```
 
-Expected: two `in main:` lines, `d4abd65 out`, and a diff that names only `src/satyrn_engine/delivery.py`, `docs/usage.md`, `BACKLOG.md`, `PROVENANCE.md` and files under `tests/` (the two branches' files). `docs/usage.md` is one of the three docs `just sync-engine` copies, so Step 3 changes `_engine/usage.md` too. On 2026-10-06, `git merge-tree --write-tree eb-head-tolerance cleanup-derive-size-fixture` merged cleanly, although both branches touch `BACKLOG.md`. Any `MISSING:`, a `STOP:`, or another file in the diff stops the task. A missing branch forces a second re-pin, and an extra file is a change no ledger entry covers.
+Expected: two `in main:` lines, `d4abd65 out`, and a diff that names exactly these 13 files: `BACKLOG.md`, `docs/usage.md`, `src/satyrn_engine/delivery.py`, the five `tests/fixtures/delivery/receipt-{candidate-exists,cleanup-failed,command-failed,ok,repo-dirty}.json`, `tests/fixtures/derive_size/selfhost-preflight-quiet.json`, and `tests/test_{delivery,delivery_failures,derive_size,integration_delivery}.py`. Engine `PROVENANCE.md` does not change, because neither branch adds a file. `docs/usage.md` is one of the three docs `just sync-engine` copies, so Step 3 changes `_engine/usage.md` too. On 2026-10-06, `git merge-tree --write-tree eb-head-tolerance cleanup-derive-size-fixture` merged cleanly, although both branches touch `BACKLOG.md`. Any `MISSING:`, a `STOP:`, or another file in the diff stops the task. A missing branch forces a second re-pin, and an extra file is a change no ledger entry covers.
 
 - [ ] **Step 2: Run EB re-plan Task 3 Steps 1–3** with `<M>`: fast-forward `../satyrn-engine` to `<M>`, set `pins.engine_commit` in the three arm files `grep -l 23a0ef6 arms/` lists, confirm the seven digests are unchanged, and write the ledger entry "Engine re-pin for head tolerance". Have that entry also say that the merge carries `cleanup-derive-size-fixture` (tests, fixture and backlog only).
 
-- [ ] **Step 3: Re-sync `_engine/` (the step EB Task 3 omits).** `tests/test_engine_docs.py:13` requires `_engine/manifest.json` to name the arm's pin.
+- [ ] **Step 3: Re-sync `_engine/` and update every pin literal (the steps EB Task 3 omits).** `tests/test_engine_docs.py:13` requires `_engine/manifest.json` to name the arm's pin. `just sync-engine` writes `_engine/` and its `PROVENANCE.md` rows only. The full 40-hex pin also appears in seven files the sync does not write, and each must be edited by hand:
+  - `site/engine.md:5`, `site/engine-usage.md:5`, `site/engine-glossary.md:5` and `site/engine-architecture.md:23` (`tests/test_engine_pages.py`, `test_engine_pages_banner_names_the_manifest_commit`)
+  - `tests/test_arms.py:358`
+  - `tests/test_engine_sync.py:32`
+  - `STATE.md` (prose)
+
+  Find them with `git grep -n <old pin> -- site tests STATE.md`. The re-pins `dabe704` and `31dfc05` each touched exactly these.
 
 ```bash
 cd ~/projects/pauleveritt/satyrn-engine && git rev-parse HEAD     # <M>
@@ -309,7 +323,7 @@ cd ~/projects/pauleveritt/satyrn-engine && uv run pytest -q tests/test_derive_si
 
 - [ ] **Step 4: Run EB re-plan Task 3 Step 4** (gates and commit). Include the `_engine/` and `PROVENANCE.md` changes from Step 3 in that commit.
 
-- [ ] **Step 5: Close the evals backlog entry.** On `eb-replan`, in `ROADMAP.md` under "Cleanup, 2026-10-02", replace the whole "**Frozen census scripts call `preflight_settings.py --cell`…**" bullet with:
+- [ ] **Step 5: Close the evals backlog entry.** On `main` (after `eb-replan` merges; executed there 2026-10-06), in `ROADMAP.md` under "Cleanup, 2026-10-02", replace the whole "**Frozen census scripts call `preflight_settings.py --cell`…**" bullet with:
 
 ```markdown
 - **Cross-repo cleanup: closed <date>.** `--cell` residue `159a04d`,
@@ -335,7 +349,8 @@ git show --stat HEAD
 - **`origin/derive-new-top-level-module` (`d4abd65`, `92c9282`): it lands with the light path.** The maintainer decided this on 2026-10-06. It is unmerged and changes `derive.py`, so it changes the Engine's contract, and it must not ride Task 5.
   - **If decision L is yes:** merge it into engine `main` just before the light-path build. That build changes `derive.py` too, and its planned test that the medium tasks' derived contracts stay byte-identical covers this change as well. The light-path re-pin's ledger entry names it.
   - **If decision L is no:** it rides the next runtime re-pin, and that re-pin's ledger entry names it.
-  - **Evidence (scratch, not a ledger fact):** on 2026-10-06 the derived contracts for all 32 requests across the 12 evals tasks were identical at `23a0ef6` with and without `d4abd65`. `format_number` fails the same way in both: no `pyproject.toml`.
+  - **Evidence (scratch, not a ledger fact; the script was not retained):** on 2026-10-06 the derived contracts were identical at `23a0ef6` with and without `d4abd65`, for all 33 requests across the 12 evals tasks (12 `contract`, 20 `contracts.*`, and `format_number`'s `engine_contract`). The controller and Fable's review each derived them independently. `format_number` fails the same way in both runs: no `pyproject.toml`.
+  - **Why it is inert today:** `d4abd65` fires only on a bare top-level `*.py` token in a `Files:` block that is not already tracked, and no current request has one. The evidence of record is the light-path plan's byte-identical contract test, run with `d4abd65` merged.
   - **Merging:** `derive.py` merges cleanly onto `origin/main`, but `BACKLOG.md` conflicts with `92c9282`; resolve by keeping both entries.
 - **The ollama switch** gets its own plan, written after EB's decision L (EB re-plan "Step 2"). Facts that plan starts from:
   - Backends never pool.
