@@ -2926,3 +2926,4 @@
 | evidence/2026-10-06-eb-replan/budget-trees/939358.diff | written 2026-10-06 by Fable from the leftover temp directory of Engine budget cell 939358; a recovered source tree, strays unknown (never deciding) |
 | evidence/2026-10-06-eb-replan/budget-trees/939358.receipt.json | written 2026-10-06 by `satyrn-evals grade` on budget-trees/939358.diff (offline); a bound on source correctness, not a verdict |
 | docs/superpowers/plans/2026-10-06-eb-replan.md | written 2026-10-06 by an agent (Opus) for the maintainer; the EB re-plan after the eight rulings |
+| evidence/2026-10-06-eb-replan/head-tolerance.md | written 2026-10-06 by an agent (Opus) for plan docs/superpowers/plans/2026-10-06-eb-replan.md Task 2; the offline bound of the head-tolerance fix on the four discarded cells, from the review §2.1 |
