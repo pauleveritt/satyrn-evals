@@ -145,8 +145,8 @@ for the maintainer to place (`evidence/2026-10-05-rrg-delivery/result-draft.md`)
 **EB is closed on the floor secondary** with the stated negative above (ledger
 "EB after EB2: seven rulings"). The decider's reading is fixed: an arm's total
 output tokens ÷ its delivered passes, with delivery beside it. The scratch-path
-remedy is withdrawn. The light path is a product decision. A built remedy is
-measured Engine against Engine on guard-prefixes.
+remedy is withdrawn. The light path is not built (decision L, 2026-10-06: no;
+`TODO.md`, Freezer).
 
 **EB re-plan, 2026-10-06** (ledger "Review of the comparison and EB re-plan:
 eight rulings"; review `evidence/2026-10-06-eb-replan/`; sequence
@@ -156,8 +156,8 @@ Next: the Engine tolerates a model's `git commit` instead of discarding the
 candidate (parity; offline bound +2/36 run-record-gate, +1/12 review-script),
 built and re-pinned 2026-10-06 (`9aecfb5`; bound in
 `evidence/2026-10-06-eb-replan/head-tolerance.md`). The light path is the one
-remedy with an effect of the floor gap's size; it waits for the maintainer's
-product decision. No completion gate, no deciding read on preflight-quiet.
+remedy with an effect of the floor gap's size; the maintainer ruled it out for
+now (decision L, 2026-10-06). No completion gate, no deciding read on preflight-quiet.
 
 **Superseded:** the 2026-10-04 at-line endpoint and its power sizing
 (0.43 / 0.72). The comparison's endpoint moved to delivery (ledger "Baseline

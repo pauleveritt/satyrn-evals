@@ -80,7 +80,7 @@ Nothing is built on any of them in the meantime.
 
 ## Next — Phase EB, engine budget
 
-Design `docs/superpowers/specs/2026-10-02-engine-budget-design.md`; evidence `evidence/2026-10-02-engine-budget/`, `evidence/2026-10-03-eb1-read/`, `evidence/2026-10-05-eb-cell-read/`, `evidence/2026-10-05-eb2-estimates/`, `evidence/2026-10-06-eb-replan/`. Decider: total output tokens ÷ delivered passes. Done: EB0, EB1, the re-pin, the cell read, EB2 (offline cannot discriminate); EB3 does not run, EB closed on a floor negative; the run-record-gate delivery comparison holds (2026-10-06). **Next, re-planned 2026-10-06:** `docs/superpowers/plans/2026-10-06-eb-replan.md` — the Engine tolerates a model commit (parity, one re-pin); then the light path, if the maintainer wants it, measured Engine against Engine.
+Design `docs/superpowers/specs/2026-10-02-engine-budget-design.md`; evidence `evidence/2026-10-02-engine-budget/`, `evidence/2026-10-03-eb1-read/`, `evidence/2026-10-05-eb-cell-read/`, `evidence/2026-10-05-eb2-estimates/`, `evidence/2026-10-06-eb-replan/`. Decider: total output tokens ÷ delivered passes. Done: EB0, EB1, the re-pin, the cell read, EB2 (offline cannot discriminate); EB3 does not run, EB closed on a floor negative; the run-record-gate delivery comparison holds (2026-10-06). **Re-planned 2026-10-06** (`docs/superpowers/plans/2026-10-06-eb-replan.md`): the Engine tolerates a model commit, re-pinned at `9aecfb5`. The light path is not built (decision L, 2026-10-06: no; `TODO.md`, Freezer). EB has no next step.
 
 ## Rules that bind every phase
 
@@ -101,16 +101,15 @@ Design `docs/superpowers/specs/2026-10-02-engine-budget-design.md`; evidence `ev
 
 ## Deferred
 
-**Parked 2026-10-02: the satyrn-engine branch `derive-new-top-level-module`.**
-Two local commits, rebased 2026-10-02 onto engine `main` `1869397`: `d4abd65`
+**Parked: the satyrn-engine branch `derive-new-top-level-module`.** `d4abd65`
 lets `derive` admit a new top-level module the request names, and `92c9282`
 adds a backlog note (`/implement` defaults `SATYRN_ENGINE_REPO` and
-`SATYRN_MODEL` itself). The rebase was clean and touches no digest-pinned
-`packages/engine` file. But it changes Engine behaviour, so landing it means re-pinning the
-Engine arms, which is a new Engine condition. It is also a remedy that no
-diagnosed admission on this harness has asked for yet. Reopens at C4, only if
-the re-derived counterfactual names it. Until then the Engine arms stay on
-`1869397`.
+`SATYRN_MODEL` itself). It changes `derive.py`, which only `engine_commit`
+covers, so landing it is a new Engine condition. Ruled 2026-10-06
+(decision A): it rides the next runtime re-pin, not a re-pin of its own. With
+decision L at no, there is no light-path build for it to join. A scratch check
+found it changes no derived contract on any of the 33 task requests. Its
+`BACKLOG.md` conflicts with engine `main`; keep both entries.
 
 Contributors bringing their own workflows in as suites; the isolation versus
 guards ablation; pattern refusal of hunting commands; a filesystem sandbox
