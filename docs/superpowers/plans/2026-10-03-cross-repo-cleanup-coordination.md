@@ -2,60 +2,103 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** draft for the maintainer's approval, written 2026-10-03. Not approved; do not execute Task 4 or Task 5 until it is.
+**Status:** re-planned 2026-10-06 from the maintainer's cleanup brief of that day; the 2026-10-03 draft is superseded (its text is in this file's history). Task 0 and Task 4 are approved by that brief. Task 5 is attended: it runs inside the EB re-plan's Task 3, after the maintainer merges.
 
-**Goal:** The five cleanup items that cross the repository boundary land in an order that costs exactly one Engine re-pin, and every backlog entry that names them is closed by a commit it can cite.
+**Goal:** The cleanup items that cross the repository boundary land with the EB head-tolerance fix in exactly one Engine re-pin, and every backlog entry that names them is closed by a commit it can cite.
 
-**Architecture:** Three of the five steps are already done and are recorded here with the commit that did each. One step is open and is an engine-only, test-first task on its own branch. The last step is the re-pin, which the approved engine-budget plan already owns; this plan adds only the ordering checks and the backlog close-out that plan does not carry.
+**Architecture:** Three of the five original steps are on `main` in both repositories and are recorded here with their commits. Step 4 is open: an engine-only, test-first branch `cleanup-derive-size-fixture` in worktree `../satyrn-engine-cleanup`, cut from engine `origin/main`. Step 5 is no longer this plan's own re-pin: it is the EB re-plan's Task 3 (`docs/superpowers/plans/2026-10-06-eb-replan.md`), which pins one engine merge holding both `eb-head-tolerance` and this plan's branch. This plan wraps that task with the ordering checks, the `_engine/` re-sync and the close-out it does not carry.
 
 **Tech Stack:** Python 3.14, uv, pytest; git worktrees; no model, no network.
 
-**Spec:** `evidence/2026-10-02-cleanup-audit/README.md` sections 1, 2 and 11 (the findings), and `docs/superpowers/plans/2026-10-03-engine-confinement-and-edit-parity.md` on branch `worktree-engine-budget` (the approved re-pin plan, called "the EB plan" below). Read both repositories' `AGENTS.md` first.
+**Spec:** `evidence/2026-10-02-cleanup-audit/README.md` sections 1, 2 and 11 (the findings), and `docs/superpowers/plans/2026-10-06-eb-replan.md`, Task 3 and its Global Constraints ("Cleanup coordination"). Read both repositories' `AGENTS.md` first.
 
 ## Global Constraints
 
-- The sibling checkout `../satyrn-engine` stays detached at `1869397`. `cell_engine.engine_checkout_problems` refuses every Engine launch when its HEAD is anything else. No task here checks out a branch in that directory.
-- Engine work happens in a git worktree created from `origin/main`, never in the sibling checkout.
-- One re-pin. Every engine commit this plan or the EB plan produces is on engine `main` before the EB plan's Task 5 chooses its commit `<E>`.
+- **The pin is engine `23a0ef649dc4764bf09ca51110434b1b34ac1c27`.** Engine `main` = `origin/main` = `23a0ef6`; the three Engine arm files and `_engine/manifest.json` pin it. `cell_engine.engine_checkout_problems` refuses every Engine launch when `../satyrn-engine` is anywhere else.
+- **Do not touch:** engine `main` or the checkout `../satyrn-engine` (any commit there moves HEAD off the pin and blocks Engine launches); the worktrees `../satyrn-engine-eb3` and `.claude/worktrees/eb-replan`; `~/satyrn-runs`; the untracked `evidence/*/…-draft.md` files; any decided evidence or ledger entry.
+- **Engine work** happens in the worktree `../satyrn-engine-cleanup`, never in `../satyrn-engine`.
+- **One re-pin.** This plan's engine branch reaches engine `main` in the same maintainer merge as `eb-head-tolerance`, before the EB re-plan's Task 3 writes the pin. If it misses that merge it waits for the next runtime re-pin; it never forces a pin of its own.
+- **`origin/derive-new-top-level-module` stays out.** It holds `d4abd65` ("derive: admit a new top-level module") and `92c9282`, is unmerged, and changes `derive.py`, which changes the Engine's contract. It needs the maintainer's decision and must not ride this re-pin.
+- **No backend change.** The ollama switch is its own plan (see the end of this file). Do not edit `~/.pi/agent/models.json` or the oMLX settings.
 - Default tests use no model, network or subprocess. A refusal test has a sibling success test.
-- Never pipe a gate. Read `just gates; echo "exit $?"`.
+- Never pipe a gate. Write `just gates > "$TMPDIR/gates.log" 2>&1 && git add … && git commit …`, so the commit depends on the gate itself, and print the exit separately on failure.
 - An executing agent commits at task boundaries and never merges or pushes. Merging, pushing and the re-pin are the maintainer's.
 - Every new file gets a `PROVENANCE.md` row in its own repository.
 
 ## Review Focus
 
-1. **A second re-pin.** An engine commit that lands on `main` after `<E>` is chosen forces another Engine condition. Task 5 Step 1 checks ancestry before the pin is written.
-2. **The vendored fixture drifts again with no signal on CI.** The cross-check skips when the evals tree is absent. Task 4 keeps that skip, and adds a test that a divergence warns and a match does not, so the check itself is proven in the default tier.
-3. **A machine-specific path survives.** Task 4 Step 5 greps the engine tree for `/Users/` and expects no hit under `tests/` or `src/`.
-4. **A backlog entry closed without evidence.** Task 5 Step 3 gives the exact replacement text, each citing a commit.
-5. **The sibling checkout moved.** Task 4 Step 1 and Task 5 Step 1 both print its HEAD and expect `1869397`.
+1. **A second re-pin.** `cleanup-derive-size-fixture` lands on engine `main` after the pin is chosen, which forces another Engine condition. Task 5 Step 1 checks ancestry for both branches before the pin is written.
+2. **The unmerged derive branch rides the pin.** `d4abd65` reaches `main` by a stray merge and changes the contract unnoticed. Task 5 Step 1 checks that it is not an ancestor and that the pin's diff from `23a0ef6` names only the two branches' files.
+3. **`_engine/` falls out of step with the re-pinned arm.** `tests/test_engine_docs.py:13` requires `_engine/manifest.json` to name the arm's pin, and the EB re-plan's Task 3 changes the pin without running `just sync-engine`. Task 5 Step 3 runs it before the gates.
+4. **The vendored fixture drifts again with no signal on CI.** The cross-check skips when the evals tree is absent. Task 4 keeps that skip and adds a test that a divergence warns and a match does not, so the check itself is proven in the default tier.
+5. **A machine-specific path survives.** Task 4 Step 5 greps the engine tree for `/Users/` and expects no hit under `tests/` or `src/`.
 
 ## The five steps and where each stands
 
-| # | Step | Repository | State on 2026-10-03 |
+| # | Step | Repository | State on 2026-10-06 |
 |---|---|---|---|
-| 1 | Receipts count `self_test_red_stop`; the retired `self_test_redirected` is dropped | engine | built: `d979cba` on branch `eb-confinement-parity` (worktree `../satyrn-engine-eb`), EB plan Task 2. Not merged, not pushed. |
-| 2 | The frozen census scripts and the launcher stop naming `--cell` | evals | done: `159a04d` (dead branch removed, scripts headed historical) and `8519271` (the guard scans every live module), branch `phase-c1`. |
-| 3 | The self-hosted task bases carry no nested self-hosted task | evals | done: `7fc679f` (re-cut of the seven bases), ledger entry "C1" (`c8c5904`), branch `phase-c1`. |
-| 4 | The engine's vendored task manifests match the re-cut tasks, with no machine path | engine | **open.** Task 4 below. |
-| 5 | The three Engine arms re-pin once; `_engine/` re-syncs; the backlog entries close | both | planned: EB plan Task 5 (attended, after C4's verdict). Task 5 below adds the ordering checks and the close-out. |
+| 1 | Receipts count `self_test_red_stop`; the retired `self_test_redirected` is dropped | engine | done: `d979cba`, merged as `5b681b0`; in the pin `23a0ef6`. |
+| 2 | The frozen census scripts and the launcher stop naming `--cell` | evals | done: `159a04d`, `8519271`, on `main`. |
+| 3 | The self-hosted task bases carry no nested self-hosted task | evals | done: `7fc679f`, ledger entry "C1" (`c8c5904`), on `main`. |
+| 4 | The engine's vendored task manifests match the re-cut tasks, with no machine path | engine | **open.** Confirmed at `23a0ef6`: `uv run pytest tests/test_derive_size.py -q -W error` fails on `selfhost-preflight-quiet` (`produces_count live=9 vendored=10`), and `LIVE_TASKS` at line 50 is a hard-coded `/Users/…` path. Task 4. |
+| 5 | One re-pin of the Engine arms, `_engine/` re-sync, backlog entries closed | both | **now the EB re-plan's Task 3**, wrapped by Task 5 below. |
+
+The 2026-10-03 draft's other prerequisite, `cleanup-audit-backlog`, is merged (`2327c79`). The clone `../satyrn-engine-pinned` (at `1869397`) is obsolete; it is not on the cleared housekeeping list, so removing it is the maintainer's call.
 
 Verify the table before starting:
 
 ```bash
 cd ~/projects/pauleveritt/satyrn-evals
-git log --oneline -1 159a04d; git log --oneline -1 8519271; git log --oneline -1 7fc679f
-git -C ../satyrn-engine log --oneline -1 d979cba
-git -C ../satyrn-engine rev-parse --short HEAD        # 1869397
-for t in src/satyrn_evals/tasks/selfhost-*/; do echo "$(git ls-files "$t" | grep -c '/base/src/satyrn_evals/tasks/selfhost-') $t"; done   # 0 on every line
-grep -c -- '--cell' src/satyrn_evals/launch_record.py  # 0
+for c in 159a04d 8519271 7fc679f c8c5904; do git merge-base --is-ancestor $c main && echo "in evals main: $c" || echo "MISSING: $c"; done
+git -C ../satyrn-engine fetch origin
+for c in d979cba 5b681b0 2327c79; do git -C ../satyrn-engine merge-base --is-ancestor $c origin/main && echo "in engine origin/main: $c" || echo "MISSING: $c"; done
+git -C ../satyrn-engine rev-parse --short HEAD origin/main        # 23a0ef6 twice
+grep -l 23a0ef649dc4764bf09ca51110434b1b34ac1c27 arms/*.json _engine/manifest.json   # three arms and the manifest
 ```
+
+Expected: seven `in … main` lines, `23a0ef6` twice, four file names. Any other answer: stop and report; do not repair it under this plan.
 
 ---
 
 ### Task 1, Task 2, Task 3: done
 
-No work. The table above is their record. If any verification line disagrees with the table, stop and report; do not repair it under this plan.
+No work. The table above is their record.
+
+---
+
+### Task 0: Housekeeping (controller, local only)
+
+None of this touches a pin, a record or evidence. Each removal checks its target first.
+
+- [ ] **Step 1: Remove the merged `../satyrn-engine-eb` worktree.**
+
+```bash
+cd ~/projects/pauleveritt/satyrn-engine
+git -C ../satyrn-engine-eb status --short                                          # no output
+git merge-base --is-ancestor eb-confinement-parity origin/main && echo merged      # merged
+git worktree remove ../satyrn-engine-eb
+```
+
+The branch `eb-confinement-parity` stays.
+
+- [ ] **Step 2: Move the eight `satyrn-engine-*` temp directories to the Trash.** They are the ones `evidence/2026-10-06-eb-replan/README.md` §1.6 item 3 names, one per Engine `BUDGET_EXCEEDED` cell; the trees that review needed are committed under `evidence/2026-10-06-eb-replan/budget-trees/`.
+
+```bash
+cd "$TMPDIR"
+ls -d satyrn-engine-*        # exactly: 4b7i2uw3 541d9gkv bqt3_c5y iqkv7lz2 lpx5ovhc rl2giglz t56nnrz4 tld5e1f3
+for d in 4b7i2uw3 541d9gkv bqt3_c5y iqkv7lz2 lpx5ovhc rl2giglz t56nnrz4 tld5e1f3; do mv "satyrn-engine-$d" ~/.Trash/; done
+```
+
+A name outside that list stays where it is.
+
+- [ ] **Step 3: Remove the evals `engine-budget` worktree.**
+
+```bash
+cd ~/projects/pauleveritt/satyrn-evals
+git merge-base --is-ancestor worktree-engine-budget main && echo merged          # merged
+git -C .claude/worktrees/engine-budget status --short                            # no output
+git worktree remove .claude/worktrees/engine-budget
+```
 
 ---
 
@@ -64,22 +107,26 @@ No work. The table above is their record. If any verification line disagrees wit
 The cross-check in `tests/test_derive_size.py` reads the evals task tree from a hard-coded `/Users/pauleveritt/...` path and warns today: `selfhost-preflight-quiet: ... produces_count live=9 vendored=10`. The live `Produces:` line no longer names `Certificate.as_dict()` and spells out `main`'s four callables. The other seven fixtures agree with the live tree.
 
 **Files:**
-- Modify: `tests/test_derive_size.py` (the `LIVE_TASKS` constant at line 50; `test_vendored_matches_live_manifests` near line 216)
+- Modify: `tests/test_derive_size.py` (the `LIVE_TASKS` constant at line 50; `test_vendored_matches_live_manifests` near line 209)
 - Modify: `tests/fixtures/derive_size/selfhost-preflight-quiet.json`
+- Modify: `BACKLOG.md` (two entries under "Added 2026-10-02", Step 7)
 
 **Interfaces:**
 - Consumes: `satyrn_engine.derive.produces_names(request: str) -> tuple[str, ...]`, already imported by the test module.
-- Produces: `LIVE_TASKS_ENV = "SATYRN_EVALS_TASKS"` and `live_tasks_root(environment: Mapping[str, str] | None = None) -> Path` in `tests/test_derive_size.py`. Task 5 runs this module with warnings as errors.
+- Produces: `LIVE_TASKS_ENV = "SATYRN_EVALS_TASKS"` and `live_tasks_root(environment: Mapping[str, str] | None = None) -> Path` in `tests/test_derive_size.py`. Task 5 runs this module with warnings as errors at the pin.
 
 - [ ] **Step 1: Make the worktree.**
 
 ```bash
 cd ~/projects/pauleveritt/satyrn-engine
-git rev-parse --short HEAD                      # 1869397; if not, stop
+git rev-parse --short HEAD                      # 23a0ef6; if not, stop
 git fetch origin
+git rev-parse --short origin/main               # 23a0ef6; if not, stop and report
 git worktree add ../satyrn-engine-cleanup -b cleanup-derive-size-fixture origin/main
 cd ../satyrn-engine-cleanup && uv sync --frozen
 ```
+
+Every later step in this task runs in `../satyrn-engine-cleanup`.
 
 - [ ] **Step 2: Write the failing tests.** Append to `tests/test_derive_size.py`:
 
@@ -126,6 +173,8 @@ def test_the_vendored_preflight_quiet_fixture_declares_nine_symbols():
     assert len(produces_names(fixture["request"])) == 9
     assert "Certificate.as_dict" not in produces_names(fixture["request"])
 ```
+
+The module already imports `json`, `warnings`, `Path` and `pytest`.
 
 - [ ] **Step 3: Run them and watch them fail.**
 
@@ -176,77 +225,103 @@ The first command runs the cross-check against the sibling evals checkout. If th
 - [ ] **Step 6: Commit.**
 
 ```bash
-git add tests/test_derive_size.py tests/fixtures/derive_size/selfhost-preflight-quiet.json
-git commit -m "derive_size: re-vendor preflight-quiet at nine symbols; the live tree is found by name, not by a machine path"
+just gates > "$TMPDIR/gates.log" 2>&1 && git add tests/test_derive_size.py tests/fixtures/derive_size/selfhost-preflight-quiet.json && git commit -m "derive_size: re-vendor preflight-quiet at nine symbols; the live tree is found by name, not by a machine path"
+git show --stat HEAD
 ```
 
-**An executing agent stops here** and reports the commit and the three exits. It does not merge, push, or remove the worktree.
+- [ ] **Step 7: Close the two engine backlog entries on this branch.** The close-out rides the same merge as the fix, so no engine commit lands after the pin. In `BACKLOG.md`, under "Added 2026-10-02", replace the whole "**Receipts miss red-stop firings.**" bullet and the whole "**Vendored task manifests.**" bullet with:
+
+```markdown
+- **Receipts count red-stop firings: done.** `d979cba`, merged as `5b681b0`;
+  evals has pinned it since `23a0ef6`.
+- **Vendored task manifests: done** on branch `cleanup-derive-size-fixture`:
+  `selfhost-preflight-quiet` re-vendored at nine symbols, and the evals tree
+  found through `SATYRN_EVALS_TASKS` or the sibling checkout. It lands with
+  `eb-head-tolerance` in one merge, which evals pins in its ledger entry
+  "Engine re-pin for head tolerance".
+```
+
+Then:
+
+```bash
+just gates > "$TMPDIR/gates.log" 2>&1 && git add BACKLOG.md && git commit -m "Backlog: red-stop receipts and the vendored manifests are done; both reach the evals pin with head tolerance"
+git show --stat HEAD
+```
+
+**An executing agent stops here.** It reports the two commits and the three exits from Step 5. It does not merge, push, or remove the worktree.
 
 ---
 
-### Task 5: One re-pin, in order, and the backlog closes (attended, the maintainer)
+### Task 5: One re-pin, in order, and the backlog closes (attended; wraps the EB re-plan's Task 3)
 
-This task wraps the EB plan's Task 5. It does not restate that task's steps.
+This task wraps `docs/superpowers/plans/2026-10-06-eb-replan.md` Task 3. It does not restate that task's steps; it adds the checks around them and the one step they omit.
 
 **Files:**
-- Modify: `ROADMAP.md` (the "Cleanup, 2026-10-02" list under "Deferred")
-- Modify: satyrn-engine `BACKLOG.md` (the "Added 2026-10-02" entries)
+- Modify (by `just sync-engine`): `_engine/manifest.json`, `_engine/*.md`, `_engine/rendered/*.md`, `PROVENANCE.md`
+- Modify: `ROADMAP.md` (the "Frozen census scripts" bullet under "Cleanup, 2026-10-02")
 
 **Interfaces:**
-- Consumes: engine commit `<E>`, the commit the EB plan's Task 5 pins; branches `eb-confinement-parity`, `cleanup-derive-size-fixture` and `cleanup-audit-backlog` in satyrn-engine.
+- Consumes: the engine merge commit `<M>` that holds `eb-head-tolerance` and `cleanup-derive-size-fixture`; EB re-plan Task 3's commits on evals branch `eb-replan`.
 - Produces: nothing a later task reads.
 
-- [ ] **Step 1: Land the engine branches, then check ancestry before any pin is written.** Merge `cleanup-audit-backlog`, `cleanup-derive-size-fixture` and `eb-confinement-parity` into engine `main` (pull requests or fast-forwards, the maintainer's choice) and push `main`. Then, with `<E>` the resulting `main` head:
+- [ ] **Step 1: The maintainer merges both engine branches into engine `main` in one merge and pushes. Then, before any pin is written:**
 
 ```bash
 cd ~/projects/pauleveritt/satyrn-engine
 git fetch origin
-for b in cleanup-audit-backlog cleanup-derive-size-fixture eb-confinement-parity; do
-  git merge-base --is-ancestor "$b" origin/main && echo "in main: $b" || echo "MISSING: $b"
+M=$(git rev-parse origin/main)
+for b in eb-head-tolerance cleanup-derive-size-fixture; do
+  git merge-base --is-ancestor "$b" "$M" && echo "in main: $b" || echo "MISSING: $b"
 done
-git rev-parse --short HEAD        # still 1869397 until the EB plan moves it
+git merge-base --is-ancestor d4abd65 "$M" && echo "STOP: d4abd65 is in main" || echo "d4abd65 out"
+git diff --stat 23a0ef6 "$M"
 ```
 
-Expected: three `in main:` lines. Any `MISSING:` line stops the task: pinning now would force a second re-pin.
+Expected: two `in main:` lines, `d4abd65 out`, and a diff that names only `src/satyrn_engine/delivery.py`, `BACKLOG.md`, `PROVENANCE.md` and files under `tests/` (the two branches' files). Any `MISSING:`, a `STOP:`, or another file in the diff stops the task. A missing branch forces a second re-pin, and an extra file is a change no ledger entry covers.
 
-- [ ] **Step 2: Run the EB plan's Task 5** (`docs/superpowers/plans/2026-10-03-engine-confinement-and-edit-parity.md`, branch `worktree-engine-budget`) with that `<E>`. It re-pins the three arms, updates the evals guard vocabulary, runs `just sync-engine`, writes the ledger entry and runs the smoke cell. After it, check the two things it does not:
+- [ ] **Step 2: Run EB re-plan Task 3 Steps 1–3** with `<M>`: fast-forward `../satyrn-engine` to `<M>`, set `pins.engine_commit` in the three arm files `grep -l 23a0ef6 arms/` lists, confirm the seven digests are unchanged, and write the ledger entry "Engine re-pin for head tolerance". Have that entry also say that the merge carries `cleanup-derive-size-fixture` (tests, fixture and backlog only).
+
+- [ ] **Step 3: Re-sync `_engine/` (the step EB Task 3 omits).** `tests/test_engine_docs.py:13` requires `_engine/manifest.json` to name the arm's pin.
 
 ```bash
-cd ~/projects/pauleveritt/satyrn-engine          # now at <E>
-uv run pytest -q tests/test_derive_size.py -W error; echo "exit $?"   # exit 0
-cd ../satyrn-evals
-python3 -c "import json;print(json.load(open('_engine/manifest.json'))['engine_commit'])"   # <E>
+cd ~/projects/pauleveritt/satyrn-engine && git rev-parse HEAD     # <M>
+cd ~/projects/pauleveritt/satyrn-evals/.claude/worktrees/eb-replan
+SATYRN_ENGINE_REPO=~/projects/pauleveritt/satyrn-engine just sync-engine; echo "exit $?"   # exit 0
+python3 -c "import json;print(json.load(open('_engine/manifest.json'))['engine_commit'])"   # <M>
+cd ~/projects/pauleveritt/satyrn-engine && uv run pytest -q tests/test_derive_size.py -W error; echo "exit $?"   # exit 0
 ```
 
-- [ ] **Step 3: Close the backlog entries.** In `ROADMAP.md`, replace the "Cross-repo cluster" bullet under "Cleanup, 2026-10-02" with:
+- [ ] **Step 4: Run EB re-plan Task 3 Step 4** (gates and commit). Include the `_engine/` and `PROVENANCE.md` changes from Step 3 in that commit.
+
+- [ ] **Step 5: Close the evals backlog entry.** On `eb-replan`, in `ROADMAP.md` under "Cleanup, 2026-10-02", replace the whole "**Frozen census scripts call `preflight_settings.py --cell`…**" bullet with:
 
 ```markdown
-- **Cross-repo cluster: closed <date>.** `--cell` residue `159a04d`; un-nested
-  bases `7fc679f`; red-stop receipts, vendored manifests and the re-pin at
-  engine `<E>` (ledger entry "Engine re-pin").
+- **Cross-repo cleanup: closed <date>.** `--cell` residue `159a04d`,
+  `8519271`; un-nested bases `7fc679f`; red-stop receipts `d979cba` (engine
+  `5b681b0`, pinned since `23a0ef6`); vendored manifests and the portable
+  path in engine `<M>` (ledger entry "Engine re-pin for head tolerance").
+  Issue pauleveritt/satyrn-evals#23.
 ```
 
-In satyrn-engine `BACKLOG.md`, replace the "Receipts miss red-stop firings" entry and the `test_derive_size.py` clause of the "Fossils" entry with:
-
-```markdown
-- **Receipts count red-stop firings: done** (`d979cba`, pinned by evals at
-  `<E>`). **Vendored task manifests re-vendored, path portable: done**
-  (branch `cleanup-derive-size-fixture`, in `<E>`).
-```
-
-Substitute the real date and commit before committing; a literal `<E>` or `<date>` in either file is a failed step.
-
-- [ ] **Step 4: Gates and commits.**
+Substitute the real date and short commit before committing. A literal `<M>` or `<date>` in the file is a failed step.
 
 ```bash
-cd ~/projects/pauleveritt/satyrn-evals && just gates; echo "exit $?"     # exit 0
-git add ROADMAP.md && git commit -m "roadmap: the cross-repo cleanup cluster is closed at the Engine re-pin"
+just gates > "$TMPDIR/gates.log" 2>&1 && git add ROADMAP.md && git commit -m "roadmap: the cross-repo cleanup is closed at the head-tolerance re-pin"
+git show --stat HEAD
 ```
 
-The engine `BACKLOG.md` edit is a commit on engine `main` after `<E>`. It changes no pinned file and no behaviour, and the arms keep pinning `<E>`; say so in its message so nobody re-pins for it.
+- [ ] **Step 6 (the maintainer):** close issue pauleveritt/satyrn-evals#23 with the two commits and `<M>`, and remove the worktree: `git -C ~/projects/pauleveritt/satyrn-engine worktree remove ../satyrn-engine-cleanup` once its branch is in `main`.
 
-- [ ] **Step 5: Remove the worktree.** `git -C ~/projects/pauleveritt/satyrn-engine worktree remove ../satyrn-engine-cleanup` once its branch is in `main`.
+---
 
-## What this plan does not cover
+## Not in this plan
 
-The single-repository cleanup items stay where the backlog puts them: the unconfirmed mark, `STATE.md`, the roadmap's shape, the session route, the unused gates, the fossil files and the engine's documents. None of them touches a pin.
+- **`origin/derive-new-top-level-module` (`d4abd65`, `92c9282`).** It is unmerged and changes `derive.py`, so it changes the Engine's contract. It needs the maintainer's decision, its own admission question, and its own re-pin. It must not ride Task 5.
+- **The ollama switch** gets its own plan, written after EB's decision L (EB re-plan "Step 2"). Facts that plan starts from:
+  - Backends never pool.
+  - EB Step 2 compares new cells with retained oMLX cells.
+  - Ollama serves a 32,768-token context (`docs/user-journey.md` §4–5), against the arms' `context_window` of 262,144.
+  - So the switch means new arm files and fresh baselines on both arms, not an edit to a pinned arm.
+  Installing ollama alongside oMLX is fine. Editing `~/.pi/agent/models.json` or the oMLX settings is not.
+- **Single-repository cleanup items** stay where the backlogs put them: the unconfirmed mark, `STATE.md`, the roadmap's shape, the session route, the unused gates, the fossil files and the engine's documents. None of them touches a pin.
+- **`../satyrn-engine-pinned`**, the obsolete clone at `1869397`. Removing it is the maintainer's call.

@@ -2773,7 +2773,7 @@
 | site/imgs/pi-ollama-user-evals.svg | copied 2026-09-28 from satyrn-evals-collector @ f7b553260a810d5447d56f1d13ba92da88be83bd (docs/imgs/pi-ollama-user-evals.svg), the community briefing's own picture of the same cast |
 | docs/why-satyrn-evals.md | created 2026-10-03: charter-led rationale for the harness, with Harbor as a compared example |
 | site/why-satyrn-evals.md | created 2026-10-03: site include of docs/why-satyrn-evals.md |
-| docs/superpowers/plans/2026-10-03-cross-repo-cleanup-coordination.md | created 2026-10-03, coordination plan for the cross-repo cleanup items |
+| docs/superpowers/plans/2026-10-03-cross-repo-cleanup-coordination.md | created 2026-10-03, coordination plan for the cross-repo cleanup items; re-planned 2026-10-06 to wrap the EB re-plan's Task 3 |
 | evidence/2026-10-02-cleanup-audit/README.md | created 2026-10-02, cleanup audit of both trees |
 | docs/superpowers/specs/2026-10-02-c1-requalify-design.md | created 2026-10-02 on phase-c1; the C1 design note (re-cut, Baseline-only re-qualification under confinement), approved in conversation |
 | docs/superpowers/plans/2026-10-02-c1-requalify.md | created 2026-10-02 on phase-c1; the C1 implementation plan (re-cut, records, attended preflight, close-out) |
