@@ -2910,3 +2910,19 @@
 | evidence/2026-10-05-rrg-delivery/grade-line-b.json | written 2026-10-06 by `satyrn-evals grade-line` over campaign night b at evals HEAD c908919; secondary, never deciding |
 | evidence/2026-10-05-rrg-delivery/grade-line-c.json | written 2026-10-06 by `satyrn-evals grade-line` over campaign night c at evals HEAD c908919; secondary, never deciding |
 | evidence/2026-10-05-rrg-delivery/read.txt | written 2026-10-06 by evidence/2026-10-05-eb-cell-read/read_cells.py over the three campaign nights with --combine; secondary |
+| evidence/2026-10-06-eb-replan/README.md | written 2026-10-06 by Fable (read-only review at the maintainer's request), copied in by the controller with scratchpad paths rewritten; the review behind the ledger entry "eight rulings" |
+| evidence/2026-10-06-eb-replan/scan.py | written 2026-10-06 by Fable for the review; per-cell transcript scan of the campaign nights (offline, stdlib) |
+| evidence/2026-10-06-eb-replan/trace.py | written 2026-10-06 by Fable for the review; prints the tail of one cell's tool calls (offline, stdlib) |
+| evidence/2026-10-06-eb-replan/scan.jsonl | written 2026-10-06 by evidence/2026-10-06-eb-replan/scan.py over the three campaign nights at evals 7c18131; review input, never deciding |
+| evidence/2026-10-06-eb-replan/review-ops.json | written 2026-10-06 by Fable from the transcript of review-script cell 005058-171727; the file-tool operations replayed to reconstruct its tree |
+| evidence/2026-10-06-eb-replan/review-recon.diff | written 2026-10-06 by Fable; the reconstructed final tree of review-script cell 005058-171727 as a diff (reconstruction, never deciding) |
+| evidence/2026-10-06-eb-replan/review-recon.receipt.json | written 2026-10-06 by `satyrn-evals grade` on review-recon.diff (offline); reconstruction-grade |
+| evidence/2026-10-06-eb-replan/budget-trees/502157.diff | written 2026-10-06 by Fable from the leftover temp directory of Engine budget cell 502157; a recovered source tree, strays unknown (never deciding) |
+| evidence/2026-10-06-eb-replan/budget-trees/502157.receipt.json | written 2026-10-06 by `satyrn-evals grade` on budget-trees/502157.diff (offline); a bound on source correctness, not a verdict |
+| evidence/2026-10-06-eb-replan/budget-trees/709608.diff | written 2026-10-06 by Fable from the leftover temp directory of Engine budget cell 709608; a recovered source tree, strays unknown (never deciding) |
+| evidence/2026-10-06-eb-replan/budget-trees/709608.receipt.json | written 2026-10-06 by `satyrn-evals grade` on budget-trees/709608.diff (offline); a bound on source correctness, not a verdict |
+| evidence/2026-10-06-eb-replan/budget-trees/836120.diff | written 2026-10-06 by Fable from the leftover temp directory of Engine budget cell 836120; a recovered source tree, strays unknown (never deciding) |
+| evidence/2026-10-06-eb-replan/budget-trees/836120.receipt.json | written 2026-10-06 by `satyrn-evals grade` on budget-trees/836120.diff (offline); a bound on source correctness, not a verdict |
+| evidence/2026-10-06-eb-replan/budget-trees/939358.diff | written 2026-10-06 by Fable from the leftover temp directory of Engine budget cell 939358; a recovered source tree, strays unknown (never deciding) |
+| evidence/2026-10-06-eb-replan/budget-trees/939358.receipt.json | written 2026-10-06 by `satyrn-evals grade` on budget-trees/939358.diff (offline); a bound on source correctness, not a verdict |
+| docs/superpowers/plans/2026-10-06-eb-replan.md | written 2026-10-06 by an agent (Opus) for the maintainer; the EB re-plan after the eight rulings |

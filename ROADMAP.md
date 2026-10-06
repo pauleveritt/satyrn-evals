@@ -80,7 +80,7 @@ Nothing is built on any of them in the meantime.
 
 ## Next — Phase EB, engine budget
 
-Design, order table (EB0-EB3) and amendments: `docs/superpowers/specs/2026-10-02-engine-budget-design.md` §3, §7; evidence `evidence/2026-10-02-engine-budget/` and `evidence/2026-10-03-eb1-read/`. Decider: output tokens per delivered pass; peak context and wall clock are declared secondaries. **Parity is not a remedy.** Done: EB0 and EB1 (2026-10-03); the confinement and edit-parity re-pin (2026-10-04, ledger "Engine re-pin"). Next: EB2, remedies each with an offline estimate; then EB3, the pre-registered floor read at the new pin.
+Design `docs/superpowers/specs/2026-10-02-engine-budget-design.md`; evidence `evidence/2026-10-02-engine-budget/`, `evidence/2026-10-03-eb1-read/`, `evidence/2026-10-05-eb-cell-read/`, `evidence/2026-10-05-eb2-estimates/`, `evidence/2026-10-06-eb-replan/`. Decider: total output tokens ÷ delivered passes. Done: EB0, EB1, the re-pin, the cell read, EB2 (offline cannot discriminate); EB3 does not run, EB closed on a floor negative; the run-record-gate delivery comparison holds (2026-10-06). **Next, re-planned 2026-10-06:** `docs/superpowers/plans/2026-10-06-eb-replan.md` — the Engine tolerates a model commit (parity, one re-pin); then the light path, if the maintainer wants it, measured Engine against Engine.
 
 ## Rules that bind every phase
 

@@ -1,0 +1,66 @@
+[
+ {
+  "turn": 4,
+  "tool": "write",
+  "args": {
+   "path": "tools/review.py",
+   "content": "\"\"\"Pure core for the review script.\n\nThe only subprocess is ``pi``, and it runs through ``main``. Every other\nfunction here is pure and free of side effects so it can be unit tested in\nthe default (no-model, no-subprocess) tier.\n\"\"\"\nfrom __future__ import annotations\n\nimport subprocess\nimport sys\nfrom argparse import ArgumentParser, Namespace\nfrom pathlib import Path\n\nREVIEW_DIRNAME = \"reviews\"\nREVIEW_EXTENSION = \".md\"\n\n\ndef provider_and_model(spec: str) -> tuple[str, str]:\n    \"\"\"Split a ``provider/model`` spec into its two parts.\n\n    ``\"zai/glm-5.3\"`` becomes ``(\"zai\", \"glm-5.3\")``. A spec without a\n    slash is rejected with a ``ValueError`` whose message names the\n    ``provider/model`` shape.\n    \"\"\"\n    if \"/\" not in spec:\n        raise ValueError(\n            f\"model spec {spec!r} is missing a slash; expected provider/model\"\n        )\n    provider, model = spec.split(\"/\", 1)\n    if not provider or not model:\n        raise ValueError(f\"model spec {spec!r} has an empty provider or model\")\n    return provider, model\n\n\ndef refuse_if_exists(path: Path) -> None:\n    \"\"\"Raise ``FileExistsError`` only when ``path`` already exists.\"\"\"\n    if path.exists():\n        raise FileExistsError(f\"refusing to overwrite existing review {path}\")\n\n\ndef _commit_bounds(commit_range: str) -> tuple[str, str]:\n    commit_range = commit_range.strip()\n    if \"..\" in commit_range:\n        start, end = commit_range.split(\"..\", 1)\n        return start.strip(), end.strip()\n    single = commit_range.strip()\n    return single, \"\"\n\n\ndef review_path(root: Path, commit_range: str, model: str) -> Path:\n    \"\"\"Return the destination path for a review.\n\n    The path is ``docs/reviews/<start>..<end>-<model-slug>.md`` where the\n    model slug replaces every ``/`` with ``-``.\n    \"\"\"\n    start, end = _commit_bounds(commit_range)\n    slug = model.replace(\"/\", \"-\")\n    return Path(\n        root\n        / REVIEW_DIRNAME\n        / f\"{start}..{end}-{slug}{REVIEW_EXTENSION}\"\n    )\n\n\ndef build_prompt(diff: str, range_label: str) -> str:\n    \"\"\"Build the prompt handed to the model for a diff.\n\n    The returned text includes the ``range_label`` verbatim, the ``diff``\n    verbatim, and the literal words ``Accept`` and ``itemized``.\n    \"\"\"\n    return (\n        f\"Review the following change for {range_label}.\\n\"\n        \"\\n\"\n        \"Respond with an itemized list of issues, then a verdict. \"\n        \"If the change is acceptable, your verdict must contain the word \"\n        \"Accept.\\n\"\n        \"\\n\"\n        f\"=== {range_label} ===\\n\"\n        f\"{diff}\\n\"\n        \"=== end diff ===\\n\"\n    )\n\n\ndef main(argv: list[str] | None = None) -> None:\n    \"\"\"Run ``pi`` with the built prompt and write its stdout to the path.\"\"\"\n    parser = ArgumentParser(description=\"Generate a review for a diff.\")\n    parser.add_argument(\"--provider\", required=True)\n    parser.add_argument(\"--model\", required=True)\n    parser.add_argument(\"--root\", default=Path.cwd(), type=Path)\n    parser.add_argument(\n        \"--range\",\n        required=True,\n        help=\"commit range, e.g. abc123..def456\",\n    )\n    parser.add_argument(\"--diff\", required=True)\n    args = parser.parse_args(argv)\n\n    provider, model = provider_and_model(args.model)\n    path = review_path(args.root, args.range, model)\n    refuse_if_exists(path)\n    prompt = build_prompt(args.diff, args.range)\n\n    command = [\n        \"pi\",\n        \"-p\",\n        \"--no-session\",\n        \"--no-extensions\",\n        \"--no-skills\",\n        \"-nc\",\n        f\"--provider {provider}\",\n        f\"--model {model}\",\n        \"--exclude-tools\",\n        \"write,edit\",\n        prompt,\n    ]\n    proc = subprocess.run(command, capture_output=True, text=True)\n    if proc.returncode != 0:\n        sys.stderr.write(proc.stderr)\n        raise SystemExit(proc.returncode)\n    path.write_text(proc.stdout)\n\n\nif __name__ == \"__main__\":\n    sys.exit(main(sys.argv[1:]))\n"
+  },
+  "isError": false
+ },
+ {
+  "turn": 6,
+  "tool": "write",
+  "args": {
+   "content": "\"\"\"Default-tier tests for the review script's pure core.\"\"\"\n\nfrom pathlib import Path\n\nimport pytest\n\nfrom tools.review import (\n    build_prompt,\n    provider_and_model,\n    refuse_if_exists,\n    review_path,\n)\n\n\ndef test_provider_and_model_splits_on_first_slash() -> None:\n    assert provider_and_model(\"zai/glm-5.3\") == (\"zai\", \"glm-5.3\")\n\n\ndef test_provider_and_model_rejects_a_spec_without_slash() -> None:\n    with pytest.raises(ValueError) as caught:\n        provider_and_model(\"glm-5.3\")  # type: ignore[arg-type]\n    assert \"provider/model\" in str(caught.value)\n\n\ndef test_refuse_if_exists_raises_only_when_the_path_exists(tmp_path: Path) -> None:\n    target = tmp_path / \"does-not-exist.md\"\n    refuse_if_exists(target)  # no raise\n\n    target.write_text(\"stale\")\n    with pytest.raises(FileExistsError):\n        refuse_if_exists(target)\n\n\ndef test_review_path_encodes_the_range_and_model_slug(tmp_path: Path) -> None:\n    expected = tmp_path / \"docs\" / \"reviews\" / \"a1b2..c3d4-glm-5.3.md\"\n    assert review_path(tmp_path, \"a1b2..c3d4\", \"zai/glm-5.3\") == expected\n\n\ndef test_build_prompt_carries_label_diff_and_verdict_words() -> None:\n    diff = \"def foo():\\n    return 1\\n\"\n    prompt = build_prompt(diff, \"the nightly merge\")\n    assert \"the nightly merge\" in prompt\n    assert diff in prompt\n    assert \"Accept\" in prompt\n    assert \"itemized\" in prompt\n\n\ndef test_review_path_slashes_in_the_model_become_dashes(tmp_path: Path) -> None:\n    expected = tmp_path / \"docs\" / \"reviews\" / \"a..b-open-model-v2.md\"\n    assert review_path(tmp_path, \"a..b\", \"open/model/v2\") == expected\n",
+   "path": "tests/test_review.py"
+  },
+  "isError": false
+ },
+ {
+  "turn": 8,
+  "tool": "edit",
+  "args": {
+   "path": "tools/review.py",
+   "edits": [
+    {
+     "oldText": "REVIEW_DIRNAME = \"reviews\"\nREVIEW_EXTENSION = \".md\"",
+     "newText": "DOCS_DIRNAME = \"docs\"\nREVIEW_DIRNAME = \"reviews\"\nREVIEW_EXTENSION = \".md\""
+    },
+    {
+     "oldText": "    start, end = _commit_bounds(commit_range)\n    slug = model.replace(\"/\", \"-\")\n    return Path(\n        root\n        / REVIEW_DIRNAME\n        / f\"{start}..{end}-{slug}{REVIEW_EXTENSION}\"\n    )",
+     "newText": "    start, end = _commit_bounds(commit_range)\n    slug = model.replace(\"/\", \"-\")\n    return Path(\n        root\n        / DOCS_DIRNAME\n        / REVIEW_DIRNAME\n        / f\"{start}..{end}-{slug}{REVIEW_EXTENSION}\"\n    )"
+    }
+   ]
+  },
+  "isError": false
+ },
+ {
+  "turn": 9,
+  "tool": "edit",
+  "args": {
+   "edits": [
+    {
+     "newText": "from argparse import ArgumentParser\nfrom pathlib import Path",
+     "oldText": "from argparse import ArgumentParser, Namespace\nfrom pathlib import Path"
+    }
+   ],
+   "path": "tools/review.py"
+  },
+  "isError": false
+ },
+ {
+  "turn": 11,
+  "tool": "edit",
+  "args": {
+   "edits": [
+    {
+     "newText": "    expected = tmp_path / \"docs\" / \"reviews\" / \"a1b2..c3d4-zai-glm-5.3.md\"",
+     "oldText": "    expected = tmp_path / \"docs\" / \"reviews\" / \"a1b2..c3d4-glm-5.3.md\""
+    }
+   ],
+   "path": "tests/test_review.py"
+  },
+  "isError": false
+ }
+]

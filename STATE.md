@@ -143,9 +143,17 @@ for the maintainer to place (`evidence/2026-10-05-rrg-delivery/result-draft.md`)
 "EB after EB2: seven rulings"). The decider's reading is fixed: an arm's total
 output tokens ÷ its delivered passes, with delivery beside it. The scratch-path
 remedy is withdrawn. The light path is a product decision. A built remedy is
-measured Engine against Engine on guard-prefixes. The Engine backlog line
-(review-script's discarded candidate after `git commit`) is held until the next
-engine change, so engine `main` stays at the pin.
+measured Engine against Engine on guard-prefixes.
+
+**EB re-plan, 2026-10-06** (ledger "Review of the comparison and EB re-plan:
+eight rulings"; review `evidence/2026-10-06-eb-replan/`; sequence
+`docs/superpowers/plans/2026-10-06-eb-replan.md`). The claim is a finishing
+claim: Baseline held a passing tree at the budget cut in 22 of 26 budget cells.
+Next: the Engine tolerates a model's `git commit` instead of discarding the
+candidate (parity; offline bound +2/36 run-record-gate, +1/12 review-script),
+built on an engine branch and landed in one re-pin. The light path is the one
+remedy with an effect of the floor gap's size; it waits for the maintainer's
+product decision. No completion gate, no deciding read on preflight-quiet.
 
 **Superseded:** the 2026-10-04 at-line endpoint and its power sizing
 (0.43 / 0.72). The comparison's endpoint moved to delivery (ledger "Baseline
@@ -264,6 +272,14 @@ line read on run-record-gate", (a)).
   design, not from a cell.
 - **`tripped_verdict` has no denominator rule yet.** It is reported beside
   `verdict`, never instead of it.
+- **The Engine arm has no tripped harvest** (`workspace.py:1212-1225` harvests
+  the Evals worktree, not the Engine's): R0 §1.1's "tripped worktrees harvested
+  and graded" holds for Baseline only; 0 of 8 Engine budget cells in the
+  comparison have `tripped.diff`. Not built until a reading needs it.
+- **Leftover `satyrn-engine-*` temp directories** are the Engine's budget-cut
+  cells: the harness teardown kills the Engine's own cleanup. Housekeeping.
+- **Pin coverage:** the Engine arm's seven digests cover TypeScript only;
+  `delivery.py`, `attempt.py` and `derive.py` are covered by `engine_commit`.
 - **Integration tier (not in `just gates`):** last recorded 335 passed, 1
   skipped, 0 failed at `b624b84`; not re-derived since.
 - **Local state not in git:** `~/satyrn-runs`, the oMLX and Pi config, and the

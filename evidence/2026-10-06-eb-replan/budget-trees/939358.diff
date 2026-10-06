@@ -1,0 +1,326 @@
+diff --git a/src/satyrn_evals/run_record.py b/src/satyrn_evals/run_record.py
+new file mode 100644
+index 0000000..2e8bd5a
+--- /dev/null
++++ b/src/satyrn_evals/run_record.py
+@@ -0,0 +1,234 @@
++"""The run record: the frozen description of one planned budgeted run.
++
++Phase 1 gates a record before any cell is launched. The record names the
++task, arm, model, condition, and budget, and the stopping and decision
++rules that bound the run. `load_run_record` refuses a record whose shape or
++types violate the contract; `gate` refuses a record whose cadence or the
++previous-result gate would be unsafe. Both raise `RunRecordError`, a
++`UsageError` (exit 2), so the CLI treats every refusal as a usage error and
++spends no budget.
++
++The contract is strict and ordered: the first missing or ill-typed field is
++named. Every refusal names the field or mode it concerns, and a record that
++could not be read or parsed names its path.
++"""
++
++import json
++from dataclasses import asdict, dataclass
++from pathlib import Path
++
++from satyrn_evals.errors import UsageError
++
++
++class RunRecordError(UsageError):
++    """A run record violates its contract, or the file could not be read."""
++
++
++#: Field order is the contract's canonical order. Every field is required
++#: except `previous_result`, which is a nullable path.
++_SCHEMA_FIELDS: tuple[str, ...] = (
++    "version",
++    "task",
++    "task_tree_sha256",
++    "arm",
++    "model",
++    "condition",
++    "n",
++    "mode",
++    "max_minutes",
++    "stop_rule",
++    "decision_rule",
++    "previous_result",
++)
++
++# Required fields, in schema order. `previous_result` is optional.
++_REQUIRED_FIELDS: tuple[str, ...] = _SCHEMA_FIELDS[:-1]
++
++_INT_FIELDS: frozenset[str] = frozenset({"version", "n", "max_minutes"})
++_STR_FIELDS: frozenset[str] = frozenset(
++    {"task", "task_tree_sha256", "arm", "model", "condition", "stop_rule", "decision_rule"}
++)
++
++_CONDITIONS = frozenset({"cold", "warm"})
++_MODES = frozenset({"attended", "batch"})
++
++_ATTENDED_MAX_CELLS = 8
++_ATTENDED_MAX_MINUTES = 60
++_BATCH_MAX_CELLS = 12
++_BATCH_MAX_MINUTES = 720
++
++
++def _hex_digest(value: object, length: int) -> bool:
++    if not isinstance(value, str) or len(value) != length:
++        return False
++    try:
++        int(value, 16)
++    except ValueError:
++        return False
++    return value == value.lower()
++
++
++@dataclass(frozen=True)
++class RunRecord:
++    """A frozen, validated description of one planned run."""
++
++    version: int
++    task: str
++    task_tree_sha256: str
++    arm: str
++    model: str
++    condition: str
++    n: int
++    mode: str
++    max_minutes: int
++    stop_rule: str
++    decision_rule: str
++    previous_result: str | None = None
++
++    def __post_init__(self) -> None:
++        # Type and value checks. Presence is guaranteed: `load_run_record`
++        # checks every required field before construction, so a missing
++        # field is reported there, in schema order, before this runs.
++        for name in _INT_FIELDS:
++            value = getattr(self, name)
++            if type(value) is not int:
++                raise RunRecordError(
++                    f"run record {name} has the wrong type "
++                    f"(expected int, found {type(value).__name__})"
++                )
++        for name in _STR_FIELDS:
++            value = getattr(self, name)
++            if type(value) is not str:
++                raise RunRecordError(
++                    f"run record {name} has the wrong type "
++                    f"(expected str, found {type(value).__name__})"
++                )
++        if "previous_result" in self.__dict__:
++            previous = self.previous_result
++            if previous is not None and type(previous) is not str:
++                raise RunRecordError(
++                    "run record previous_result has the wrong type "
++                    f"(expected null or str, found {type(previous).__name__})"
++                )
++
++        if self.condition not in _CONDITIONS:
++            raise RunRecordError(
++                f"condition must be cold or warm (got {self.condition!r})"
++            )
++        if self.mode not in _MODES:
++            raise RunRecordError(f"mode must be attended or batch (got {self.mode!r})")
++        if not _hex_digest(self.task_tree_sha256, 64):
++            raise RunRecordError(
++                "task_tree_sha256 is not a 64-character lowercase hex digest "
++                f"(got {self.task_tree_sha256!r})"
++            )
++        for name in ("stop_rule", "decision_rule"):
++            value = getattr(self, name)
++            if not value or not value.strip():
++                raise RunRecordError(f"{name} is empty")
++
++    def to_dict(self) -> dict[str, object]:
++        return asdict(self)
++
++
++def _check_presence_and_type(data: dict[str, object]) -> None:
++    """Check presence and type of every field in schema order.
++
++    Raises `RunRecordError` naming the first missing or ill-typed field.
++    """
++    for name in _REQUIRED_FIELDS:
++        if name not in data:
++            raise RunRecordError(f"run record missing field: {name}")
++        value = data[name]
++        if name in _INT_FIELDS and type(value) is not int:
++            raise RunRecordError(
++                f"run record {name} has the wrong type "
++                f"(expected int, found {type(value).__name__})"
++            )
++        if name in _STR_FIELDS and type(value) is not str:
++            raise RunRecordError(
++                f"run record {name} has the wrong type "
++                f"(expected str, found {type(value).__name__})"
++            )
++    if "previous_result" in data:
++        previous = data["previous_result"]
++        if previous is not None and type(previous) is not str:
++            raise RunRecordError(
++                "run record previous_result has the wrong type "
++                f"(expected null or str, found {type(previous).__name__})"
++            )
++
++
++def _check_values(data: dict[str, object]) -> None:
++    """Check each field's value in schema order."""
++    if data["condition"] not in _CONDITIONS:
++        raise RunRecordError(
++            f"condition must be cold or warm (got {data['condition']!r})"
++        )
++    if data["mode"] not in _MODES:
++        raise RunRecordError(f"mode must be attended or batch (got {data['mode']!r})")
++    if not _hex_digest(data["task_tree_sha256"], 64):
++        raise RunRecordError(
++            "task_tree_sha256 is not a 64-character lowercase hex digest "
++            f"(got {data['task_tree_sha256']!r})"
++        )
++    for name in ("stop_rule", "decision_rule"):
++        value = data[name]
++        if not value or not value.strip():
++            raise RunRecordError(f"{name} is empty")
++
++
++def load_run_record(path: Path) -> RunRecord:
++    """Read and validate a run record at ``path``.
++
++    Raises `RunRecordError` on a read failure, malformed JSON, a non-object
++    payload, or any contract violation. The error names the file's path for
++    the read/parse failures and the first missing or ill-typed field for the
++    contract failures.
++    """
++    try:
++        text = path.read_text(encoding="utf-8")
++    except OSError as e:
++        raise RunRecordError(f"cannot read run record {path}: {e}") from e
++    try:
++        data = json.loads(text)
++    except json.JSONDecodeError as e:
++        raise RunRecordError(f"cannot parse run record {path}: {e}") from e
++    if not isinstance(data, dict):
++        raise RunRecordError(f"run record {path} is not a JSON object")
++    _check_presence_and_type(data)
++    _check_values(data)
++    return RunRecord(**data)
++
++
++def gate(record: RunRecord, *, previous_result_committed: bool | None) -> None:
++    """Enforce the run's cadence and the previous-result gate.
++
++    Raises `RunRecordError` on any refusal. The cadence caps cells and
++    minutes per mode; when a previous result path is named, it must already
++    be committed.
++    """
++    if record.mode == "attended":
++        if record.n > _ATTENDED_MAX_CELLS:
++            raise RunRecordError(
++                f"attended records need n <= {_ATTENDED_MAX_CELLS} (got {record.n})"
++            )
++        if record.max_minutes > _ATTENDED_MAX_MINUTES:
++            raise RunRecordError(
++                f"attended records need max_minutes <= {_ATTENDED_MAX_MINUTES} "
++                f"(got {record.max_minutes})"
++            )
++    elif record.mode == "batch":
++        if record.n > _BATCH_MAX_CELLS:
++            raise RunRecordError(
++                f"batch records need n <= {_BATCH_MAX_CELLS} (got {record.n})"
++            )
++        if record.max_minutes > _BATCH_MAX_MINUTES:
++            raise RunRecordError(
++                f"batch records need max_minutes <= {_BATCH_MAX_MINUTES} "
++                f"(got {record.max_minutes})"
++            )
++    if record.previous_result is not None and not previous_result_committed:
++        raise RunRecordError(
++            "previous_result is present but previous_result_committed is not True"
++        )
+diff --git a/src/satyrn_evals/cli.py b/src/satyrn_evals/cli.py
+index 1409635..ad5efbc 100644
+--- a/src/satyrn_evals/cli.py
++++ b/src/satyrn_evals/cli.py
+@@ -2,6 +2,7 @@
+ 
+ import argparse
+ import math
++import subprocess
+ import sys
+ from pathlib import Path
+ 
+@@ -16,6 +17,7 @@ from satyrn_evals.grade import grade
+ from satyrn_evals.manifest import DEFAULT_TASKS_ROOT, resolve_task
+ from satyrn_evals.rescore import regrade_attempt, summarize_output
+ from satyrn_evals.run import run
++from satyrn_evals.run_record import RunRecordError, gate, load_run_record
+ from satyrn_evals.session import run_session
+ from satyrn_evals.session_grader import SessionGrader
+ from satyrn_evals.session_manifest import DEFAULT_SESSION_SPEC
+@@ -69,6 +71,39 @@ def split_attempt_argv(argv: list[str]) -> tuple[list[str], list[str]]:
+     return argv, []
+ 
+ 
++def run_launch_check(path: Path) -> int:
++    """Gate a run record at ``path`` for Phase 1's `launch --check`.
++
++    Loads the record, computes whether its previous result is committed
++    (only when a previous result path is named), runs the gate, and prints
++    acceptance. Any `RunRecordError` follows the CLI's usage-error path.
++    """
++    try:
++        record = load_run_record(path)
++        committed = _previous_result_committed(record.previous_result)
++        gate(record, previous_result_committed=committed)
++    except RunRecordError as e:
++        print(f"satyrn-evals: {e}", file=sys.stderr)
++        return 2
++    print("launch: record accepted")
++    return 0
++
++
++def _previous_result_committed(previous_result: str | None) -> bool | None:
++    """Whether ``git ls-files --error-unmatch`` tracks ``previous_result``.
++
++    Returns `None` when no previous result path is named, so the default
++    tier never spawns a subprocess for a record without one.
++    """
++    if previous_result is None:
++        return None
++    proc = subprocess.run(
++        ["git", "ls-files", "--error-unmatch", str(previous_result)],
++        capture_output=True,
++    )
++    return proc.returncode == 0
++
++
+ def main(argv: list[str] | None = None) -> int:
+     argv = list(sys.argv[1:] if argv is None else argv)
+     try:
+@@ -151,6 +186,11 @@ def main(argv: list[str] | None = None) -> int:
+         args = parser.parse_args(argv)
+         if args.command == "census":
+             return run_census(args.runs_root, args.json_path)
++        if args.command == "launch":
++            if not args.check:
++                print("launch: cells are Phase 2; use --check")
++                return 2
++            return run_launch_check(Path(args.check))
+         if args.command == "grade":
+             task_dir = resolve_task(args.task, tasks_root=Path(args.tasks_root))
+             receipt = grade(task_dir, Path(args.patch), Path(args.receipt))
+@@ -350,3 +390,13 @@ session_p.add_argument(
+ )
+ 
+ build_census_parser(sub)
++
++launch_p = sub.add_parser(
++    "launch",
++    help="gate a run record before spending budget (Phase 1: --check)",
++)
++launch_p.add_argument(
++    "--check",
++    metavar="RECORD",
++    help="gate the run record at RECORD.json and accept or refuse it",
++)

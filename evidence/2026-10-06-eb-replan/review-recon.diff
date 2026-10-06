@@ -1,0 +1,188 @@
+diff --git a/tools/review.py b/tools/review.py
+new file mode 100644
+index 0000000..01793e3
+--- /dev/null
++++ b/tools/review.py
+@@ -0,0 +1,126 @@
++"""Pure core for the review script.
++
++The only subprocess is ``pi``, and it runs through ``main``. Every other
++function here is pure and free of side effects so it can be unit tested in
++the default (no-model, no-subprocess) tier.
++"""
++from __future__ import annotations
++
++import subprocess
++import sys
++from argparse import ArgumentParser
++from pathlib import Path
++
++DOCS_DIRNAME = "docs"
++REVIEW_DIRNAME = "reviews"
++REVIEW_EXTENSION = ".md"
++
++
++def provider_and_model(spec: str) -> tuple[str, str]:
++    """Split a ``provider/model`` spec into its two parts.
++
++    ``"zai/glm-5.3"`` becomes ``("zai", "glm-5.3")``. A spec without a
++    slash is rejected with a ``ValueError`` whose message names the
++    ``provider/model`` shape.
++    """
++    if "/" not in spec:
++        raise ValueError(
++            f"model spec {spec!r} is missing a slash; expected provider/model"
++        )
++    provider, model = spec.split("/", 1)
++    if not provider or not model:
++        raise ValueError(f"model spec {spec!r} has an empty provider or model")
++    return provider, model
++
++
++def refuse_if_exists(path: Path) -> None:
++    """Raise ``FileExistsError`` only when ``path`` already exists."""
++    if path.exists():
++        raise FileExistsError(f"refusing to overwrite existing review {path}")
++
++
++def _commit_bounds(commit_range: str) -> tuple[str, str]:
++    commit_range = commit_range.strip()
++    if ".." in commit_range:
++        start, end = commit_range.split("..", 1)
++        return start.strip(), end.strip()
++    single = commit_range.strip()
++    return single, ""
++
++
++def review_path(root: Path, commit_range: str, model: str) -> Path:
++    """Return the destination path for a review.
++
++    The path is ``docs/reviews/<start>..<end>-<model-slug>.md`` where the
++    model slug replaces every ``/`` with ``-``.
++    """
++    start, end = _commit_bounds(commit_range)
++    slug = model.replace("/", "-")
++    return Path(
++        root
++        / DOCS_DIRNAME
++        / REVIEW_DIRNAME
++        / f"{start}..{end}-{slug}{REVIEW_EXTENSION}"
++    )
++
++
++def build_prompt(diff: str, range_label: str) -> str:
++    """Build the prompt handed to the model for a diff.
++
++    The returned text includes the ``range_label`` verbatim, the ``diff``
++    verbatim, and the literal words ``Accept`` and ``itemized``.
++    """
++    return (
++        f"Review the following change for {range_label}.\n"
++        "\n"
++        "Respond with an itemized list of issues, then a verdict. "
++        "If the change is acceptable, your verdict must contain the word "
++        "Accept.\n"
++        "\n"
++        f"=== {range_label} ===\n"
++        f"{diff}\n"
++        "=== end diff ===\n"
++    )
++
++
++def main(argv: list[str] | None = None) -> None:
++    """Run ``pi`` with the built prompt and write its stdout to the path."""
++    parser = ArgumentParser(description="Generate a review for a diff.")
++    parser.add_argument("--provider", required=True)
++    parser.add_argument("--model", required=True)
++    parser.add_argument("--root", default=Path.cwd(), type=Path)
++    parser.add_argument(
++        "--range",
++        required=True,
++        help="commit range, e.g. abc123..def456",
++    )
++    parser.add_argument("--diff", required=True)
++    args = parser.parse_args(argv)
++
++    provider, model = provider_and_model(args.model)
++    path = review_path(args.root, args.range, model)
++    refuse_if_exists(path)
++    prompt = build_prompt(args.diff, args.range)
++
++    command = [
++        "pi",
++        "-p",
++        "--no-session",
++        "--no-extensions",
++        "--no-skills",
++        "-nc",
++        f"--provider {provider}",
++        f"--model {model}",
++        "--exclude-tools",
++        "write,edit",
++        prompt,
++    ]
++    proc = subprocess.run(command, capture_output=True, text=True)
++    if proc.returncode != 0:
++        sys.stderr.write(proc.stderr)
++        raise SystemExit(proc.returncode)
++    path.write_text(proc.stdout)
++
++
++if __name__ == "__main__":
++    sys.exit(main(sys.argv[1:]))
+diff --git a/tests/test_review.py b/tests/test_review.py
+new file mode 100644
+index 0000000..e375dc9
+--- /dev/null
++++ b/tests/test_review.py
+@@ -0,0 +1,50 @@
++"""Default-tier tests for the review script's pure core."""
++
++from pathlib import Path
++
++import pytest
++
++from tools.review import (
++    build_prompt,
++    provider_and_model,
++    refuse_if_exists,
++    review_path,
++)
++
++
++def test_provider_and_model_splits_on_first_slash() -> None:
++    assert provider_and_model("zai/glm-5.3") == ("zai", "glm-5.3")
++
++
++def test_provider_and_model_rejects_a_spec_without_slash() -> None:
++    with pytest.raises(ValueError) as caught:
++        provider_and_model("glm-5.3")  # type: ignore[arg-type]
++    assert "provider/model" in str(caught.value)
++
++
++def test_refuse_if_exists_raises_only_when_the_path_exists(tmp_path: Path) -> None:
++    target = tmp_path / "does-not-exist.md"
++    refuse_if_exists(target)  # no raise
++
++    target.write_text("stale")
++    with pytest.raises(FileExistsError):
++        refuse_if_exists(target)
++
++
++def test_review_path_encodes_the_range_and_model_slug(tmp_path: Path) -> None:
++    expected = tmp_path / "docs" / "reviews" / "a1b2..c3d4-zai-glm-5.3.md"
++    assert review_path(tmp_path, "a1b2..c3d4", "zai/glm-5.3") == expected
++
++
++def test_build_prompt_carries_label_diff_and_verdict_words() -> None:
++    diff = "def foo():\n    return 1\n"
++    prompt = build_prompt(diff, "the nightly merge")
++    assert "the nightly merge" in prompt
++    assert diff in prompt
++    assert "Accept" in prompt
++    assert "itemized" in prompt
++
++
++def test_review_path_slashes_in_the_model_become_dashes(tmp_path: Path) -> None:
++    expected = tmp_path / "docs" / "reviews" / "a..b-open-model-v2.md"
++    assert review_path(tmp_path, "a..b", "open/model/v2") == expected
