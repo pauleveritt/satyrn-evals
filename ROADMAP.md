@@ -135,10 +135,10 @@ in satyrn-engine `BACKLOG.md`. Each item names what closes or reopens it.
   `session_repeat_limit.py`, the `session_*` family, 25 test files and the
   263 KB transcript fixture have no product caller. Reopens if a plan names a
   multi-phase workload; otherwise delete at the next instrument-free window.
-- **Frozen census scripts call `preflight_settings.py --cell`, a flag that no
-  longer exists** — headed as historical and the launcher's dead branch removed
-  at C1; the engine's red-stop receipt fix remains (EB, before the first Engine
-  record of the re-derivation).
+- **Cross-repo cleanup: closed 2026-10-06** (issue #23). `--cell` residue
+  `159a04d`, `8519271`; un-nested bases `7fc679f`; red-stop receipts `d979cba`
+  (engine `5b681b0`); vendored manifests and portable path in engine `9aecfb5`
+  (ledger entry "Engine re-pin for head tolerance").
 - **Gates that nothing runs:** coverage and pyrefly configured in both
   repos, Node installed in CI with no Node gate, the confinement extension
   outside `just gates`. Decide once for both repos: gate it or remove it.
