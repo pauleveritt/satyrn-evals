@@ -432,3 +432,26 @@ def test_main_routes_report(tmp_path: Path) -> None:
     record.with_suffix(".result.json").write_text(json.dumps(_RESULT), encoding="utf-8")
     assert cli_module.main(["report", str(record)]) == 0
 
+
+# --- the top-level click group ----------------------------------------------
+
+
+def test_help_lists_the_front_door() -> None:
+    result = CliRunner().invoke(cli_ux.cli, ["--help"])
+    assert result.exit_code == 0
+    for verb in ("init", "doctor", "run", "report"):
+        assert verb in result.output
+
+
+def test_an_unknown_verb_forwards_to_the_expert_parser() -> None:
+    # `grade` with no arguments is an argparse usage error, exit 2, unchanged.
+    result = CliRunner().invoke(cli_ux.cli, ["grade"])
+    assert result.exit_code == 2
+
+
+def test_the_front_door_wins_over_a_forwarded_verb() -> None:
+    # `run` is click's now; the expert verb is `repeat`.
+    result = CliRunner().invoke(cli_ux.cli, ["run", "--help"])
+    assert result.exit_code == 0
+    assert "--dry-run" in result.output
+

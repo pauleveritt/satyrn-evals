@@ -11,7 +11,7 @@
 | tools/__init__.py | created in release-one |
 | tools/provenance.py | created in release-one |
 | tests/test_provenance.py | created in release-one |
-| pyproject.toml | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92; modified 2026-10-08 on cli-ux (CLI UX step 1): click added as a direct dependency |
+| pyproject.toml | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92; modified 2026-10-08 on cli-ux (CLI UX step 1): click added as a direct dependency; modified 2026-10-08 on cli-ux (CLI UX step 5): the satyrn-evals console script is the click group cli_ux:cli |
 | src/satyrn_evals/__init__.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | Justfile | created in release-one |
 | README.md | created in release-one |
@@ -2931,6 +2931,6 @@
 | records/2026-10-06-smoke-engine-9aecfb5-review-script.result.json | written 2026-10-06 by `satyrn-evals launch` (engine 9aecfb5, Apple M5 Max); the re-pin smoke cell, development, never deciding; committed as the launcher wrote it |
 | docs/results/2026-10-06-rrg-delivery.md | placed 2026-10-06 by the maintainer (ledger "The run-record-gate comparison on delivery: holds"); the run-record-gate delivery results page, drafted in evidence/2026-10-05-rrg-delivery/ by an Opus agent and finalized by the coordinating controller |
 | docs/results/2026-10-05-eb-floor.md | placed 2026-10-06 by the maintainer (ledger "EB after EB2: seven rulings", item 3; "EB postponed"); the EB floor results page, drafted in evidence/2026-10-05-eb2-estimates/ by an Opus agent and finalized by the coordinating controller |
-| src/satyrn_evals/cli_ux.py | created 2026-10-08 on cli-ux: the simple front door; a click group whose `init` scaffolds satyrn.yaml, an example task, and a starter baseline arm, whose `doctor` checks the machine and the configured backend, whose `run` writes the configured record and launches its cells, and whose `report` renders the launcher's `<record>.result.json`; dispatched from cli.main |
+| src/satyrn_evals/cli_ux.py | created 2026-10-08 on cli-ux: the simple front door and the top-level click group; `init` scaffolds satyrn.yaml, an example task, and a starter baseline arm, `doctor` checks the machine and the configured backend, `run` writes the configured record and launches its cells, and `report` renders the launcher's `<record>.result.json`; unknown verbs forward to the expert argparse main through a hidden `legacy` command |
 | tests/test_cli_ux.py | created 2026-10-08 on cli-ux: offline tests for `init`, its refusals and force path, config discovery, `doctor`, `run` (dry-run, reuse, refusals, launcher mapping), `report`, and their dispatch from cli.main |
 | src/satyrn_evals/prereqs.py | created 2026-10-08 on cli-ux (CLI UX step 2b): the prerequisite checks moved in from scripts/prereqs.py so `doctor` reaches them from the installed package |

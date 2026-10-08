@@ -155,7 +155,16 @@ def scaffold(
     return [config, task_dest, arm_dest]
 
 
-@click.group()
+class _Group(click.Group):
+    """A click group that forwards unknown expert verbs to the argparse main."""
+
+    def resolve_command(self, ctx: click.Context, args: list[str]) -> tuple:
+        if args and not args[0].startswith("-") and args[0] not in self.commands:
+            return "legacy", self.commands["legacy"], args
+        return super().resolve_command(ctx, args)
+
+
+@click.group(cls=_Group)
 def cli() -> None:
     """Run evals in your own project.
 
@@ -164,7 +173,23 @@ def cli() -> None:
     doctor   check this machine and the configured backend
     run      write the configured record and launch its cells
     report   show a readable result for a finished run
+
+    Expert commands (grade, qualify, attempt, repeat, launch, record, ...) keep
+    their existing parsers and pass straight through.
     """
+
+
+@cli.command(
+    name="legacy",
+    hidden=True,
+    context_settings={"ignore_unknown_options": True, "allow_extra_args": True},
+)
+@click.argument("argv", nargs=-1, type=click.UNPROCESSED)
+def legacy_command(argv: tuple[str, ...]) -> None:
+    """Forward an expert command to its existing parser."""
+    from satyrn_evals import cli as legacy  # local: cli imports this module
+
+    raise SystemExit(legacy.main(list(argv)))
 
 
 @cli.command()
