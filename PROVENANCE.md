@@ -2766,8 +2766,8 @@
 | tests/integration/test_cell_engine.py | created in release-one |
 | docs/user-guide.md | created 2026-09-27 on docs/user-guide for the user's getting-started guide (unsloth, ollama, oMLX); the abandoned ../QUICKSTART.md draft was the seed |
 | site/user-guide.md | created 2026-09-27 on docs/user-guide; Zensical page wrapping docs/user-guide.md |
-| scripts/prereqs.py | created 2026-09-27 on docs/user-guide; checks git/python/uv/pi and one local backend, with fix messages |
-| tests/test_prereqs.py | created 2026-09-27 on docs/user-guide; default-tier tests for the script's pure logic |
+| scripts/prereqs.py | created 2026-09-27 on docs/user-guide; checks git/python/uv/pi and one local backend, with fix messages; modified 2026-10-08 on cli-ux (CLI UX step 2b): the logic moved to satyrn_evals.prereqs, this is the shim the docs still name |
+| tests/test_prereqs.py | created 2026-09-27 on docs/user-guide; default-tier tests for the script's pure logic; modified 2026-10-08 on cli-ux (CLI UX step 2b): imports satyrn_evals.prereqs |
 | docs/user-journey.md | created 2026-09-28 on docs/user-journey; the guided journey (ollama-only) that fuses the collector's framing with the harness steps; modified 2026-10-04: "isolated workspace" replaced by the attempt worktree under the confinement extension (ledger C0); Baseline named as Pi with no product extensions plus the confinement extension |
 | site/user-journey.md | created 2026-09-28 on docs/user-journey; Zensical page wrapping docs/user-journey.md |
 | site/imgs/pi-ollama-user-evals.svg | copied 2026-09-28 from satyrn-evals-collector @ f7b553260a810d5447d56f1d13ba92da88be83bd (docs/imgs/pi-ollama-user-evals.svg), the community briefing's own picture of the same cast |
@@ -2931,5 +2931,6 @@
 | records/2026-10-06-smoke-engine-9aecfb5-review-script.result.json | written 2026-10-06 by `satyrn-evals launch` (engine 9aecfb5, Apple M5 Max); the re-pin smoke cell, development, never deciding; committed as the launcher wrote it |
 | docs/results/2026-10-06-rrg-delivery.md | placed 2026-10-06 by the maintainer (ledger "The run-record-gate comparison on delivery: holds"); the run-record-gate delivery results page, drafted in evidence/2026-10-05-rrg-delivery/ by an Opus agent and finalized by the coordinating controller |
 | docs/results/2026-10-05-eb-floor.md | placed 2026-10-06 by the maintainer (ledger "EB after EB2: seven rulings", item 3; "EB postponed"); the EB floor results page, drafted in evidence/2026-10-05-eb2-estimates/ by an Opus agent and finalized by the coordinating controller |
-| src/satyrn_evals/cli_ux.py | created 2026-10-08 on cli-ux: the simple front door; a click group whose `init` scaffolds satyrn.yaml, an example task, and a starter baseline arm, dispatched from cli.main |
-| tests/test_cli_ux.py | created 2026-10-08 on cli-ux: offline tests for `init`, its refusals and force path, and its dispatch from cli.main |
+| src/satyrn_evals/cli_ux.py | created 2026-10-08 on cli-ux: the simple front door; a click group whose `init` scaffolds satyrn.yaml, an example task, and a starter baseline arm, and whose `doctor` checks the machine and the configured backend; dispatched from cli.main |
+| tests/test_cli_ux.py | created 2026-10-08 on cli-ux: offline tests for `init`, its refusals and force path, config discovery, `doctor`, and their dispatch from cli.main |
+| src/satyrn_evals/prereqs.py | created 2026-10-08 on cli-ux (CLI UX step 2b): the prerequisite checks moved in from scripts/prereqs.py so `doctor` reaches them from the installed package |

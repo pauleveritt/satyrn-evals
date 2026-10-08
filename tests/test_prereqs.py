@@ -9,13 +9,11 @@ The spawn tripwire is never tripped because no test calls the real seams.
 """
 
 import json
-import sys
 from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-import prereqs  # noqa: E402
+from satyrn_evals import prereqs
 
 # --- version parsing and the floor -----------------------------------------
 

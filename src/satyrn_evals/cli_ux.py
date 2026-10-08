@@ -10,16 +10,18 @@ only `init` lives here and `cli.main` routes the new verbs to it.
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from pathlib import Path
 
 import click
 import yaml
 
+from satyrn_evals import prereqs
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
 
 #: The verbs this module owns; `cli.main` routes these before argparse sees them.
-UX_COMMANDS = frozenset({"init"})
+UX_COMMANDS = frozenset({"init", "doctor"})
 
 CONFIG_NAME = "satyrn.yaml"
 EXAMPLE_TASK = "format_number"
@@ -84,6 +86,27 @@ def _existing(target: Path, *, force: bool) -> None:
         raise InitError(f"{target} already exists; pass --force to overwrite")
 
 
+def find_config(start: Path | None = None) -> Path | None:
+    """The nearest `satyrn.yaml` at or above `start` (default: the cwd), or None."""
+    here = (start or Path.cwd()).resolve()
+    for parent in (here, *here.parents):
+        candidate = parent / CONFIG_NAME
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def load_config(path: Path | None = None) -> dict[str, object]:
+    """The run config as a mapping; `{}` when there is none or it is not an object."""
+    if path is not None and not path.is_file():
+        raise InitError(f"{path} does not exist")
+    resolved = path if path is not None else find_config()
+    if resolved is None:
+        return {}
+    data = yaml.safe_load(resolved.read_text(encoding="utf-8"))
+    return data if isinstance(data, dict) else {}
+
+
 def scaffold(
     dest: Path,
     *,
@@ -126,7 +149,8 @@ def cli() -> None:
     """Run evals in your own project.
 
     \b
-    init   scaffold satyrn.yaml, an example task, and a starter arm here
+    init     scaffold satyrn.yaml, an example task, and a starter arm here
+    doctor   check this machine and the configured backend
     """
 
 
@@ -158,18 +182,46 @@ def init(
         force=force,
     ):
         click.echo(f"wrote {path}")
-    click.echo("next: edit satyrn.yaml")
+    click.echo("next: edit satyrn.yaml, then run `satyrn-evals doctor`")
+
+
+@cli.command()
+@click.option(
+    "--config",
+    "config_path",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="satyrn.yaml to read (default: the nearest one above the cwd)",
+)
+@click.option("--check-servers", is_flag=True, help="also probe the model server named in the config (network)")
+def doctor(config_path: Path | None, check_servers: bool) -> int:
+    """Check this machine and the configured backend before spending a budget."""
+    config = load_config(config_path)
+    results = list(prereqs.run_prereqs(check_servers=False))
+    if check_servers:
+        model = str(config.get("model") or os.environ.get("SATYRN_MODEL", ""))
+        if model:
+            results.append(
+                ("model server", prereqs.server_reachable(model), f"start the backend and serve {model}")
+            )
+        else:
+            results.append(("model server", (False, "no model configured"), "set model: in satyrn.yaml"))
+    click.echo(prereqs.render_report(results))
+    missing, _ = prereqs.summarize(results)
+    raise SystemExit(0 if missing == 0 else 1)
 
 
 def run(argv: list[str]) -> int:
     """Dispatch a UX verb through click, returning an exit code.
 
-    `standalone_mode=False` keeps click from calling `sys.exit` so the legacy
-    `cli.main` can own the process's exit code; each way click raises is mapped
-    back to the code the legacy dispatcher would have returned.
+    `standalone_mode=False` keeps click from calling `sys.exit`, so a command
+    that returns an int owns its exit code and `cli.main` returns it. Each way
+    click raises is mapped back to the code the legacy dispatcher would return.
     """
     try:
         cli.main(argv, standalone_mode=False)
+    except SystemExit as exc:
+        return exc.code if isinstance(exc.code, int) else 1
     except click.ClickException as exc:
         exc.show()
         return exc.exit_code

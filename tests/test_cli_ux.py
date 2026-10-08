@@ -163,3 +163,112 @@ def test_run_maps_an_abort_to_130(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_main_routes_a_ux_command_before_argparse(tmp_path: Path) -> None:
     assert cli_module.main(["init", str(tmp_path / "project")]) == 0
     assert (tmp_path / "project" / "satyrn.yaml").is_file()
+
+
+# --- config discovery -------------------------------------------------------
+
+
+def test_find_config_walks_up_from_the_start(tmp_path: Path) -> None:
+    deep = tmp_path / "a" / "b"
+    deep.mkdir(parents=True)
+    (tmp_path / "satyrn.yaml").write_text("task: t\n", encoding="utf-8")
+    assert cli_ux.find_config(deep) == tmp_path / "satyrn.yaml"
+    assert cli_ux.find_config(tmp_path) == tmp_path / "satyrn.yaml"
+
+
+def test_find_config_is_none_when_absent(tmp_path: Path) -> None:
+    assert cli_ux.find_config(tmp_path) is None
+
+
+def test_load_config_reads_an_explicit_path(tmp_path: Path) -> None:
+    path = tmp_path / "satyrn.yaml"
+    path.write_text("task: format_number\nmodel: m/1\n", encoding="utf-8")
+    assert cli_ux.load_config(path) == {"task": "format_number", "model": "m/1"}
+
+
+def test_load_config_is_empty_without_a_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    assert cli_ux.load_config() == {}
+
+
+def test_load_config_is_empty_when_the_file_is_not_a_mapping(tmp_path: Path) -> None:
+    path = tmp_path / "satyrn.yaml"
+    path.write_text("- not\n- a mapping\n", encoding="utf-8")
+    assert cli_ux.load_config(path) == {}
+
+
+def test_load_config_refuses_a_missing_explicit_path(tmp_path: Path) -> None:
+    with pytest.raises(cli_ux.InitError, match="does not exist"):
+        cli_ux.load_config(tmp_path / "absent.yaml")
+
+
+# --- doctor -----------------------------------------------------------------
+
+
+def _ok_prereqs(check_servers: bool) -> list[tuple[str, tuple[bool, str], str]]:
+    return [("git", (True, "/usr/bin/git"), "install git")]
+
+
+def test_doctor_passes_when_prereqs_pass(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli_ux.prereqs, "run_prereqs", _ok_prereqs)
+    result = CliRunner().invoke(cli_ux.cli, ["doctor"])
+    assert result.exit_code == 0
+    assert "All 1 prerequisites are met." in result.output
+
+
+def test_doctor_fails_when_a_prerequisite_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        cli_ux.prereqs,
+        "run_prereqs",
+        lambda check_servers: [("git", (False, "is not on PATH"), "install git")],
+    )
+    result = CliRunner().invoke(cli_ux.cli, ["doctor"])
+    assert result.exit_code == 1
+    assert "install git" in result.output
+
+
+def test_doctor_check_servers_probes_the_configured_model(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(cli_ux.prereqs, "run_prereqs", _ok_prereqs)
+    seen: list[str] = []
+
+    def reach(model: str) -> tuple[bool, str]:
+        seen.append(model)
+        return True, model
+
+    monkeypatch.setattr(cli_ux.prereqs, "server_reachable", reach)
+    config = tmp_path / "satyrn.yaml"
+    config.write_text("model: unsloth/ornith-ai/Ornith-1.5-9B-GGUF\n", encoding="utf-8")
+    result = CliRunner().invoke(cli_ux.cli, ["doctor", "--check-servers", "--config", str(config)])
+    assert result.exit_code == 0
+    assert seen == ["unsloth/ornith-ai/Ornith-1.5-9B-GGUF"]
+
+
+def test_doctor_check_servers_refuses_without_a_model(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(cli_ux.prereqs, "run_prereqs", _ok_prereqs)
+    monkeypatch.delenv("SATYRN_MODEL", raising=False)
+    config = tmp_path / "satyrn.yaml"
+    config.write_text("task: format_number\n", encoding="utf-8")
+    result = CliRunner().invoke(cli_ux.cli, ["doctor", "--check-servers", "--config", str(config)])
+    assert result.exit_code == 1
+    assert "no model configured" in result.output
+
+
+def test_doctor_check_servers_fails_when_the_server_is_unreachable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(cli_ux.prereqs, "run_prereqs", _ok_prereqs)
+    monkeypatch.setattr(cli_ux.prereqs, "server_reachable", lambda model: (False, "unreachable"))
+    monkeypatch.setenv("SATYRN_MODEL", "unsloth/ornith-ai/Ornith-1.5-9B-GGUF")
+    result = CliRunner().invoke(cli_ux.cli, ["doctor", "--check-servers"])
+    assert result.exit_code == 1
+    assert "unreachable" in result.output
+
+
+def test_main_routes_doctor(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli_ux.prereqs, "run_prereqs", _ok_prereqs)
+    assert cli_module.main(["doctor"]) == 0
+
