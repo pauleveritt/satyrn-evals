@@ -19,6 +19,8 @@ from satyrn_evals.cell_engine import checkout_root, engine_checkout_problems
 from satyrn_evals.cell_preflight import preflight_confinement
 from satyrn_evals.census import build_arg_parser as build_census_parser
 from satyrn_evals.census import run_cli as run_census
+from satyrn_evals.cli_ux import UX_COMMANDS
+from satyrn_evals.cli_ux import run as run_ux
 from satyrn_evals.errors import SatyrnError, UsageError
 from satyrn_evals.grade import grade
 from satyrn_evals.launch_record import (
@@ -160,6 +162,8 @@ def split_attempt_argv(argv: list[str]) -> tuple[list[str], list[str]]:
 
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
+    if argv[:1] and argv[0] in UX_COMMANDS:
+        return run_ux(argv)
     try:
         if argv[:1] == ["attempt"]:
             flags, command = split_attempt_argv(argv[1:])

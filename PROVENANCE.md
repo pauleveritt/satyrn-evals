@@ -26,7 +26,7 @@
 | src/satyrn_evals/capture.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | src/satyrn_evals/capture_record.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | src/satyrn_evals/census.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
-| src/satyrn_evals/cli.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
+| src/satyrn_evals/cli.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92; modified 2026-10-08 on cli-ux (CLI UX step 2): routes the new UX verbs to cli_ux before argparse |
 | src/satyrn_evals/contamination.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | src/satyrn_evals/deadline.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | src/satyrn_evals/diff_filter.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
@@ -2931,3 +2931,5 @@
 | records/2026-10-06-smoke-engine-9aecfb5-review-script.result.json | written 2026-10-06 by `satyrn-evals launch` (engine 9aecfb5, Apple M5 Max); the re-pin smoke cell, development, never deciding; committed as the launcher wrote it |
 | docs/results/2026-10-06-rrg-delivery.md | placed 2026-10-06 by the maintainer (ledger "The run-record-gate comparison on delivery: holds"); the run-record-gate delivery results page, drafted in evidence/2026-10-05-rrg-delivery/ by an Opus agent and finalized by the coordinating controller |
 | docs/results/2026-10-05-eb-floor.md | placed 2026-10-06 by the maintainer (ledger "EB after EB2: seven rulings", item 3; "EB postponed"); the EB floor results page, drafted in evidence/2026-10-05-eb2-estimates/ by an Opus agent and finalized by the coordinating controller |
+| src/satyrn_evals/cli_ux.py | created 2026-10-08 on cli-ux: the simple front door; a click group whose `init` scaffolds satyrn.yaml, an example task, and a starter baseline arm, dispatched from cli.main |
+| tests/test_cli_ux.py | created 2026-10-08 on cli-ux: offline tests for `init`, its refusals and force path, and its dispatch from cli.main |
