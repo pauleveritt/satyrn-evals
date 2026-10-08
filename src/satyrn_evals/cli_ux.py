@@ -18,10 +18,13 @@ import click
 import yaml
 
 from satyrn_evals import prereqs
+from satyrn_evals.errors import SatyrnError
+from satyrn_evals.launch_record import launch_record
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
+from satyrn_evals.run_record import load_run_record, new_record, write_new_record
 
 #: The verbs this module owns; `cli.main` routes these before argparse sees them.
-UX_COMMANDS = frozenset({"init", "doctor"})
+UX_COMMANDS = frozenset({"init", "doctor", "run"})
 
 CONFIG_NAME = "satyrn.yaml"
 EXAMPLE_TASK = "format_number"
@@ -96,6 +99,14 @@ def find_config(start: Path | None = None) -> Path | None:
     return None
 
 
+def _required(config: dict[str, object], key: str) -> str:
+    """The config's string value for `key`, or a refusal naming what is missing."""
+    value = config.get(key)
+    if not isinstance(value, str) or not value:
+        raise InitError(f"satyrn.yaml is missing {key!r}")
+    return value
+
+
 def load_config(path: Path | None = None) -> dict[str, object]:
     """The run config as a mapping; `{}` when there is none or it is not an object."""
     if path is not None and not path.is_file():
@@ -151,6 +162,7 @@ def cli() -> None:
     \b
     init     scaffold satyrn.yaml, an example task, and a starter arm here
     doctor   check this machine and the configured backend
+    run      write the configured record and launch its cells
     """
 
 
@@ -209,6 +221,69 @@ def doctor(config_path: Path | None, check_servers: bool) -> int:
     click.echo(prereqs.render_report(results))
     missing, _ = prereqs.summarize(results)
     raise SystemExit(0 if missing == 0 else 1)
+
+
+@cli.command(name="run")
+@click.option(
+    "--config",
+    "config_path",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="satyrn.yaml to read (default: the nearest one above the cwd)",
+)
+@click.option("--dry-run", is_flag=True, help="write and validate the record, but do not spend a budget")
+@click.option("--no-settings", is_flag=True, help="skip preflight_settings (development records only)")
+def run_command(config_path: Path | None, dry_run: bool, no_settings: bool) -> None:
+    """Run the eval described by satyrn.yaml: write its record, then launch its cells."""
+    path = config_path if config_path is not None else find_config()
+    if path is None:
+        raise InitError("no satyrn.yaml found; run `satyrn-evals init` first")
+    config = load_config(path)
+    base = path.parent
+    task = _required(config, "task")
+    tasks_root = base / str(config.get("tasks-root", "eval-tasks"))
+    arm_name = str(config.get("arm", DEFAULT_ARM))
+    arm_path = base / "arms" / f"{arm_name}.json"
+    if not arm_path.is_file():
+        raise InitError(f"{arm_path} is missing; run `satyrn-evals init` or fix arm: in satyrn.yaml")
+    model = _required(config, "model")
+    run_cfg = config.get("run")
+    run_cfg = run_cfg if isinstance(run_cfg, dict) else {}
+    record_path = base / str(config.get("record", f"records/{task}.json"))
+    if not record_path.is_file():
+        rung = str(config.get("rung", "contract"))
+        body = new_record(
+            task=task,
+            tasks_root=tasks_root,
+            arm=arm_name,
+            model=model,
+            n=int(run_cfg.get("n", 1)),
+            k=int(run_cfg.get("k", 1)),
+            rung=None if rung == "contract" else rung,
+            purpose=str(run_cfg.get("purpose", "development")),
+            mode=str(run_cfg.get("mode", "attended")),
+            max_minutes=int(run_cfg.get("max-minutes", 60)),
+            token_budget=int(run_cfg.get("token-budget", 32000)),
+            turn_budget=int(run_cfg.get("turn-budget", 48)),
+            previous_result=None,
+            authority=None,
+            decision_rule=None,
+            backend=str(config.get("backend", DEFAULT_BACKEND)),
+        )
+        write_new_record(record_path, body)
+        click.echo(f"wrote {record_path}; commit it, unchanged, before launch")
+    record = load_run_record(record_path)
+    if dry_run:
+        click.echo(
+            f"record accepted: task {record.task}, arm {record.arm}, model {record.model}, "
+            f"n={record.n}, k={record.k}"
+        )
+        return
+    try:
+        code = launch_record(record_path, [arm_path], tasks_root=tasks_root, settings=not no_settings)
+    except SatyrnError as exc:
+        raise click.ClickException(str(exc)) from exc
+    raise SystemExit(code)
 
 
 def run(argv: list[str]) -> int:

@@ -199,13 +199,13 @@ def main(argv: list[str] | None = None) -> int:
             if record.outcome is AttemptOutcome.REFUSED:
                 return 3
             return 0 if record.verdict in (Verdict.PASS, Verdict.FAIL) else 3
-        if argv[:1] == ["run"]:
+        if argv[:1] == ["repeat"]:
             flags, command = split_attempt_argv(argv[1:])
             if not command:
                 raise UsageError(
-                    "run command is required: run TASK [flags] -- COMMAND..."
+                    "repeat command is required: repeat TASK [flags] -- COMMAND..."
                 )
-            args = parser.parse_args(["run", *flags])
+            args = parser.parse_args(["repeat", *flags])
             budget, isolation, line_budget = _record_settings(
                 args.run_record, task=args.task, tasks_root=args.tasks_root, command=command, n=args.n
             )
@@ -545,7 +545,7 @@ attempt_p.add_argument(
     help="run record JSON whose token_budget and turn_budget stop the cell (default: no budget)",
 )
 
-run_p = sub.add_parser("run", help="run an attempt command n times and write a summary")
+run_p = sub.add_parser("repeat", help="repeat an attempt command n times and write a summary")
 run_p.add_argument("task", help="task name")
 run_p.add_argument(
     "--n", type=positive_int, required=True, help="planned attempts per run"

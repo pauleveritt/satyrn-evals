@@ -39,13 +39,13 @@ _ENTRY = "import sys; from satyrn_evals.cli import main; sys.exit(main())"
 def _spawn_run(
     output: Path, started: Path, *, n: int, fast_after: int
 ) -> subprocess.Popen:
-    """A live ``satyrn-evals run`` in its own process group.
+    """A live ``satyrn-evals repeat`` in its own process group.
 
     Its own group so the test can reap the blocked child adapter without
     depending on the run process to do it.
     """
     argv = [
-        sys.executable, "-c", _ENTRY, "run", TASK,
+        sys.executable, "-c", _ENTRY, "repeat", TASK,
         "--n", str(n),
         "--output", str(output),
         "--tasks-root", str(DEFAULT_TASKS_ROOT),

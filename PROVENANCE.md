@@ -26,7 +26,7 @@
 | src/satyrn_evals/capture.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | src/satyrn_evals/capture_record.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | src/satyrn_evals/census.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
-| src/satyrn_evals/cli.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92; modified 2026-10-08 on cli-ux (CLI UX step 2): routes the new UX verbs to cli_ux before argparse |
+| src/satyrn_evals/cli.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92; modified 2026-10-08 on cli-ux (CLI UX step 2): routes the new UX verbs to cli_ux before argparse; modified 2026-10-08 on cli-ux (CLI UX step 3): the expert `run` command is renamed `repeat` so the front door owns `run` |
 | src/satyrn_evals/contamination.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | src/satyrn_evals/deadline.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | src/satyrn_evals/diff_filter.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
@@ -77,7 +77,7 @@
 | tests/test_capture_logic.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/test_capture_record.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/test_census.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
-| tests/test_cli.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
+| tests/test_cli.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92; modified 2026-10-08 on cli-ux (CLI UX step 3): the expert repeat command |
 | tests/test_cli_session.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/test_contamination.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/test_deadline.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
@@ -210,7 +210,7 @@
 | tests/integration/test_repeat_limit_replay.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/integration/test_rescore.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/integration/test_run.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
-| tests/integration/test_run_signal.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
+| tests/integration/test_run_signal.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92; modified 2026-10-08 on cli-ux (CLI UX step 3): the live process invokes the repeat command |
 | tests/integration/test_session_capture_delta.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/integration/test_session_cli.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/integration/test_session_grading.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
@@ -2931,6 +2931,6 @@
 | records/2026-10-06-smoke-engine-9aecfb5-review-script.result.json | written 2026-10-06 by `satyrn-evals launch` (engine 9aecfb5, Apple M5 Max); the re-pin smoke cell, development, never deciding; committed as the launcher wrote it |
 | docs/results/2026-10-06-rrg-delivery.md | placed 2026-10-06 by the maintainer (ledger "The run-record-gate comparison on delivery: holds"); the run-record-gate delivery results page, drafted in evidence/2026-10-05-rrg-delivery/ by an Opus agent and finalized by the coordinating controller |
 | docs/results/2026-10-05-eb-floor.md | placed 2026-10-06 by the maintainer (ledger "EB after EB2: seven rulings", item 3; "EB postponed"); the EB floor results page, drafted in evidence/2026-10-05-eb2-estimates/ by an Opus agent and finalized by the coordinating controller |
-| src/satyrn_evals/cli_ux.py | created 2026-10-08 on cli-ux: the simple front door; a click group whose `init` scaffolds satyrn.yaml, an example task, and a starter baseline arm, and whose `doctor` checks the machine and the configured backend; dispatched from cli.main |
-| tests/test_cli_ux.py | created 2026-10-08 on cli-ux: offline tests for `init`, its refusals and force path, config discovery, `doctor`, and their dispatch from cli.main |
+| src/satyrn_evals/cli_ux.py | created 2026-10-08 on cli-ux: the simple front door; a click group whose `init` scaffolds satyrn.yaml, an example task, and a starter baseline arm, whose `doctor` checks the machine and the configured backend, and whose `run` writes the configured record and launches its cells; dispatched from cli.main |
+| tests/test_cli_ux.py | created 2026-10-08 on cli-ux: offline tests for `init`, its refusals and force path, config discovery, `doctor`, `run` (dry-run, reuse, refusals, launcher mapping), and their dispatch from cli.main |
 | src/satyrn_evals/prereqs.py | created 2026-10-08 on cli-ux (CLI UX step 2b): the prerequisite checks moved in from scripts/prereqs.py so `doctor` reaches them from the installed package |

@@ -15,6 +15,7 @@ from click.testing import CliRunner
 from satyrn_evals import cli as cli_module
 from satyrn_evals import cli_ux
 from satyrn_evals.arms import load_arm
+from satyrn_evals.errors import SatyrnError
 
 # --- the pieces -------------------------------------------------------------
 
@@ -271,4 +272,84 @@ def test_doctor_check_servers_fails_when_the_server_is_unreachable(
 def test_main_routes_doctor(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cli_ux.prereqs, "run_prereqs", _ok_prereqs)
     assert cli_module.main(["doctor"]) == 0
+
+
+# --- run --------------------------------------------------------------------
+
+
+def test_run_dry_run_writes_and_accepts_the_record(tmp_path: Path) -> None:
+    cli_ux.scaffold(tmp_path)
+    result = CliRunner().invoke(cli_ux.cli, ["run", "--dry-run", "--config", str(tmp_path / "satyrn.yaml")])
+    assert result.exit_code == 0
+    assert "record accepted" in result.output
+    assert (tmp_path / "records" / "format_number.json").is_file()
+
+
+def test_run_reuses_an_existing_record(tmp_path: Path) -> None:
+    cli_ux.scaffold(tmp_path)
+    args = ["run", "--dry-run", "--config", str(tmp_path / "satyrn.yaml")]
+    assert CliRunner().invoke(cli_ux.cli, args).exit_code == 0
+    result = CliRunner().invoke(cli_ux.cli, args)
+    assert result.exit_code == 0
+    assert "wrote" not in result.output
+
+
+def test_run_refuses_without_a_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    result = CliRunner().invoke(cli_ux.cli, ["run", "--dry-run"])
+    assert result.exit_code == 1
+    assert "no satyrn.yaml" in result.output
+
+
+def test_run_refuses_when_a_required_key_is_missing(tmp_path: Path) -> None:
+    cli_ux.scaffold(tmp_path)
+    (tmp_path / "satyrn.yaml").write_text("model: unsloth/ornith-ai/Ornith-1.5-9B-GGUF\n", encoding="utf-8")
+    result = CliRunner().invoke(cli_ux.cli, ["run", "--dry-run", "--config", str(tmp_path / "satyrn.yaml")])
+    assert result.exit_code == 1
+    assert "missing 'task'" in result.output
+
+
+def test_run_refuses_when_the_arm_file_is_missing(tmp_path: Path) -> None:
+    cli_ux.scaffold(tmp_path)
+    (tmp_path / "arms" / "baseline.json").unlink()
+    result = CliRunner().invoke(cli_ux.cli, ["run", "--dry-run", "--config", str(tmp_path / "satyrn.yaml")])
+    assert result.exit_code == 1
+    assert "is missing" in result.output
+
+
+def test_run_launches_and_returns_the_launcher_code(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    cli_ux.scaffold(tmp_path)
+    seen: dict[str, object] = {}
+
+    def fake(record_path: Path, arm_paths: list[Path], *, tasks_root: Path, settings: bool) -> int:
+        seen["record"], seen["arms"], seen["settings"] = record_path, arm_paths, settings
+        return 3
+
+    monkeypatch.setattr(cli_ux, "launch_record", fake)
+    result = CliRunner().invoke(cli_ux.cli, ["run", "--config", str(tmp_path / "satyrn.yaml")])
+    assert result.exit_code == 3
+    assert seen["record"] == tmp_path / "records" / "format_number.json"
+    assert seen["arms"] == [tmp_path / "arms" / "baseline.json"]
+    assert seen["settings"] is True
+
+
+def test_run_maps_a_launcher_refusal_to_one(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    cli_ux.scaffold(tmp_path)
+
+    def refuse(*_args: object, **_kwargs: object) -> int:
+        raise SatyrnError("the run record is not frozen: commit it, unchanged, before launch")
+
+    monkeypatch.setattr(cli_ux, "launch_record", refuse)
+    result = CliRunner().invoke(cli_ux.cli, ["run", "--config", str(tmp_path / "satyrn.yaml")])
+    assert result.exit_code == 1
+    assert "not frozen" in result.output
+
+
+def test_main_routes_run(tmp_path: Path) -> None:
+    assert cli_module.main(["run", "--dry-run", "--config", str(_scaffolded(tmp_path))]) == 0
+
+
+def _scaffolded(tmp_path: Path) -> Path:
+    cli_ux.scaffold(tmp_path)
+    return tmp_path / "satyrn.yaml"
 
