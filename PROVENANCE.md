@@ -11,11 +11,11 @@
 | tools/__init__.py | created in release-one |
 | tools/provenance.py | created in release-one |
 | tests/test_provenance.py | created in release-one |
-| pyproject.toml | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
+| pyproject.toml | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92; modified 2026-10-08 on cli-ux (CLI UX step 1): click added as a direct dependency |
 | src/satyrn_evals/__init__.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | Justfile | created in release-one |
 | README.md | created in release-one |
-| uv.lock | created in release-one |
+| uv.lock | created in release-one; modified 2026-10-08 on cli-ux (CLI UX step 1): click added as a direct dependency |
 | src/satyrn_evals/adapter_process.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | src/satyrn_evals/adapters/__init__.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | src/satyrn_evals/adapters/pi_session.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
