@@ -24,7 +24,7 @@ from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
 from satyrn_evals.run_record import load_run_record, new_record, write_new_record
 
 #: The verbs this module owns; `cli.main` routes these before argparse sees them.
-UX_COMMANDS = frozenset({"init", "doctor", "run"})
+UX_COMMANDS = frozenset({"init", "doctor", "run", "report"})
 
 CONFIG_NAME = "satyrn.yaml"
 EXAMPLE_TASK = "format_number"
@@ -163,6 +163,7 @@ def cli() -> None:
     init     scaffold satyrn.yaml, an example task, and a starter arm here
     doctor   check this machine and the configured backend
     run      write the configured record and launch its cells
+    report   show a readable result for a finished run
     """
 
 
@@ -284,6 +285,72 @@ def run_command(config_path: Path | None, dry_run: bool, no_settings: bool) -> N
     except SatyrnError as exc:
         raise click.ClickException(str(exc)) from exc
     raise SystemExit(code)
+
+
+def render_result(data: dict[str, object]) -> str:
+    """A readable result: task, rung, purpose, status, and per-arm counts.
+
+    Reads the ``<record>.result.json`` the launcher writes; every field is
+    optional so an older or partial result still renders rather than raising.
+    """
+    status = str(data.get("status", "unknown"))
+    reason = data.get("reason")
+    if reason:
+        status = f"{status} ({reason})"
+    cells = data.get("cells")
+    lines = [
+        f"task:     {data.get('task', '?')}",
+        f"rung:     {data.get('rung') or 'contract'}",
+        f"purpose:  {data.get('purpose', '?')}",
+        f"status:   {status}",
+        f"cells:    {len(cells) if isinstance(cells, list) else 0}",
+    ]
+    arms = data.get("arms")
+    if isinstance(arms, dict) and arms:
+        lines.append("")
+        for name, arm in arms.items():
+            if not isinstance(arm, dict):
+                continue
+            code_counts = arm.get("code_counts")
+            codes = (
+                ", ".join(f"{code}={count}" for code, count in sorted(code_counts.items()) if count)
+                if isinstance(code_counts, dict)
+                else ""
+            )
+            contamination = arm.get("contamination")
+            flagged = contamination.get("flagged", 0) if isinstance(contamination, dict) else 0
+            suffix = f", flagged {flagged}" if flagged else ""
+            lines.append(
+                f"arm {name}: {arm.get('passes', 0)}/{arm.get('finished', 0)} passed "
+                f"({codes or 'no cells'}){suffix}"
+            )
+    return "\n".join(lines)
+
+
+@cli.command(name="report")
+@click.option(
+    "--config",
+    "config_path",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="satyrn.yaml to read (default: the nearest one above the cwd)",
+)
+@click.argument("record", type=click.Path(path_type=Path), required=False)
+def report_command(config_path: Path | None, record: Path | None) -> None:
+    """Show a readable result for RECORD (default: the config's record)."""
+    record_path = record
+    if record_path is None:
+        path = config_path if config_path is not None else find_config()
+        if path is None:
+            raise InitError("no satyrn.yaml found; pass a RECORD or run `satyrn-evals init` first")
+        config = load_config(path)
+        record_path = path.parent / str(
+            config.get("record", f"records/{_required(config, 'task')}.json")
+        )
+    result_path = record_path.with_suffix(".result.json")
+    if not result_path.is_file():
+        raise InitError(f"no result at {result_path}; run `satyrn-evals run` first")
+    click.echo(render_result(json.loads(result_path.read_text(encoding="utf-8"))))
 
 
 def run(argv: list[str]) -> int:

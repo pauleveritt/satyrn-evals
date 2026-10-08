@@ -353,3 +353,82 @@ def _scaffolded(tmp_path: Path) -> Path:
     cli_ux.scaffold(tmp_path)
     return tmp_path / "satyrn.yaml"
 
+
+# --- report -----------------------------------------------------------------
+
+_RESULT = {
+    "task": "format_number",
+    "rung": None,
+    "purpose": "development",
+    "status": "complete",
+    "reason": None,
+    "cells": [{"slot": 0}],
+    "arms": {
+        "baseline": {
+            "finished": 1,
+            "passes": 1,
+            "code_counts": {"OK": 1, "BUDGET_EXCEEDED": 0},
+            "contamination": {"flagged": 0},
+        }
+    },
+}
+
+
+def test_render_result_lists_the_arms_and_counts() -> None:
+    text = cli_ux.render_result(_RESULT)
+    assert "task:     format_number" in text
+    assert "rung:     contract" in text
+    assert "arm baseline: 1/1 passed (OK=1)" in text
+
+
+def test_render_result_survives_a_partial_result() -> None:
+    text = cli_ux.render_result({"status": "stopped", "reason": "infrastructure"})
+    assert "status:   stopped (infrastructure)" in text
+    assert "cells:    0" in text
+    assert "arm " not in text
+
+
+def test_report_renders_an_explicit_record(tmp_path: Path) -> None:
+    record = tmp_path / "records" / "t.json"
+    record.parent.mkdir(parents=True)
+    record.write_text("{}", encoding="utf-8")
+    record.with_suffix(".result.json").write_text(json.dumps(_RESULT), encoding="utf-8")
+    result = CliRunner().invoke(cli_ux.cli, ["report", str(record)])
+    assert result.exit_code == 0
+    assert "arm baseline: 1/1 passed" in result.output
+
+
+def test_report_uses_the_config_record(tmp_path: Path) -> None:
+    cli_ux.scaffold(tmp_path)
+    record = tmp_path / "records" / "format_number.json"
+    record.parent.mkdir(parents=True)
+    record.write_text("{}", encoding="utf-8")
+    record.with_suffix(".result.json").write_text(json.dumps(_RESULT), encoding="utf-8")
+    result = CliRunner().invoke(cli_ux.cli, ["report", "--config", str(tmp_path / "satyrn.yaml")])
+    assert result.exit_code == 0
+    assert "format_number" in result.output
+
+
+def test_report_refuses_without_a_result(tmp_path: Path) -> None:
+    record = tmp_path / "r.json"
+    record.write_text("{}", encoding="utf-8")
+    result = CliRunner().invoke(cli_ux.cli, ["report", str(record)])
+    assert result.exit_code == 1
+    assert "no result" in result.output
+
+
+def test_report_refuses_without_a_config_or_record(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    result = CliRunner().invoke(cli_ux.cli, ["report"])
+    assert result.exit_code == 1
+    assert "no satyrn.yaml" in result.output
+
+
+def test_main_routes_report(tmp_path: Path) -> None:
+    record = tmp_path / "r.json"
+    record.write_text("{}", encoding="utf-8")
+    record.with_suffix(".result.json").write_text(json.dumps(_RESULT), encoding="utf-8")
+    assert cli_module.main(["report", str(record)]) == 0
+
