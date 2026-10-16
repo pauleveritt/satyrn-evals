@@ -6,12 +6,13 @@ This page walks the whole journey in order, with **ollama** as the backend and
 four commands: `init`, `doctor`, `run`, `report`. Nothing is skipped and
 nothing is assumed.
 
-It is a *journey*, not a reference. When you want to look one flag up, or you
-are using a different backend, the dense version is
-[Getting started](user-guide.md).
+This page runs the *bare* agent, Pi on its own. Running the same task through
+Satyrn Engine, the comparison this project exists for, is a longer path; step 9
+says where it starts.
 
-<!-- TODO(benx): this page is written against the cli-ux branch. Drop the
-`git switch cli-ux` line in step 3 once it merges. -->
+It is a *journey*, not a reference. When you want to look one flag up, or you
+are using a different backend, the reference is [Using Evals](use-evals.md)
+for the four commands and [Getting started](user-guide.md) for the rest.
 
 ## The journey at a glance
 
@@ -53,7 +54,7 @@ and an eval drives the whole thing from the side. (Illustration from the
 repository.)*
 
 **Evals come first.** You cannot tell whether a remedy helped until you can
-measure the failure it was meant to fix. So this journey runs the *bare* agent
+measure the failure it was meant to fix. So this journey runs the bare agent
 first, on a task with a known answer, and reads the verdict from evidence.
 
 *Going deeper:* [How it works](how-it-works.md) tells the whole story in
@@ -75,25 +76,32 @@ is not required: every command on this page was run on a CPU-only laptop.
 | `pi` | the coding agent the harness drives, headless | [pi.dev quickstart](https://pi.dev/docs/latest/quickstart) |
 | `ollama` | serves the model on your machine | [ollama.com/download](https://ollama.com/download) |
 
-**One model.** This journey uses **Ornith 1.5 9B** as the worked example. Any
-model ollama serves will do; step 3 shows where to change it.
+Git needs to know who you are: if you have never committed on this machine,
+set `git config --global user.name` and `user.email` first.
 
-**How long it takes.** These are measured on one laptop with an Intel i5-10210U,
-16 GB of RAM and no GPU. A GPU machine will be much faster. Treat them as an
-upper bound, not a promise.
+**One model.** This journey uses **Ornith 1.5 9B** (`ornith-1.5:9b` on ollama,
+a Q4_K_M quantisation) as the worked example. Any model ollama serves will do;
+step 4 shows where to name it.
+
+**How long it takes.** Three runs of this page on one laptop, an Intel
+i5-10210U with 16 GB of RAM and no GPU: two took under ten minutes with
+nothing else running, one took 22 minutes while other work shared the CPU.
+A GPU machine is much faster. Treat these as what one modest laptop did, not
+as a promise.
 
 | step | time on that laptop |
 | --- | --- |
-| clone and `uv sync` | a few minutes |
+| clone and `uv sync` | seconds to a few minutes, depending on what `uv` has cached |
 | grading a patch offline (step 4) | under a second |
-| one run of the example task with Ornith 1.5 9B (step 7) | about 10 minutes |
+| one run of the example task with Ornith 1.5 9B (step 7) | 10 to 22 minutes |
 
 > **You are here.** Nothing installed yet. Everything below is ordinary user
 > software. Nothing needs Docker and nothing needs a sandbox.
 
 ## 3. Get satyrn-evals
 
-satyrn-evals is not on PyPI yet, so you run it from a clone:
+satyrn-evals is not on PyPI yet, so you run it from a clone. The four commands
+live on the `cli-ux` branch until it merges:
 
 ```bash
 mkdir -p ~/satyrn && cd ~/satyrn
@@ -118,8 +126,8 @@ run      write the configured record and launch its cells
 report   show a readable result for a finished run
 ```
 
-Below them sit the expert commands (`grade`, `qualify`, `attempt`, `launch`,
-`record` and more). You will meet one of them in the next step.
+Below them sit the expert commands (`grade`, `qualify`, `attempt`, `repeat`,
+`launch`, `record` and more). You will meet one of them in the next step.
 
 > **You are here.** The harness is installed. No model has run, and nothing
 > has been spent.
@@ -131,7 +139,7 @@ Your evals live in their own folder, next to the clone rather than inside it.
 
 ```bash
 cd ~/satyrn
-satyrn-evals init my-first-eval --model ollama/ornith-1.5:9b --backend openai
+satyrn-evals init my-first-eval --model ollama/ornith-1.5:9b --backend ollama
 cd my-first-eval
 ```
 
@@ -145,8 +153,9 @@ next: edit satyrn.yaml, then run `satyrn-evals doctor`
 You passed the model on the command line, so there is nothing to edit yet.
 Three things are now on disk:
 
-- **`satyrn.yaml`** says what to run: the task, the arm, the model, and the
-  budgets (one attempt, 32,000 tokens, 48 turns, 60 minutes).
+- **`satyrn.yaml`** says what to run: the task, the arm, the model, the
+  budgets (one attempt, 32,000 tokens, 48 turns, 60 minutes), and the name of
+  the run record, `records/my-first-eval-format_number.json`.
 - **`eval-tasks/format_number`** is the example task: a `solution.py` with a
   stub `format_number(n)`, four tests, and two ready-made patches, one right
   and one wrong.
@@ -155,15 +164,10 @@ Three things are now on disk:
 
 Two notes on that `init` line. `--model` is a **two-part address**: the provider
 name Pi knows (`ollama`), then the model id that provider serves
-(`ornith-1.5:9b`). And `--backend openai` is right for ollama: to the harness,
-`openai` means *any* server that speaks the OpenAI API, and ollama is one.
-
-> **Do not pass `--backend ollama`.** `init` accepts it, but `run` then
-> refuses the record with `backend must be one of omlx, openai`. Use
-> `--backend openai`.
-
-<!-- TODO(benx): drop the warning once init and the record agree on the
-backend names (asked hixi). -->
+(`ornith-1.5:9b`). And `--backend` is the server you run. Open `satyrn.yaml`
+and you will see it written as `backend: openai`: to the harness, ollama is one
+of the servers that speak the OpenAI API, and that is the name the run record
+keeps.
 
 Before any model gets involved, see the part that makes everything else
 trustworthy: grading. Hand the grader the right patch, then the wrong one:
@@ -203,14 +207,14 @@ ollama pull ornith-1.5:9b
 Ollama now serves the model at `http://localhost:11434`.
 
 **Give it enough context.** A coding agent fills a small context window with
-its system prompt and tool definitions before your task even starts. Set
-`OLLAMA_CONTEXT_LENGTH` to `32768` before you run anything. On Linux, the
+its system prompt and tool definitions before your task even starts, and
+ollama's default depends on your machine: on a CPU-only laptop it was 4,096.
+Set `OLLAMA_CONTEXT_LENGTH` to `32768` before you run anything. On Linux, the
 official installer runs ollama as a system service, so an `export` in your
-shell does not reach it. The how-to
-[Configure Ollama with environment variables](https://satyrn-ai.github.io/satyrn-zen/create/howto-ollama-env-vars/)
-shows how to set it for each way of running ollama, and how to check it took.
-
-<!-- TODO(benx): the zen link goes live when satyrn-zen PR #25 merges. -->
+shell does not reach it; the
+[Ollama how-tos on Satyrn Zen](https://satyrn-ai.github.io/satyrn-zen/create/)
+show how to set it for each way of running ollama. `ollama ps` shows the
+context a loaded model actually got, in its `CONTEXT` column.
 
 ### Tell Pi where the server is
 
@@ -228,16 +232,7 @@ file, so add an `ollama` provider yourself:
         {
           "id": "ornith-1.5:9b",
           "contextWindow": 32768,
-          "maxTokens": 16000,
-          "reasoning": true,
-          "samplingParams": {
-            "temperature": 0.6,
-            "top_p": 0.95,
-            "top_k": 20,
-            "min_p": 0.0,
-            "presence_penalty": 0.0,
-            "repetition_penalty": 1.0
-          }
+          "maxTokens": 16000
         }
       ]
     }
@@ -246,16 +241,15 @@ file, so add an `ollama` provider yourself:
 ```
 
 If the file already exists, add the `ollama` block inside `providers` instead
-of replacing the file. The `apiKey` is a dummy; ollama ignores it.
+of replacing the file. The `apiKey` is a dummy; ollama ignores it. The `id` is
+the part after `ollama/` in your `--model`, and `contextWindow` should be the
+context you gave ollama above. Sampling settings (temperature and the like)
+can go in this entry too; [Using Evals](use-evals.md#pis-modelsjson-entry)
+lists the ones the project uses.
 
-This entry is **required**. Before the first attempt, `run` checks that Pi has
-an entry for the exact model in your arm, and stops if it does not. The `id`
-must match the part after `ollama/` in your `--model`, and `contextWindow` must
-match what ollama actually serves.
-
-<!-- TODO(benx): asked hixi whether init should write this entry. Also: the
-starter arm has no `inference` block, so today the settings check only finds
-the entry, it does not compare its values. -->
+This entry is **required**: before the first attempt, `run` checks that Pi
+lists your model, and stops if it does not. It does not check the numbers,
+so write them once and write them right.
 
 > **You are here.** A model is installed, and Pi knows how to reach it.
 > Still nothing spent.
@@ -282,7 +276,8 @@ All 6 prerequisites are met.
 ```
 
 `doctor` reads `satyrn.yaml` from the current folder or the nearest one above
-it. `--check-servers` adds the last line: it asks the running ollama server
+it. The `model backend` line names the server programs it found on your path.
+`--check-servers` adds the last line: it asks the running ollama server
 whether it really serves the model you named. Anything missing comes with a
 one-line fix, and `doctor` exits non-zero until it is fixed. A hung or
 misconfigured backend is cheaper to find here than ten minutes into a run.
@@ -308,11 +303,10 @@ git add .
 git commit -m "freeze my first run"
 ```
 
-`run --dry-run` writes the record to `records/format_number.json` and checks
-it, without spending anything:
+`run --dry-run` writes the record and checks it, without spending anything:
 
 ```text
-wrote .../my-first-eval/records/format_number.json; commit it, unchanged, before launch
+wrote .../my-first-eval/records/my-first-eval-format_number.json; commit it, unchanged, before launch
 record accepted: task format_number, arm baseline, model ollama/ornith-1.5:9b, n=1, k=1
 ```
 
@@ -322,18 +316,12 @@ Now run it for real:
 satyrn-evals run
 ```
 
-On the CPU-only laptop above, this took about ten minutes with Ornith 1.5 9B.
-
-> **If `run` finishes in a second, nothing ran.** Results go to
-> `~/satyrn-runs/<task>/`, and a run is identified by its record. Two projects
-> with the same task, model and budgets produce the same record, so `run`
-> finds the earlier finished run and reports *its* result again. To run for
-> real, move the old folder aside first, for example
-> `mv ~/satyrn-runs/format_number ~/satyrn-runs/format_number-old`, or give
-> the project its own record name, as [Using Evals](use-evals.md) shows.
-
-<!-- TODO(benx): asked hixi whether runs should live inside the project, or
-the record should carry something that tells two projects apart. -->
+**Expect no output until it is over.** `run` prints nothing while the model
+works, then one block of JSON. On the laptop above that silence lasted ten to
+twenty minutes. To see that something is happening, open a second terminal:
+`ollama ps` shows the model loaded, and
+`ls ~/satyrn-runs/my-first-eval-format_number/baseline/` shows the attempt
+folder once it exists.
 
 While it runs, here is what happens:
 
@@ -350,20 +338,37 @@ flowchart TB
 The harness makes a fresh copy of the task, runs Pi against your model with
 Pi's own skills, templates and extensions switched off, keeps the agent inside
 the task folder, saves the full transcript and the patch, and then grades the
-saved patch offline. No model is involved in grading.
+saved patch offline. No model is involved in grading. One thing to know when
+you read the transcript later: the copy the agent works in has only the
+system Python, with no pytest, so the agent cannot run the task's tests
+itself. The grader runs them afterwards, on the saved patch.
 
-**If `run` stops before the first attempt**, the message says why. The three
+When it finishes, `run` prints where things went:
+
+```text
+{
+  "status": "complete",
+  "reason": null,
+  "night": "/home/you/satyrn-runs/my-first-eval-format_number",
+  "result": ".../my-first-eval/records/my-first-eval-format_number.result.json"
+}
+```
+
+A **night** is the harness's word for one run's results folder. The `result`
+file lands next to your record, untracked; commit it if you want the project
+to carry its own result.
+
+**If `run` stops before the first attempt**, the message says why. The ones
 you are most likely to meet:
 
-- *the run record is not frozen*: the record is missing from a commit, or
-  changed since. Commit it, then run again.
-- *... belongs to another record*: a run of a *different* record on the same
-  task, for example with another model, already lives in
-  `~/satyrn-runs/<task>/`. Move it aside as above.
+- *the record was just written*: you ran `run` without `--dry-run` on a fresh
+  project. Commit the record as the message says, then run again.
+- *the run record is not frozen*: the record changed since its commit, or was
+  never committed. Commit it, then run again.
+- *... belongs to another record*: a results folder with this project's name
+  already exists from a run with different settings. Move it aside, for
+  example `mv ~/satyrn-runs/my-first-eval-format_number ~/satyrn-runs/old-run`.
 - *pi: no entry for this model in models.json*: go back to step 5.
-
-<!-- TODO(benx): the first two are cli-ux snags reported to hixi; trim this
-box if init/run start handling them. -->
 
 > **You are here.** A real model worked on a real task, and a verdict came out
 > the other end. This is the moment the whole stack has been aiming at.
@@ -384,16 +389,20 @@ cells:    1
 arm baseline: 1/1 passed (OK=1)
 ```
 
-One attempt, one pass. The evidence behind that line is on disk, in
-`~/satyrn-runs/format_number/`:
+One attempt, one pass. (`rung: contract` means the agent got the task's own
+contract text; the record stores that as `null`.) The evidence behind that line
+is on disk, in the night:
 
 ```bash
-cd ~/satyrn-runs/format_number/baseline
-cat summary.json                   # verdict counts; per attempt, tool calls and pathology counters
-cat format_number-*/transcript.txt # everything the model did
-cat format_number-*/patch.diff     # the change it made, from the task's base
-cat format_number-*/receipt.json   # the grade: verdict and test counts
+cd ~/satyrn-runs/my-first-eval-format_number/baseline
+cat summary.json                     # verdict counts; per attempt, tool calls and pathology counters
+cat format_number-*/timeline.jsonl   # one line per event: each tool call, in order
+cat format_number-*/patch.diff       # the change it made, from the task's base
+cat format_number-*/receipt.json     # the grade: verdict and test counts
 ```
+
+`transcript.txt` in the same folder is the complete Pi session, one JSON event
+per line; it is for tools and for the curious, not for reading top to bottom.
 
 **There are three verdicts, not two.**
 
@@ -404,10 +413,10 @@ cat format_number-*/receipt.json   # the grade: verdict and test counts
 | `unavailable` | the patch could not be graded at all |
 
 `unavailable` is not a polite `fail`. It says the result cannot be judged, and
-`receipt.json` says why. A real example: with a 4B model on this same task,
-the agent never opened `solution.py`. It wrote its answer into a brand-new file
-instead, and the verdict was `unavailable` with the reason
-`patch touches non-source path`. The task only allows changes to
+`receipt.json` says why. One run on the laptop above, with a 4B model on this
+same task, went like this: the agent never opened `solution.py`. It wrote its
+answer into a brand-new file instead, and the verdict was `unavailable` with
+the reason `patch touches non-source path`. The task only allows changes to
 `solution.py`. Its code was in fact correct: pasted into `solution.py` by hand,
 it passed all four tests. The model could solve the problem; it did not work
 on the repository the way the task asked. That gap, between knowing the answer
@@ -422,7 +431,7 @@ and deterministic, the same command as in step 4:
 
 ```bash
 cd ~/satyrn/my-first-eval
-satyrn-evals grade format_number ~/satyrn-runs/format_number/baseline/format_number-*/patch.diff \
+satyrn-evals grade format_number ~/satyrn-runs/my-first-eval-format_number/baseline/format_number-*/patch.diff \
   --tasks-root eval-tasks --receipt /tmp/regrade.json
 ```
 
@@ -443,8 +452,6 @@ task: same model, same budgets, same tools, plus the Engine's `/implement`.
 takes the longer path, with the Engine checked out at the commit its arm pins:
 follow [Getting started](user-guide.md) from "Install the stack".
 
-<!-- TODO(benx): rewrite this step when init can scaffold an Engine arm. -->
-
 One honest caveat: **one attempt against one attempt proves nothing.** It is a
 flavour of the difference, not a measurement. For how a real comparison is
 run, read [First results](numbers.md), including where the Engine did *not*
@@ -464,7 +471,7 @@ the only source of that.
    [`reports/0000-00-00_example_template/report.md`](https://github.com/satyrn-ai/satyrn-evals-collector/blob/main/reports/0000-00-00_example_template/report.md)
    into it and fill it in: model and quantisation, hardware, `pi --version`,
    then what you did and how it went.
-4. **Add your evidence**: the `report` output, `summary.json`, the transcript.
+4. **Add your evidence**: the `report` output, `summary.json`, the timeline.
 5. **Redact before you commit.** Everything in that repository is public.
 6. **Open a pull request** against `main`.
 
