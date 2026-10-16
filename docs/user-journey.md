@@ -100,14 +100,15 @@ as a promise.
 
 ## 3. Get satyrn-evals
 
-satyrn-evals is not on PyPI yet, so you run it from a clone. The four commands
-live on the `cli-ux` branch until it merges:
+satyrn-evals is not on PyPI yet, so you run it from a clone. The four commands,
+with the fixes this page relies on, live on the `docs/first-run-cli` branch
+until they merge:
 
 ```bash
 mkdir -p ~/satyrn && cd ~/satyrn
 git clone https://github.com/pauleveritt/satyrn-evals.git
 cd satyrn-evals
-git switch cli-ux
+git switch docs/first-run-cli
 uv sync
 source .venv/bin/activate
 satyrn-evals --help

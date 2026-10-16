@@ -7,7 +7,7 @@ title: Using Evals
 `satyrn-evals` has two surfaces. Four commands run evals in a project of your
 own: `init`, `doctor`, `run` and `report`. This page is their reference. The
 expert commands that the project itself uses for campaigns are listed at the
-end. The four commands live on the `cli-ux` branch until it merges.
+end. The four commands live on the `docs/first-run-cli` branch until it merges.
 
 For a guided walk through the four commands, start with
 [Your first run](user-journey.md).
