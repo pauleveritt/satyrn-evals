@@ -321,6 +321,17 @@ satyrn-evals run
 ```
 
 On the CPU-only laptop above, this took about ten minutes with Ornith 1.5 9B.
+
+> **If `run` finishes in a second, nothing ran.** Results go to
+> `~/satyrn-runs/<task>/`, and a run is identified by its record. Two projects
+> with the same task, model and budgets produce the same record, so `run`
+> finds the earlier finished run and reports *its* result again. To run for
+> real, move the old folder aside first, for example
+> `mv ~/satyrn-runs/format_number ~/satyrn-runs/format_number-old`.
+
+<!-- TODO(benx): asked hixi whether runs should live inside the project, or
+the record should carry something that tells two projects apart. -->
+
 While it runs, here is what happens:
 
 ```mermaid
@@ -343,10 +354,9 @@ you are most likely to meet:
 
 - *the run record is not frozen*: the record is missing from a commit, or
   changed since. Commit it, then run again.
-- *... belongs to another record*: results go to `~/satyrn-runs/<task>/`, and
-  a run of a different record on the same task already lives there. Move it
-  aside, for example
-  `mv ~/satyrn-runs/format_number ~/satyrn-runs/format_number-old`.
+- *... belongs to another record*: a run of a *different* record on the same
+  task, for example with another model, already lives in
+  `~/satyrn-runs/<task>/`. Move it aside as above.
 - *pi: no entry for this model in models.json*: go back to step 5.
 
 <!-- TODO(benx): the first two are cli-ux snags reported to hixi; trim this
