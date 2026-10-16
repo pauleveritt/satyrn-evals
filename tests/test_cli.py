@@ -114,7 +114,7 @@ def test_run_whole_timeout_is_dispatched(monkeypatch: pytest.MonkeyPatch) -> Non
     monkeypatch.setattr(cli_module, "run", lambda **kwargs: seen.update(kwargs))
     assert (
         main(
-            ["run", "format_number", "--n", "1", "--attempt-timeout", "12", "--", "cmd"]
+            ["repeat", "format_number", "--n", "1", "--attempt-timeout", "12", "--", "cmd"]
         )
         == 0
     )
@@ -122,12 +122,12 @@ def test_run_whole_timeout_is_dispatched(monkeypatch: pytest.MonkeyPatch) -> Non
 
 
 def test_run_requires_command() -> None:
-    assert main(["run", "format_number"]) == 2
+    assert main(["repeat", "format_number"]) == 2
 
 
 def test_run_requires_explicit_planned_denominator() -> None:
     with pytest.raises(SystemExit):
-        main(["run", "format_number", "--", "cmd"])
+        main(["repeat", "format_number", "--", "cmd"])
 
 
 @pytest.mark.parametrize("value", ["0", "-1", "abc"])
@@ -142,13 +142,13 @@ def test_run_cli_dispatches_an_explicit_planned_denominator(
 ) -> None:
     seen: dict[str, object] = {}
     monkeypatch.setattr(cli_module, "run", lambda **kw: seen.update(kw))
-    assert cli_module.main(["run", "format_number", "--n", str(n), "--", "cmd"]) == 0
+    assert cli_module.main(["repeat", "format_number", "--n", str(n), "--", "cmd"]) == 0
     assert seen["n"] == n and seen["task"] == "format_number"
 
 
 def test_run_cli_rejects_nonpositive_n() -> None:
     with pytest.raises(SystemExit):
-        cli_module.main(["run", "format_number", "--n", "0", "--", "cmd"])
+        cli_module.main(["repeat", "format_number", "--n", "0", "--", "cmd"])
 
 
 def test_attempt_grade_failed_exits_3_and_prints_message(
@@ -311,7 +311,7 @@ def test_run_cli_passes_rung_through(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cli_module, "run", lambda **kw: seen.update(kw))
     assert (
         cli_module.main(
-            ["run", "format_number", "--n", "2", "--rung", "R1", "--", "cmd"]
+            ["repeat", "format_number", "--n", "2", "--rung", "R1", "--", "cmd"]
         )
         == 0
     )
@@ -320,7 +320,7 @@ def test_run_cli_passes_rung_through(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_run_cli_rung_defaults_to_none() -> None:
-    assert parser.parse_args(["run", "task", "--n", "1"]).rung is None
+    assert parser.parse_args(["repeat", "task", "--n", "1"]).rung is None
 
 
 PI = ["satyrn-evals-attempt-pi", "--model", "omlx/Ornith-1.5-9B-MLX-8bit"]
@@ -341,7 +341,7 @@ def _record(tmp_path: Path, **over: object) -> Path:
 def test_run_takes_its_budget_and_profile_from_the_run_record(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     seen: dict[str, object] = {}
     monkeypatch.setattr(cli_module, "run", lambda **kwargs: seen.update(kwargs))
-    assert main(["run", "format_number", "--n", "4", "--run-record", str(_record(tmp_path)), "--", *PI]) == 0
+    assert main(["repeat", "format_number", "--n", "4", "--run-record", str(_record(tmp_path)), "--", *PI]) == 0
     assert seen["budget"] == AttemptBudget(output_tokens=24000, turns=36)
     assert seen["isolation"] is Isolation.LOCAL
 
@@ -382,7 +382,7 @@ def test_run_takes_the_line_budget_from_the_run_record(tmp_path: Path, monkeypat
     seen: dict[str, object] = {}
     monkeypatch.setattr(cli_module, "run", lambda **kwargs: seen.update(kwargs))
     record = _record(tmp_path, token_budget=40000, line_token_budget=16000, line_turn_budget=24)
-    assert main(["run", "format_number", "--n", "4", "--run-record", str(record), "--", *PI]) == 0
+    assert main(["repeat", "format_number", "--n", "4", "--run-record", str(record), "--", *PI]) == 0
     assert seen["line_budget"] == LineBudget(output_tokens=16000, turns=24)
 
 
@@ -409,7 +409,7 @@ def test_attempt_refuses_a_command_the_record_does_not_name(tmp_path: Path, monk
 def test_run_without_a_record_has_no_budget(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: dict[str, object] = {}
     monkeypatch.setattr(cli_module, "run", lambda **kwargs: seen.update(kwargs))
-    assert main(["run", "format_number", "--n", "1", "--", "cmd"]) == 0
+    assert main(["repeat", "format_number", "--n", "1", "--", "cmd"]) == 0
     assert seen["budget"] is None
 
 
@@ -440,7 +440,7 @@ def test_run_refuses_an_n_that_disagrees_with_the_record(
 ) -> None:
     monkeypatch.setattr(cli_module, "run", lambda **kw: pytest.fail("no cell may start"))
     record = _record(tmp_path, n=4)
-    assert main(["run", "format_number", "--n", "1", "--run-record", str(record), "--", *PI]) == 2
+    assert main(["repeat", "format_number", "--n", "1", "--run-record", str(record), "--", *PI]) == 2
 
 
 def test_run_accepts_an_n_that_agrees_with_the_record(
@@ -449,7 +449,7 @@ def test_run_accepts_an_n_that_agrees_with_the_record(
     seen: dict[str, object] = {}
     monkeypatch.setattr(cli_module, "run", lambda **kwargs: seen.update(kwargs))
     record = _record(tmp_path, n=1)
-    assert main(["run", "format_number", "--n", "1", "--run-record", str(record), "--", *PI]) == 0
+    assert main(["repeat", "format_number", "--n", "1", "--run-record", str(record), "--", *PI]) == 0
     assert seen["n"] == 1
 
 

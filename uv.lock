@@ -273,6 +273,7 @@ name = "satyrn-evals"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "click" },
     { name = "pyyaml" },
 ]
 
@@ -288,7 +289,10 @@ docs = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pyyaml" }]
+requires-dist = [
+    { name = "click", specifier = ">=8.5.0" },
+    { name = "pyyaml" },
+]
 
 [package.metadata.requires-dev]
 dev = [

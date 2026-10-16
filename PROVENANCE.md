@@ -11,11 +11,11 @@
 | tools/__init__.py | created in release-one |
 | tools/provenance.py | created in release-one |
 | tests/test_provenance.py | created in release-one |
-| pyproject.toml | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
+| pyproject.toml | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92; modified 2026-10-08 on cli-ux (CLI UX step 1): click added as a direct dependency; modified 2026-10-08 on cli-ux (CLI UX step 5): the satyrn-evals console script is the click group cli_ux:cli |
 | src/satyrn_evals/__init__.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | Justfile | created in release-one |
 | README.md | created in release-one |
-| uv.lock | created in release-one |
+| uv.lock | created in release-one; modified 2026-10-08 on cli-ux (CLI UX step 1): click added as a direct dependency |
 | src/satyrn_evals/adapter_process.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | src/satyrn_evals/adapters/__init__.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | src/satyrn_evals/adapters/pi_session.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
@@ -26,7 +26,7 @@
 | src/satyrn_evals/capture.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | src/satyrn_evals/capture_record.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | src/satyrn_evals/census.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
-| src/satyrn_evals/cli.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
+| src/satyrn_evals/cli.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92; modified 2026-10-08 on cli-ux (CLI UX step 2): routes the new UX verbs to cli_ux before argparse; modified 2026-10-08 on cli-ux (CLI UX step 3): the expert `run` command is renamed `repeat` so the front door owns `run` |
 | src/satyrn_evals/contamination.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | src/satyrn_evals/deadline.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | src/satyrn_evals/diff_filter.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
@@ -77,7 +77,7 @@
 | tests/test_capture_logic.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/test_capture_record.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/test_census.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
-| tests/test_cli.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
+| tests/test_cli.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92; modified 2026-10-08 on cli-ux (CLI UX step 3): the expert repeat command |
 | tests/test_cli_session.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/test_contamination.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/test_deadline.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
@@ -210,7 +210,7 @@
 | tests/integration/test_repeat_limit_replay.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/integration/test_rescore.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/integration/test_run.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
-| tests/integration/test_run_signal.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
+| tests/integration/test_run_signal.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92; modified 2026-10-08 on cli-ux (CLI UX step 3): the live process invokes the repeat command |
 | tests/integration/test_session_capture_delta.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/integration/test_session_cli.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | tests/integration/test_session_grading.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
@@ -2766,8 +2766,8 @@
 | tests/integration/test_cell_engine.py | created in release-one |
 | docs/user-guide.md | created 2026-09-27 on docs/user-guide for the user's getting-started guide (unsloth, ollama, oMLX); the abandoned ../QUICKSTART.md draft was the seed |
 | site/user-guide.md | created 2026-09-27 on docs/user-guide; Zensical page wrapping docs/user-guide.md |
-| scripts/prereqs.py | created 2026-09-27 on docs/user-guide; checks git/python/uv/pi and one local backend, with fix messages |
-| tests/test_prereqs.py | created 2026-09-27 on docs/user-guide; default-tier tests for the script's pure logic |
+| scripts/prereqs.py | created 2026-09-27 on docs/user-guide; checks git/python/uv/pi and one local backend, with fix messages; modified 2026-10-08 on cli-ux (CLI UX step 2b): the logic moved to satyrn_evals.prereqs, this is the shim the docs still name |
+| tests/test_prereqs.py | created 2026-09-27 on docs/user-guide; default-tier tests for the script's pure logic; modified 2026-10-08 on cli-ux (CLI UX step 2b): imports satyrn_evals.prereqs |
 | docs/user-journey.md | created 2026-09-28 on docs/user-journey; the guided journey (ollama-only) that fuses the collector's framing with the harness steps; modified 2026-10-04: "isolated workspace" replaced by the attempt worktree under the confinement extension (ledger C0); Baseline named as Pi with no product extensions plus the confinement extension |
 | site/user-journey.md | created 2026-09-28 on docs/user-journey; Zensical page wrapping docs/user-journey.md |
 | site/imgs/pi-ollama-user-evals.svg | copied 2026-09-28 from satyrn-evals-collector @ f7b553260a810d5447d56f1d13ba92da88be83bd (docs/imgs/pi-ollama-user-evals.svg), the community briefing's own picture of the same cast |
@@ -2931,3 +2931,6 @@
 | records/2026-10-06-smoke-engine-9aecfb5-review-script.result.json | written 2026-10-06 by `satyrn-evals launch` (engine 9aecfb5, Apple M5 Max); the re-pin smoke cell, development, never deciding; committed as the launcher wrote it |
 | docs/results/2026-10-06-rrg-delivery.md | placed 2026-10-06 by the maintainer (ledger "The run-record-gate comparison on delivery: holds"); the run-record-gate delivery results page, drafted in evidence/2026-10-05-rrg-delivery/ by an Opus agent and finalized by the coordinating controller |
 | docs/results/2026-10-05-eb-floor.md | placed 2026-10-06 by the maintainer (ledger "EB after EB2: seven rulings", item 3; "EB postponed"); the EB floor results page, drafted in evidence/2026-10-05-eb2-estimates/ by an Opus agent and finalized by the coordinating controller |
+| src/satyrn_evals/cli_ux.py | created 2026-10-08 on cli-ux: the simple front door and the top-level click group; `init` scaffolds satyrn.yaml, an example task, and a starter baseline arm, `doctor` checks the machine and the configured backend, `run` writes the configured record and launches its cells, and `report` renders the launcher's `<record>.result.json`; unknown verbs forward to the expert argparse main through a hidden `legacy` command; modified 2026-10-16 on cli-ux-first-run-small: init takes the server the user runs (ollama, unsloth, omlx, openai) and records the backend name the record accepts; one record file per project; record errors are messages; run stops with the git command right after writing a record |
+| tests/test_cli_ux.py | created 2026-10-08 on cli-ux: offline tests for `init`, its refusals and force path, config discovery, `doctor`, `run` (dry-run, reuse, refusals, launcher mapping), `report`, and their dispatch from cli.main; modified 2026-10-16 on cli-ux-first-run-small: backend mapping and round trip, per-project record name, record limits as messages, the just-written stop |
+| src/satyrn_evals/prereqs.py | created 2026-10-08 on cli-ux (CLI UX step 2b): the prerequisite checks moved in from scripts/prereqs.py so `doctor` reaches them from the installed package |
