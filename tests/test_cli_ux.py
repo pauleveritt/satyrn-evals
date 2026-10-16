@@ -14,6 +14,7 @@ from click.testing import CliRunner
 
 from satyrn_evals import cli as cli_module
 from satyrn_evals import cli_ux
+from satyrn_evals.arms import BACKENDS as RECORD_BACKENDS
 from satyrn_evals.arms import load_arm
 from satyrn_evals.errors import SatyrnError
 
@@ -32,6 +33,7 @@ def test_config_text_round_trips_the_choices() -> None:
         arm="baseline",
         model="unsloth/ornith-ai/Ornith-1.5-9B-GGUF",
         backend="openai",
+        record="records/project-format_number.json",
     )
     data = yaml.safe_load(text)
     assert data["task"] == "format_number"
@@ -39,6 +41,7 @@ def test_config_text_round_trips_the_choices() -> None:
     assert data["arm"] == "baseline"
     assert data["model"] == "unsloth/ornith-ai/Ornith-1.5-9B-GGUF"
     assert data["backend"] == "openai"
+    assert data["record"] == "records/project-format_number.json"
     assert data["run"] == {
         "n": 1,
         "k": 1,
@@ -47,6 +50,18 @@ def test_config_text_round_trips_the_choices() -> None:
         "turn-budget": 48,
         "max-minutes": 60,
     }
+
+
+def test_record_backend_keeps_the_record_names_and_maps_the_servers() -> None:
+    assert cli_ux.record_backend("openai") == "openai"
+    assert cli_ux.record_backend("omlx") == "omlx"
+    assert cli_ux.record_backend("ollama") == "openai"
+    assert cli_ux.record_backend("unsloth") == "openai"
+
+
+def test_record_backend_refuses_a_name_nobody_knows() -> None:
+    with pytest.raises(cli_ux.InitError, match="backend must be one of"):
+        cli_ux.record_backend("vllm")
 
 
 def test_arm_text_loads_and_addresses_its_server_model(tmp_path: Path) -> None:
@@ -80,6 +95,23 @@ def test_scaffold_writes_config_task_and_arm(tmp_path: Path) -> None:
     assert (dest / "satyrn.yaml").is_file()
     assert (dest / "eval-tasks" / "format_number" / "manifest.json").is_file()
     assert (dest / "arms" / "baseline.json").is_file()
+
+
+def test_scaffold_names_the_record_after_the_project(tmp_path: Path) -> None:
+    dest = tmp_path / "my-first-eval"
+    cli_ux.scaffold(dest)
+    config = yaml.safe_load((dest / "satyrn.yaml").read_text(encoding="utf-8"))
+    assert config["record"] == "records/my-first-eval-format_number.json"
+
+
+@pytest.mark.parametrize("backend", cli_ux.BACKENDS)
+def test_scaffold_writes_a_backend_the_record_accepts(tmp_path: Path, backend: str) -> None:
+    cli_ux.scaffold(tmp_path, backend=backend)
+    config = yaml.safe_load((tmp_path / "satyrn.yaml").read_text(encoding="utf-8"))
+    arm = json.loads((tmp_path / "arms" / "baseline.json").read_text(encoding="utf-8"))
+    assert config["backend"] in RECORD_BACKENDS
+    assert arm["backend"] == config["backend"]
+    assert config["backend"] == ("omlx" if backend == "omlx" else "openai")
 
 
 def test_scaffold_refuses_an_existing_config(tmp_path: Path) -> None:
@@ -129,6 +161,15 @@ def test_init_command_reports_what_it_wrote(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert "wrote" in result.output
     assert "next: edit satyrn.yaml" in result.output
+
+
+@pytest.mark.parametrize("backend", cli_ux.BACKENDS)
+def test_every_init_backend_gives_a_record_run_accepts(tmp_path: Path, backend: str) -> None:
+    project = tmp_path / "project"
+    assert CliRunner().invoke(cli_ux.cli, ["init", "--backend", backend, str(project)]).exit_code == 0
+    result = CliRunner().invoke(cli_ux.cli, ["run", "--dry-run", "--config", str(project / "satyrn.yaml")])
+    assert result.exit_code == 0
+    assert "record accepted" in result.output
 
 
 def test_init_command_reports_a_refusal(tmp_path: Path) -> None:
@@ -282,7 +323,7 @@ def test_run_dry_run_writes_and_accepts_the_record(tmp_path: Path) -> None:
     result = CliRunner().invoke(cli_ux.cli, ["run", "--dry-run", "--config", str(tmp_path / "satyrn.yaml")])
     assert result.exit_code == 0
     assert "record accepted" in result.output
-    assert (tmp_path / "records" / "format_number.json").is_file()
+    assert _record_of(tmp_path).is_file()
 
 
 def test_run_reuses_an_existing_record(tmp_path: Path) -> None:
@@ -317,8 +358,43 @@ def test_run_refuses_when_the_arm_file_is_missing(tmp_path: Path) -> None:
     assert "is missing" in result.output
 
 
-def test_run_launches_and_returns_the_launcher_code(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize(
+    ("key", "value", "message"),
+    [
+        ("max-minutes", 30, "backstop"),
+        ("n", 9, "capped at n<=8"),
+        ("purpose", "campaign", "needs --decision-rule"),
+    ],
+)
+def test_run_reports_a_record_the_config_cannot_produce(tmp_path: Path, key: str, value: object, message: str) -> None:
     cli_ux.scaffold(tmp_path)
+    config = tmp_path / "satyrn.yaml"
+    data = yaml.safe_load(config.read_text(encoding="utf-8"))
+    data["run"][key] = value
+    config.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    result = CliRunner().invoke(cli_ux.cli, ["run", "--dry-run", "--config", str(config)])
+
+    assert result.exit_code == 1
+    assert message in result.output
+    assert isinstance(result.exception, SystemExit)  # a message, not a traceback
+    assert not _record_of(tmp_path).exists()
+
+
+def test_run_stops_after_writing_a_new_record(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    cli_ux.scaffold(tmp_path)
+    launched: list[Path] = []
+    monkeypatch.setattr(cli_ux, "launch_record", lambda record_path, *a, **k: launched.append(record_path) or 0)
+    result = CliRunner().invoke(cli_ux.cli, ["run", "--config", str(tmp_path / "satyrn.yaml")])
+    assert result.exit_code == 1
+    assert "just written" in result.output
+    assert "git add" in result.output
+    assert launched == []
+    assert _record_of(tmp_path).is_file()  # written, so the commit the message asks for carries it
+
+
+def test_run_launches_and_returns_the_launcher_code(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config = _ready_to_launch(tmp_path)
     seen: dict[str, object] = {}
 
     def fake(record_path: Path, arm_paths: list[Path], *, tasks_root: Path, settings: bool) -> int:
@@ -326,21 +402,21 @@ def test_run_launches_and_returns_the_launcher_code(tmp_path: Path, monkeypatch:
         return 3
 
     monkeypatch.setattr(cli_ux, "launch_record", fake)
-    result = CliRunner().invoke(cli_ux.cli, ["run", "--config", str(tmp_path / "satyrn.yaml")])
+    result = CliRunner().invoke(cli_ux.cli, ["run", "--config", str(config)])
     assert result.exit_code == 3
-    assert seen["record"] == tmp_path / "records" / "format_number.json"
+    assert seen["record"] == _record_of(tmp_path)
     assert seen["arms"] == [tmp_path / "arms" / "baseline.json"]
     assert seen["settings"] is True
 
 
 def test_run_maps_a_launcher_refusal_to_one(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    cli_ux.scaffold(tmp_path)
+    config = _ready_to_launch(tmp_path)
 
     def refuse(*_args: object, **_kwargs: object) -> int:
         raise SatyrnError("the run record is not frozen: commit it, unchanged, before launch")
 
     monkeypatch.setattr(cli_ux, "launch_record", refuse)
-    result = CliRunner().invoke(cli_ux.cli, ["run", "--config", str(tmp_path / "satyrn.yaml")])
+    result = CliRunner().invoke(cli_ux.cli, ["run", "--config", str(config)])
     assert result.exit_code == 1
     assert "not frozen" in result.output
 
@@ -352,6 +428,18 @@ def test_main_routes_run(tmp_path: Path) -> None:
 def _scaffolded(tmp_path: Path) -> Path:
     cli_ux.scaffold(tmp_path)
     return tmp_path / "satyrn.yaml"
+
+
+def _record_of(project: Path) -> Path:
+    """The record file `scaffold` named for `project`."""
+    return project / "records" / f"{project.resolve().name}-format_number.json"
+
+
+def _ready_to_launch(tmp_path: Path) -> Path:
+    """A scaffolded project whose record is already written, as a committed project would be."""
+    config = _scaffolded(tmp_path)
+    assert CliRunner().invoke(cli_ux.cli, ["run", "--dry-run", "--config", str(config)]).exit_code == 0
+    return config
 
 
 # --- report -----------------------------------------------------------------
@@ -400,7 +488,7 @@ def test_report_renders_an_explicit_record(tmp_path: Path) -> None:
 
 def test_report_uses_the_config_record(tmp_path: Path) -> None:
     cli_ux.scaffold(tmp_path)
-    record = tmp_path / "records" / "format_number.json"
+    record = _record_of(tmp_path)
     record.parent.mkdir(parents=True)
     record.write_text("{}", encoding="utf-8")
     record.with_suffix(".result.json").write_text(json.dumps(_RESULT), encoding="utf-8")
