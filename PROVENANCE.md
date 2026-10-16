@@ -2715,10 +2715,11 @@
 | tests/test_sensitivity_grade.py | created in release-one |
 | docs/numbers.md | created in release-one |
 | docs/superpowers/specs/2026-09-21-docs-site-design.md | created in release-one |
-| zensical.toml | created in release-one |
+| zensical.toml | created in release-one; modified 2026-10-16 on docs/first-run-cli: extra_javascript loads javascripts/diagram-zoom.js |
 | site/index.md | created in release-one |
 | site/numbers.md | created in release-one |
-| site/stylesheets/public.css | created to keep operator-only record metadata out of the public site |
+| site/stylesheets/public.css | created to keep operator-only record metadata out of the public site; modified 2026-10-16 on docs/first-run-cli: zoom cursor, dimmed backdrop and enlarged panel for diagrams |
+| site/javascripts/diagram-zoom.js | created 2026-10-16 on docs/first-run-cli: click a diagram to see it enlarged over a dimmed page |
 | site/release-one-negative.md | created in release-one |
 | site/lessons.md | created in release-one |
 | tests/test_docs_site.py | created in release-one; modified 2026-10-04: the architecture test asserts the confinement wording and the absence of "isolated workspace" |

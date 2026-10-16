@@ -28,6 +28,8 @@ flowchart LR
   I --> J[10. Send us your run]
 ```
 
+*Click a diagram to enlarge it; click again or press Esc to close.*
+
 ## 1. The cast: what an engine is, and what evals are for
 
 Two words get used a lot here. It is worth ten minutes to know what they mean,
