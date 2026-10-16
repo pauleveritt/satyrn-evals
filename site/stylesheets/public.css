@@ -3,3 +3,32 @@
 .record-recompute {
   display: none;
 }
+
+/* Diagrams open enlarged over the page on click (javascripts/diagram-zoom.js). */
+div.mermaid {
+  cursor: zoom-in;
+}
+
+.diagram-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background-color: rgb(0 0 0 / 70%);
+  cursor: zoom-out;
+}
+
+div.mermaid.diagram-zoomed {
+  position: fixed;
+  inset: 5vh 3vw;
+  z-index: 11;
+  display: flex;
+  align-items: safe center;
+  justify-content: safe center;
+  overflow: auto;
+  margin: 0;
+  padding: 2rem;
+  border-radius: 0.4rem;
+  background-color: var(--md-default-bg-color);
+  box-shadow: var(--md-shadow-z3);
+  cursor: zoom-out;
+}
