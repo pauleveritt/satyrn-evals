@@ -389,7 +389,7 @@ One attempt, one pass. The evidence behind that line is on disk, in
 
 ```bash
 cd ~/satyrn-runs/format_number/baseline
-cat summary.json                   # every attempt: verdict, tool calls, pathology counters
+cat summary.json                   # verdict counts; per attempt, tool calls and pathology counters
 cat format_number-*/transcript.txt # everything the model did
 cat format_number-*/patch.diff     # the change it made, from the task's base
 cat format_number-*/receipt.json   # the grade: verdict and test counts
