@@ -2744,7 +2744,7 @@
 | docs/superpowers/plans/2026-09-23-public-site.md | created in release-one |
 | site/evals-about.md | created in release-one; modified 2026-10-04: "isolated workspace" replaced by the attempt worktree under the confinement extension (ledger C0) |
 | site/evals-architecture.md | created in release-one; modified 2026-10-04: cell and attempt command rewritten for confinement, matching the glossary (ledger C0, unisolated-harness design §3) |
-| site/use-evals.md | created in release-one |
+| site/use-evals.md | created in release-one; modified 2026-10-16 on docs/first-run-cli: rewritten as the reference for init, doctor, run, report and satyrn.yaml (cli-ux); limits checked by dry-run |
 | site/authoring.md | created in release-one |
 | site/engine-architecture.md | created in release-one |
 | site/models.md | created in release-one |

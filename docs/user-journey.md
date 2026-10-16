@@ -327,7 +327,8 @@ On the CPU-only laptop above, this took about ten minutes with Ornith 1.5 9B.
 > with the same task, model and budgets produce the same record, so `run`
 > finds the earlier finished run and reports *its* result again. To run for
 > real, move the old folder aside first, for example
-> `mv ~/satyrn-runs/format_number ~/satyrn-runs/format_number-old`.
+> `mv ~/satyrn-runs/format_number ~/satyrn-runs/format_number-old`, or give
+> the project its own record name, as [Using Evals](use-evals.md) shows.
 
 <!-- TODO(benx): asked hixi whether runs should live inside the project, or
 the record should carry something that tells two projects apart. -->
