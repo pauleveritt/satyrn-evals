@@ -18,6 +18,7 @@ import click
 import yaml
 
 from satyrn_evals import prereqs
+from satyrn_evals.arms import BACKENDS as RECORD_BACKENDS
 from satyrn_evals.errors import SatyrnError
 from satyrn_evals.launch_record import launch_record
 from satyrn_evals.manifest import DEFAULT_TASKS_ROOT
@@ -32,7 +33,10 @@ DEFAULT_ARM = "baseline"
 DEFAULT_MODEL = "unsloth/ornith-ai/Ornith-1.5-9B-GGUF"
 DEFAULT_BACKEND = "openai"
 DEFAULT_PI_VERSION = "0.85.1"
-BACKENDS = ("openai", "omlx", "ollama")
+#: What a user may pass to `init --backend`: the servers `doctor` looks for, plus
+#: the record's own names. An arm and a record know only `openai` (any
+#: OpenAI-compatible server) and `omlx`; `record_backend` maps the rest.
+BACKENDS = ("ollama", "unsloth", "omlx", "openai")
 BASELINE_TOOLS = ["read", "bash", "edit", "write"]
 
 
@@ -49,14 +53,28 @@ def server_model_of(model: str) -> str:
     return model.split("/", 1)[1] if "/" in model else model
 
 
-def config_text(*, task: str, tasks_root: str, arm: str, model: str, backend: str) -> str:
-    """The `satyrn.yaml` a later `run` reads: task, arm, model, and budgets."""
+def record_backend(backend: str) -> str:
+    """The backend name an arm and a run record accept for what the user typed.
+
+    `ollama` and `unsloth` both serve the OpenAI API, so they are `openai` to the
+    harness; `omlx` and `openai` are already the record's own names.
+    """
+    if backend in RECORD_BACKENDS:
+        return backend
+    if backend in BACKENDS:
+        return "openai"
+    raise InitError(f"backend must be one of {', '.join(BACKENDS)}, got {backend!r}")
+
+
+def config_text(*, task: str, tasks_root: str, arm: str, model: str, backend: str, record: str) -> str:
+    """The `satyrn.yaml` a later `run` reads: task, arm, model, record and budgets."""
     data = {
         "task": task,
         "tasks-root": tasks_root,
         "arm": arm,
         "model": model,
         "backend": backend,
+        "record": record,
         "run": {
             "n": 1,
             "k": 1,
@@ -136,9 +154,14 @@ def scaffold(
     source = DEFAULT_TASKS_ROOT / task
     if not source.is_dir():
         raise InitError(f"no bundled example task {task!r}")
+    backend = record_backend(backend)
     config = dest / CONFIG_NAME
     task_dest = dest / "eval-tasks" / task
     arm_dest = dest / "arms" / f"{arm}.json"
+    # One record file, and so one results folder, per project: the launcher
+    # names a run's folder after the record file, and two projects with the
+    # same task would otherwise share one.
+    record = f"records/{dest.resolve().name}-{task}.json"
     _existing(config, force=force)
     _existing(task_dest, force=force)
     _existing(arm_dest, force=force)
@@ -147,7 +170,7 @@ def scaffold(
         shutil.rmtree(task_dest)
     shutil.copytree(source, task_dest)
     config.write_text(
-        config_text(task=task, tasks_root="eval-tasks", arm=arm, model=model, backend=backend),
+        config_text(task=task, tasks_root="eval-tasks", arm=arm, model=model, backend=backend, record=record),
         encoding="utf-8",
     )
     arm_dest.parent.mkdir(parents=True, exist_ok=True)
@@ -197,7 +220,13 @@ def legacy_command(argv: tuple[str, ...]) -> None:
 @click.option("--task", default=EXAMPLE_TASK, show_default=True, help="bundled example task to copy")
 @click.option("--arm", default=DEFAULT_ARM, show_default=True, help="arm name for the starter arm file")
 @click.option("--model", default=DEFAULT_MODEL, show_default=True, help="provider/model address the arm serves")
-@click.option("--backend", type=click.Choice(BACKENDS), default=DEFAULT_BACKEND, show_default=True)
+@click.option(
+    "--backend",
+    type=click.Choice(BACKENDS),
+    default=DEFAULT_BACKEND,
+    show_default=True,
+    help="the server you run; ollama and unsloth are recorded as openai, the API they speak",
+)
 @click.option("--pi-version", default=DEFAULT_PI_VERSION, show_default=True, help="pinned pi version the arm records")
 @click.option("--force", is_flag=True, help="overwrite files that already exist")
 def init(
@@ -276,35 +305,49 @@ def run_command(config_path: Path | None, dry_run: bool, no_settings: bool) -> N
     run_cfg = config.get("run")
     run_cfg = run_cfg if isinstance(run_cfg, dict) else {}
     record_path = base / str(config.get("record", f"records/{task}.json"))
-    if not record_path.is_file():
-        rung = str(config.get("rung", "contract"))
-        body = new_record(
-            task=task,
-            tasks_root=tasks_root,
-            arm=arm_name,
-            model=model,
-            n=int(run_cfg.get("n", 1)),
-            k=int(run_cfg.get("k", 1)),
-            rung=None if rung == "contract" else rung,
-            purpose=str(run_cfg.get("purpose", "development")),
-            mode=str(run_cfg.get("mode", "attended")),
-            max_minutes=int(run_cfg.get("max-minutes", 60)),
-            token_budget=int(run_cfg.get("token-budget", 32000)),
-            turn_budget=int(run_cfg.get("turn-budget", 48)),
-            previous_result=None,
-            authority=None,
-            decision_rule=None,
-            backend=str(config.get("backend", DEFAULT_BACKEND)),
-        )
-        write_new_record(record_path, body)
-        click.echo(f"wrote {record_path}; commit it, unchanged, before launch")
-    record = load_run_record(record_path)
+    wrote = False
+    try:
+        if not record_path.is_file():
+            rung = str(config.get("rung", "contract"))
+            body = new_record(
+                task=task,
+                tasks_root=tasks_root,
+                arm=arm_name,
+                model=model,
+                n=int(run_cfg.get("n", 1)),
+                k=int(run_cfg.get("k", 1)),
+                rung=None if rung == "contract" else rung,
+                purpose=str(run_cfg.get("purpose", "development")),
+                mode=str(run_cfg.get("mode", "attended")),
+                max_minutes=int(run_cfg.get("max-minutes", 60)),
+                token_budget=int(run_cfg.get("token-budget", 32000)),
+                turn_budget=int(run_cfg.get("turn-budget", 48)),
+                previous_result=None,
+                authority=None,
+                decision_rule=None,
+                backend=str(config.get("backend", DEFAULT_BACKEND)),
+            )
+            write_new_record(record_path, body)
+            wrote = True
+            click.echo(f"wrote {record_path}; commit it, unchanged, before launch")
+        record = load_run_record(record_path)
+    except SatyrnError as exc:
+        # A record the config cannot produce (a cap, a purpose, a backend) is a
+        # message about satyrn.yaml, not a traceback.
+        raise click.ClickException(str(exc)) from exc
     if dry_run:
         click.echo(
             f"record accepted: task {record.task}, arm {record.arm}, model {record.model}, "
             f"n={record.n}, k={record.k}"
         )
         return
+    if wrote:
+        # The launcher reads only a committed record; say so now, with the
+        # command, rather than launch into its refusal.
+        raise InitError(
+            f'the record was just written; run `git add {record_path} && git commit -m "freeze the run"`, '
+            "then run again"
+        )
     try:
         code = launch_record(record_path, [arm_path], tasks_root=tasks_root, settings=not no_settings)
     except SatyrnError as exc:
