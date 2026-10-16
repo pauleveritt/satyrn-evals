@@ -7,7 +7,7 @@ title: Using Evals
 `satyrn-evals` has two surfaces. Four commands run evals in a project of your
 own: `init`, `doctor`, `run` and `report`. This page is their reference. The
 expert commands that the project itself uses for campaigns are listed at the
-end. The four commands live on the `docs/first-run-cli` branch until it merges.
+end. The four commands live on the `cli-ux` branch until it merges.
 
 For a guided walk through the four commands, start with
 [Your first run](user-journey.md).
@@ -168,7 +168,8 @@ first attempt it checks that the record is committed, that the model server
 answers and lists the model, and that Pi's `models.json` has an entry for it.
 Then each attempt runs in a fresh Git worktree of the task, with the system
 Python only (the agent cannot run the task's tests itself), and is graded
-offline from the saved patch. Results land in two places:
+offline from the saved patch. An attempt is stopped after 30 minutes and
+counted as `COMMAND_TIMEOUT`, with no patch and no grade. Results land in two places:
 
 - `records/<record name>.result.json`, next to the record: what `report` reads.
 - `~/satyrn-runs/<record name>/`: per attempt, `timeline.jsonl` (one event per
@@ -195,7 +196,9 @@ arm baseline: 1/1 passed (OK=1)
 ```
 
 The last line counts passes over finished attempts, then how each attempt
-ended: `OK` means the agent ran to completion, whatever the verdict.
+ended: `OK` means the agent ran to completion, whatever the verdict;
+`COMMAND_TIMEOUT` means it hit the 30-minute limit and was not graded.
+`status: complete` means the run finished, not that anything passed.
 
 | option | meaning |
 | --- | --- |

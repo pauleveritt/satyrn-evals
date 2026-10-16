@@ -83,32 +83,32 @@ set `git config --global user.name` and `user.email` first.
 a Q4_K_M quantisation) as the worked example. Any model ollama serves will do;
 step 4 shows where to name it.
 
-**How long it takes.** Three runs of this page on one laptop, an Intel
+**How long it takes.** Four runs of this page on one laptop, an Intel
 i5-10210U with 16 GB of RAM and no GPU: two took under ten minutes with
-nothing else running, one took 22 minutes while other work shared the CPU.
-A GPU machine is much faster. Treat these as what one modest laptop did, not
-as a promise.
+nothing else running, one took 22 minutes while other work shared the CPU,
+and one hit the 30-minute limit an attempt is allowed (step 7 says what that
+looks like). A GPU machine is much faster. Treat these as what one modest
+laptop did, not as a promise.
 
 | step | time on that laptop |
 | --- | --- |
 | clone and `uv sync` | seconds to a few minutes, depending on what `uv` has cached |
 | grading a patch offline (step 4) | under a second |
-| one run of the example task with Ornith 1.5 9B (step 7) | 10 to 22 minutes |
+| one run of the example task with Ornith 1.5 9B (step 7) | 10 to 30 minutes |
 
 > **You are here.** Nothing installed yet. Everything below is ordinary user
 > software. Nothing needs Docker and nothing needs a sandbox.
 
 ## 3. Get satyrn-evals
 
-satyrn-evals is not on PyPI yet, so you run it from a clone. The four commands,
-with the fixes this page relies on, live on the `docs/first-run-cli` branch
-until they merge:
+satyrn-evals is not on PyPI yet, so you run it from a clone. The four commands
+live on the `cli-ux` branch until it merges:
 
 ```bash
 mkdir -p ~/satyrn && cd ~/satyrn
 git clone https://github.com/pauleveritt/satyrn-evals.git
 cd satyrn-evals
-git switch docs/first-run-cli
+git switch cli-ux
 uv sync
 source .venv/bin/activate
 satyrn-evals --help
@@ -175,15 +175,15 @@ trustworthy: grading. Hand the grader the right patch, then the wrong one:
 
 ```bash
 satyrn-evals grade format_number eval-tasks/format_number/fixtures/known-good.patch \
-  --tasks-root eval-tasks --receipt /tmp/good.json
+  --tasks-root eval-tasks --receipt good.json
 satyrn-evals grade format_number eval-tasks/format_number/fixtures/known-broken.patch \
-  --tasks-root eval-tasks --receipt /tmp/broken.json
+  --tasks-root eval-tasks --receipt broken.json
 ```
 
 `grade` prints nothing; it writes a receipt. Open both:
 
 ```bash
-cat /tmp/good.json /tmp/broken.json
+cat good.json broken.json
 ```
 
 The first says `"verdict": "pass"` with 4 tests passed. The second says
@@ -319,10 +319,18 @@ satyrn-evals run
 
 **Expect no output until it is over.** `run` prints nothing while the model
 works, then one block of JSON. On the laptop above that silence lasted ten to
-twenty minutes. To see that something is happening, open a second terminal:
-`ollama ps` shows the model loaded, and
-`ls ~/satyrn-runs/my-first-eval-format_number/baseline/` shows the attempt
-folder once it exists.
+thirty minutes. To see that something is happening, open a second terminal:
+
+```bash
+wc -l ~/satyrn-runs/my-first-eval-format_number/baseline/*/timeline.jsonl
+```
+
+The count grows by two lines for every tool call the agent makes. If it stays
+still for several minutes, the model is writing a long reply, not stuck.
+
+**An attempt gets 30 minutes.** After that the harness stops it, whatever the
+budgets in `satyrn.yaml` say. On a CPU-only laptop that is a real limit: if
+other programs are using the processor, close what you can before you run.
 
 While it runs, here is what happens:
 
@@ -357,7 +365,8 @@ When it finishes, `run` prints where things went:
 
 A **night** is the harness's word for one run's results folder. The `result`
 file lands next to your record, untracked; commit it if you want the project
-to carry its own result.
+to carry its own result. `"status": "complete"` means the run finished, not
+that the attempt passed: `report`, next, says how it went.
 
 **If `run` stops before the first attempt**, the message says why. The ones
 you are most likely to meet:
@@ -391,8 +400,17 @@ arm baseline: 1/1 passed (OK=1)
 ```
 
 One attempt, one pass. (`rung: contract` means the agent got the task's own
-contract text; the record stores that as `null`.) The evidence behind that line
-is on disk, in the night:
+contract text; the record stores that as `null`.)
+
+If the last line reads `arm baseline: 0/1 passed (COMMAND_TIMEOUT=1)`, the
+attempt hit the 30-minute limit. Nothing was graded: there is no `patch.diff`
+and no `receipt.json` to read, and the work the agent did is gone with its
+copy of the task. Free up the processor, give the record a new name in
+`satyrn.yaml` (for example `record: records/my-second-try.json`), and go back
+to the `--dry-run` and commit in step 7.
+
+When the attempt finished, the evidence behind that line is on disk, in the
+night:
 
 ```bash
 cd ~/satyrn-runs/my-first-eval-format_number/baseline
@@ -433,7 +451,7 @@ and deterministic, the same command as in step 4:
 ```bash
 cd ~/satyrn/my-first-eval
 satyrn-evals grade format_number ~/satyrn-runs/my-first-eval-format_number/baseline/format_number-*/patch.diff \
-  --tasks-root eval-tasks --receipt /tmp/regrade.json
+  --tasks-root eval-tasks --receipt regrade.json
 ```
 
 Same patch in, same verdict out, no model, no spend.
