@@ -143,7 +143,7 @@ Three notes on those commands, because each one has bitten somebody:
   the prerequisites, this is the moment to ask it:
 
 ```bash
-python3 scripts/prereqs.py --backend ollama
+uv run python scripts/prereqs.py --backend ollama
 ```
 
 It reports each prerequisite — `git`, `uv`, `pi`, Python, a backend — with a
@@ -298,7 +298,7 @@ Two checks catch that cheaply.
 
 ```bash
 # Is the server up, and does it really serve the model you named?
-python3 scripts/prereqs.py --check-servers
+uv run python scripts/prereqs.py --check-servers
 
 # Is the run condition sound, and is the Engine checkout the one
 # the arm was measured with?
