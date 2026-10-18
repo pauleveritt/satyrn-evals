@@ -14,7 +14,7 @@ case "${1:-}" in
   *) echo "c3: usage: $0 A|B" >&2; exit 2;;
 esac
 if [ -z "${C3_DRY_RUN:-}" ]; then
-  uv run python scripts/preflight_settings.py "$ARM" > /dev/null; P=$?
+  uv run satyrn-evals-preflight-settings "$ARM" > /dev/null; P=$?
   [ "$P" -eq 0 ] || { echo "c3: preflight_settings exited $P for $ARM; nothing launches" >&2; exit 2; }
 fi
 S=0

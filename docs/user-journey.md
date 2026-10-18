@@ -319,7 +319,7 @@ uv run satyrn-evals launch ./my-record.json --arm arms/baseline-ollama-ornith15-
 ```
 
 `launch` runs one further check before the first cell:
-`scripts/preflight_settings.py`, which compares your arm's `inference` block
+`satyrn-evals-preflight-settings`, which compares your arm's `inference` block
 against the configs that actually govern sampling — Pi's `models.json`, and the
 server's own settings file on a backend that has one — and refuses on any
 mismatch. This is the check that catches a step-4 entry that drifted away from

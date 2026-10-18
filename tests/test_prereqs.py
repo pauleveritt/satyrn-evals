@@ -8,14 +8,41 @@ backend" rule, and the server check's URL construction and membership test.
 The spawn tripwire is never tripped because no test calls the real seams.
 """
 
+import builtins
 import json
-import sys
+import runpy
 from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-import prereqs  # noqa: E402
+from scripts import prereqs
+
+# --- bootstrap without the project installation ----------------------------
+
+
+@pytest.mark.parametrize("backend_present", [False, True], ids=["missing", "present"])
+def test_standalone_backend_check_needs_no_project_installation(
+    backend_present: bool,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An import of the project package would break the bootstrap report."""
+    if backend_present:
+        backend = tmp_path / "ollama"
+        backend.touch()
+        backend.chmod(0o755)
+    monkeypatch.setenv("PATH", str(tmp_path))
+    original_import = builtins.__import__
+
+    def without_project(name, *args, **kwargs):
+        if name == "satyrn_evals" or name.startswith("satyrn_evals."):
+            raise ModuleNotFoundError("project is not installed", name=name)
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", without_project)
+    namespace = runpy.run_path(str(Path(prereqs.__file__)))
+    assert namespace["main"](["--backend", "ollama"]) == (0 if backend_present else 1)
+
 
 # --- version parsing and the floor -----------------------------------------
 

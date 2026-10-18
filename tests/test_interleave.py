@@ -14,25 +14,22 @@ only in a document drift; these two are proven to agree.
 """
 
 import json
-import sys
 from collections import Counter
 from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-
-import interleave as interleave_module  # noqa: E402, I001
-from interleave import (  # noqa: E402  # type: ignore[missing-import]  # scripts/ added via sys.path above
+from satyrn_evals import interleave as interleave_module
+from satyrn_evals.arms import Arm, ArmPins
+from satyrn_evals.arms import load_arm as real_load_arm
+from satyrn_evals.interleave import (
     ScheduleError,
     build_order,
     build_schedule,
     main,
     materialize,
 )
-from tally import TallyRefused, tally  # noqa: E402  # type: ignore[missing-import]
-from satyrn_evals.arms import Arm, ArmPins  # noqa: E402
-from satyrn_evals.arms import load_arm as real_load_arm  # noqa: E402
+from scripts.tally import TallyRefused, tally
 
 ARMS_ROOT = Path(__file__).resolve().parents[1] / "arms"
 BASELINE = ARMS_ROOT / "baseline.json"

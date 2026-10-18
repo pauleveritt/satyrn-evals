@@ -67,9 +67,9 @@ You need **two repositories**:
 
 Windows works for unsloth and ollama. oMLX is macOS-only (Apple Silicon).
 
-Before installing anything, check what is already on your machine with
-`uv run python scripts/prereqs.py`. It reports each prerequisite with a
-one-line fix when one is missing, and exits non-zero if any is.
+From this checkout, run `python3 scripts/prereqs.py` before installing the stack.
+This script uses only Python's standard library, so it works before `uv sync`.
+It reports each missing prerequisite with a fix and exits non-zero if any is missing.
 
 ## Install the stack
 
@@ -348,8 +348,8 @@ cat <night>/<cell-name>/receipt.json
 
 | Symptom | Cause and fix |
 | --- | --- |
-| A step complains about a missing tool | Run `uv run python scripts/prereqs.py` to see every prerequisite with its fix. |
-| `--preflight` lists `problems` naming an unreachable server | The backend is not running, or `SATYRN_MODEL`'s provider block in `models.json` names a different address. Start the backend and run `uv run python scripts/prereqs.py --check-servers` (with `SATYRN_MODEL` exported). |
+| A step complains about a missing tool | Run `python3 scripts/prereqs.py` to see every prerequisite with its fix. |
+| `--preflight` lists `problems` naming an unreachable server | The backend is not running, or `SATYRN_MODEL`'s provider block in `models.json` names a different address. Start the backend and run `python3 scripts/prereqs.py --check-servers` (with `SATYRN_MODEL` exported). |
 | `--preflight` says the server does not serve the model | The model id in `SATYRN_MODEL` (after the provider prefix) is not in the server's `/v1/models`. Pull or `unsloth start pi --model` the exact id. |
 | `/implement` is missing or shows `/implement:1` | The engine was installed twice. Reinstall once: `pi uninstall <path>/packages/engine && pi install <path>/packages/engine`. |
 | A cell times out or is slow | The model is too large or unquantised for the hardware. Switch to a smaller quantisation (see the tables above). |
