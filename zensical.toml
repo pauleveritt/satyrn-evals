@@ -3,6 +3,7 @@ site_name = "Satyrn Evals and Satyrn Engine"
 docs_dir = "site"
 site_dir = "_build"
 extra_css = ["stylesheets/public.css"]
+extra_javascript = ["javascripts/diagram-zoom.js"]
 nav = [
   { "Home" = "index.md" },
   { "Your first run" = "user-journey.md" },

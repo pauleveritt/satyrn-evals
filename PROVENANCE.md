@@ -2715,10 +2715,11 @@
 | tests/test_sensitivity_grade.py | created in release-one |
 | docs/numbers.md | created in release-one |
 | docs/superpowers/specs/2026-09-21-docs-site-design.md | created in release-one |
-| zensical.toml | created in release-one |
+| zensical.toml | created in release-one; modified 2026-10-16 on docs/first-run-cli: extra_javascript loads javascripts/diagram-zoom.js |
 | site/index.md | created in release-one |
 | site/numbers.md | created in release-one |
-| site/stylesheets/public.css | created to keep operator-only record metadata out of the public site |
+| site/stylesheets/public.css | created to keep operator-only record metadata out of the public site; modified 2026-10-16 on docs/first-run-cli: zoom cursor, dimmed backdrop and enlarged panel for diagrams; modified 2026-10-16 on docs/first-run-cli: safe centering so tall diagrams scroll from the top |
+| site/javascripts/diagram-zoom.js | created 2026-10-16 on docs/first-run-cli: click a diagram to see it enlarged over a dimmed page; modified 2026-10-16 on docs/first-run-cli: keyboard path (Tab, Enter) |
 | site/release-one-negative.md | created in release-one |
 | site/lessons.md | created in release-one |
 | tests/test_docs_site.py | created in release-one; modified 2026-10-04: the architecture test asserts the confinement wording and the absence of "isolated workspace" |
@@ -2744,7 +2745,7 @@
 | docs/superpowers/plans/2026-09-23-public-site.md | created in release-one |
 | site/evals-about.md | created in release-one; modified 2026-10-04: "isolated workspace" replaced by the attempt worktree under the confinement extension (ledger C0) |
 | site/evals-architecture.md | created in release-one; modified 2026-10-04: cell and attempt command rewritten for confinement, matching the glossary (ledger C0, unisolated-harness design §3) |
-| site/use-evals.md | created in release-one |
+| site/use-evals.md | created in release-one; modified 2026-10-16 on docs/first-run-cli: rewritten as the reference for init, doctor, run, report and satyrn.yaml (cli-ux); limits checked by dry-run; modified 2026-10-16 on docs/first-run-cli: per-project record, backend mapping, record limits reworded, Pi models.json entry as reference; modified 2026-10-18 on docs/first-run-cli: NO_PATCH in report |
 | site/authoring.md | created in release-one |
 | site/engine-architecture.md | created in release-one |
 | site/models.md | created in release-one |
@@ -2764,11 +2765,11 @@
 | src/satyrn_evals/confinement.py | created in release-one |
 | tests/test_confinement.py | created in release-one |
 | tests/integration/test_cell_engine.py | created in release-one |
-| docs/user-guide.md | created 2026-09-27 on docs/user-guide for the user's getting-started guide (unsloth, ollama, oMLX); the abandoned ../QUICKSTART.md draft was the seed |
+| docs/user-guide.md | created 2026-09-27 on docs/user-guide for the user's getting-started guide (unsloth, ollama, oMLX); the abandoned ../QUICKSTART.md draft was the seed; modified 2026-10-18 on docs/first-run-cli: the engine is cloned next to the checkout (../satyrn-engine) and needs its own uv sync, as a PyCon ZA sprinter found |
 | site/user-guide.md | created 2026-09-27 on docs/user-guide; Zensical page wrapping docs/user-guide.md |
 | scripts/prereqs.py | created 2026-09-27 on docs/user-guide; checks git/python/uv/pi and one local backend, with fix messages; modified 2026-10-08 on cli-ux (CLI UX step 2b): the logic moved to satyrn_evals.prereqs, this is the shim the docs still name |
 | tests/test_prereqs.py | created 2026-09-27 on docs/user-guide; default-tier tests for the script's pure logic; modified 2026-10-08 on cli-ux (CLI UX step 2b): imports satyrn_evals.prereqs |
-| docs/user-journey.md | created 2026-09-28 on docs/user-journey; the guided journey (ollama-only) that fuses the collector's framing with the harness steps; modified 2026-10-04: "isolated workspace" replaced by the attempt worktree under the confinement extension (ledger C0); Baseline named as Pi with no product extensions plus the confinement extension |
+| docs/user-journey.md | created 2026-09-28 on docs/user-journey; the guided journey (ollama-only) that fuses the collector's framing with the harness steps; modified 2026-10-04: "isolated workspace" replaced by the attempt worktree under the confinement extension (ledger C0); Baseline named as Pi with no product extensions plus the confinement extension; modified 2026-10-15 on docs/first-run-cli: rewritten around init, doctor, run and report on ollama (cli-ux); offline grade of the bundled fixtures before any model; timings measured on one CPU-only laptop; modified 2026-10-16 on docs/first-run-cli: aligned with the first-run fixes (init --backend ollama, per-project record), timings as three measured runs, run's silence and final output, the agent has no pytest, evidence named for every number; modified 2026-10-18 on docs/first-run-cli: NO_PATCH explained in step 8 |
 | site/user-journey.md | created 2026-09-28 on docs/user-journey; Zensical page wrapping docs/user-journey.md |
 | site/imgs/pi-ollama-user-evals.svg | copied 2026-09-28 from satyrn-evals-collector @ f7b553260a810d5447d56f1d13ba92da88be83bd (docs/imgs/pi-ollama-user-evals.svg), the community briefing's own picture of the same cast |
 | docs/why-satyrn-evals.md | created 2026-10-03: charter-led rationale for the harness, with Harbor as a compared example |
