@@ -25,7 +25,7 @@ Deliberately no subprocess: these are file reads.
 Usage::
 
     uv run satyrn-evals-preflight-inference arms/baseline.json arms/engine.json \\
-        [--pi-config-dir ~/.pi/agent]
+        [--pi-config-dir config/pi]
 """
 
 import argparse
@@ -34,11 +34,10 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+from satyrn_evals.pi_models import DEFAULT_PI_CONFIG_DIR
+
 type Drift = tuple[str, str, object, object]
 """One disagreement: ``(arm, setting, recorded, live)``."""
-
-DEFAULT_PI_CONFIG_DIR = Path.home() / ".pi" / "agent"
-
 
 def live_settings(config_dir: Path, model_id: str) -> dict[str, object]:
     """pi's declared settings for ``model_id``, read from its own config.

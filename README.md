@@ -17,6 +17,30 @@ with where it did not help and what it costs. `STATE.md` has the reading order.
 Everything before this tree is tagged `pre-release-one-2026-09-13` on `main`.
 It is evidence, not guidance; `PROVENANCE.md` names where each file here came from.
 
+## Eval-owned Pi configuration
+
+Evals do not read `~/.pi/agent`. Baseline, Engine, the session adapter, and
+preflight use this checkout's `config/pi/`. Child processes override any
+inherited `PI_CODING_AGENT_DIR`. Your interactive Pi configuration stays separate.
+
+Before running cells, copy the example:
+
+```sh
+cp config/pi/models.json.example config/pi/models.json
+```
+
+Set the server URLs and an eval-specific proxy key in `config/pi/models.json`.
+The example covers the Ornith oMLX and unsloth arms. Add entries for other
+models before using their arms. Keep model fields consistent with each arm's
+`inference` block. `config/pi/settings.json` pins compaction and high reasoning.
+The reasoning setting preserves the intended condition recorded in
+`docs/superpowers/plans/2026-09-14-phase-2b-isolation-and-tasks.md`, decision 18.
+
+Git ignores local `models.json`, credentials, and runtime files. Do not copy
+personal `auth.json`, extensions, skills, or settings into this directory.
+Missing eval configuration never falls back to personal Pi configuration.
+Run preflight before launching a record. A missing model entry refuses the run.
+
 ## Model settings are verified, not declared
 
 `arms/baseline-ornith15-9b.json` carried a full `inference` block --

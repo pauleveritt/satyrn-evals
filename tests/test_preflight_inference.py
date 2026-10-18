@@ -69,6 +69,24 @@ def test_an_arm_matching_pis_config_does_not_drift(
     assert drifted([_arm(tmp_path, "baseline")], config_dir=config_dir) == []
 
 
+def test_cli_checks_eval_config_not_the_users_global_config(
+    tmp_path: Path, config_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from satyrn_evals.preflight_inference import main
+
+    eval_config = Path(__file__).resolve().parents[1] / "config" / "pi"
+    read_text = Path.read_text
+
+    def read(path: Path, **kwargs) -> str:
+        if path.parent == eval_config:
+            return read_text(config_dir / path.name, **kwargs)
+        assert path.is_relative_to(tmp_path), f"read outside eval config: {path}"
+        return read_text(path, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", read)
+    assert main([str(_arm(tmp_path, "baseline"))]) == 0
+
+
 def test_a_changed_context_window_is_refused(
     tmp_path: Path, config_dir: Path
 ) -> None:

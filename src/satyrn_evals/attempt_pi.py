@@ -46,6 +46,7 @@ from pathlib import Path
 from satyrn_evals.arms import KNOWN_TOOLS
 from satyrn_evals.confinement import EXTENSION_PATH
 from satyrn_evals.errors import UsageError
+from satyrn_evals.pi_models import DEFAULT_PI_CONFIG_DIR
 from satyrn_evals.session_patch import RESIDUE_EXCLUDES, build_cumulative_patch
 
 #: The four variables Evals exports around an attempt command --
@@ -192,13 +193,14 @@ def read_artifact_paths(environment: Mapping[str, str]) -> tuple[Path, Path]:
 
 
 def clean_pi_environment(environment: Mapping[str, str]) -> dict[str, str]:
-    """Copy ENV for Pi without exposing Evals' active virtual environment.
+    """Use eval-owned Pi config and detach Evals' active virtual environment.
 
     The attempt command still needs Evals' executable directory on ``PATH``
     so its console script can start. Only the Pi child is detached: otherwise
     bare ``python`` and imports point back to the evaluator, not the task.
     """
     cleaned = dict(environment)
+    cleaned["PI_CODING_AGENT_DIR"] = str(DEFAULT_PI_CONFIG_DIR)
     virtual_environment = cleaned.pop("VIRTUAL_ENV", None)
     if not virtual_environment:
         return cleaned

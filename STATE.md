@@ -1,9 +1,23 @@
-# State of the project — 2026-10-06
+# State of the project — 2026-10-18
 
 The one page to read first. What exists, what is proven, what is disproven,
 what is decided, and what is next. Every claim here cites the file or commit
 that holds it; "the ledger" is `evidence/2026-09-15-release-one-decision-ledger.md`,
 cited by entry title.
+
+## Current evidence caveat
+
+Configuration-sensitive decisions from the confinement condition are
+UNCONFIRMED for the eval-owned Pi configuration. Before this fix, Pi inherited
+personal models, settings, and authentication. The checks verified selected
+fields, not the full configuration. The ledger entry "Eval-owned Pi
+configuration" lists the affected decisions and source harness commits.
+
+This caveat takes precedence over historical status labels below. Retained
+counts and grades remain evidence for their original runs. Do not use those
+runs to claim a result under the new configuration or to select an Engine
+remedy. Re-derive the affected decisions on the fixed harness first.
+No new model cells ran for this fix.
 
 ## Goal
 

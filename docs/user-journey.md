@@ -120,15 +120,15 @@ uv sync
 # 2. The engine, at the exact commit the pinned arm expects.
 uv run python -m tools.engine_sync fetch
 
-# 3. Reach the engine from inside Pi as /implement.
-pi install ./satyrn-engine/packages/engine
+# 3. Create the eval-owned model configuration.
+cp config/pi/models.json.example config/pi/models.json
 ```
 
 ```mermaid
 flowchart TB
   R[satyrn-evals<br/>the harness] --> V[.venv<br/>uv sync]
   F[tools.engine_sync fetch] --> S[satyrn-engine<br/>at the pinned commit]
-  S --> P[pi install<br/>registers /implement]
+  S --> P[eval adapter<br/>calls Engine directly]
 ```
 
 Three notes on those commands, because each one has bitten somebody:
@@ -136,9 +136,9 @@ Three notes on those commands, because each one has bitten somebody:
 - `fetch` clones `satyrn-engine` **at the commit the Engine arm pins**
   (`54d814d`), and prints the `SATYRN_ENGINE_REPO` value to export. Use the
   printed path.
-- `pi install` registers `/implement` **once**, globally. Do not also load the
-  engine as a Pi extension with `-e`: you get `/implement` registered twice and
-  the plain name stops dispatching.
+- The eval adapter invokes the pinned Engine directly. You need no global
+  `pi install`. Each Pi child uses this checkout's `config/pi/`, not personal
+  Pi configuration or an inherited `PI_CODING_AGENT_DIR`.
 - `uv sync` touches only this directory. If you are not sure your machine has
   the prerequisites, this is the moment to ask it:
 
@@ -167,7 +167,10 @@ it gives the model **32,768 tokens of context**.
 
 ### Tell Pi where the server is
 
-Pi reads `~/.pi/agent/models.json`. Add an `ollama` provider block:
+Eval Pi reads `config/pi/models.json`. Git ignores this local file and
+credentials. The tracked `config/pi/settings.json` pins compaction and high
+reasoning. Do not copy personal Pi authentication or settings into it.
+Add an `ollama` provider block:
 
 ```json
 {

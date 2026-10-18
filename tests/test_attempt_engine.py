@@ -233,7 +233,10 @@ def test_the_engine_runs_without_the_patch_destination_or_the_models_uv_environm
         {attempt_pi.PATCH_ENV: "/a/patch.diff", attempt_pi.TRANSCRIPT_ENV: "/a/transcript.txt",
          "UV_PROJECT_ENVIRONMENT": "/a/environment", "PATH": "/usr/bin"}
     )
-    assert cleaned == {attempt_pi.TRANSCRIPT_ENV: "/a/transcript.txt", "PATH": "/usr/bin"}
+    assert cleaned == {
+        attempt_pi.TRANSCRIPT_ENV: "/a/transcript.txt", "PATH": "/usr/bin",
+        "PI_CODING_AGENT_DIR": str(Path(__file__).resolve().parents[1] / "config" / "pi"),
+    }
 
 
 @pytest.fixture()
