@@ -223,7 +223,7 @@ def test_clean_pi_environment_removes_only_the_active_venv() -> None:
 
 def test_clean_pi_environment_keeps_path_without_an_active_venv() -> None:
     environment = {"PATH": "/usr/local/bin:/opt/other/.venv/bin"}
-    assert clean_pi_environment(environment) == environment
+    assert clean_pi_environment(environment)["PATH"] == environment["PATH"]
 
 
 def test_a_missing_patch_path_is_refused(

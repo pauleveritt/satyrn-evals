@@ -9,6 +9,11 @@ docs/_build/
 _build/
 node_modules/
 
+# Eval-local endpoints, credentials, and Pi runtime state.
+config/pi/*
+!config/pi/models.json.example
+!config/pi/settings.json
+
 # Local workspace state
 .worktrees/
 .superpowers/

@@ -29,6 +29,10 @@ run one task end to end.
 > model configuration. For any backend, the prerequisite check's
 > `--check-servers` and `launch --preflight` are what tell you the server is
 > actually serving the model.
+>
+> That earlier verification used personal Pi configuration. It does not prove
+> the eval-owned configuration added on 2026-10-18. No model cell ran for that
+> change. End-to-end confirmation needs a new frozen launch record.
 
 ## What the stack is
 
@@ -84,15 +88,18 @@ uv sync
 # 2. The engine, at the commit the pinned arm expects.
 uv run python -m tools.engine_sync fetch
 
-# 3. Reach the engine from Pi as /implement.
-pi install ./satyrn-engine/packages/engine
+# 3. Create the eval-owned model configuration.
+cp config/pi/models.json.example config/pi/models.json
 ```
 
 `uv sync` installs the harness into a local `.venv`. `fetch` clones
 `satyrn-engine` at the commit its arm pins (default `baseline-ornith15-9b.json`).
-`pi install` registers `/implement` once, globally — do **not** also load the
-engine as a pi extension with `-e`, or `/implement` is registered twice and the
-plain name stops dispatching.
+The eval adapter invokes the pinned Engine directly. Evals need no global
+`pi install` or personal Pi configuration. Set server URLs and eval-specific
+keys in `config/pi/models.json`. Git ignores this local file and credentials.
+Each Pi child uses this checkout's `config/pi/`, even when your shell exports
+a different `PI_CODING_AGENT_DIR`. The tracked `settings.json` pins compaction
+and high reasoning. Do not copy personal `auth.json` or settings into it.
 
 ## Point the engine at your model
 
@@ -106,7 +113,7 @@ export SATYRN_MODEL="unsloth/ornith-ai/Ornith-1.5-9B-GGUF"
 
 `SATYRN_MODEL` is a two-token address: a **provider** prefix and the model the
 provider serves. The provider prefix selects the block in Pi's model
-configuration (`~/.pi/agent/models.json`) that holds where the server lives and
+configuration (`config/pi/models.json`) that holds where the server lives and
 its API key; the harness reads that same configuration to check the server is
 up. An eval **arm** carries its own model string, so `launch` uses the arm's —
 keep the arm and `SATYRN_MODEL` equal for the same backend. Start your backend
@@ -114,19 +121,21 @@ keep the arm and `SATYRN_MODEL` equal for the same backend. Start your backend
 
 ### unsloth (Linux or Windows, GPU)
 
-unsloth runs a model on your GPU and exposes it as an OpenAI-compatible server.
-`unsloth start pi` starts that server **and** writes the Pi model
-configuration, so you do not hand-edit `models.json`.
+unsloth serves a model on your GPU through an OpenAI-compatible API.
+Install the unsloth CLI:
 
 ```bash
-# Install the unsloth CLI.
 curl -fsSL https://unsloth.ai/install.sh | sh
-
-# Start a persistent Pi server on a model. --persist keeps the session so you
-# can resume it later. The API key is minted for your local server and
-# remembered automatically.
-unsloth start pi --persist --model ornith-ai/Ornith-1.5-9B-GGUF:Q8_0
 ```
+
+Use your installed unsloth version's server setup to start the persistent API
+server. Put its URL and an eval-specific proxy key in the `unsloth` block of
+`config/pi/models.json`. The example contains a placeholder key that you must
+replace. Make sure that `/v1/models` lists `ornith-ai/Ornith-1.5-9B-GGUF`.
+
+Do not use `unsloth start pi` as the eval setup step. That client integration
+writes Pi configuration and starts a client. Evals need only the API server.
+They do not read configuration generated for your interactive Pi client.
 
 Then point the engine at it:
 
@@ -135,8 +144,8 @@ export SATYRN_MODEL="unsloth/ornith-ai/Ornith-1.5-9B-GGUF"
 ```
 
 The `unsloth/` prefix tells the harness to read the server address and key from
-the `unsloth` provider block in `models.json`, which `unsloth start pi` wrote.
-`unsloth start` names the model without that prefix; `SATYRN_MODEL` adds it.
+the `unsloth` provider block in `config/pi/models.json`.
+The served model id has no provider prefix. `SATYRN_MODEL` adds it.
 
 **Ornith 1.5 9B by VRAM.** Pick the largest quantisation your GPU holds:
 
@@ -163,9 +172,9 @@ curl -fsSL https://ollama.com/install.sh | sh
 ollama pull ornith-1.5:9b
 ```
 
-Add the ollama provider to `~/.pi/agent/models.json` (Pi ships this file). The
-entry's fields must equal the settings the committed arm declares, because the
-settings preflight compares them:
+Add the ollama provider to `config/pi/models.json`. Keep any other providers
+that you need. The entry's fields must equal the settings in the committed arm
+because preflight compares them:
 
 ```json
 {
@@ -227,8 +236,9 @@ Point the stack at the model oMLX lists (check `http://localhost:8000/v1/models`
 export SATYRN_MODEL="omlx/Ornith-1.5-9B-MLX-8bit"
 ```
 
-oMLX writes no `models.json` for you, so add its provider block yourself — the
-`baseUrl` must match your server, which listens on 8000 by default:
+The example in `config/pi/models.json` includes the oMLX provider and the
+Ornith model fields. Set `baseUrl` to your server, which listens on 8000 by
+default. Keep the full model entry from the example. Its provider shape is:
 
 ```json
 {
@@ -350,8 +360,8 @@ cat <night>/<cell-name>/receipt.json
 | --- | --- |
 | A step complains about a missing tool | Run `python3 scripts/prereqs.py` to see every prerequisite with its fix. |
 | `--preflight` lists `problems` naming an unreachable server | The backend is not running, or `SATYRN_MODEL`'s provider block in `models.json` names a different address. Start the backend and run `python3 scripts/prereqs.py --check-servers` (with `SATYRN_MODEL` exported). |
-| `--preflight` says the server does not serve the model | The model id in `SATYRN_MODEL` (after the provider prefix) is not in the server's `/v1/models`. Pull or `unsloth start pi --model` the exact id. |
-| `/implement` is missing or shows `/implement:1` | The engine was installed twice. Reinstall once: `pi uninstall <path>/packages/engine && pi install <path>/packages/engine`. |
+| `--preflight` says the server does not serve the model | The model id in `SATYRN_MODEL` (after the provider prefix) is not in the server's `/v1/models`. Load the exact id on the backend server. |
+| The Engine adapter cannot start | Set `SATYRN_ENGINE_REPO` to the checkout printed by `tools.engine_sync fetch`. Evals invoke it directly, without a global Pi package installation. |
 | A cell times out or is slow | The model is too large or unquantised for the hardware. Switch to a smaller quantisation (see the tables above). |
 | Grading disagrees with what you saw | Do not re-run the model. Re-grade the saved patch: `uv run satyrn-evals grade <task> <patch.diff>`. Grading is offline and deterministic. |
 

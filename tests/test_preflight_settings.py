@@ -393,6 +393,24 @@ def _unsloth_pi_models() -> dict:
     return models
 
 
+def test_cli_checks_eval_models_not_the_users_global_config(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    arm = _arm_file(tmp_path)
+    omlx_path = _write(tmp_path / "model_settings.json", _OMLX_SETTINGS)
+    eval_models = _REPO_ROOT / "config" / "pi" / "models.json"
+    read_text = Path.read_text
+
+    def read(path: Path, **kwargs) -> str:
+        if path == eval_models:
+            return json.dumps(_PI_MODELS)
+        assert path.is_relative_to(tmp_path), f"read outside eval config: {path}"
+        return read_text(path, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", read)
+    assert main([str(arm), "--omlx-settings", str(omlx_path)]) == 0
+
+
 def test_cli_exit_0_when_clean(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     arm = _arm_file(tmp_path)
     omlx_path = _write(tmp_path / "model_settings.json", _OMLX_SETTINGS)
@@ -691,4 +709,3 @@ def test_every_arm_names_a_settings_checker_that_exists(arm_path: Path) -> None:
     named = arm["settings_verified_by"]
     assert named == "scripts/preflight_settings.py"
     assert (_REPO_ROOT / named).is_file()
-

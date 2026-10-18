@@ -96,6 +96,9 @@ from satyrn_evals.task_tree import tree_digest
 
 DEFAULT_RUNS_ROOT = Path.home() / "satyrn-runs"
 SETTINGS_SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "preflight_settings.py"
+#: Versioned Pi configuration policy, stable across checkout paths. Bump for
+#: incompatible policy changes; legacy nights do not establish this condition.
+PI_CONFIG_CONDITION = "eval-owned-v1"
 EXIT_CODES = {Status.COMPLETE: 0, Status.INFRASTRUCTURE: 3, Status.INTERRUPTED: 3, Status.CAPPED: 4}
 
 
@@ -385,6 +388,7 @@ def launch_record(
         # arm was re-pinned must refuse, or a partly finished night would mix
         # cells from two engines under one record with no warning.
         "arm_sha256": {name: _sha256(path) for name, (path, _) in arms.items()},
+        "pi_config_condition": PI_CONFIG_CONDITION,
     }
     check_night(night, identity)
     pinned = {record_path: identity["record_sha256"], **{path: _sha256(path) for path, _ in arms.values()}}

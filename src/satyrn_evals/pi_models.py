@@ -2,19 +2,22 @@
 
 The launch preflight's model-server check (`model_server.py`) needs
 `providers[provider].baseUrl` and `apiKey`, so this module holds the one reader
-for the config `pi` reads -- the maintainer's own, since confinement runs the
-model as the maintainer (design C1).
+for the eval-owned config `pi` reads. Running as the maintainer does not
+mean inheriting the maintainer's personal Pi settings or credentials.
 """
+
+from __future__ import annotations
 
 import json
 from collections.abc import Mapping
 from pathlib import Path
 
-DEFAULT_PI_MODELS = Path.home() / ".pi" / "agent" / "models.json"
+DEFAULT_PI_CONFIG_DIR = Path(__file__).resolve().parents[2] / "config" / "pi"
+DEFAULT_PI_MODELS = DEFAULT_PI_CONFIG_DIR / "models.json"
 
 
 def read_local_pi_models(path: Path = DEFAULT_PI_MODELS) -> dict:
-    """The maintainer's own Pi model config, read directly."""
+    """The eval's Pi model config, with no personal-config fallback."""
     return json.loads(path.read_text(encoding="utf-8"))
 
 

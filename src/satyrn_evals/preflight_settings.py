@@ -6,7 +6,7 @@ Instrument, not production code, in the style of `preflight_models.py` and
 arm against pi's *declared* config only, this checks both sides of the
 actual serving path: the oMLX server's per-model settings
 (`~/.omlx/model_settings.json`) and pi's per-model entry
-(`~/.pi/agent/models.json`).
+(`config/pi/models.json`).
 
 `arms/baseline-ornith15-9b.json` carries a full `inference` block --
 context window, sampling params, reasoning -- and nothing enforced it.
@@ -46,7 +46,7 @@ Usage::
 
     uv run satyrn-evals-preflight-settings arms/baseline-ornith15-9b.json \\
         [--omlx-settings ~/.omlx/model_settings.json] \\
-        [--pi-models ~/.pi/agent/models.json] \\
+        [--pi-models config/pi/models.json] \\
         [--record PATH]
 """
 

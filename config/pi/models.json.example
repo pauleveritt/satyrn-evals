@@ -1,0 +1,54 @@
+{
+  "providers": {
+    "omlx": {
+      "baseUrl": "http://localhost:8000/v1",
+      "api": "openai-completions",
+      "apiKey": "eval-local",
+      "models": [
+        {
+          "id": "Ornith-1.5-9B-MLX-8bit",
+          "name": "Ornith 1.5 9B (eval)",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "contextWindow": 262144,
+          "maxTokens": 16000,
+          "samplingParams": {
+            "temperature": 0.6,
+            "top_p": 0.95,
+            "top_k": 20,
+            "min_p": 0,
+            "presence_penalty": 0,
+            "repetition_penalty": 1
+          }
+        }
+      ]
+    },
+    "unsloth": {
+      "baseUrl": "http://localhost:8888/v1",
+      "api": "openai-completions",
+      "apiKey": "REPLACE_WITH_EVAL_PROXY_KEY",
+      "models": [
+        {
+          "id": "ornith-ai/Ornith-1.5-9B-GGUF",
+          "name": "Ornith 1.5 9B GGUF (eval)",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "contextWindow": 262144,
+          "maxTokens": 16000,
+          "samplingParams": {
+            "temperature": 0.6,
+            "top_p": 0.95,
+            "top_k": 20,
+            "min_p": 0,
+            "presence_penalty": 0,
+            "repetition_penalty": 1
+          }
+        }
+      ]
+    }
+  }
+}

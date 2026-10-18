@@ -60,7 +60,7 @@ FIXES: dict[str, str] = {
     "git": "install git — https://git-scm.com/downloads",
     "uv": "install uv — https://docs.astral.sh/uv/#install",
     "pi": "install pi — https://pi.dev/docs/latest/quickstart",
-    "unsloth": "install unsloth, then `unsloth start pi --persist --model ornith-ai/Ornith-1.5-9B-GGUF:Q8_0`",
+    "unsloth": "install unsloth — https://unsloth.ai; start its API server and set config/pi/models.json",
     "ollama": "install ollama, then `ollama pull qwen2.5-coder:1.5b`",
     "omlx": "install oMLX (https://github.com/jundot/omlx), serve a model, then point the `omlx` provider at it",
     "model backend": "install and start one of unsloth, ollama, or omlx — see docs/user-guide.md",
@@ -222,8 +222,8 @@ def _provider_api_key(models: dict, provider: str) -> str | None:
 
 
 def _read_pi_models() -> dict:
-    """`~/.pi/agent/models.json`, or `{}` when it is absent or unreadable."""
-    path = Path.home() / ".pi" / "agent" / "models.json"
+    """The eval-owned model config without requiring a project installation."""
+    path = Path(__file__).resolve().parents[1] / "config" / "pi" / "models.json"
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):

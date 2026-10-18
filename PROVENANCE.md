@@ -8,6 +8,9 @@
 | src/satyrn_evals/preflight_settings.py | moved unchanged command behavior from scripts/preflight_settings.py; normal package imports, 2026-10-18 |
 | src/satyrn_evals/preflight_inference.py | moved unchanged command behavior from scripts/preflight_inference.py; normal package imports, 2026-10-18 |
 | src/satyrn_evals/interleave.py | moved unchanged command behavior from scripts/interleave.py; normal package imports, 2026-10-18 |
+| config/pi/settings.json | eval-owned Pi configuration fix, 2026-10-18 |
+| config/pi/models.json.example | eval-owned Pi configuration fix, 2026-10-18 |
+| tests/test_eval_pi_config.py | eval-owned Pi configuration regression tests, 2026-10-18 |
 | conftest.py | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | LICENSE | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |
 | .gitignore | pre-release-one-2026-09-13 @ f95be50836e8e69163d5bb71e3fada491a951b92 |

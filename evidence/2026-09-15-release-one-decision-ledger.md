@@ -602,3 +602,55 @@ Write your review to `/private/tmp/claude-501/-Users-pauleveritt-projects-paulev
 - **The re-pin's smoke cell ran.** This completes the entry "Engine re-pin for head tolerance", whose "Not run: a smoke cell" predates it. The record is `records/2026-10-06-smoke-engine-9aecfb5-review-script.json` (`5157106`), and the result is its `.result.json` (`71ede5c`), purpose `development`. Outcome: one cell, `OK`, verdict pass, 0 refusals, contamination clean. The engine receipt shows 8 turns, 4,141 tokens, 148 s and `head_moved: false`. It shows the re-pinned Engine runs end to end. It says nothing about rates and is never read.
 - Parked instrument work, unchanged and on no release path: the Engine-arm tripped harvest, replay of nudge-turn trees, the strip-rule read, and re-deriving k on the M5 Max.
 - If wrong: the floor negative stays on the results page until GPU time is spent; nothing is lost by waiting.
+
+## 2026-10-18 — Eval-owned Pi configuration: affected decisions UNCONFIRMED
+
+Source harness: confinement adoption `35c298d` through pre-fix `f3787d9`.
+At `f3787d9`, `pi_models.py` and the preflight scripts defaulted to personal
+`~/.pi/agent`. `clean_pi_environment` passed an inherited
+`PI_CODING_AGENT_DIR` through unchanged. Baseline, Engine, and the session
+adapter therefore used personal Pi state. Selected-field checks did not
+freeze all settings or prove equal configuration across the arms.
+
+The fix is the commit that adds this entry. Pi children now use this
+checkout's `config/pi/`. Preflight and prerequisite checks read the same
+directory. Regression tests cover conflicting personal configuration,
+missing eval configuration, and all three child environments. The tracked
+settings preserve compaction and high reasoning, the intended settings
+recorded in the phase-2b plan, decision 18. This is a new harness condition.
+No model ran and no comparison was re-read.
+
+The following inference-backed decisions are UNCONFIRMED for this condition.
+Their original entries name the source harness, records, and evidence:
+
+1. C3's task ceilings, failure-class frequencies, and admission-based task
+   choices (`60a29bc`, sittings `b56e5dd`, `c49717e`/`8c1dd3e`). Retained
+   admission tallies and grades still describe those original cells.
+2. C4's finishing counterfactual and the remedy choice based on it
+   (`4bc9831`). Its replay-based claims were already unconfirmed.
+3. The Engine and Baseline development reads that opened the run-record-gate
+   comparison, selected delivery, and informed its budget and sample size
+   (ledger entries dated 2026-10-04 and 2026-10-05, Engine `6d30479`,
+   `5b681b0`, then `23a0ef6`).
+4. EB0 and EB1's cost and failure-pattern readings (Engine `1869397`), EB's
+   floor-task choice at `23a0ef6`, the floor-parity negative, and EB2's
+   estimates and remedy rankings. This includes the seven EB rulings.
+5. The decided delivery claim and its finishing and cost readings: Engine
+   22/36 against Baseline 10/36 at `23a0ef6` (records `25b4dd6`, results
+   `1ddc1dd`, `36fc1c4`, `c908919`). These counts are not deleted or changed.
+6. The inference-derived bounds, sample-size estimates, task choices, and
+   product framing in the eight EB re-plan rulings and the EB postponement
+   entry. Administrative choices to postpone work remain in force.
+7. The re-pin smoke cell's readiness claim at Engine `9aecfb5` (record
+   `5157106`, result `71ede5c`). It does not prove startup under eval-owned
+   configuration.
+
+The isolated-condition evidence keeps its existing status. Deterministic
+qualification, harvest logic, source pin checks, and offline grades do not
+become false because startup configuration changed. Their measurements do
+not establish model behavior under the fixed harness.
+
+Do not build an Engine remedy or make a release claim from a marked decision.
+Re-derive it on the fixed harness with an attended, frozen launch record.
+Keep new cells separate from the personal-configuration condition. This entry
+does not authorize inference, re-opening a comparison, or changing a pin.
