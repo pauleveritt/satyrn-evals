@@ -11,6 +11,11 @@ dependencies = ["pyyaml"]
 [project.scripts]
 satyrn-evals = "satyrn_evals.cli:main"
 satyrn-evals-session-pi = "satyrn_evals.adapters.pi_session:main"
+satyrn-evals-preflight-commands = "satyrn_evals.preflight_commands:main"
+satyrn-evals-preflight-models = "satyrn_evals.preflight_models:main"
+satyrn-evals-preflight-settings = "satyrn_evals.preflight_settings:main"
+satyrn-evals-preflight-inference = "satyrn_evals.preflight_inference:main"
+satyrn-evals-interleave = "satyrn_evals.interleave:main"
 # The Baseline arm's attempt adapter (arms/baseline.json names this).
 satyrn-evals-attempt-pi = "satyrn_evals.attempt_pi:main"
 # The Engine arm's attempt adapter: the same task text through /implement.

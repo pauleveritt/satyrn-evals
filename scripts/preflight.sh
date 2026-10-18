@@ -120,8 +120,7 @@ done
 # arm -- exactly the "pass on an arm nobody checked" defect this script's
 # PATH-resolution comment (below) already warns about. preflight_models.py
 # checks every arm named on the command line, not just the ends.
-uv run --project "$EVALS_ROOT" python \
-  "$EVALS_ROOT/scripts/preflight_models.py" "${ARM_FILES[@]}" \
+uv run --project "$EVALS_ROOT" satyrn-evals-preflight-models "${ARM_FILES[@]}" \
   || fail "the arm files do not all name the same model"
 
 # --- 0a. each arm's declared inference settings are actually enforced ----
@@ -137,8 +136,7 @@ uv run --project "$EVALS_ROOT" python \
 mkdir -p "$OUTPUT"
 for arm_file in "${ARM_FILES[@]}"; do
   arm_stem="$(basename "$arm_file" .json)"
-  uv run --project "$EVALS_ROOT" python \
-    "$EVALS_ROOT/scripts/preflight_settings.py" "$arm_file" \
+  uv run --project "$EVALS_ROOT" satyrn-evals-preflight-settings "$arm_file" \
     --record "$OUTPUT/settings-$arm_stem.json" \
     || fail "$arm_file's inference settings are not verified against the server and pi config"
 done
@@ -167,8 +165,7 @@ ok "no measurement-shaped Pi or Engine process is running"
 # batch is launched as `uv run satyrn-evals run ...`, so its children see
 # the evals virtualenv's bin directory. Checked with a bare `python3`, the
 # Baseline command reads as missing when it is not.
-uv run --project "$EVALS_ROOT" python \
-  "$EVALS_ROOT/scripts/preflight_commands.py" "${ARM_FILES[@]}" \
+uv run --project "$EVALS_ROOT" satyrn-evals-preflight-commands "${ARM_FILES[@]}" \
   || fail "an arm's command is not on PATH; put it there before spending a batch"
 
 # --- 0c. pi's inference settings are the ones the arms record -------------
@@ -181,8 +178,7 @@ uv run --project "$EVALS_ROOT" python \
 # Stated limit: this compares pi's *declared* config, and cannot see what
 # the server enforces -- that is the live completion's job, and the
 # batch's.
-uv run --project "$EVALS_ROOT" python \
-  "$EVALS_ROOT/scripts/preflight_inference.py" "${ARM_FILES[@]}" \
+uv run --project "$EVALS_ROOT" satyrn-evals-preflight-inference "${ARM_FILES[@]}" \
   || fail "an inference setting drifted from what the arm records"
 
 # --- 1. the engine checkout is exactly the pinned commit, and clean -------
@@ -316,7 +312,7 @@ ok "evals is $EVALS_SHA with a clean working tree"
 
 # interleave.py imports satyrn_evals.arms, so it needs this project's
 # interpreter (Python >= 3.14), not whatever python3 is on PATH.
-uv run --project "$EVALS_ROOT" python "$EVALS_ROOT/scripts/interleave.py" \
+uv run --project "$EVALS_ROOT" satyrn-evals-interleave \
   --seed "$SEED" --n "$N" --task "$TASK" --rung "$RUNG" \
   --contract-digest "$CONTRACT_DIGEST" --output "$OUTPUT" \
   "${ARM_FILES[@]}"

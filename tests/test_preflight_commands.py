@@ -6,14 +6,11 @@ sibling success, per `BRIEF.md` rule 6.
 """
 
 import json
-import sys
 from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-
-from preflight_commands import (  # noqa: E402, I001
+from satyrn_evals.preflight_commands import (
     resolve_arm_commands,
     unresolved,
 )

@@ -143,7 +143,7 @@ Three notes on those commands, because each one has bitten somebody:
   the prerequisites, this is the moment to ask it:
 
 ```bash
-uv run python scripts/prereqs.py --backend ollama
+python3 scripts/prereqs.py --backend ollama
 ```
 
 It reports each prerequisite — `git`, `uv`, `pi`, Python, a backend — with a
@@ -298,7 +298,7 @@ Two checks catch that cheaply.
 
 ```bash
 # Is the server up, and does it really serve the model you named?
-uv run python scripts/prereqs.py --check-servers
+python3 scripts/prereqs.py --check-servers
 
 # Is the run condition sound, and is the Engine checkout the one
 # the arm was measured with?
@@ -319,7 +319,7 @@ uv run satyrn-evals launch ./my-record.json --arm arms/baseline-ollama-ornith15-
 ```
 
 `launch` runs one further check before the first cell:
-`scripts/preflight_settings.py`, which compares your arm's `inference` block
+`satyrn-evals-preflight-settings`, which compares your arm's `inference` block
 against the configs that actually govern sampling — Pi's `models.json`, and the
 server's own settings file on a backend that has one — and refuses on any
 mismatch. This is the check that catches a step-4 entry that drifted away from

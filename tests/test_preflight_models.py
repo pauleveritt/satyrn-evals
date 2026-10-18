@@ -8,12 +8,9 @@ its own PATH check. Each refusal below has its sibling success, per
 """
 
 import json
-import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-
-from preflight_models import disagreeing, load_arms  # noqa: E402, I001
+from satyrn_evals.preflight_models import disagreeing, load_arms
 
 _PINS = {"pi": "0.84.4", "engine_commit": None, "digests": {}}
 

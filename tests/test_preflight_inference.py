@@ -8,14 +8,11 @@ settings a batch depends on are the settings that are live.
 """
 
 import json
-import sys
 from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-
-from preflight_inference import (  # noqa: E402, I001
+from satyrn_evals.preflight_inference import (
     drifted,
     live_settings,
 )
