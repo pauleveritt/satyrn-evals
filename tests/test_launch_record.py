@@ -449,6 +449,68 @@ def test_a_settings_change_between_cells_stops_the_night_as_drift(tmp_path: Path
     assert [c["slot"] for c in result["cells"]] == [0]
 
 
+@pytest.fixture
+def interrupted_night(tmp_path: Path) -> tuple[Path, Path]:
+    """One retained model outcome and two unfinished slots, without a model."""
+    record = _record(tmp_path, n=3)
+
+    def spawn(spec: Path, log: Path) -> object:
+        if json.loads(spec.read_text())["slot"] == 0:
+            return Recording(spec, code="NO_PATCH", verdict=None)
+        raise Spawned(spec.read_text())
+
+    assert _launch(tmp_path, record, _facts(spawn_cell=spawn)) == 3
+    result = json.loads(record.with_suffix(".result.json").read_text())
+    assert [cell["slot"] for cell in result["cells"]] == [0]
+    return record, tmp_path / "runs" / record.stem
+
+
+@pytest.mark.parametrize("saved_condition", [None, "personal-pi-v1"], ids=["missing", "different"])
+def test_resuming_an_incompatible_pi_config_condition_is_refused_before_any_write(
+    tmp_path: Path, interrupted_night: tuple[Path, Path], saved_condition: str | None,
+) -> None:
+    record, night = interrupted_night
+    ledger_path = night / "launch.json"
+    ledger = json.loads(ledger_path.read_text())
+    if saved_condition is None:
+        ledger.pop("pi_config_condition", None)
+    else:
+        ledger["pi_config_condition"] = saved_condition
+    ledger_path.write_text(json.dumps(ledger))
+    before = {path: path.read_bytes() for path in night.rglob("*") if path.is_file()}
+    result_before = record.with_suffix(".result.json").read_bytes()
+
+    with pytest.raises(SatyrnError, match="pi_config_condition"):
+        _launch(tmp_path, record, _facts())
+
+    assert {path: path.read_bytes() for path in night.rglob("*") if path.is_file()} == before
+    assert record.with_suffix(".result.json").read_bytes() == result_before
+
+
+def test_resuming_a_matching_pi_config_condition_keeps_completed_slots(
+    tmp_path: Path, interrupted_night: tuple[Path, Path],
+) -> None:
+    record, night = interrupted_night
+    ledger = json.loads((night / "launch.json").read_text())
+    condition = ledger.get("pi_config_condition")
+    assert isinstance(condition, str) and condition
+    retained = slot_path(night, Slot(0, "baseline")).read_bytes()
+
+    def spawn(spec: Path, log: Path) -> object:
+        if json.loads(spec.read_text())["slot"] == 1:
+            return Recording(spec, code="NO_PATCH", verdict=None)
+        raise Spawned(spec.read_text())
+
+    assert _launch(tmp_path, record, _facts(spawn_cell=spawn)) == 3
+    result = json.loads(record.with_suffix(".result.json").read_text())
+    assert result["status"] == "interrupted"
+    assert result["pi_config_condition"] == condition
+    assert [cell["slot"] for cell in result["cells"]] == [0, 1]
+    assert result["arms"]["baseline"]["finished"] == 2
+    assert len(result["sittings"]) == 2
+    assert slot_path(night, Slot(0, "baseline")).read_bytes() == retained
+
+
 def test_a_night_directory_of_another_record_is_refused(tmp_path: Path) -> None:
     first = _record(tmp_path)
     assert _launch(tmp_path, first, _facts()) == 3
