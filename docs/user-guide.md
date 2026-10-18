@@ -81,15 +81,19 @@ git clone https://github.com/pauleveritt/satyrn-evals.git
 cd satyrn-evals
 uv sync
 
-# 2. The engine, at the commit the pinned arm expects.
+# 2. The engine, at the commit the pinned arm expects, cloned next to
+#    this checkout as ../satyrn-engine; then install it too.
 uv run python -m tools.engine_sync fetch
+(cd ../satyrn-engine && uv sync)
 
 # 3. Reach the engine from Pi as /implement.
-pi install ./satyrn-engine/packages/engine
+pi install ../satyrn-engine/packages/engine
 ```
 
 `uv sync` installs the harness into a local `.venv`. `fetch` clones
-`satyrn-engine` at the commit its arm pins (default `baseline-ornith15-9b.json`).
+`satyrn-engine` at the commit its arm pins (default `baseline-ornith15-9b.json`)
+into the directory next to this one, and the engine needs its own `uv sync`
+before the preflight can run it.
 `pi install` registers `/implement` once, globally — do **not** also load the
 engine as a pi extension with `-e`, or `/implement` is registered twice and the
 plain name stops dispatching.

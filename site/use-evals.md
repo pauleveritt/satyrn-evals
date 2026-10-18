@@ -197,8 +197,9 @@ arm baseline: 1/1 passed (OK=1)
 
 The last line counts passes over finished attempts, then how each attempt
 ended: `OK` means the agent ran to completion, whatever the verdict;
-`COMMAND_TIMEOUT` means it hit the 30-minute limit and was not graded.
-`status: complete` means the run finished, not that anything passed.
+`COMMAND_TIMEOUT` means it hit the 30-minute limit and was not graded;
+`NO_PATCH` means it finished without changing anything, so there was nothing
+to grade. `status: complete` means the run finished, not that anything passed.
 
 | option | meaning |
 | --- | --- |

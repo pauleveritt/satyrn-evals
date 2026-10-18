@@ -409,6 +409,12 @@ copy of the task. Free up the processor, give the record a new name in
 `satyrn.yaml` (for example `record: records/my-second-try.json`), and go back
 to the `--dry-run` and commit in step 7.
 
+If it reads `arm baseline: 0/1 passed (NO_PATCH=1)`, the agent finished but
+changed nothing: `patch.diff` is empty and there is no `receipt.json`, because
+an empty change cannot be graded. `transcript.txt` and `timeline.jsonl` show
+what it did instead. A small model does this now and then; run again with a
+new record name, as above.
+
 When the attempt finished, the evidence behind that line is on disk, in the
 night:
 
